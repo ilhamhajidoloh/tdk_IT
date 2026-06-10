@@ -18,6 +18,10 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
@@ -41,6 +45,7 @@ export function useAuth() {
   }, []);
 
   const logout = async () => {
+    if (!auth) return;
     await signOut(auth);
     setUser(null);
     setToken(null);
