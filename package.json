@@ -17,6 +17,9 @@
     "react-dom": "19.2.4",
     "sweetalert2": "^11.26.25"
   },
+  "overrides": {
+    "jose": "^5.10.0"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
