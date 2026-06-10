@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onIdTokenChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
 
 export interface DBUser {
@@ -12,9 +12,13 @@ export interface DBUser {
   subjects?: string[];
 }
 
+// Firebase ID token หมดอายุทุก 1 ชม. -> บังคับ refresh ทุก 10 นาทีกันหลุดระหว่างใช้งาน
+const TOKEN_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+
 export function useAuth() {
   const [user, setUser] = useState<DBUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [tokenExpiration, setTokenExpiration] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,17 +26,19 @@ export function useAuth() {
       setLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
         setToken(null);
+        setTokenExpiration(null);
         setLoading(false);
         return;
       }
-      const idToken = await firebaseUser.getIdToken();
-      setToken(idToken);
+      const idTokenResult = await firebaseUser.getIdTokenResult();
+      setToken(idTokenResult.token);
+      setTokenExpiration(new Date(idTokenResult.expirationTime));
       const res = await fetch("/api/me", {
-        headers: { Authorization: `Bearer ${idToken}` },
+        headers: { Authorization: `Bearer ${idTokenResult.token}` },
       });
       if (res.ok) {
         setUser(await res.json());
@@ -41,7 +47,15 @@ export function useAuth() {
       }
       setLoading(false);
     });
-    return unsubscribe;
+
+    const interval = setInterval(() => {
+      auth.currentUser?.getIdToken(true);
+    }, TOKEN_REFRESH_INTERVAL_MS);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   const logout = async () => {
@@ -49,7 +63,8 @@ export function useAuth() {
     await signOut(auth);
     setUser(null);
     setToken(null);
+    setTokenExpiration(null);
   };
 
-  return { user, token, loading, logout };
+  return { user, token, tokenExpiration, loading, logout };
 }
