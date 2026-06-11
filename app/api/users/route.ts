@@ -24,6 +24,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  if (role === "admin") {
+    return NextResponse.json(
+      { error: "ไม่สามารถสร้างผู้ใช้แอดมินผ่านทางหน้าแอดมินได้ ต้องสร้างผ่านการเขียน SQL ลงฐานข้อมูลโดยตรงเท่านั้น" },
+      { status: 400 }
+    );
+  }
+
   const email = `${username.trim()}@school.local`;
 
   // สร้างใน Firebase Auth

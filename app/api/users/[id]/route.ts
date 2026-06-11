@@ -18,21 +18,30 @@ export async function PUT(
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // ถ้ามี password ให้อัปเดตใน Firebase ด้วย
-  if (password?.trim()) {
-    const userRow = await pool.query("SELECT firebase_uid FROM users WHERE id = $1", [id]);
-    if (userRow.rows.length > 0) {
-      try {
-        await adminAuth.updateUser(userRow.rows[0].firebase_uid, { password: password.trim() });
-      } catch {
-        // ไม่ blocking ถ้า Firebase update fail
-      }
-    }
+  // ดึงข้อมูลผู้ใช้งานเดิมก่อน
+  const oldUserRow = await pool.query("SELECT student_id, role, firebase_uid FROM users WHERE id = $1", [id]);
+  if (oldUserRow.rows.length === 0) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  const oldRole = oldUserRow.rows[0].role;
+  const oldStudentId = oldUserRow.rows[0].student_id;
+  const firebaseUid = oldUserRow.rows[0].firebase_uid;
+
+  if (role === "admin" && oldRole !== "admin") {
+    return NextResponse.json(
+      { error: "ไม่สามารถตั้งค่าบทบาทเป็นแอดมินผ่านทางหน้าแอดมินได้ ต้องตั้งค่าผ่านฐานข้อมูลโดยตรงเท่านั้น" },
+      { status: 400 }
+    );
   }
 
-  // ดึง student_id เก่าก่อน
-  const oldUserRow = await pool.query("SELECT student_id FROM users WHERE id = $1", [id]);
-  const oldStudentId = oldUserRow.rows[0]?.student_id;
+  // ถ้ามี password ให้อัปเดตใน Firebase ด้วย
+  if (password?.trim() && firebaseUid) {
+    try {
+      await adminAuth.updateUser(firebaseUid, { password: password.trim() });
+    } catch {
+      // ไม่ blocking ถ้า Firebase update fail
+    }
+  }
 
   const result = await pool.query(
     `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5
