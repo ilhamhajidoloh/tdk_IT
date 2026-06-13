@@ -11,6 +11,9 @@ const kanit = Kanit({
 export const metadata: Metadata = {
   title: "ระบบจัดการโรงเรียน",
   description: "ระบบจัดการคะแนนและข้อมูลนักเรียน",
+  icons: {
+    icon: "/logo.jpg",
+  },
 };
 
 export default function RootLayout({

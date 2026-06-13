@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
-  const result = await pool.query("SELECT * FROM system_settings ORDER BY academic_year DESC, term DESC");
+  const result = await pool.query("SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings ORDER BY academic_year DESC, term DESC");
   return NextResponse.json(result.rows.map(formatRow));
 }
 
@@ -123,9 +123,25 @@ export async function DELETE(req: NextRequest) {
   }
 
   // ตรวจสอบว่ากำลังลบปีการศึกษาที่ใช้อยู่หรือไม่
-  const checkActive = await pool.query("SELECT is_active FROM system_settings WHERE id = $1", [id]);
+  const checkActive = await pool.query("SELECT (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE id = $1", [id]);
   if (checkActive.rows.length > 0 && checkActive.rows[0].is_active) {
     return NextResponse.json({ error: "Cannot delete the active academic year" }, { status: 400 });
+  }
+
+  // ห้ามลบถ้ายังมีห้องเรียน/วิชา/คาบเรียนผูกอยู่กับปีการศึกษานี้
+  const classroomCheck = await pool.query("SELECT 1 FROM classrooms WHERE setting_id = $1 LIMIT 1", [id]);
+  if (classroomCheck.rows.length > 0) {
+    return NextResponse.json({ error: "Cannot delete an academic year that still has classrooms" }, { status: 400 });
+  }
+
+  const subjectCheck = await pool.query("SELECT 1 FROM subjects WHERE setting_id = $1 LIMIT 1", [id]);
+  if (subjectCheck.rows.length > 0) {
+    return NextResponse.json({ error: "Cannot delete an academic year that still has subjects" }, { status: 400 });
+  }
+
+  const periodCheck = await pool.query("SELECT 1 FROM schedule_periods WHERE setting_id = $1 LIMIT 1", [id]);
+  if (periodCheck.rows.length > 0) {
+    return NextResponse.json({ error: "Cannot delete an academic year that still has schedule periods" }, { status: 400 });
   }
 
   await pool.query("DELETE FROM system_settings WHERE id = $1", [id]);

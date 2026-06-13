@@ -47,16 +47,33 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const { id } = await params;
 
+  const client = await pool.connect();
   try {
-    const result = await pool.query("DELETE FROM subjects WHERE id = $1 RETURNING *", [id]);
+    await client.query("BEGIN");
+
+    await client.query("DELETE FROM subject_classrooms WHERE subject_id = $1", [id]);
+    await client.query("DELETE FROM class_schedules WHERE subject_id = $1", [id]);
+    const result = await client.query("DELETE FROM subjects WHERE id = $1 RETURNING *", [id]);
 
     if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
       return NextResponse.json({ error: "Subject not found" }, { status: 404 });
     }
 
+    const subjectName = result.rows[0].name;
+    await client.query("DELETE FROM grades WHERE subject = $1", [subjectName]);
+    await client.query(
+      "UPDATE users SET subjects = array_remove(subjects, $1::text) WHERE $1::text = ANY(subjects)",
+      [subjectName]
+    );
+
+    await client.query("COMMIT");
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error(error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    client.release();
   }
 }

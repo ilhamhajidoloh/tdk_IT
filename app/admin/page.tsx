@@ -35,6 +35,7 @@ const ALL_DAYS = [
 
 export default function AdminPortal() {
   const [users, setUsers] = useState<DBUser[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [classrooms, setClassrooms] = useState<{ id: string; name: string; setting_id?: number }[]>([]);
   const [selectedSettingId, setSelectedSettingId] = useState<number | null>(null);
   const [students, setStudents] = useState<DBStudent[]>([]);
@@ -92,6 +93,19 @@ export default function AdminPortal() {
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
   const [scheduleClassroomId, setScheduleClassroomId] = useState("");
 
+  // Assign Students State
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [targetClassroom, setTargetClassroom] = useState<{ id: string; name: string } | null>(null);
+  const [selectedStudentsForAssign, setSelectedStudentsForAssign] = useState<string[]>([]);
+  const [searchAssignStudent, setSearchAssignStudent] = useState("");
+
+  // Copy Classrooms State
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+  const [copySourceSettingId, setCopySourceSettingId] = useState<number | null>(null);
+  const [copyTargetSettingId, setCopyTargetSettingId] = useState<number | null>(null);
+  const [sourceClassrooms, setSourceClassrooms] = useState<{id: string; name: string}[]>([]);
+  const [copyClassroomsMap, setCopyClassroomsMap] = useState<Record<string, { selected: boolean; newName: string; moveStudents: boolean }>>({});
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -111,6 +125,9 @@ export default function AdminPortal() {
       .then(r => r.json()).then(setUsers);
     fetch("/api/students", { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.json()).then(setStudents);
+    if (selectedSubjectSettingId) {
+      loadSubjects(selectedSubjectSettingId, authToken);
+    }
   };
 
   const loadSubjects = async (settingId: number, authToken: string) => {
@@ -454,36 +471,100 @@ export default function AdminPortal() {
       Swal.fire("ลบสำเร็จ", `ลบปีการศึกษา ${name} เรียบร้อยแล้ว`, "success");
     }
   };
+  const handleOpenAssignModal = (classroom: { id: string; name: string }) => {
+    setTargetClassroom(classroom);
+    setSelectedStudentsForAssign([]);
+    setSearchAssignStudent("");
+    setIsAssignModalOpen(true);
+  };
 
-  const handleActivateSetting = async (id: string, name: string) => {
-    const res = await Swal.fire({
-      title: `ยืนยันการเปิดใช้งาน ${name}?`,
-      text: "ระบบจะเปลี่ยนไปใช้ปีการศึกษา/เทอม และช่วงเวลากรอกคะแนนนี้แทน",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "ยืนยันการเปิดใช้งาน",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#4f46e5"
+  const handleSaveAssignedStudents = async () => {
+    if (!targetClassroom || selectedStudentsForAssign.length === 0) return;
+    const res = await fetch(`/api/classrooms/${targetClassroom.id}/students`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ student_ids: selectedStudentsForAssign })
     });
-    if (res.isConfirmed) {
-      const actRes = await fetch("/api/settings/activate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ id }),
-      });
-
-      if (!actRes.ok) {
-        Swal.fire("ข้อผิดพลาด", "เปลี่ยนการตั้งค่าไม่สำเร็จ กรุณาลองใหม่", "error");
-        return;
-      }
-
-      if (token) loadSettings(token);
-      Swal.fire("สำเร็จ", `เปิดใช้งานปีการศึกษา ${name} แล้ว`, "success");
+    if (res.ok) {
+      Swal.fire("สำเร็จ", "เพิ่มนักเรียนเข้าชั้นเรียนแล้ว", "success");
+      if (token) loadData(token);
+      setIsAssignModalOpen(false);
+    } else {
+      Swal.fire("ข้อผิดพลาด", "ไม่สามารถเพิ่มนักเรียนได้", "error");
     }
   };
+
+  const handleOpenCopyModal = () => {
+    setCopySourceSettingId(null);
+    setCopyTargetSettingId(selectedSettingId || (settingsList.length > 0 ? settingsList[0].id : null));
+    setSourceClassrooms([]);
+    setCopyClassroomsMap({});
+    setIsCopyModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (isCopyModalOpen && copySourceSettingId) {
+      fetch(`/api/classrooms?settingId=${copySourceSettingId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          setSourceClassrooms(data);
+          const initialMap: Record<string, { selected: boolean; newName: string; moveStudents: boolean }> = {};
+          data.forEach((c: any) => {
+            initialMap[c.id] = { selected: true, newName: c.name, moveStudents: true };
+          });
+          setCopyClassroomsMap(initialMap);
+        })
+        .catch(err => console.error("Failed to load source classrooms", err));
+    } else {
+      setSourceClassrooms([]);
+      setCopyClassroomsMap({});
+    }
+  }, [isCopyModalOpen, copySourceSettingId, token]);
+
+  const handleSaveCopyClassrooms = async () => {
+    if (!copyTargetSettingId) {
+      Swal.fire("ข้อผิดพลาด", "กรุณาเลือกเทอมปลายทาง", "warning");
+      return;
+    }
+    const payloadClassrooms = sourceClassrooms
+      .filter(c => copyClassroomsMap[c.id]?.selected)
+      .map(c => ({
+        old_classroom_id: c.id,
+        new_name: copyClassroomsMap[c.id].newName,
+        move_students: copyClassroomsMap[c.id].moveStudents
+      }));
+
+    if (payloadClassrooms.length === 0) {
+      Swal.fire("ข้อผิดพลาด", "กรุณาเลือกอย่างน้อย 1 ชั้นเรียนที่ต้องการคัดลอก", "warning");
+      return;
+    }
+
+    const res = await fetch("/api/classrooms/copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        target_setting_id: copyTargetSettingId,
+        classrooms: payloadClassrooms
+      })
+    });
+
+    if (res.ok) {
+      Swal.fire("สำเร็จ", "คัดลอกชั้นเรียนและย้ายนักเรียนเรียบร้อยแล้ว", "success");
+      setIsCopyModalOpen(false);
+      if (token) {
+        if (copyTargetSettingId === selectedSettingId) {
+          loadClassrooms(selectedSettingId, token);
+        }
+        loadData(token);
+      }
+    } else {
+      Swal.fire("ข้อผิดพลาด", "ไม่สามารถคัดลอกชั้นเรียนได้", "error");
+    }
+  };
+
+
 
   const handleLogout = async () => {
     await logout();
@@ -491,6 +572,10 @@ export default function AdminPortal() {
   };
 
   const handleDeleteUser = async (id: string) => {
+    if (adminUser?.id === id) {
+      Swal.fire("ข้อผิดพลาด", "ไม่สามารถลบบัญชีของตัวเองได้", "error");
+      return;
+    }
     const res = await Swal.fire({
       title: "ยืนยันการลบ?",
       icon: "warning",
@@ -503,6 +588,39 @@ export default function AdminPortal() {
       await fetch(`/api/users/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       if (token) loadData(token);
       Swal.fire("ลบสำเร็จ", "", "success");
+    }
+  };
+
+  const handleBulkDeleteUsers = async () => {
+    if (selectedUserIds.length === 0) return;
+    if (adminUser && selectedUserIds.includes(adminUser.id)) {
+      Swal.fire("ข้อผิดพลาด", "ไม่สามารถลบบัญชีของตัวเองผ่านการลบหลายรายการได้ โปรดเอาตัวเลือกบัญชีของคุณออก", "error");
+      return;
+    }
+    const res = await Swal.fire({
+      title: `ยืนยันการลบผู้ใช้งาน ${selectedUserIds.length} รายการ?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ลบทั้งหมด",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#ef4444"
+    });
+    if (res.isConfirmed) {
+      Swal.fire({
+        title: 'กำลังลบข้อมูล...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      let successCount = 0;
+      for (const id of selectedUserIds) {
+        const dRes = await fetch(`/api/users/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+        if (dRes.ok) successCount++;
+      }
+      if (token) loadData(token);
+      setSelectedUserIds([]);
+      Swal.fire("ลบสำเร็จ", `ลบข้อมูลผู้ใช้งาน ${successCount} รายการเรียบร้อยแล้ว`, "success");
     }
   };
 
@@ -1138,11 +1256,8 @@ export default function AdminPortal() {
       <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-10 border-b border-indigo-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-white">
+              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-800 leading-none">ระบบแอดมิน</h1>
@@ -1244,6 +1359,12 @@ export default function AdminPortal() {
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
                       เพิ่มผู้ใช้ใหม่
                     </button>
+                    {selectedUserIds.length > 0 && (
+                      <button onClick={handleBulkDeleteUsers} className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        ลบที่เลือก ({selectedUserIds.length})
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1316,6 +1437,20 @@ export default function AdminPortal() {
                   <table className="w-full text-left">
                     <thead className="bg-gray-50 text-gray-600">
                       <tr>
+                        <th className="px-6 py-4 font-semibold w-12 text-center">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            checked={filteredUsers.filter(u => u.id !== adminUser?.id).length > 0 && selectedUserIds.length === filteredUsers.filter(u => u.id !== adminUser?.id).length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUserIds(filteredUsers.filter(u => u.id !== adminUser?.id).map(u => u.id));
+                              } else {
+                                setSelectedUserIds([]);
+                              }
+                            }}
+                          />
+                        </th>
                         <th className="px-6 py-4 font-semibold">Username</th>
                         <th className="px-6 py-4 font-semibold">Role</th>
                         <th className="px-6 py-4 font-semibold">Student ID</th>
@@ -1325,6 +1460,21 @@ export default function AdminPortal() {
                     <tbody className="divide-y divide-gray-100">
                       {filteredUsers.map(u => (
                         <tr key={u.id} className="hover:bg-gray-50/50">
+                          <td className="px-6 py-4 text-center">
+                            <input 
+                              type="checkbox" 
+                              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              checked={selectedUserIds.includes(u.id)}
+                              disabled={u.id === adminUser?.id}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUserIds(prev => [...prev, u.id]);
+                                } else {
+                                  setSelectedUserIds(prev => prev.filter(id => id !== u.id));
+                                }
+                              }}
+                            />
+                          </td>
                           <td className="px-6 py-4">
                             <div className="font-semibold text-gray-800">{u.username}</div>
                             {u.role === "teacher" && (
@@ -1357,7 +1507,7 @@ export default function AdminPortal() {
                       ))}
                       {filteredUsers.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="text-center py-8 text-gray-400 bg-gray-50/50">
+                          <td colSpan={5} className="text-center py-8 text-gray-400 bg-gray-50/50">
                             ไม่มีข้อมูลผู้ใช้งานในหมวดหมู่นี้
                           </td>
                         </tr>
@@ -1371,7 +1521,22 @@ export default function AdminPortal() {
                   {filteredUsers.map(u => (
                     <div key={u.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                        <div className="pt-1 shrink-0">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            checked={selectedUserIds.includes(u.id)}
+                            disabled={u.id === adminUser?.id}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUserIds(prev => [...prev, u.id]);
+                              } else {
+                                setSelectedUserIds(prev => prev.filter(id => id !== u.id));
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
                           <div className="font-semibold text-gray-800 break-all">{u.username}</div>
                           <span className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
                             u.role === 'admin' ? 'bg-red-100 text-red-700' :
@@ -1418,14 +1583,23 @@ export default function AdminPortal() {
                     <h2 className="text-2xl font-bold text-gray-800">จัดการชั้นเรียน</h2>
                     <p className="text-gray-500 text-sm">ชั้นเรียนแต่ละห้องผูกกับปีการศึกษา / เทอม</p>
                   </div>
-                  <button
-                    onClick={handleAddClassroom}
-                    disabled={!selectedSettingId}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-                    เพิ่มชั้นเรียนใหม่
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleOpenCopyModal}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                      คัดลอกชั้นเรียน
+                    </button>
+                    <button
+                      onClick={handleAddClassroom}
+                      disabled={!selectedSettingId}
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                      เพิ่มชั้นเรียนใหม่
+                    </button>
+                  </div>
                 </div>
 
                 {/* Term Selector */}
@@ -1471,7 +1645,13 @@ export default function AdminPortal() {
                           <div className="font-extrabold text-lg text-indigo-700">{c.name}</div>
                           <div className="text-slate-400 text-xs mt-1 font-semibold truncate">ID: {c.id}</div>
                         </div>
-                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30">
+                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30 flex-wrap">
+                          <button
+                            onClick={() => handleOpenAssignModal(c)}
+                            className="text-emerald-600 hover:text-emerald-800 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                          >
+                            เพิ่มนักเรียน
+                          </button>
                           <button
                             onClick={() => handleEditClassroom(c)}
                             className="text-indigo-600 hover:text-indigo-800 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
@@ -1487,6 +1667,227 @@ export default function AdminPortal() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Assign Students Modal */}
+                {isAssignModalOpen && targetClassroom && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col border border-slate-100 animate-slide-up overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                        <div>
+                          <h3 className="text-xl font-extrabold text-slate-800">เพิ่มนักเรียนเข้าชั้นเรียน</h3>
+                          <p className="text-sm font-semibold text-indigo-600 mt-0.5">ชั้น {targetClassroom.name}</p>
+                        </div>
+                        <button
+                          onClick={() => setIsAssignModalOpen(false)}
+                          className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Body */}
+                      <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="ค้นหานักเรียนด้วยชื่อ หรือรหัส..."
+                            value={searchAssignStudent}
+                            onChange={(e) => setSearchAssignStudent(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
+                          />
+                          <svg className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+
+                        <div className="border border-slate-100 rounded-xl max-h-60 overflow-y-auto bg-slate-50/30">
+                          {(() => {
+                            const unassigned = students.filter(s => !s.classroom_id && 
+                              (s.name.includes(searchAssignStudent) || s.student_id.includes(searchAssignStudent))
+                            );
+                            if (unassigned.length === 0) return <div className="p-6 text-center text-slate-400 text-sm font-semibold">ไม่พบนักเรียนที่ยังไม่มีห้อง</div>;
+                            return (
+                              <div className="divide-y divide-slate-100">
+                                {unassigned.map(s => (
+                                  <label key={s.id} className="flex items-center gap-3 p-3 hover:bg-indigo-50/50 cursor-pointer transition-colors">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedStudentsForAssign.includes(s.id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) setSelectedStudentsForAssign(prev => [...prev, s.id]);
+                                        else setSelectedStudentsForAssign(prev => prev.filter(id => id !== s.id));
+                                      }}
+                                      className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                    />
+                                    <div>
+                                      <div className="font-bold text-slate-700">{s.name}</div>
+                                      <div className="text-xs font-semibold text-slate-400">รหัส: {s.student_id}</div>
+                                    </div>
+                                  </label>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                        <button
+                          onClick={() => setIsAssignModalOpen(false)}
+                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                        >
+                          ยกเลิก
+                        </button>
+                        <button
+                          onClick={handleSaveAssignedStudents}
+                          disabled={selectedStudentsForAssign.length === 0}
+                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-md cursor-pointer flex items-center gap-2"
+                        >
+                          บันทึก ({selectedStudentsForAssign.length})
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Copy Classrooms Modal */}
+                {isCopyModalOpen && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-slate-100 animate-slide-up overflow-hidden">
+                      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                        <div>
+                          <h3 className="text-xl font-extrabold text-slate-800">คัดลอกชั้นเรียนและเลื่อนชั้น</h3>
+                          <p className="text-sm font-semibold text-indigo-600 mt-0.5">ดึงข้อมูลชั้นเรียนและนักเรียนจากเทอมอื่นมายังเทอมเป้าหมาย</p>
+                        </div>
+                        <button onClick={() => setIsCopyModalOpen(false)} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+
+                      <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
+                          {/* Source Term */}
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">1. เทอมต้นทาง (ที่ต้องการคัดลอก)</label>
+                            <select
+                              value={copySourceSettingId || ""}
+                              onChange={e => setCopySourceSettingId(Number(e.target.value) || null)}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold text-slate-700"
+                            >
+                              <option value="">-- เลือกเทอมต้นทาง --</option>
+                              {settingsList.map(s => {
+                                const todayStr = new Date().toISOString().split("T")[0];
+                                const isWaiting = (s.start_date ?? "") > todayStr;
+                                const status = s.is_active ? "(ปัจจุบัน)" : isWaiting ? "(รอเปิดใช้งาน)" : "(สิ้นสุดแล้ว)";
+                                return (
+                                  <option key={s.id} value={s.id} disabled={s.id === copyTargetSettingId}>
+                                    ปี {s.academic_year} เทอม {s.term} {status}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                          {/* Target Term */}
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">2. เทอมปลายทาง (เป้าหมาย)</label>
+                            <select
+                              value={copyTargetSettingId || ""}
+                              onChange={e => setCopyTargetSettingId(Number(e.target.value) || null)}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold text-slate-700"
+                            >
+                              <option value="">-- เลือกเทอมปลายทาง --</option>
+                              {settingsList.map(s => {
+                                const todayStr = new Date().toISOString().split("T")[0];
+                                const isWaiting = (s.start_date ?? "") > todayStr;
+                                const status = s.is_active ? "(ปัจจุบัน)" : isWaiting ? "(รอเปิดใช้งาน)" : "(สิ้นสุดแล้ว)";
+                                return (
+                                  <option key={s.id} value={s.id} disabled={s.id === copySourceSettingId}>
+                                    ปี {s.academic_year} เทอม {s.term} {status}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                        </div>
+
+                        {copySourceSettingId && sourceClassrooms.length > 0 && (
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">3. เลือกชั้นเรียนที่ต้องการคัดลอก</label>
+                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                              <table className="w-full text-left bg-white">
+                                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                                  <tr>
+                                    <th className="px-4 py-3 font-semibold text-center w-16">คัดลอก</th>
+                                    <th className="px-4 py-3 font-semibold">ชื่อชั้นเรียนเดิม</th>
+                                    <th className="px-4 py-3 font-semibold">ชื่อชั้นเรียนใหม่ (แก้ไขได้)</th>
+                                    <th className="px-4 py-3 font-semibold text-center">ย้ายนักเรียนมาด้วย</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {sourceClassrooms.map(c => {
+                                    const m = copyClassroomsMap[c.id];
+                                    if (!m) return null;
+                                    return (
+                                      <tr key={c.id} className={m.selected ? 'bg-indigo-50/20' : 'bg-slate-50/50'}>
+                                        <td className="px-4 py-3 text-center">
+                                          <input
+                                            type="checkbox"
+                                            checked={m.selected}
+                                            onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], selected: e.target.checked } }))}
+                                            className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                                          />
+                                        </td>
+                                        <td className="px-4 py-3 font-bold text-slate-700">{c.name}</td>
+                                        <td className="px-4 py-3">
+                                          <input
+                                            type="text"
+                                            value={m.newName}
+                                            onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], newName: e.target.value } }))}
+                                            disabled={!m.selected}
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm font-semibold text-slate-700 transition-all"
+                                          />
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                          <input
+                                            type="checkbox"
+                                            checked={m.moveStudents}
+                                            disabled={!m.selected}
+                                            onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], moveStudents: e.target.checked } }))}
+                                            className="w-5 h-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+                                          />
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                        {copySourceSettingId && sourceClassrooms.length === 0 && (
+                          <div className="text-center py-8 text-slate-400 font-semibold bg-slate-50 rounded-xl border border-dashed border-slate-200">ไม่มีชั้นเรียนในเทอมต้นทางนี้</div>
+                        )}
+                      </div>
+
+                      <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                        <button onClick={() => setIsCopyModalOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                          ยกเลิก
+                        </button>
+                        <button
+                          onClick={handleSaveCopyClassrooms}
+                          disabled={!copySourceSettingId || !copyTargetSettingId || sourceClassrooms.filter(c => copyClassroomsMap[c.id]?.selected).length === 0}
+                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-md cursor-pointer flex items-center gap-2"
+                        >
+                          บันทึกการคัดลอก
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1999,6 +2400,7 @@ export default function AdminPortal() {
                           settingsList.map((s: any) => {
                             const todayStr = new Date().toISOString().split("T")[0];
                             const isPeriodActive = todayStr >= (s.start_date ?? "") && todayStr <= (s.end_date ?? "");
+                            const isWaiting = (s.start_date ?? "") > todayStr;
 
                             return (
                               <tr key={s.id} className={`hover:bg-gray-50/50 ${s.is_active ? 'bg-indigo-50/20' : ''}`}>
@@ -2023,24 +2425,20 @@ export default function AdminPortal() {
                                   {s.is_active ? (
                                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                      กำลังใช้งาน
+                                      กำลังใช้งาน (ปัจจุบัน)
+                                    </span>
+                                  ) : isWaiting ? (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                      รอเปิดใช้งาน
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
-                                      ไม่ได้เปิดใช้งาน
+                                      สิ้นสุดแล้ว
                                     </span>
                                   )}
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                   <div className="flex items-center justify-center gap-1.5">
-                                    {!s.is_active && (
-                                      <button
-                                        onClick={() => handleActivateSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)}
-                                        className="text-emerald-600 hover:text-emerald-800 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                                      >
-                                        เปิดใช้งาน
-                                      </button>
-                                    )}
                                     <button
                                       onClick={() => handleEditSetting(s)}
                                       className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
@@ -2075,6 +2473,7 @@ export default function AdminPortal() {
                       settingsList.map((s: any) => {
                         const todayStr = new Date().toISOString().split("T")[0];
                         const isPeriodActive = todayStr >= (s.start_date ?? "") && todayStr <= (s.end_date ?? "");
+                        const isWaiting = (s.start_date ?? "") > todayStr;
 
                         return (
                           <div key={s.id} className={`rounded-2xl border border-gray-100 bg-white shadow-sm p-4 ${s.is_active ? 'bg-indigo-50/20' : ''}`}>
@@ -2088,9 +2487,13 @@ export default function AdminPortal() {
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                   กำลังใช้งาน
                                 </span>
+                              ) : isWaiting ? (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                                  รอเปิดใช้งาน
+                                </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200 shrink-0">
-                                  ไม่ได้เปิดใช้งาน
+                                  สิ้นสุดแล้ว
                                 </span>
                               )}
                             </div>
@@ -2108,14 +2511,6 @@ export default function AdminPortal() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
-                              {!s.is_active && (
-                                <button
-                                  onClick={() => handleActivateSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)}
-                                  className="text-emerald-600 hover:text-emerald-800 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                                >
-                                  เปิดใช้งาน
-                                </button>
-                              )}
                               <button
                                 onClick={() => handleEditSetting(s)}
                                 className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
@@ -2462,7 +2857,7 @@ export default function AdminPortal() {
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-700 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
                 >
                   <option value="">-- เลือกครูผู้สอน --</option>
-                  {users.filter(u => u.role === "teacher" || u.role === "admin").map(u => (
+                  {users.filter(u => u.role === "teacher").map(u => (
                     <option key={u.id} value={u.id}>{u.username}</option>
                   ))}
                 </select>

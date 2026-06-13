@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
+import { adminAuth } from "@/app/lib/firebase-admin";
 import pool from "@/app/lib/db";
 
 export async function PUT(
@@ -36,6 +37,25 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  const studentRow = await pool.query("SELECT student_id FROM students WHERE id = $1", [id]);
+  if (studentRow.rows.length === 0) {
+    return NextResponse.json({ error: "Student not found" }, { status: 404 });
+  }
+  const studentCode = studentRow.rows[0].student_id;
+
+  // ลบบัญชีผู้ใช้ที่ผูกกับนักเรียนคนนี้ (รวม Firebase)
+  const userRow = await pool.query("SELECT id, firebase_uid FROM users WHERE student_id = $1", [studentCode]);
+  for (const u of userRow.rows) {
+    try {
+      await adminAuth.deleteUser(u.firebase_uid);
+    } catch {
+      // ถ้า Firebase user ไม่มีอยู่แล้ว ก็ลบ DB ต่อได้
+    }
+    await pool.query("DELETE FROM users WHERE id = $1", [u.id]);
+  }
+
+  await pool.query("DELETE FROM grades WHERE student_id = $1", [studentCode]);
   await pool.query("DELETE FROM students WHERE id = $1", [id]);
   return NextResponse.json({ success: true });
 }

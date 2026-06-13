@@ -92,7 +92,7 @@ export async function DELETE(
 
   const { id } = await params;
 
-  // ดึง firebase_uid และ student_id ก่อนลบ
+  // ดึง firebase_uid, role และ student_id ก่อนลบ
   const userRow = await pool.query("SELECT firebase_uid, role, student_id FROM users WHERE id = $1", [id]);
   if (userRow.rows.length === 0) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -105,12 +105,22 @@ export async function DELETE(
     // ถ้า Firebase user ไม่มีอยู่แล้ว ก็ลบ DB ต่อได้
   }
 
-  // ลบ student ถ้าผู้ใช้เป็น student
+  // ลบ student และเกรดที่เกี่ยวข้อง ถ้าผู้ใช้เป็น student
   if (userRow.rows[0].role === "student" && userRow.rows[0].student_id) {
     try {
+      await pool.query("DELETE FROM grades WHERE student_id = $1", [userRow.rows[0].student_id]);
       await pool.query("DELETE FROM students WHERE student_id = $1", [userRow.rows[0].student_id]);
     } catch (err) {
       console.error("Error auto-deleting student when user is deleted:", err);
+    }
+  }
+
+  // ยกเลิกการผูกวิชาที่ผู้ใช้นี้สอน ถ้าผู้ใช้เป็น teacher
+  if (userRow.rows[0].role === "teacher") {
+    try {
+      await pool.query("UPDATE subjects SET teacher_id = NULL WHERE teacher_id = $1", [id]);
+    } catch (err) {
+      console.error("Error unlinking subjects when teacher user is deleted:", err);
     }
   }
 

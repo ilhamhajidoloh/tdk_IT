@@ -294,14 +294,14 @@ export default function TeacherPortal() {
 
   const getGradeLabel = (total: number, maxTotal: number) => {
     const percent = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-    if (percent >= 80) return { label: "4", color: "bg-green-100 text-green-700 border-green-200" };
-    if (percent >= 75) return { label: "3.5", color: "bg-green-50 text-green-600 border-green-200" };
-    if (percent >= 70) return { label: "3", color: "bg-blue-100 text-blue-700 border-blue-200" };
-    if (percent >= 65) return { label: "2.5", color: "bg-blue-50 text-blue-600 border-blue-200" };
-    if (percent >= 60) return { label: "2", color: "bg-yellow-100 text-yellow-700 border-yellow-200" };
-    if (percent >= 55) return { label: "1.5", color: "bg-yellow-50 text-yellow-600 border-yellow-200" };
-    if (percent >= 50) return { label: "1", color: "bg-orange-100 text-orange-700 border-orange-200" };
-    return { label: "0", color: "bg-red-100 text-red-700 border-red-200" };
+    if (percent >= 80) return { label: "4 (A)", color: "bg-green-100 text-green-700 border-green-200" };
+    if (percent >= 75) return { label: "3.5 (B+)", color: "bg-green-50 text-green-600 border-green-200" };
+    if (percent >= 70) return { label: "3 (B)", color: "bg-blue-100 text-blue-700 border-blue-200" };
+    if (percent >= 65) return { label: "2.5 (C+)", color: "bg-blue-50 text-blue-600 border-blue-200" };
+    if (percent >= 60) return { label: "2 (C)", color: "bg-yellow-100 text-yellow-700 border-yellow-200" };
+    if (percent >= 55) return { label: "1.5 (D+)", color: "bg-yellow-50 text-yellow-600 border-yellow-200" };
+    if (percent >= 50) return { label: "1 (D)", color: "bg-orange-100 text-orange-700 border-orange-200" };
+    return { label: "0 (F)", color: "bg-red-100 text-red-700 border-red-200" };
   };
 
   const getResultLabel = (total: number, maxTotal: number, subjectType: "main" | "activity") => {
@@ -387,10 +387,8 @@ export default function TeacherPortal() {
       <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-10 border-b border-indigo-100">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-white">
+              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-800 leading-none">ระบบจัดการข้อมูลครู</h1>

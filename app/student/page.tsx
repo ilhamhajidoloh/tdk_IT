@@ -24,11 +24,14 @@ const ALL_DAYS = [
   { value: 0, label: "อาทิตย์" },
 ];
 
+type Tab = "overview" | "grades" | "schedule";
+
 export default function StudentPortal() {
   const [currentStudent, setCurrentStudent] = useState<DBStudent | null>(null);
   const [studentGrades, setStudentGrades] = useState<DBGrade[]>([]);
   const [classrooms, setClassrooms] = useState<DBClassroom[]>([]);
   const [subjectsList, setSubjectsList] = useState<DBSubject[]>([]);
+  const [settingsList, setSettingsList] = useState<any[]>([]);
   const [activeSettingId, setActiveSettingId] = useState<number | null>(null);
   const [scheduleDaysConfig, setScheduleDaysConfig] = useState<number[]>([1, 2, 3, 4, 5]);
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
@@ -36,6 +39,7 @@ export default function StudentPortal() {
   const [isClient, setIsClient] = useState(false);
   const [midtermMax, setMidtermMax] = useState(50);
   const [finalMax, setFinalMax] = useState(50);
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const router = useRouter();
   const { user, loading, logout, token } = useAuth();
 
@@ -73,13 +77,18 @@ export default function StudentPortal() {
       .then(r => r.json())
       .then(setClassrooms);
 
-    fetch("/api/public/settings")
+    fetch("/api/public/settings?all=true")
       .then(r => r.json())
-      .then(s => {
-        setMidtermMax(s.midterm_max_score ?? 50);
-        setFinalMax(s.final_max_score ?? 50);
-        setActiveSettingId(s.id);
-        if (Array.isArray(s.schedule_days)) setScheduleDaysConfig(s.schedule_days);
+      .then(list => {
+        if (!Array.isArray(list)) return;
+        setSettingsList(list);
+        const activeOrLatest = list.find((s: any) => s.is_active) || list[0];
+        if (activeOrLatest) {
+          setActiveSettingId(activeOrLatest.id);
+          setMidtermMax(activeOrLatest.midterm_max_score ?? 50);
+          setFinalMax(activeOrLatest.final_max_score ?? 50);
+          if (Array.isArray(activeOrLatest.schedule_days)) setScheduleDaysConfig(activeOrLatest.schedule_days);
+        }
       });
   }, [loading, user, token, router]);
 
@@ -98,6 +107,10 @@ export default function StudentPortal() {
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
   const maxTotal = midtermMax + finalMax;
 
+  const activeSetting = settingsList.find(s => s.id === activeSettingId);
+  const activeTermStr = activeSetting ? `${activeSetting.term}/${activeSetting.academic_year}` : "";
+  const filteredGrades = studentGrades.filter(g => g.term === activeTermStr && subjectsList.some(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId));
+
   const handleLogout = async () => {
     await logout();
     router.push("/");
@@ -106,7 +119,8 @@ export default function StudentPortal() {
   const calculateGPA = () => {
     let totalPoints = 0;
     let totalCredits = 0;
-    studentGrades.forEach((g) => {
+
+    filteredGrades.forEach((g) => {
       const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
       if (subject?.subject_type === "activity") return;
       const mMax = Number(subject?.midterm_max_score) || midtermMax;
@@ -130,14 +144,14 @@ export default function StudentPortal() {
   };
 
   const getGradeLabel = (percent: number) => {
-    if (percent >= 80) return "4";
-    if (percent >= 75) return "3.5";
-    if (percent >= 70) return "3";
-    if (percent >= 65) return "2.5";
-    if (percent >= 60) return "2";
-    if (percent >= 55) return "1.5";
-    if (percent >= 50) return "1";
-    return "0";
+    if (percent >= 80) return { num: "4", letter: "A" };
+    if (percent >= 75) return { num: "3.5", letter: "B+" };
+    if (percent >= 70) return { num: "3", letter: "B" };
+    if (percent >= 65) return { num: "2.5", letter: "C+" };
+    if (percent >= 60) return { num: "2", letter: "C" };
+    if (percent >= 55) return { num: "1.5", letter: "D+" };
+    if (percent >= 50) return { num: "1", letter: "D" };
+    return { num: "0", letter: "F" };
   };
 
   const getScoreColor = (percent: number) => {
@@ -156,10 +170,8 @@ export default function StudentPortal() {
       <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-10 border-b border-purple-100">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-white">
+              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-800 leading-none">ระบบนักเรียน</h1>
@@ -178,8 +190,57 @@ export default function StudentPortal() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-10 space-y-8">
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h2 className="text-2xl font-bold text-gray-800">ข้อมูลปีการศึกษา</h2>
+          <select
+            className="px-4 py-2.5 bg-white border border-purple-200 rounded-xl shadow-sm text-sm font-bold text-purple-700 outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer min-w-[200px]"
+            value={activeSettingId || ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              const s = settingsList.find(x => String(x.id) === val);
+              if (s) {
+                setActiveSettingId(s.id);
+                setMidtermMax(s.midterm_max_score ?? 50);
+                setFinalMax(s.final_max_score ?? 50);
+                setScheduleDaysConfig(Array.isArray(s.schedule_days) ? s.schedule_days : [1, 2, 3, 4, 5]);
+              }
+            }}
+          >
+            {settingsList.map(s => (
+              <option key={s.id} value={s.id}>
+                ปีการศึกษา {s.academic_year} เทอม {s.term} {s.is_active ? "(ปัจจุบัน)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-8">
+          {/* Sidebar Tabs */}
+          <div className="space-y-2">
+            {[
+              { key: "overview", label: "ข้อมูลนักเรียน" },
+              { key: "grades", label: "ผลการเรียน" },
+              { key: "schedule", label: "ตารางเรียน" },
+            ].map(t => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key as Tab)}
+                className={`w-full text-left px-5 py-3.5 rounded-2xl font-semibold transition-all text-sm ${
+                  activeTab === t.key
+                    ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
+                    : "bg-white text-gray-600 hover:bg-purple-50 border border-gray-100"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Main Content Area */}
+          <div className="md:col-span-3 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
+          {activeTab === "overview" && (
+          <>
           {/* Student Profile Card */}
           <div className="bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 opacity-10 transform translate-x-6 -translate-y-4">
@@ -209,7 +270,7 @@ export default function StudentPortal() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/20">
                   <p className="text-purple-100 text-sm mb-1">วิชาทั้งหมด</p>
-                  <p className="text-3xl font-bold">{studentGrades.length}</p>
+                  <p className="text-3xl font-bold">{filteredGrades.length}</p>
                   <p className="text-purple-200 text-xs mt-1">วิชา</p>
                 </div>
                 <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/20">
@@ -220,8 +281,8 @@ export default function StudentPortal() {
                 <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/20 col-span-2 md:col-span-1">
                   <p className="text-purple-100 text-sm mb-1">คะแนนเฉลี่ย</p>
                   <p className="text-3xl font-bold">
-                    {studentGrades.length > 0
-                      ? Math.round(studentGrades.reduce((s, g) => s + (g.midterm_score ?? 0) + (g.final_score ?? 0), 0) / studentGrades.length)
+                    {filteredGrades.length > 0
+                      ? Math.round(filteredGrades.reduce((s, g) => s + (g.midterm_score ?? 0) + (g.final_score ?? 0), 0) / filteredGrades.length)
                       : 0}
                   </p>
                   <p className="text-purple-200 text-xs mt-1">จาก {maxTotal} คะแนน</p>
@@ -229,7 +290,11 @@ export default function StudentPortal() {
               </div>
             </div>
           </div>
+          </>
+          )}
 
+          {activeTab === "grades" && (
+          <>
           {/* Grades List */}
           <div className="bg-white rounded-3xl shadow-md border border-purple-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex items-center gap-3">
@@ -241,7 +306,7 @@ export default function StudentPortal() {
               <h3 className="text-xl font-bold text-gray-800">ผลการเรียน</h3>
             </div>
 
-            {studentGrades.length === 0 ? (
+            {filteredGrades.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                   <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -249,11 +314,11 @@ export default function StudentPortal() {
                   </svg>
                 </div>
                 <p className="text-gray-500 font-medium text-lg">ยังไม่มีผลการเรียน</p>
-                <p className="text-gray-400 text-sm mt-1">กรุณารอคุณครูบันทึกคะแนน</p>
+                <p className="text-gray-400 text-sm mt-1">กรุณารอคุณครูบันทึกคะแนนในเทอมนี้</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {studentGrades.map((grade) => {
+                {filteredGrades.map((grade) => {
                   const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                   const mMax = Number(subject?.midterm_max_score) || midtermMax;
                   const fMax = Number(subject?.final_max_score) || finalMax;
@@ -276,8 +341,9 @@ export default function StudentPortal() {
                             {passed ? "ผ่าน" : "ไม่ผ่าน"}
                           </div>
                         ) : (
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-xl ${getScoreColor(percent)}`}>
-                            {getGradeLabel(percent)}
+                          <div className={`px-4 h-12 rounded-2xl flex items-center justify-center gap-2 font-extrabold ${getScoreColor(percent)} shrink-0`}>
+                            <span className="text-xl">{getGradeLabel(percent).num}</span>
+                            <span className="text-sm opacity-80 font-bold bg-white/30 px-1.5 py-0.5 rounded-md">{getGradeLabel(percent).letter}</span>
                           </div>
                         )}
                         <div>
@@ -305,7 +371,11 @@ export default function StudentPortal() {
               </div>
             )}
           </div>
+          </>
+          )}
 
+          {activeTab === "schedule" && (
+          <>
           {/* Class Schedule */}
           <div className="bg-white rounded-3xl shadow-md border border-purple-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex items-center gap-3">
@@ -361,6 +431,9 @@ export default function StudentPortal() {
                 </table>
               </div>
             )}
+          </div>
+          </>
+          )}
           </div>
         </div>
       </main>

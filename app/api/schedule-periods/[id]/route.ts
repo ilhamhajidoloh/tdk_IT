@@ -29,6 +29,19 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   const { id } = await params;
-  await pool.query("DELETE FROM schedule_periods WHERE id = $1", [id]);
-  return NextResponse.json({ success: true });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM class_schedules WHERE period_id = $1", [id]);
+    await client.query("DELETE FROM schedule_periods WHERE id = $1", [id]);
+    await client.query("COMMIT");
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    client.release();
+  }
 }
