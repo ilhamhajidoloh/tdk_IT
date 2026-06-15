@@ -1,10 +1,8 @@
+import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { onIdTokenChanged, signOut } from "firebase/auth";
-import { auth } from "./firebase";
 
 export interface DBUser {
   id: string;
-  firebase_uid: string;
   username: string;
   role: "admin" | "teacher" | "student";
   student_id?: string;
@@ -12,59 +10,37 @@ export interface DBUser {
   subjects?: string[];
 }
 
-// Firebase ID token หมดอายุทุก 1 ชม. -> บังคับ refresh ทุก 10 นาทีกันหลุดระหว่างใช้งาน
-const TOKEN_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
-
 export function useAuth() {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<DBUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [tokenExpiration, setTokenExpiration] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(true);
+  
+  const loading = status === "loading" || isFetching;
 
   useEffect(() => {
-    if (typeof window === "undefined" || !auth) {
-      setLoading(false);
-      return;
+    if (status === "loading") return;
+
+    if (session?.user) {
+      // Fetch full details from /api/me just like before to ensure compatibility
+      fetch("/api/me")
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          setUser(data);
+          setIsFetching(false);
+        })
+        .catch(() => {
+          setUser(null);
+          setIsFetching(false);
+        });
+    } else {
+      setUser(null);
+      setIsFetching(false);
     }
-    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        setUser(null);
-        setToken(null);
-        setTokenExpiration(null);
-        setLoading(false);
-        return;
-      }
-      const idTokenResult = await firebaseUser.getIdTokenResult();
-      setToken(idTokenResult.token);
-      setTokenExpiration(new Date(idTokenResult.expirationTime));
-      const res = await fetch("/api/me", {
-        headers: { Authorization: `Bearer ${idTokenResult.token}` },
-      });
-      if (res.ok) {
-        setUser(await res.json());
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    const interval = setInterval(() => {
-      auth.currentUser?.getIdToken(true);
-    }, TOKEN_REFRESH_INTERVAL_MS);
-
-    return () => {
-      unsubscribe();
-      clearInterval(interval);
-    };
-  }, []);
+  }, [session, status]);
 
   const logout = async () => {
-    if (!auth) return;
-    await signOut(auth);
-    setUser(null);
-    setToken(null);
-    setTokenExpiration(null);
+    await signOut({ redirect: true, callbackUrl: "/" });
   };
 
-  return { user, token, tokenExpiration, loading, logout };
+  return { user, token: "next-auth-cookie", loading, logout };
 }

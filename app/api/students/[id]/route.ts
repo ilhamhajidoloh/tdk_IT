@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
-import { adminAuth } from "@/app/lib/firebase-admin";
 import pool from "@/app/lib/db";
 
 export async function PUT(
@@ -14,13 +13,22 @@ export async function PUT(
   const { id } = await params;
   const { name, student_id, classroom_id } = await req.json();
 
-  if (!name?.trim() || !student_id?.trim() || !classroom_id) {
+  if (!name?.trim() || !student_id?.trim() || classroom_id === undefined) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const studentIdVal = student_id?.trim() || null;
+
+  if (studentIdVal) {
+    const checkExists = await pool.query("SELECT id FROM students WHERE student_id = $1 AND id != $2", [studentIdVal, id]);
+    if (checkExists.rows.length > 0) {
+      return NextResponse.json({ error: "รหัสนักเรียนนี้มีอยู่ในระบบแล้ว" }, { status: 400 });
+    }
   }
 
   const result = await pool.query(
     "UPDATE students SET name = $1, student_id = $2, classroom_id = $3 WHERE id = $4 RETURNING *",
-    [name.trim(), student_id.trim(), classroom_id, id]
+    [name.trim(), studentIdVal, classroom_id, id]
   );
   if (result.rows.length === 0) {
     return NextResponse.json({ error: "Student not found" }, { status: 404 });
@@ -44,18 +52,15 @@ export async function DELETE(
   }
   const studentCode = studentRow.rows[0].student_id;
 
-  // ลบบัญชีผู้ใช้ที่ผูกกับนักเรียนคนนี้ (รวม Firebase)
-  const userRow = await pool.query("SELECT id, firebase_uid FROM users WHERE student_id = $1", [studentCode]);
-  for (const u of userRow.rows) {
-    try {
-      await adminAuth.deleteUser(u.firebase_uid);
-    } catch {
-      // ถ้า Firebase user ไม่มีอยู่แล้ว ก็ลบ DB ต่อได้
+  if (studentCode) {
+    // ลบบัญชีผู้ใช้ที่ผูกกับนักเรียนคนนี้
+    const userRow = await pool.query("SELECT id FROM users WHERE student_id = $1", [studentCode]);
+    for (const u of userRow.rows) {
+      await pool.query("DELETE FROM users WHERE id = $1", [u.id]);
     }
-    await pool.query("DELETE FROM users WHERE id = $1", [u.id]);
-  }
 
-  await pool.query("DELETE FROM grades WHERE student_id = $1", [studentCode]);
+    await pool.query("DELETE FROM grades WHERE student_id = $1", [studentCode]);
+  }
   await pool.query("DELETE FROM students WHERE id = $1", [id]);
   return NextResponse.json({ success: true });
 }

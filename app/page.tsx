@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "./lib/firebase";
+import { signIn } from "next-auth/react";
 
 type LoginTab = "staff" | "teacher" | "student";
 
@@ -79,28 +78,32 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let email = "";
+    let username = "";
     let password = "";
 
     if (activeTab === "staff") {
-      email = `${staffUsername}@school.local`;
+      username = staffUsername;
       password = staffPassword;
     } else if (activeTab === "teacher") {
-      email = `${teacherUsername}@school.local`;
+      username = teacherUsername;
       password = teacherPassword;
     } else {
-      email = `${studentId}@school.local`;
+      username = studentId;
       password = studentPassword;
     }
 
     try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      const token = await credential.user.getIdToken();
-
-      const res = await fetch("/api/me", {
-        headers: { Authorization: `Bearer ${token}` },
+      const result = await signIn("credentials", {
+        username,
+        password,
+        redirect: false,
       });
 
+      if (result?.error) {
+         throw new Error(result.error);
+      }
+
+      const res = await fetch("/api/me");
       if (!res.ok) throw new Error("User not found");
       const user = await res.json();
 
@@ -110,8 +113,8 @@ export default function LoginPage() {
       else if (user.role === "teacher") router.push("/teacher");
       else router.push("/student");
 
-    } catch {
-      Swal.fire({ icon: "error", title: "เข้าสู่ระบบไม่สำเร็จ", text: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "เข้าสู่ระบบไม่สำเร็จ", text: err.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
     }
   };
 

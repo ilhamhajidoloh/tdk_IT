@@ -1,27 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth } from "@/app/lib/firebase-admin";
+import { getToken } from "next-auth/jwt";
 import pool from "@/app/lib/db";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let userId: string;
-  let role: string;
-  try {
-    const decoded = await adminAuth.verifyIdToken(token);
-    const userResult = await pool.query(
-      "SELECT id, role FROM users WHERE firebase_uid = $1",
-      [decoded.uid]
-    );
-    if (userResult.rows.length === 0) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    userId = userResult.rows[0].id;
-    role = userResult.rows[0].role;
-  } catch {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-  }
+  const userId = token.id as string;
+  const role = token.role as string;
 
   const { score_display_mode } = await req.json();
   if (score_display_mode !== "separate" && score_display_mode !== "combined") {

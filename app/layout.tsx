@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { Providers } from "./providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,7 +25,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th" className={`${kanit.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col font-[var(--font-kanit)] bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">{children}</body>
+      <body className="min-h-full flex flex-col font-[var(--font-kanit)] bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
+        <Providers>
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }

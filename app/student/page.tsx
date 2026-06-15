@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
+import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
 interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; }
 interface DBGrade { id: string; student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term: string; }
@@ -116,6 +117,39 @@ export default function StudentPortal() {
     router.push("/");
   };
 
+  const handleChangePassword = async () => {
+    const { value: newPassword } = await Swal.fire({
+      title: "เปลี่ยนรหัสผ่าน",
+      input: "password",
+      inputLabel: "รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)",
+      inputPlaceholder: "กรอกรหัสผ่านใหม่",
+      showCancelButton: true,
+      confirmButtonText: "บันทึก",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#9333ea",
+      inputValidator: (value) => {
+        if (!value || value.length < 6) {
+          return "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร!";
+        }
+      }
+    });
+
+    if (newPassword) {
+      const res = await fetch("/api/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      if (res.ok) {
+        Swal.fire("สำเร็จ!", "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", "success");
+      } else {
+        const data = await res.json();
+        Swal.fire("ข้อผิดพลาด", data.error || "ไม่สามารถเปลี่ยนรหัสผ่านได้", "error");
+      }
+    }
+  };
+
   const calculateGPA = () => {
     let totalPoints = 0;
     let totalCredits = 0;
@@ -178,15 +212,26 @@ export default function StudentPortal() {
               <p className="text-xs text-gray-500">ตรวจสอบผลการเรียน</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1 text-sm text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            ออกจากระบบ
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleChangePassword}
+              className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-800 font-medium bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-full transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+              เปลี่ยนรหัสผ่าน
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              ออกจากระบบ
+            </button>
+          </div>
         </div>
       </header>
 

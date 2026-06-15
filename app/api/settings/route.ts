@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth } from "@/app/lib/firebase-admin";
+import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 
 function formatRow(row: Record<string, unknown>) {
@@ -19,21 +19,8 @@ function formatRow(row: Record<string, unknown>) {
 }
 
 export async function GET(req: NextRequest) {
-  // ตรวจสอบ token
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const decoded = await adminAuth.verifyIdToken(token);
-    const userResult = await pool.query(
-      "SELECT role FROM users WHERE firebase_uid = $1",
-      [decoded.uid]
-    );
-    if (userResult.rows.length === 0 || userResult.rows[0].role !== "admin") {
-      return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  if (!await verifyAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
 
   const result = await pool.query("SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings ORDER BY academic_year DESC, term DESC");
@@ -41,21 +28,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  // ตรวจสอบ token
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const decoded = await adminAuth.verifyIdToken(token);
-    const userResult = await pool.query(
-      "SELECT role FROM users WHERE firebase_uid = $1",
-      [decoded.uid]
-    );
-    if (userResult.rows.length === 0 || userResult.rows[0].role !== "admin") {
-      return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  if (!await verifyAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
 
   const { id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days } = await req.json();
@@ -98,21 +72,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  // ตรวจสอบ token
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  try {
-    const decoded = await adminAuth.verifyIdToken(token);
-    const userResult = await pool.query(
-      "SELECT role FROM users WHERE firebase_uid = $1",
-      [decoded.uid]
-    );
-    if (userResult.rows.length === 0 || userResult.rows[0].role !== "admin") {
-      return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 });
-    }
-  } catch {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  if (!await verifyAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
 
   const { searchParams } = new URL(req.url);

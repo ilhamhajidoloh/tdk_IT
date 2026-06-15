@@ -46,13 +46,22 @@ export async function POST(req: NextRequest) {
 
   const { name, student_id, classroom_id } = await req.json();
 
-  if (!name?.trim() || !student_id?.trim() || !classroom_id) {
+  if (!name?.trim() || !student_id?.trim()) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const studentIdVal = student_id?.trim() || null;
+
+  if (studentIdVal) {
+    const checkExists = await pool.query("SELECT id FROM students WHERE student_id = $1", [studentIdVal]);
+    if (checkExists.rows.length > 0) {
+      return NextResponse.json({ error: "รหัสนักเรียนนี้มีอยู่ในระบบแล้ว" }, { status: 400 });
+    }
   }
 
   const result = await pool.query(
     "INSERT INTO students (name, student_id, classroom_id) VALUES ($1, $2, $3) RETURNING *",
-    [name.trim(), student_id.trim(), classroom_id]
+    [name.trim(), studentIdVal, classroom_id || null]
   );
   return NextResponse.json(result.rows[0], { status: 201 });
 }

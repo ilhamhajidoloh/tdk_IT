@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth } from "@/app/lib/firebase-admin";
+import { getToken } from "next-auth/jwt";
 import pool from "@/app/lib/db";
+import bcrypt from "bcrypt";
 
 export async function GET(req: NextRequest) {
-  // 1. ดึง token จาก header
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // 2. Verify กับ Firebase Admin
-  let firebaseUid: string;
-  try {
-    const decoded = await adminAuth.verifyIdToken(token);
-    firebaseUid = decoded.uid;
-  } catch {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-  }
-
-  // 3. ดึง user จาก CockroachDB
   const result = await pool.query(
-    "SELECT * FROM users WHERE firebase_uid = $1",
-    [firebaseUid]
+    "SELECT * FROM users WHERE id = $1",
+    [token.id]
   );
 
   if (result.rows.length === 0) {
@@ -27,4 +17,23 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(result.rows[0]);
+}
+
+export async function PUT(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { newPassword } = await req.json();
+  if (!newPassword || newPassword.length < 6) {
+    return NextResponse.json({ error: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร" }, { status: 400 });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, token.id]);
+    return NextResponse.json({ success: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Failed to update password";
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
 }

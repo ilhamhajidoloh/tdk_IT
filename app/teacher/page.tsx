@@ -170,6 +170,39 @@ export default function TeacherPortal() {
     router.push("/");
   };
 
+  const handleChangePassword = async () => {
+    const { value: newPassword } = await Swal.fire({
+      title: "เปลี่ยนรหัสผ่าน",
+      input: "password",
+      inputLabel: "รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)",
+      inputPlaceholder: "กรอกรหัสผ่านใหม่",
+      showCancelButton: true,
+      confirmButtonText: "บันทึก",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#4f46e5",
+      inputValidator: (value) => {
+        if (!value || value.length < 6) {
+          return "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร!";
+        }
+      }
+    });
+
+    if (newPassword) {
+      const res = await fetch("/api/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      if (res.ok) {
+        Swal.fire("สำเร็จ!", "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", "success");
+      } else {
+        const data = await res.json();
+        Swal.fire("ข้อผิดพลาด", data.error || "ไม่สามารถเปลี่ยนรหัสผ่านได้", "error");
+      }
+    }
+  };
+
   const handleSaveRow = async (student: DBStudent) => {
     const row = rowScores[student.student_id];
     if (!enterSubject.trim()) {
@@ -397,15 +430,26 @@ export default function TeacherPortal() {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            ออกจากระบบ
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleChangePassword}
+              className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+              เปลี่ยนรหัสผ่าน
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              ออกจากระบบ
+            </button>
+          </div>
         </div>
       </header>
 

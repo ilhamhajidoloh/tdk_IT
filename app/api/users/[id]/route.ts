@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
-import { adminAuth } from "@/app/lib/firebase-admin";
 import pool from "@/app/lib/db";
+import bcrypt from "bcrypt";
 
 export async function PUT(
   req: NextRequest,
@@ -19,13 +19,12 @@ export async function PUT(
   }
 
   // ดึงข้อมูลผู้ใช้งานเดิมก่อน
-  const oldUserRow = await pool.query("SELECT student_id, role, firebase_uid FROM users WHERE id = $1", [id]);
+  const oldUserRow = await pool.query("SELECT student_id, role FROM users WHERE id = $1", [id]);
   if (oldUserRow.rows.length === 0) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
   const oldRole = oldUserRow.rows[0].role;
   const oldStudentId = oldUserRow.rows[0].student_id;
-  const firebaseUid = oldUserRow.rows[0].firebase_uid;
 
   if (role === "admin" && oldRole !== "admin") {
     return NextResponse.json(
@@ -34,21 +33,24 @@ export async function PUT(
     );
   }
 
-  // ถ้ามี password ให้อัปเดตใน Firebase ด้วย
-  if (password?.trim() && firebaseUid) {
-    try {
-      await adminAuth.updateUser(firebaseUid, { password: password.trim() });
-    } catch {
-      // ไม่ blocking ถ้า Firebase update fail
-    }
+  let result;
+  // ถ้ามี password ให้เข้ารหัสและอัปเดตด้วย
+  if (password?.trim()) {
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+    result = await pool.query(
+      `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6
+       WHERE id = $7
+       RETURNING id, username, role, student_id, homeroom_classroom_id, subjects`,
+      [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, id]
+    );
+  } else {
+    result = await pool.query(
+      `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5
+       WHERE id = $6
+       RETURNING id, username, role, student_id, homeroom_classroom_id, subjects`,
+      [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, id]
+    );
   }
-
-  const result = await pool.query(
-    `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5
-     WHERE id = $6
-     RETURNING id, firebase_uid, username, role, student_id, homeroom_classroom_id, subjects`,
-    [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, id]
-  );
 
   if (result.rows.length === 0) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -92,17 +94,10 @@ export async function DELETE(
 
   const { id } = await params;
 
-  // ดึง firebase_uid, role และ student_id ก่อนลบ
-  const userRow = await pool.query("SELECT firebase_uid, role, student_id FROM users WHERE id = $1", [id]);
+  // ดึง role และ student_id ก่อนลบ
+  const userRow = await pool.query("SELECT role, student_id FROM users WHERE id = $1", [id]);
   if (userRow.rows.length === 0) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
-  // ลบจาก Firebase
-  try {
-    await adminAuth.deleteUser(userRow.rows[0].firebase_uid);
-  } catch {
-    // ถ้า Firebase user ไม่มีอยู่แล้ว ก็ลบ DB ต่อได้
   }
 
   // ลบ student และเกรดที่เกี่ยวข้อง ถ้าผู้ใช้เป็น student

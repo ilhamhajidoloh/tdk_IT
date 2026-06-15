@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
-import { adminAuth } from "@/app/lib/firebase-admin";
 import pool from "@/app/lib/db";
+import bcrypt from "bcrypt";
 
 export async function GET(req: NextRequest) {
   if (!await verifyAdmin(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const result = await pool.query(
-    "SELECT id, firebase_uid, username, role, student_id, homeroom_classroom_id, subjects FROM users ORDER BY role, username"
+    "SELECT id, username, role, student_id, homeroom_classroom_id, subjects FROM users ORDER BY role, username"
   );
   return NextResponse.json(result.rows);
 }
@@ -31,23 +31,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const email = `${username.trim()}@school.local`;
-
-  // สร้างใน Firebase Auth
-  let firebaseUser;
-  try {
-    firebaseUser = await adminAuth.createUser({ email, password, displayName: username.trim() });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Firebase error";
-    return NextResponse.json({ error: msg }, { status: 400 });
-  }
+  const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
   // Insert ลง DB
-  const result = await pool.query(
-    `INSERT INTO users (firebase_uid, username, role, student_id, homeroom_classroom_id, subjects)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, firebase_uid, username, role, student_id, homeroom_classroom_id, subjects`,
-    [firebaseUser.uid, username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null]
-  );
+  let result;
+  try {
+     result = await pool.query(
+      `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, subjects)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, role, student_id, homeroom_classroom_id, subjects`,
+      [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null]
+    );
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
 
   // ถ้าเป็น student ให้สร้างในตาราง students อัตโนมัติ
   if (role === "student" && student_id) {
