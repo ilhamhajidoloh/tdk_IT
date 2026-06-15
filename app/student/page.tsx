@@ -69,6 +69,21 @@ export default function StudentPortal() {
 
   useEffect(() => { setIsClient(true); }, []);
 
+  // จัดการผลลัพธ์จากการเชื่อมต่อบัญชี Google
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linked = params.get("linked");
+    const linkError = params.get("linkError");
+
+    if (linked) {
+      window.history.replaceState({}, "", "/student");
+      Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+    } else if (linkError) {
+      window.history.replaceState({}, "", "/student");
+      Swal.fire("ข้อผิดพลาด", linkError, "error");
+    }
+  }, []);
+
   useEffect(() => {
     if (loading) return;
     if (!user || user.role !== "student" || !user.student_id) { router.push("/"); return; }
@@ -150,6 +165,10 @@ export default function StudentPortal() {
     }
   };
 
+  const handleConnectGoogle = () => {
+    window.location.href = "/api/link-google/start";
+  };
+
   const calculateGPA = () => {
     let totalPoints = 0, totalCredits = 0;
     filteredGrades.forEach(g => {
@@ -215,6 +234,15 @@ export default function StudentPortal() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleConnectGoogle}
+              title={user?.email ? `เชื่อมต่ออีเมล: ${user.email}` : "เชื่อมต่ออีเมล Google"}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors border ${user?.email ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-slate-500 border-slate-200 hover:text-violet-600 hover:bg-violet-50"}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </button>
             <button
               onClick={handleChangePassword}
               title="เปลี่ยนรหัสผ่าน"

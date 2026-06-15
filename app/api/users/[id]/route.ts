@@ -12,7 +12,8 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { username, password, role, student_id, homeroom_classroom_id, subjects } = await req.json();
+  const { username, password, role, student_id, homeroom_classroom_id, subjects, email } = await req.json();
+  const finalEmail = email?.trim() || null;
 
   if (!username?.trim() || !role) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -35,21 +36,28 @@ export async function PUT(
 
   let result;
   // ถ้ามี password ให้เข้ารหัสและอัปเดตด้วย
-  if (password?.trim()) {
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
-    result = await pool.query(
-      `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6
-       WHERE id = $7
-       RETURNING id, username, role, student_id, homeroom_classroom_id, subjects`,
-      [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, id]
-    );
-  } else {
-    result = await pool.query(
-      `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5
-       WHERE id = $6
-       RETURNING id, username, role, student_id, homeroom_classroom_id, subjects`,
-      [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, id]
-    );
+  try {
+    if (password?.trim()) {
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
+      result = await pool.query(
+        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7
+         WHERE id = $8
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects`,
+        [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, id]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6
+         WHERE id = $7
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects`,
+        [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, id]
+      );
+    }
+  } catch (err) {
+    if (typeof err === "object" && err !== null && "code" in err && err.code === "23505") {
+      return NextResponse.json({ error: "อีเมลนี้ถูกใช้งานแล้ว" }, { status: 400 });
+    }
+    throw err;
   }
 
   if (result.rows.length === 0) {

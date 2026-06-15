@@ -7,7 +7,7 @@ import * as XLSX from "xlsx";
 interface DBUser {
   id: string; firebase_uid: string; username: string;
   role: "admin" | "teacher" | "student";
-  student_id?: string; homeroom_classroom_id?: string; subjects?: string[];
+  student_id?: string; homeroom_classroom_id?: string; subjects?: string[]; email?: string | null;
 }
 interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; student_number?: number | null; }
 interface DBSubject { id: string; name: string; teacher_id?: string; teacher_name?: string; classroom_ids?: string[]; classroom_names?: string[]; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; }
@@ -215,6 +215,7 @@ export default function AdminPortal() {
   const [role, setRole] = useState<"student" | "teacher" | "admin">("student");
   const [studentId, setStudentId] = useState("");
   const [homeroomClassroomId, setHomeroomClassroomId] = useState("");
+  const [email, setEmail] = useState("");
   const [validationError, setValidationError] = useState("");
 
   // Subject Modal State
@@ -258,6 +259,21 @@ export default function AdminPortal() {
 
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  // จัดการผลลัพธ์จากการเชื่อมต่อบัญชี Google
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linked = params.get("linked");
+    const linkError = params.get("linkError");
+
+    if (linked) {
+      window.history.replaceState({}, "", "/admin");
+      Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+    } else if (linkError) {
+      window.history.replaceState({}, "", "/admin");
+      Swal.fire("ข้อผิดพลาด", linkError, "error");
+    }
   }, []);
 
   useEffect(() => {
@@ -745,6 +761,43 @@ export default function AdminPortal() {
     setIsLoggingOut(true);
     await logout();
     router.push("/");
+  };
+
+  const handleConnectGoogle = () => {
+    window.location.href = "/api/link-google/start";
+  };
+
+  const handleChangePassword = async () => {
+    const { value: newPassword } = await Swal.fire({
+      title: "เปลี่ยนรหัสผ่าน",
+      input: "password",
+      inputLabel: "รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)",
+      inputPlaceholder: "กรอกรหัสผ่านใหม่",
+      showCancelButton: true,
+      confirmButtonText: "บันทึก",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#4f46e5",
+      inputValidator: (value) => {
+        if (!value || value.length < 6) {
+          return "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร!";
+        }
+      }
+    });
+
+    if (newPassword) {
+      const res = await fetch("/api/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      if (res.ok) {
+        Swal.fire("สำเร็จ!", "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", "success");
+      } else {
+        const data = await res.json();
+        Swal.fire("ข้อผิดพลาด", data.error || "ไม่สามารถเปลี่ยนรหัสผ่านได้", "error");
+      }
+    }
   };
 
   const handleDeleteUser = async (id: string) => {
@@ -1423,7 +1476,7 @@ export default function AdminPortal() {
     const res = await fetch(`/api/schedule-periods/${period.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ period_no: Number(period.period_no), start_time: period.start_time, end_time: period.end_time, label: period.label || null }),
+      body: JSON.stringify({ period_no: Number(period.period_no), start_time: period.start_time, end_time: period.end_time, label: period.label || null, is_break: period.is_break || false }),
     });
     if (!res.ok) {
       Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ", confirmButtonColor: "#4f46e5" });
@@ -1510,6 +1563,7 @@ export default function AdminPortal() {
     setRole(user.role);
     setStudentId(user.student_id || "");
     setHomeroomClassroomId(user.homeroom_classroom_id || "");
+    setEmail(user.email || "");
     setValidationError("");
     setIsUserModalOpen(true);
   };
@@ -1523,6 +1577,7 @@ export default function AdminPortal() {
     setRole("student");
     setStudentId("");
     setHomeroomClassroomId("");
+    setEmail("");
     setValidationError("");
     setIsUserModalOpen(true);
   };
@@ -1541,6 +1596,7 @@ export default function AdminPortal() {
       name: name.trim() || undefined,
       username: username.trim() || undefined,
       role,
+      email: email.trim() || null,
       ...(password.trim() ? { password: password.trim() } : {}),
       ...(role === "student" ? { student_id: studentId === "none" ? null : (studentId.trim() || undefined) } : {}),
       ...(role === "teacher" ? {
@@ -1602,6 +1658,24 @@ export default function AdminPortal() {
             <span className="text-sm font-bold text-gray-700">สวัสดี, {adminUser?.username || "ผู้ดูแลระบบ"} 👋</span>
             <span className="text-xs text-gray-400">{formatThaiDate(new Date().toISOString())}</span>
           </div>
+          <button
+            onClick={handleConnectGoogle}
+            title={adminUser?.email ? `เชื่อมต่ออีเมล: ${adminUser.email}` : "เชื่อมต่ออีเมล Google"}
+            className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors shrink-0 border ${adminUser?.email ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-500 border-gray-200 hover:text-indigo-600 hover:bg-indigo-50"}`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </button>
+          <button
+            onClick={handleChangePassword}
+            title="เปลี่ยนรหัสผ่าน"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0 border border-gray-200"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+          </button>
           <button
             onClick={handleLogout}
             className="flex items-center gap-1 text-sm text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full transition-colors shrink-0"
@@ -1890,6 +1964,9 @@ export default function AdminPortal() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="font-semibold text-gray-800">{u.username}</div>
+                            {u.email && (
+                              <div className="text-[11px] text-gray-400 mt-0.5">{u.email}</div>
+                            )}
                             {u.role === "teacher" && (
                               <div className="text-[11px] text-gray-500 mt-1 space-y-0.5">
                                 <div><span className="font-medium">ห้องประจำชั้น:</span> {classrooms.find(c => c.id === u.homeroom_classroom_id)?.name || "ไม่มี"}</div>
@@ -1950,6 +2027,9 @@ export default function AdminPortal() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-semibold text-gray-800 break-all">{u.username}</div>
+                          {u.email && (
+                            <div className="text-[11px] text-gray-400 break-all">{u.email}</div>
+                          )}
                           <span className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-red-100 text-red-700' :
                             u.role === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
                             }`}>
@@ -3192,6 +3272,27 @@ export default function AdminPortal() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={modalMode === "edit" ? "ปล่อยว่างหากไม่ต้องการเปลี่ยนรหัสผ่าน" : ((role === "student" || role === "teacher") ? "เว้นว่างเพื่อใช้ค่าเริ่มต้น password123" : "รหัสผ่านสำหรับเข้าใช้งาน")}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                  />
+                </div>
+              </div>
+
+              {/* Email Input (for Google login) */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  อีเมล (สำหรับเข้าสู่ระบบด้วย Google)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="เช่น user@gmail.com"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                   />
                 </div>

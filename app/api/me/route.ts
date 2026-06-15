@@ -23,7 +23,24 @@ export async function PUT(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { newPassword } = await req.json();
+  const { newPassword, email } = await req.json();
+
+  if (email !== undefined) {
+    const trimmedEmail = email?.trim() || null;
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      return NextResponse.json({ error: "รูปแบบอีเมลไม่ถูกต้อง" }, { status: 400 });
+    }
+    try {
+      await pool.query("UPDATE users SET email = $1 WHERE id = $2", [trimmedEmail, token.id]);
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      if (typeof err === "object" && err !== null && "code" in err && err.code === "23505") {
+        return NextResponse.json({ error: "อีเมลนี้ถูกใช้งานโดยผู้ใช้คนอื่นแล้ว" }, { status: 400 });
+      }
+      throw err;
+    }
+  }
+
   if (!newPassword || newPassword.length < 6) {
     return NextResponse.json({ error: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร" }, { status: 400 });
   }

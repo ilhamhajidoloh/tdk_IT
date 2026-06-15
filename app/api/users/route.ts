@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const result = await pool.query(
-    "SELECT id, username, role, student_id, homeroom_classroom_id, subjects FROM users ORDER BY role, username"
+    "SELECT id, username, email, role, student_id, homeroom_classroom_id, subjects FROM users ORDER BY role, username"
   );
   return NextResponse.json(result.rows);
 }
@@ -18,12 +18,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, username, password, role, student_id, homeroom_classroom_id, subjects } = await req.json();
+  const { name, username, password, role, student_id, homeroom_classroom_id, subjects, email } = await req.json();
 
   let finalName = name?.trim();
   let finalUsername = username?.trim();
   let finalPassword = password?.trim();
   let finalStudentId = student_id?.trim();
+  const finalEmail = email?.trim() || null;
 
   if (role === 'student') {
     if (!finalStudentId) {
@@ -61,11 +62,14 @@ export async function POST(req: NextRequest) {
   let result;
   try {
      result = await pool.query(
-      `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, subjects)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, role, student_id, homeroom_classroom_id, subjects`,
-      [finalUsername, hashedPassword, role, finalStudentId ?? null, homeroom_classroom_id ?? null, subjects ?? null]
+      `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, subjects, email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects`,
+      [finalUsername, hashedPassword, role, finalStudentId ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail]
     );
   } catch (err: any) {
+    if (err.code === "23505") {
+      return NextResponse.json({ error: "อีเมลนี้ถูกใช้งานแล้ว" }, { status: 400 });
+    }
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 

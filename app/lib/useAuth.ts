@@ -8,6 +8,7 @@ export interface DBUser {
   student_id?: string;
   homeroom_classroom_id?: string;
   subjects?: string[];
+  email?: string | null;
 }
 
 export function useAuth() {

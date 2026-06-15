@@ -119,6 +119,21 @@ export default function TeacherPortal() {
     setIsClient(true);
   }, []);
 
+  // จัดการผลลัพธ์จากการเชื่อมต่อบัญชี Google
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const linked = params.get("linked");
+    const linkError = params.get("linkError");
+
+    if (linked) {
+      window.history.replaceState({}, "", "/teacher");
+      Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+    } else if (linkError) {
+      window.history.replaceState({}, "", "/teacher");
+      Swal.fire("ข้อผิดพลาด", linkError, "error");
+    }
+  }, []);
+
   const loadGrades = async (authToken: string) => {
     const res = await fetch("/api/grades", { headers: { Authorization: `Bearer ${authToken}` } });
     if (res.ok) setGrades(await res.json());
@@ -251,6 +266,10 @@ export default function TeacherPortal() {
         Swal.fire("ข้อผิดพลาด", data.error || "ไม่สามารถเปลี่ยนรหัสผ่านได้", "error");
       }
     }
+  };
+
+  const handleConnectGoogle = () => {
+    window.location.href = "/api/link-google/start";
   };
 
   const handleSaveRow = async (student: DBStudent) => {
@@ -498,6 +517,15 @@ export default function TeacherPortal() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleConnectGoogle}
+              title={teacherUser?.email ? `เชื่อมต่ออีเมล: ${teacherUser.email}` : "เชื่อมต่ออีเมล Google"}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors border ${teacherUser?.email ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-slate-500 border-slate-200 hover:text-indigo-600 hover:bg-indigo-50"}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </button>
             <button
               onClick={handleChangePassword}
               title="เปลี่ยนรหัสผ่าน"
