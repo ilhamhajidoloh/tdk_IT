@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Kanit } from "next/font/google";
 import "./globals.css";
 
@@ -16,7 +16,12 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#4f46e5",
+};
+
 import { Providers } from "./providers";
+import InstallPrompt from "./components/InstallPrompt";
 
 export default function RootLayout({
   children,
@@ -29,6 +34,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <InstallPrompt />
       </body>
     </html>
   );
