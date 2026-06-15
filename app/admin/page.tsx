@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode, useMemo } from "react";
 import { useAuth } from "../lib/useAuth";
 import * as XLSX from "xlsx";
 
@@ -9,9 +9,9 @@ interface DBUser {
   role: "admin" | "teacher" | "student";
   student_id?: string; homeroom_classroom_id?: string; subjects?: string[];
 }
-interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; }
+interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; student_number?: number | null; }
 interface DBSubject { id: string; name: string; teacher_id?: string; teacher_name?: string; classroom_ids?: string[]; classroom_names?: string[]; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; }
-interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; }
+interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; is_break?: boolean; }
 interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;
   subject_id: string; subject_name: string; teacher_id: string | null; teacher_name: string | null;
@@ -118,11 +118,10 @@ function TermSelector({ settingsList, selectedId, onSelect }: {
           <button
             key={s.id}
             onClick={() => onSelect(s.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
-              selectedId === s.id
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
-            }`}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${selectedId === s.id
+              ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+              : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+              }`}
           >
             ปี {s.academic_year} เทอม {s.term}
             {s.is_active && (
@@ -180,8 +179,15 @@ export default function AdminPortal() {
   const [subjectClassrooms, setSubjectClassrooms] = useState<{ id: string; name: string }[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [userSubTab, setUserSubTab] = useState<"all" | "admin" | "teacher" | "student">("all");
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
+  const usersPerPage = 10;
+
+  useEffect(() => {
+    setUserCurrentPage(1);
+  }, [userSubTab]);
   const [isClient, setIsClient] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const classroomFileInputRef = useRef<HTMLInputElement>(null);
   const [adminYear, setAdminYear] = useState("2568");
   const [adminTerm, setAdminTerm] = useState("1");
   const [startDate, setStartDate] = useState("2026-05-01");
@@ -203,6 +209,7 @@ export default function AdminPortal() {
   const ACTIVE_DAYS = ALL_DAYS.filter(d => activeDaysConfig.includes(d.value));
 
   // Form State
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"student" | "teacher" | "admin">("student");
@@ -235,12 +242,18 @@ export default function AdminPortal() {
   const [targetClassroom, setTargetClassroom] = useState<{ id: string; name: string } | null>(null);
   const [selectedStudentsForAssign, setSelectedStudentsForAssign] = useState<string[]>([]);
   const [searchAssignStudent, setSearchAssignStudent] = useState("");
+  const [studentFilterClassroomId, setStudentFilterClassroomId] = useState<string>("all");
+  const filteredStudents = useMemo(() => {
+    if (studentFilterClassroomId === "all") return students;
+    if (studentFilterClassroomId === "unassigned") return students.filter(s => !s.classroom_id);
+    return students.filter(s => s.classroom_id === studentFilterClassroomId);
+  }, [students, studentFilterClassroomId]);
 
   // Copy Classrooms State
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
   const [copySourceSettingId, setCopySourceSettingId] = useState<string | number | null>(null);
   const [copyTargetSettingId, setCopyTargetSettingId] = useState<string | number | null>(null);
-  const [sourceClassrooms, setSourceClassrooms] = useState<{id: string; name: string}[]>([]);
+  const [sourceClassrooms, setSourceClassrooms] = useState<{ id: string; name: string }[]>([]);
   const [copyClassroomsMap, setCopyClassroomsMap] = useState<Record<string, { selected: boolean; newName: string; moveStudents: boolean }>>({});
 
   useEffect(() => {
@@ -822,9 +835,14 @@ export default function AdminPortal() {
           return newRow;
         });
 
-        const validRows = normalizedRows.filter(row => row.username && row.password && row.role);
+        const validRows = normalizedRows.filter(row => {
+          if (!row.role) return false;
+          const roleStr = String(row.role).trim().toLowerCase();
+          if (roleStr === 'student' || roleStr === 'teacher') return true;
+          return row.username && row.password;
+        });
         if (validRows.length === 0) {
-          Swal.fire("ข้อผิดพลาด", "รูปแบบข้อมูลไม่ถูกต้อง ต้องมีคอลัมน์ username, password, role", "error");
+          Swal.fire("ข้อผิดพลาด", "รูปแบบข้อมูลไม่ถูกต้อง", "error");
           return;
         }
 
@@ -843,8 +861,9 @@ export default function AdminPortal() {
         for (let i = 0; i < validRows.length; i++) {
           const row = validRows[i];
           const body: any = {
-            username: String(row.username).trim(),
-            password: String(row.password).trim(),
+            name: row.name ? String(row.name).trim() : undefined,
+            username: row.username ? String(row.username).trim() : undefined,
+            password: row.password ? String(row.password).trim() : undefined,
             role: String(row.role).trim().toLowerCase(),
           };
 
@@ -856,11 +875,6 @@ export default function AdminPortal() {
 
           if (body.role === 'student') {
             body.student_id = row.student_id ? String(row.student_id).trim() : undefined;
-            if (!body.student_id) {
-              failCount++;
-              Swal.update({ html: `นำเข้า <b>${i + 1}</b> / ${validRows.length}` });
-              continue;
-            }
           }
 
           const res = await fetch("/api/users", {
@@ -884,7 +898,7 @@ export default function AdminPortal() {
         }
 
         if (token) loadData(token);
-        
+
         Swal.fire({
           icon: failCount === 0 ? "success" : "warning",
           title: "นำเข้าเสร็จสิ้น",
@@ -902,12 +916,93 @@ export default function AdminPortal() {
 
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { username: "student1", password: "password123", role: "student", student_id: "S001" },
-      { username: "teacher1", password: "password123", role: "teacher", student_id: "" }
+      { name: "สมชาย รักเรียน", username: "", password: "", role: "student", student_id: "" },
+      { name: "คุณครู ใจดี", username: "teacher1", password: "password123", role: "teacher", student_id: "" }
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "users_template.xlsx");
+  };
+
+  const handleDownloadClassroomTemplate = () => {
+    const data = students.length > 0 ? students.map(s => ({
+      student_id: s.student_id,
+      name: s.name,
+      classroom_name: ""
+    })) : [{ student_id: "", name: "", classroom_name: "" }];
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Classrooms");
+    XLSX.writeFile(wb, "classrooms_template.xlsx");
+  };
+
+  const handleImportClassrooms = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedSettingId || !token) return;
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+      if (rows.length === 0) {
+        Swal.fire("ข้อผิดพลาด", "ไม่พบข้อมูลในไฟล์", "error");
+        return;
+      }
+
+      const normalizedRows = rows.map(row => {
+        const newRow: any = {};
+        for (const key in row) {
+          newRow[key.toLowerCase().trim()] = row[key];
+        }
+        return newRow;
+      });
+
+      const validRows = normalizedRows.filter(row => row.classroom_name);
+      if (validRows.length === 0) {
+        Swal.fire("ข้อผิดพลาด", "ไม่พบคอลัมน์ classroom_name หรือข้อมูลว่างทั้งหมด", "error");
+        return;
+      }
+
+      Swal.fire({
+        title: 'กำลังนำเข้าข้อมูล...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      const res = await fetch("/api/classrooms/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ setting_id: selectedSettingId, items: validRows }),
+      });
+
+      const result = await res.json();
+      if (res.ok && result.success) {
+        await loadClassrooms(selectedSettingId, token);
+        if (selectedSettingId === selectedSubjectSettingId) {
+          await loadSubjectClassrooms(selectedSettingId, token);
+        }
+        await loadData(token);
+        Swal.fire({
+          icon: "success",
+          title: "นำเข้าเสร็จสิ้น",
+          text: `สร้างห้องเรียนใหม่: ${result.classroomsCreated} ห้อง, จับคู่นักเรียน: ${result.studentsAssigned} คน`,
+          confirmButtonColor: "#4f46e5"
+        });
+      } else {
+        Swal.fire("ข้อผิดพลาด", result.error || "เกิดข้อผิดพลาด", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire("ข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ได้", "error");
+    } finally {
+      if (classroomFileInputRef.current) classroomFileInputRef.current.value = "";
+    }
   };
 
   // =========================================
@@ -1030,7 +1125,7 @@ export default function AdminPortal() {
         const dRes = await fetch(`/api/classrooms/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
         if (dRes.ok) successCount++;
       }
-      
+
       await loadClassrooms(selectedSettingId, token);
       if (selectedSettingId === selectedSubjectSettingId) {
         await loadSubjectClassrooms(selectedSettingId, token);
@@ -1044,7 +1139,7 @@ export default function AdminPortal() {
   // Student Management Handlers
   // =========================================
   const handleAddStudent = async () => {
-    const classroomOptions = `<option value="">-- ไม่มีชั้นเรียน --</option>` + classrooms.map(c => 
+    const classroomOptions = `<option value="">-- ไม่มีชั้นเรียน --</option>` + classrooms.map(c =>
       `<option value="${c.id}">${c.name}</option>`
     ).join("");
 
@@ -1109,6 +1204,27 @@ export default function AdminPortal() {
     }
   };
 
+  const handleUpdateStudentNumber = async (studentId: string, newNumber: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/students`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: studentId, student_number: newNumber }),
+      });
+      if (res.ok) {
+        setStudents(prev => prev.map(s => s.id === studentId ? { ...s, student_number: newNumber === "" ? null : Number(newNumber) } : s));
+      } else {
+        const err = await res.json();
+        Swal.fire("ข้อผิดพลาด", err.error || "ไม่สามารถอัปเดตเลขที่ได้", "error");
+        await loadData(token);
+      }
+    } catch (e) {
+      Swal.fire("ข้อผิดพลาด", "การเชื่อมต่อขัดข้อง", "error");
+      await loadData(token);
+    }
+  };
+
   const handleEditStudent = async (student: DBStudent) => {
     const classroomOptions = `<option value="" ${!student.classroom_id ? 'selected' : ''}>-- ไม่มีชั้นเรียน --</option>` + classrooms.map(c =>
       `<option value="${c.id}" ${c.id === student.classroom_id ? 'selected' : ''}>${c.name}</option>`
@@ -1119,12 +1235,12 @@ export default function AdminPortal() {
       html: `
         <div class="space-y-4 text-left mt-4">
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID) <span class="text-red-500">*</span></label>
-            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" value="${student.student_id}" placeholder="เช่น S006">
+            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID)</label>
+            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-100 focus:outline-none transition-all text-sm font-semibold text-gray-500 shadow-sm cursor-not-allowed" value="${student.student_id}" disabled>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
-            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" value="${student.name}" placeholder="เช่น นายสมศักดิ์ รักดี">
+            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล</label>
+            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-100 focus:outline-none transition-all text-sm font-semibold text-gray-500 shadow-sm cursor-not-allowed" value="${student.name}" disabled>
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ชั้นเรียน <span class="text-red-500">*</span></label>
@@ -1283,7 +1399,7 @@ export default function AdminPortal() {
     }
   };
 
-  const updatePeriodField = (index: number, field: "start_time" | "end_time" | "label", value: string) => {
+  const updatePeriodField = (index: number, field: "start_time" | "end_time" | "label" | "is_break", value: string | boolean) => {
     setSchedulePeriods(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
   };
 
@@ -1401,6 +1517,7 @@ export default function AdminPortal() {
   const handleAddUser = () => {
     setModalMode("add");
     setEditingUser(null);
+    setName("");
     setUsername("");
     setPassword("");
     setRole("student");
@@ -1411,15 +1528,21 @@ export default function AdminPortal() {
   };
 
   const handleSaveUserSubmit = async () => {
-    if (!username.trim()) { setValidationError("กรุณากรอกชื่อผู้ใช้ (Username)"); return; }
-    if (modalMode === "add" && !password.trim()) { setValidationError("กรุณากรอกรหัสผ่าน (Password)"); return; }
-    if (role === "student" && !studentId.trim()) { setValidationError("กรุณาเลือกรหัสนักเรียน (Student ID)"); return; }
+    if ((role === "student" || role === "teacher") && modalMode === "add") {
+      if (!name.trim() && !username.trim()) { setValidationError("กรุณากรอก ชื่อ-นามสกุล หรือ Username อย่างน้อยหนึ่งอย่าง"); return; }
+      if (role === "student" && !studentId.trim() && !name.trim() && !username.trim()) { setValidationError("กรุณากรอกข้อมูล"); return; }
+    } else {
+      if (!username.trim()) { setValidationError("กรุณากรอกชื่อผู้ใช้ (Username)"); return; }
+      if (modalMode === "add" && !password.trim()) { setValidationError("กรุณากรอกรหัสผ่าน (Password)"); return; }
+      if (role === "student" && !studentId.trim()) { setValidationError("กรุณากรอกรหัสนักเรียน (Student ID)"); return; }
+    }
 
     const body: Record<string, unknown> = {
-      username: username.trim(),
+      name: name.trim() || undefined,
+      username: username.trim() || undefined,
       role,
       ...(password.trim() ? { password: password.trim() } : {}),
-      ...(role === "student" ? { student_id: studentId === "none" ? null : studentId.trim() } : {}),
+      ...(role === "student" ? { student_id: studentId === "none" ? null : (studentId.trim() || undefined) } : {}),
       ...(role === "teacher" ? {
         homeroom_classroom_id: homeroomClassroomId || null,
       } : {}),
@@ -1454,6 +1577,9 @@ export default function AdminPortal() {
     if (userSubTab === "all") return true;
     return u.role === userSubTab;
   });
+
+  const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const paginatedUsers = filteredUsers.slice((userCurrentPage - 1) * usersPerPage, userCurrentPage * usersPerPage);
 
   if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบจัดการโรงเรียน" />;
   if (!isClient || loading) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การเข้าใช้งาน" />;
@@ -1496,9 +1622,8 @@ export default function AdminPortal() {
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
-                className={`w-full flex items-center gap-3 text-left px-4 py-3.5 rounded-2xl font-semibold text-sm transition-all ${
-                  activeTab === item.key ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "bg-white text-gray-600 hover:bg-indigo-50 border border-gray-100"
-                }`}
+                className={`w-full flex items-center gap-3 text-left px-4 py-3.5 rounded-2xl font-semibold text-sm transition-all ${activeTab === item.key ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "bg-white text-gray-600 hover:bg-indigo-50 border border-gray-100"
+                  }`}
               >
                 <svg className={`w-5 h-5 shrink-0 ${activeTab === item.key ? "text-white" : "text-indigo-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
@@ -1512,9 +1637,8 @@ export default function AdminPortal() {
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ปีการศึกษาปัจจุบัน</div>
               <div className="text-sm font-extrabold text-gray-800">ปีการศึกษา {adminYear}</div>
               <div className="text-xs text-indigo-600 font-semibold mb-3">ภาคเรียนที่ {adminTerm}</div>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                isGradingActive ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
-              }`}>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${isGradingActive ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
+                }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isGradingActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
                 {isGradingActive ? "เปิดกรอกคะแนน" : "ปิดกรอกคะแนน"}
               </span>
@@ -1600,9 +1724,8 @@ export default function AdminPortal() {
                       <div className="text-sm text-indigo-100">{formatThaiDateRange(startDate, endDate)}</div>
                     </div>
                     <div className="mt-6">
-                      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
-                        isGradingActive ? "bg-emerald-400/20 text-emerald-50 border border-emerald-300/40" : "bg-rose-400/20 text-rose-50 border border-rose-300/40"
-                      }`}>
+                      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${isGradingActive ? "bg-emerald-400/20 text-emerald-50 border border-emerald-300/40" : "bg-rose-400/20 text-rose-50 border border-rose-300/40"
+                        }`}>
                         <span className={`w-2 h-2 rounded-full ${isGradingActive ? "bg-emerald-300 animate-pulse" : "bg-rose-300"}`} />
                         {isGradingActive ? "เปิดใช้งานระบบกรอกคะแนน" : "ปิดใช้งานระบบกรอกคะแนน"}
                       </span>
@@ -1646,15 +1769,15 @@ export default function AdminPortal() {
                     onChange={handleImportUsers}
                   />
                   <button onClick={handleDownloadTemplate} className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     โหลดเทมเพลต
                   </button>
                   <button onClick={() => fileInputRef.current?.click()} className="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     นำเข้า (CSV/Excel)
                   </button>
                   <button onClick={handleAddUser} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มผู้ใช้ใหม่
                   </button>
                   {selectedUserIds.length > 0 && (
@@ -1669,61 +1792,53 @@ export default function AdminPortal() {
                 <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-100 pb-4">
                   <button
                     onClick={() => setUserSubTab("all")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
-                      userSubTab === "all"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "all"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      }`}
                   >
                     <span>ทั้งหมด</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-                      userSubTab === "all" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
-                    }`}>
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "all" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                      }`}>
                       {users.length}
                     </span>
                   </button>
                   <button
                     onClick={() => setUserSubTab("admin")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
-                      userSubTab === "admin"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "admin"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      }`}
                   >
                     <span>ผู้ดูแลระบบ (Admin)</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-                      userSubTab === "admin" ? "bg-white/20 text-white" : "bg-red-50 text-red-600"
-                    }`}>
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "admin" ? "bg-white/20 text-white" : "bg-red-50 text-red-600"
+                      }`}>
                       {users.filter(u => u.role === "admin").length}
                     </span>
                   </button>
                   <button
                     onClick={() => setUserSubTab("teacher")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
-                      userSubTab === "teacher"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "teacher"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      }`}
                   >
                     <span>ครูผู้สอน (Teacher)</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-                      userSubTab === "teacher" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
-                    }`}>
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "teacher" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
+                      }`}>
                       {users.filter(u => u.role === "teacher").length}
                     </span>
                   </button>
                   <button
                     onClick={() => setUserSubTab("student")}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
-                      userSubTab === "student"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "student"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      }`}
                   >
                     <span>นักเรียน (Student)</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-                      userSubTab === "student" ? "bg-white/20 text-white" : "bg-green-50 text-green-600"
-                    }`}>
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "student" ? "bg-white/20 text-white" : "bg-green-50 text-green-600"
+                      }`}>
                       {users.filter(u => u.role === "student").length}
                     </span>
                   </button>
@@ -1735,15 +1850,16 @@ export default function AdminPortal() {
                     <thead className="bg-gray-50 text-gray-600">
                       <tr>
                         <th className="px-6 py-4 font-semibold w-12 text-center">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                            checked={filteredUsers.filter(u => u.id !== adminUser?.id).length > 0 && selectedUserIds.length === filteredUsers.filter(u => u.id !== adminUser?.id).length}
+                            checked={paginatedUsers.filter(u => u.id !== adminUser?.id).length > 0 && paginatedUsers.filter(u => u.id !== adminUser?.id).every(u => selectedUserIds.includes(u.id))}
                             onChange={(e) => {
+                              const currentPageIds = paginatedUsers.filter(u => u.id !== adminUser?.id).map(u => u.id);
                               if (e.target.checked) {
-                                setSelectedUserIds(filteredUsers.filter(u => u.id !== adminUser?.id).map(u => u.id));
+                                setSelectedUserIds(prev => Array.from(new Set([...prev, ...currentPageIds])));
                               } else {
-                                setSelectedUserIds([]);
+                                setSelectedUserIds(prev => prev.filter(id => !currentPageIds.includes(id)));
                               }
                             }}
                           />
@@ -1755,11 +1871,11 @@ export default function AdminPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {filteredUsers.map(u => (
+                      {paginatedUsers.map(u => (
                         <tr key={u.id} className="hover:bg-gray-50/50">
                           <td className="px-6 py-4 text-center">
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               checked={selectedUserIds.includes(u.id)}
                               disabled={u.id === adminUser?.id}
@@ -1782,10 +1898,9 @@ export default function AdminPortal() {
                             )}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              u.role === 'admin' ? 'bg-red-100 text-red-700' :
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-red-100 text-red-700' :
                               u.role === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                            }`}>
+                              }`}>
                               {u.role.toUpperCase()}
                             </span>
                           </td>
@@ -1802,7 +1917,7 @@ export default function AdminPortal() {
                           </td>
                         </tr>
                       ))}
-                      {filteredUsers.length === 0 && (
+                      {paginatedUsers.length === 0 && (
                         <tr>
                           <td colSpan={5} className="text-center py-8 text-gray-400 bg-gray-50/50">
                             ไม่มีข้อมูลผู้ใช้งานในหมวดหมู่นี้
@@ -1815,12 +1930,12 @@ export default function AdminPortal() {
 
                 {/* Mobile: Cards */}
                 <div className="md:hidden space-y-3">
-                  {filteredUsers.map(u => (
+                  {paginatedUsers.map(u => (
                     <div key={u.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="pt-1 shrink-0">
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             checked={selectedUserIds.includes(u.id)}
                             disabled={u.id === adminUser?.id}
@@ -1835,10 +1950,9 @@ export default function AdminPortal() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-semibold text-gray-800 break-all">{u.username}</div>
-                          <span className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                            u.role === 'admin' ? 'bg-red-100 text-red-700' :
+                          <span className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-red-100 text-red-700' :
                             u.role === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                          }`}>
+                            }`}>
                             {u.role.toUpperCase()}
                           </span>
                         </div>
@@ -1864,12 +1978,60 @@ export default function AdminPortal() {
                       )}
                     </div>
                   ))}
-                  {filteredUsers.length === 0 && (
+                  {paginatedUsers.length === 0 && (
                     <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                       ไม่มีข้อมูลผู้ใช้งานในหมวดหมู่นี้
                     </div>
                   )}
                 </div>
+
+                {/* Pagination Controls */}
+                {totalUserPages > 1 && (
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                    <div className="text-sm font-medium text-gray-500">
+                      แสดง {(userCurrentPage - 1) * usersPerPage + 1} ถึง {Math.min(userCurrentPage * usersPerPage, filteredUsers.length)} จากทั้งหมด {filteredUsers.length} รายการ
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setUserCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={userCurrentPage === 1}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
+                      >
+                        ก่อนหน้า
+                      </button>
+                      <div className="flex items-center gap-1 px-2">
+                        {Array.from({ length: totalUserPages }).map((_, i) => {
+                          const pageNum = i + 1;
+                          if (pageNum === 1 || pageNum === totalUserPages || (pageNum >= userCurrentPage - 1 && pageNum <= userCurrentPage + 1)) {
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setUserCurrentPage(pageNum)}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors cursor-pointer border ${userCurrentPage === pageNum
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                  : "bg-white text-gray-600 border-transparent hover:border-gray-200 hover:bg-gray-50"
+                                  }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          }
+                          if (pageNum === userCurrentPage - 2 || pageNum === userCurrentPage + 2) {
+                            return <span key={pageNum} className="text-gray-400">...</span>;
+                          }
+                          return null;
+                        })}
+                      </div>
+                      <button
+                        onClick={() => setUserCurrentPage(prev => Math.min(prev + 1, totalUserPages))}
+                        disabled={userCurrentPage === totalUserPages}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
+                      >
+                        ถัดไป
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1883,11 +2045,26 @@ export default function AdminPortal() {
                   count={classrooms.length}
                   countLabel="ห้อง"
                 >
+                  <input
+                    type="file"
+                    ref={classroomFileInputRef}
+                    className="hidden"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleImportClassrooms}
+                  />
+                  <button onClick={handleDownloadClassroomTemplate} className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    โหลดเทมเพลต
+                  </button>
+                  <button onClick={() => classroomFileInputRef.current?.click()} className="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    นำเข้า (Excel)
+                  </button>
                   <button
                     onClick={handleOpenCopyModal}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                     คัดลอกชั้นเรียน
                   </button>
                   {selectedClassroomIds.length > 0 && (
@@ -1904,7 +2081,7 @@ export default function AdminPortal() {
                     disabled={!selectedSettingId}
                     className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มชั้นเรียนใหม่
                   </button>
                 </SectionHeader>
@@ -2035,7 +2212,6 @@ export default function AdminPortal() {
                                             <div className="flex items-center gap-2">
                                               <button onClick={() => handleEditStudent(s)} className="text-indigo-600 hover:text-indigo-800 text-xs font-bold px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">แก้ไข</button>
                                               <button onClick={() => handleRemoveStudentFromClass(s)} className="text-amber-600 hover:text-amber-800 text-xs font-bold px-3 py-1.5 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors">นำออก</button>
-                                              <button onClick={() => handleDeleteStudent(s.id, s.name)} className="text-red-600 hover:text-red-800 text-xs font-bold px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">ลบ</button>
                                             </div>
                                           </div>
                                         ))}
@@ -2050,7 +2226,7 @@ export default function AdminPortal() {
                           {/* นักเรียนที่ยังไม่มีชั้นเรียน */}
                           <div>
                             {(() => {
-                              const unassigned = students.filter(s => !s.classroom_id && 
+                              const unassigned = students.filter(s => !s.classroom_id &&
                                 (s.name.includes(searchAssignStudent) || s.student_id.includes(searchAssignStudent))
                               );
                               return (
@@ -2252,22 +2428,26 @@ export default function AdminPortal() {
                   color="green"
                   title="จัดการข้อมูลนักเรียน (Students)"
                   subtitle="จัดการข้อมูลและการนำนักเรียนเข้าชั้นเรียน (Enrollment)"
-                  count={students.length}
+                  count={filteredStudents.length}
                   countLabel="คน"
                 >
-                  <button
-                    onClick={handleAddStudent}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                  <select
+                    className="border border-gray-200 rounded-xl px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    value={studentFilterClassroomId}
+                    onChange={(e) => setStudentFilterClassroomId(e.target.value)}
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-                    เพิ่มนักเรียนใหม่
-                  </button>
+                    <option value="unassigned">-- ยังไม่ระบุชั้นเรียน --</option>
+                    {classrooms.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </SectionHeader>
                 {/* Desktop: Table */}
                 <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
                   <table className="w-full text-left">
                     <thead className="bg-gray-50 text-gray-600">
                       <tr>
+                        <th className="px-6 py-4 font-semibold w-24">เลขที่</th>
                         <th className="px-6 py-4 font-semibold">รหัสนักเรียน</th>
                         <th className="px-6 py-4 font-semibold">ชื่อ-สกุล</th>
                         <th className="px-6 py-4 font-semibold">ห้องเรียน</th>
@@ -2275,8 +2455,21 @@ export default function AdminPortal() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {students.map(s => (
+                      {filteredStudents.map(s => (
                         <tr key={s.id} className="hover:bg-gray-50/50">
+                          <td className="px-6 py-4">
+                            <input
+                              type="number"
+                              className="w-16 px-2 py-1.5 border border-gray-200 rounded-lg text-center text-sm font-medium text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-white hover:bg-gray-50"
+                              defaultValue={s.student_number || ""}
+                              placeholder="-"
+                              onBlur={(e) => {
+                                if (e.target.value !== (s.student_number?.toString() || "")) {
+                                  handleUpdateStudentNumber(s.id, e.target.value);
+                                }
+                              }}
+                            />
+                          </td>
                           <td className="px-6 py-4 font-bold text-indigo-600">{s.student_id}</td>
                           <td className="px-6 py-4 text-gray-800 font-semibold">{s.name}</td>
                           <td className="px-6 py-4 text-gray-500">
@@ -2292,12 +2485,6 @@ export default function AdminPortal() {
                               >
                                 แก้ไขข้อมูล / จัดห้องเรียน
                               </button>
-                              <button
-                                onClick={() => handleDeleteStudent(s.id, s.name)}
-                                className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                              >
-                                ลบ
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -2308,11 +2495,24 @@ export default function AdminPortal() {
 
                 {/* Mobile: Cards */}
                 <div className="md:hidden space-y-3 animate-fade-in-up">
-                  {students.map(s => (
+                  {filteredStudents.map(s => (
                     <div key={s.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="font-bold text-indigo-600">{s.student_id}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <input
+                              type="number"
+                              placeholder="เลขที่"
+                              className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-center text-xs font-medium text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-white hover:bg-gray-50"
+                              defaultValue={s.student_number || ""}
+                              onBlur={(e) => {
+                                if (e.target.value !== (s.student_number?.toString() || "")) {
+                                  handleUpdateStudentNumber(s.id, e.target.value);
+                                }
+                              }}
+                            />
+                            <div className="font-bold text-indigo-600">{s.student_id}</div>
+                          </div>
                           <div className="text-gray-800 font-semibold mt-0.5">{s.name}</div>
                           <span className="inline-block mt-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
                             ชั้น {classrooms.find(c => c.id === s.classroom_id)?.name || 'ยังไม่ระบุ'}
@@ -2326,16 +2526,10 @@ export default function AdminPortal() {
                         >
                           แก้ไขข้อมูล / จัดห้องเรียน
                         </button>
-                        <button
-                          onClick={() => handleDeleteStudent(s.id, s.name)}
-                          className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                        >
-                          ลบ
-                        </button>
                       </div>
                     </div>
                   ))}
-                  {students.length === 0 && (
+                  {filteredStudents.length === 0 && (
                     <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                       ไม่มีข้อมูลนักเรียน
                     </div>
@@ -2359,7 +2553,7 @@ export default function AdminPortal() {
                     disabled={!selectedSubjectSettingId}
                     className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มวิชาเรียนใหม่
                   </button>
                 </SectionHeader>
@@ -2382,103 +2576,103 @@ export default function AdminPortal() {
                   </div>
                 ) : (
                   <>
-                  {/* Desktop: Table */}
-                  <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
-                    <table className="w-full text-left">
-                      <thead className="bg-gray-50 text-gray-600">
-                        <tr>
-                          <th className="px-6 py-4 font-semibold font-bold">ชื่อวิชาเรียน</th>
-                          <th className="px-6 py-4 font-semibold font-bold">ครูผู้สอน</th>
-                          <th className="px-6 py-4 font-semibold font-bold">ชั้นเรียน</th>
-                          <th className="px-6 py-4 font-semibold text-center">ประเภทวิชา</th>
-                          <th className="px-6 py-4 font-semibold text-center">คะแนนเต็ม (เก็บ/สอบ)</th>
-                          <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {subjectsList.map(sub => (
-                          <tr key={sub.id} className="hover:bg-gray-50/50">
-                            <td className="px-6 py-4 font-semibold text-gray-800">{sub.name}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{sub.teacher_name || "-"}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</td>
-                            <td className="px-6 py-4 text-center">
+                    {/* Desktop: Table */}
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-50 text-gray-600">
+                          <tr>
+                            <th className="px-6 py-4 font-semibold font-bold">ชื่อวิชาเรียน</th>
+                            <th className="px-6 py-4 font-semibold font-bold">ครูผู้สอน</th>
+                            <th className="px-6 py-4 font-semibold font-bold">ชั้นเรียน</th>
+                            <th className="px-6 py-4 font-semibold text-center">ประเภทวิชา</th>
+                            <th className="px-6 py-4 font-semibold text-center">คะแนนเต็ม (เก็บ/สอบ)</th>
+                            <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {subjectsList.map(sub => (
+                            <tr key={sub.id} className="hover:bg-gray-50/50">
+                              <td className="px-6 py-4 font-semibold text-gray-800">{sub.name}</td>
+                              <td className="px-6 py-4 text-sm text-gray-600">{sub.teacher_name || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-gray-600">{sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</td>
+                              <td className="px-6 py-4 text-center">
+                                {sub.subject_type === "activity" ? (
+                                  <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    วิชากิจกรรม
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex flex-col items-center gap-0.5">
+                                    <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      วิชาหลัก
+                                    </span>
+                                    <span className="text-[11px] text-gray-500">{Number(sub.credit_hours) || 1} หน่วยกิต</span>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                                {sub.midterm_max_score ?? 50} / {sub.final_max_score ?? 50}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleEditSubject(sub)}
+                                    className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                  >
+                                    แก้ไขชื่อวิชา
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteSubject(sub.id, sub.name)}
+                                    className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                  >
+                                    ลบ
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile: Cards */}
+                    <div className="md:hidden space-y-3 animate-fade-in-up">
+                      {subjectsList.map(sub => (
+                        <div key={sub.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+                          <div className="font-semibold text-gray-800">{sub.name}</div>
+                          <div className="text-xs text-gray-500 mt-1.5 space-y-0.5">
+                            <div><span className="font-medium">ครูผู้สอน:</span> {sub.teacher_name || "-"}</div>
+                            <div><span className="font-medium">ชั้นเรียน:</span> {sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium">ประเภทวิชา:</span>
                               {sub.subject_type === "activity" ? (
-                                <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                   วิชากิจกรรม
                                 </span>
                               ) : (
-                                <span className="inline-flex flex-col items-center gap-0.5">
-                                  <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                    วิชาหลัก
-                                  </span>
-                                  <span className="text-[11px] text-gray-500">{Number(sub.credit_hours) || 1} หน่วยกิต</span>
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  วิชาหลัก ({Number(sub.credit_hours) || 1} หน่วยกิต)
                                 </span>
                               )}
-                            </td>
-                            <td className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
-                              {sub.midterm_max_score ?? 50} / {sub.final_max_score ?? 50}
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  onClick={() => handleEditSubject(sub)}
-                                  className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                                >
-                                  แก้ไขชื่อวิชา
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteSubject(sub.id, sub.name)}
-                                  className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                                >
-                                  ลบ
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile: Cards */}
-                  <div className="md:hidden space-y-3 animate-fade-in-up">
-                    {subjectsList.map(sub => (
-                      <div key={sub.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
-                        <div className="font-semibold text-gray-800">{sub.name}</div>
-                        <div className="text-xs text-gray-500 mt-1.5 space-y-0.5">
-                          <div><span className="font-medium">ครูผู้สอน:</span> {sub.teacher_name || "-"}</div>
-                          <div><span className="font-medium">ชั้นเรียน:</span> {sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium">ประเภทวิชา:</span>
-                            {sub.subject_type === "activity" ? (
-                              <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                วิชากิจกรรม
-                              </span>
-                            ) : (
-                              <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                วิชาหลัก ({Number(sub.credit_hours) || 1} หน่วยกิต)
-                              </span>
-                            )}
+                            </div>
+                            <div><span className="font-medium">คะแนนเต็ม:</span> เก็บ {sub.midterm_max_score ?? 50} / สอบ {sub.final_max_score ?? 50}</div>
                           </div>
-                          <div><span className="font-medium">คะแนนเต็ม:</span> เก็บ {sub.midterm_max_score ?? 50} / สอบ {sub.final_max_score ?? 50}</div>
+                          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
+                            <button
+                              onClick={() => handleEditSubject(sub)}
+                              className="flex-1 text-center text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                            >
+                              แก้ไขชื่อวิชา
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSubject(sub.id, sub.name)}
+                              className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                            >
+                              ลบ
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
-                          <button
-                            onClick={() => handleEditSubject(sub)}
-                            className="flex-1 text-center text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                          >
-                            แก้ไขชื่อวิชา
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSubject(sub.id, sub.name)}
-                            className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                          >
-                            ลบ
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
                   </>
                 )}
               </div>
@@ -2519,6 +2713,7 @@ export default function AdminPortal() {
                               <th className="px-4 py-3 font-semibold">เวลาเริ่ม</th>
                               <th className="px-4 py-3 font-semibold">เวลาจบ</th>
                               <th className="px-4 py-3 font-semibold">หมายเหตุ</th>
+                              <th className="px-4 py-3 font-semibold text-center">คาบพัก</th>
                               <th className="px-4 py-3 font-semibold text-center">จัดการ</th>
                             </tr>
                           </thead>
@@ -2549,6 +2744,14 @@ export default function AdminPortal() {
                                     onChange={e => updatePeriodField(idx, "label", e.target.value)}
                                     placeholder="เช่น พักเที่ยง"
                                     className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                                  />
+                                </td>
+                                <td className="px-4 py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!p.is_break}
+                                    onChange={e => updatePeriodField(idx, "is_break", e.target.checked)}
+                                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                   />
                                 </td>
                                 <td className="px-4 py-2">
@@ -2583,7 +2786,7 @@ export default function AdminPortal() {
                         onClick={handleAddPeriod}
                         className="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                         เพิ่มคาบเรียน
                       </button>
                     </div>
@@ -2633,23 +2836,29 @@ export default function AdminPortal() {
                                       <div className="text-xs text-gray-400 font-normal">{p.start_time}-{p.end_time}</div>
                                       {p.label && <div className="text-xs text-amber-600 font-normal">{p.label}</div>}
                                     </td>
-                                    {ACTIVE_DAYS.map(d => {
-                                      const entry = scheduleEntries.find(e => e.classroom_id === scheduleClassroomId && Number(e.day_of_week) === d.value && e.period_id === p.id);
-                                      return (
-                                        <td key={d.value} className="px-3 py-2 align-top">
-                                          <select
-                                            value={entry?.subject_id ?? ""}
-                                            onChange={ev => handleScheduleCellChange(d.value, p.id, ev.target.value, entry?.id)}
-                                            className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
-                                          >
-                                            <option value="">- ว่าง -</option>
-                                            {subjectsForClassroom.map(s => (
-                                              <option key={s.id} value={s.id}>{s.name}{s.teacher_name ? ` (${s.teacher_name})` : ""}</option>
-                                            ))}
-                                          </select>
-                                        </td>
-                                      );
-                                    })}
+                                    {p.is_break ? (
+                                      <td colSpan={ACTIVE_DAYS.length} className="px-3 py-2 align-middle text-center bg-slate-100 border border-slate-200 rounded-md">
+                                        <div className="font-bold text-slate-400 tracking-widest">{p.label || "พักเบรก"}</div>
+                                      </td>
+                                    ) : (
+                                      ACTIVE_DAYS.map(d => {
+                                        const entry = scheduleEntries.find(e => e.classroom_id === scheduleClassroomId && Number(e.day_of_week) === d.value && e.period_id === p.id);
+                                        return (
+                                          <td key={d.value} className="px-3 py-2 align-top">
+                                            <select
+                                              value={entry?.subject_id ?? ""}
+                                              onChange={ev => handleScheduleCellChange(d.value, p.id, ev.target.value, entry?.id)}
+                                              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
+                                            >
+                                              <option value="">- ว่าง -</option>
+                                              {subjectsForClassroom.map(s => (
+                                                <option key={s.id} value={s.id}>{s.name}{s.teacher_name ? ` (${s.teacher_name})` : ""}</option>
+                                              ))}
+                                            </select>
+                                          </td>
+                                        );
+                                      })
+                                    )}
                                   </tr>
                                 );
                               })}
@@ -2677,18 +2886,17 @@ export default function AdminPortal() {
                     onClick={handleAddSetting}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มปีการศึกษาใหม่
                   </button>
                 </SectionHeader>
 
                 <div className="space-y-6">
                   {/* Status Banner */}
-                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${
-                    isGradingActive
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                      : "bg-rose-50 border-rose-200 text-rose-800"
-                  }`}>
+                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isGradingActive
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : "bg-rose-50 border-rose-200 text-rose-800"
+                    }`}>
                     <div className="flex items-center gap-2 font-bold text-base">
                       {isGradingActive ? (
                         <>
@@ -2708,7 +2916,7 @@ export default function AdminPortal() {
                       <div><span className="font-bold text-gray-700">ช่วงเวลาทำงานปัจจุบัน:</span> {formatThaiDateRange(startDate, endDate)}</div>
                     </div>
                   </div>
-                
+
                   {/* Settings List */}
                   {/* Desktop: Table */}
                   <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
@@ -2873,19 +3081,18 @@ export default function AdminPortal() {
 
       {/* Modern React Modal for Adding/Editing Users */}
       {isUserModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 animate-fade-in-up"
           onClick={() => setIsUserModalOpen(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl border border-indigo-50 shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-slate-100">
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br ${
-                modalMode === "add" ? "from-indigo-500 to-violet-600" : "from-amber-500 to-orange-600"
-              }`}>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br ${modalMode === "add" ? "from-indigo-500 to-violet-600" : "from-amber-500 to-orange-600"
+                }`}>
                 {modalMode === "add" ? (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -2904,7 +3111,7 @@ export default function AdminPortal() {
                   {modalMode === "add" ? "กรอกรายละเอียดเพื่อสร้างผู้ใช้ใหม่" : `กำลังแก้ไขผู้ใช้: ${editingUser?.username}`}
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsUserModalOpen(false)}
                 className="absolute top-5 right-5 text-slate-400 hover:text-slate-650 p-1.5 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer border-0 bg-transparent"
               >
@@ -2925,10 +3132,33 @@ export default function AdminPortal() {
                 </div>
               )}
 
+              {/* Name Input (Optional) */}
+              {(role === "student" || role === "teacher") && modalMode === "add" && (
+                <div className="space-y-1.5 animate-fade-in-up">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    ชื่อ-นามสกุล (Name)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="ชื่อ นามสกุล"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Username Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  ชื่อผู้ใช้ (Username) <span className="text-red-500">*</span>
+                  ชื่อผู้ใช้ (Username) {role === "admin" && <span className="text-red-500">*</span>}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -2940,7 +3170,7 @@ export default function AdminPortal() {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="เช่น teacher2, s002"
+                    placeholder={(role === "student" || role === "teacher") && modalMode === "add" ? "เว้นว่างเพื่อสุ่มอัตโนมัติ" : "เช่น teacher2, s002"}
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                   />
                 </div>
@@ -2949,7 +3179,7 @@ export default function AdminPortal() {
               {/* Password Input */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  รหัสผ่าน (Password) <span className="text-red-500">*</span>
+                  รหัสผ่าน (Password) {role === "admin" && <span className="text-red-500">*</span>}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -2961,7 +3191,7 @@ export default function AdminPortal() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={modalMode === "edit" ? "ปล่อยว่างหากไม่ต้องการเปลี่ยนรหัสผ่าน" : "รหัสผ่านสำหรับเข้าใช้งาน"}
+                    placeholder={modalMode === "edit" ? "ปล่อยว่างหากไม่ต้องการเปลี่ยนรหัสผ่าน" : ((role === "student" || role === "teacher") ? "เว้นว่างเพื่อใช้ค่าเริ่มต้น password123" : "รหัสผ่านสำหรับเข้าใช้งาน")}
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                   />
                 </div>
@@ -2978,15 +3208,13 @@ export default function AdminPortal() {
                     <button
                       type="button"
                       onClick={() => setRole("student")}
-                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                        role === "student"
-                          ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm ring-2 ring-emerald-400/20"
-                          : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-slate-100"
-                      }`}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer ${role === "student"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm ring-2 ring-emerald-400/20"
+                        : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-slate-100"
+                        }`}
                     >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${
-                        role === "student" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"
-                      }`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${role === "student" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"
+                        }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
@@ -2999,15 +3227,13 @@ export default function AdminPortal() {
                     <button
                       type="button"
                       onClick={() => setRole("teacher")}
-                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                        role === "teacher"
-                          ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm ring-2 ring-blue-400/20"
-                          : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-slate-100"
-                      }`}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer ${role === "teacher"
+                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm ring-2 ring-blue-400/20"
+                        : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-slate-100"
+                        }`}
                     >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${
-                        role === "teacher" ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-500"
-                      }`}>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${role === "teacher" ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-500"
+                        }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4a2 2 0 00-2-2m2 2a2 2 0 01-2 2m2 5a2 2 0 01-2 2m0-3a3 3 0 10-6 0 3 3 0 006 0z" />
                         </svg>
@@ -3023,15 +3249,13 @@ export default function AdminPortal() {
                     บทบาทหน้าที่ (Role)
                   </label>
                   <div>
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${
-                      role === 'admin' ? 'bg-rose-50 text-rose-700 border-rose-100' :
-                      role === 'teacher' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
-                      'bg-emerald-50 text-emerald-700 border-emerald-100'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        role === 'admin' ? 'bg-rose-500' :
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${role === 'admin' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                      role === 'teacher' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                        'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${role === 'admin' ? 'bg-rose-500' :
                         role === 'teacher' ? 'bg-blue-500' : 'bg-emerald-500'
-                      }`} />
+                        }`} />
                       {role.toUpperCase()}
                     </span>
                   </div>
@@ -3042,7 +3266,7 @@ export default function AdminPortal() {
               {role === "student" && (
                 <div className="space-y-1.5 animate-fade-in-up">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    รหัสนักเรียน (Student ID) <span className="text-red-500">*</span>
+                    รหัสนักเรียน (Student ID)
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -3050,22 +3274,19 @@ export default function AdminPortal() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 014 0" />
                       </svg>
                     </div>
-                    <select
+                    <input
+                      list="student-id-options"
+                      type="text"
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none appearance-none cursor-pointer"
-                    >
-                      <option value="">-- เลือกรหัสนักเรียน --</option>
-                      <option value="none">ไม่มีผู้ใช้</option>
+                      placeholder={modalMode === "add" ? "เว้นว่างเพื่อสุ่มอัตโนมัติ" : "รหัสนักเรียน"}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    />
+                    <datalist id="student-id-options">
                       {students.map(s => (
-                        <option key={s.id} value={s.student_id}>{s.student_id} - {s.name}</option>
+                        <option key={s.id} value={s.student_id}>{s.name}</option>
                       ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
+                    </datalist>
                   </div>
                 </div>
               )}
@@ -3215,22 +3436,20 @@ export default function AdminPortal() {
                   <button
                     type="button"
                     onClick={() => setSubjectType("main")}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
-                      subjectType === "main"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                        : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                    }`}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${subjectType === "main"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      }`}
                   >
                     วิชาหลัก
                   </button>
                   <button
                     type="button"
                     onClick={() => setSubjectType("activity")}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
-                      subjectType === "activity"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                        : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                    }`}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${subjectType === "activity"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      }`}
                   >
                     วิชากิจกรรม
                   </button>

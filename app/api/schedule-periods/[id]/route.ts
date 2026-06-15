@@ -8,14 +8,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const { id } = await params;
-  const { period_no, start_time, end_time, label } = await req.json();
+  const { period_no, start_time, end_time, label, is_break } = await req.json();
   if (!period_no || !start_time || !end_time) {
     return NextResponse.json({ error: "Missing required fields: period_no, start_time, end_time" }, { status: 400 });
   }
 
   const result = await pool.query(
-    "UPDATE schedule_periods SET period_no = $1, start_time = $2, end_time = $3, label = $4 WHERE id = $5 RETURNING *",
-    [period_no, start_time, end_time, label || null, id]
+    "UPDATE schedule_periods SET period_no = $1, start_time = $2, end_time = $3, label = $4, is_break = $5 WHERE id = $6 RETURNING *",
+    [period_no, start_time, end_time, label || null, is_break || false, id]
   );
   if (result.rows.length === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

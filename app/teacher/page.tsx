@@ -8,11 +8,11 @@ import { formatThaiDateRange } from "../lib/format";
 
 type Tab = "enter" | "status" | "homeroom" | "schedule";
 
-interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; }
+interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; student_number?: number | null; }
 interface DBGrade { id: string; student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term: string; }
 interface DBClassroom { id: string; name: string; setting_id?: number; }
-interface DBSubject { id: string; name: string; teacher_id?: string | null; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; }
-interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; }
+interface DBSubject { id: string; name: string; teacher_id?: string | null; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; classroom_ids?: string[]; }
+interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; is_break?: boolean; }
 interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;
   subject_id: string; subject_name: string; teacher_id: string | null; teacher_name: string | null;
@@ -25,16 +25,65 @@ interface RowScore {
 }
 
 const ALL_DAYS = [
-  { value: 1, label: "จันทร์" },
-  { value: 2, label: "อังคาร" },
-  { value: 3, label: "พุธ" },
-  { value: 4, label: "พฤหัสบดี" },
-  { value: 5, label: "ศุกร์" },
-  { value: 6, label: "เสาร์" },
-  { value: 0, label: "อาทิตย์" },
+  { value: 1, label: "จันทร์", short: "จ" },
+  { value: 2, label: "อังคาร", short: "อ" },
+  { value: 3, label: "พุธ", short: "พ" },
+  { value: 4, label: "พฤหัสบดี", short: "พฤ" },
+  { value: 5, label: "ศุกร์", short: "ศ" },
+  { value: 6, label: "เสาร์", short: "ส" },
+  { value: 0, label: "อาทิตย์", short: "อา" },
 ];
 
+const DAY_COLORS: Record<number, string> = {
+  1: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  2: "bg-pink-100 text-pink-800 border-pink-200",
+  3: "bg-green-100 text-green-800 border-green-200",
+  4: "bg-orange-100 text-orange-800 border-orange-200",
+  5: "bg-blue-100 text-blue-800 border-blue-200",
+  6: "bg-purple-100 text-purple-800 border-purple-200",
+  0: "bg-red-100 text-red-800 border-red-200",
+};
+
+const NAV_TABS: { key: Tab; label: string; icon: string; }[] = [
+  {
+    key: "enter",
+    label: "บันทึกคะแนน",
+    icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+  },
+  {
+    key: "status",
+    label: "สถานะคะแนน",
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+  },
+  {
+    key: "homeroom",
+    label: "ห้องประจำชั้น",
+    icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
+  },
+  {
+    key: "schedule",
+    label: "ตารางสอน",
+    icon: "M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+  },
+];
+
+function LoadingScreen({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-blue-50 gap-4">
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
+        <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+      </div>
+      <div className="text-center">
+        <p className="text-gray-700 font-bold">{title}</p>
+        {subtitle && <p className="text-gray-400 text-sm mt-1">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function TeacherPortal() {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [students, setStudents] = useState<DBStudent[]>([]);
   const [grades, setGrades] = useState<DBGrade[]>([]);
   const [classrooms, setClassrooms] = useState<DBClassroom[]>([]);
@@ -166,6 +215,7 @@ export default function TeacherPortal() {
   }, [enterClassroom, enterSubject, enterTerm, students, grades, subjectsList, activeSettingId]);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     await logout();
     router.push("/");
   };
@@ -327,22 +377,22 @@ export default function TeacherPortal() {
 
   const getGradeLabel = (total: number, maxTotal: number) => {
     const percent = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-    if (percent >= 80) return { label: "4 (A)", color: "bg-green-100 text-green-700 border-green-200" };
-    if (percent >= 75) return { label: "3.5 (B+)", color: "bg-green-50 text-green-600 border-green-200" };
-    if (percent >= 70) return { label: "3 (B)", color: "bg-blue-100 text-blue-700 border-blue-200" };
-    if (percent >= 65) return { label: "2.5 (C+)", color: "bg-blue-50 text-blue-600 border-blue-200" };
-    if (percent >= 60) return { label: "2 (C)", color: "bg-yellow-100 text-yellow-700 border-yellow-200" };
-    if (percent >= 55) return { label: "1.5 (D+)", color: "bg-yellow-50 text-yellow-600 border-yellow-200" };
-    if (percent >= 50) return { label: "1 (D)", color: "bg-orange-100 text-orange-700 border-orange-200" };
-    return { label: "0 (F)", color: "bg-red-100 text-red-700 border-red-200" };
+    if (percent >= 80) return { label: "A", point: "4.0", color: "bg-emerald-100 text-emerald-700 border-emerald-200" };
+    if (percent >= 75) return { label: "B+", point: "3.5", color: "bg-green-100 text-green-700 border-green-200" };
+    if (percent >= 70) return { label: "B", point: "3.0", color: "bg-teal-100 text-teal-700 border-teal-200" };
+    if (percent >= 65) return { label: "C+", point: "2.5", color: "bg-blue-100 text-blue-700 border-blue-200" };
+    if (percent >= 60) return { label: "C", point: "2.0", color: "bg-sky-100 text-sky-700 border-sky-200" };
+    if (percent >= 55) return { label: "D+", point: "1.5", color: "bg-yellow-100 text-yellow-700 border-yellow-200" };
+    if (percent >= 50) return { label: "D", point: "1.0", color: "bg-orange-100 text-orange-700 border-orange-200" };
+    return { label: "F", point: "0.0", color: "bg-red-100 text-red-700 border-red-200" };
   };
 
   const getResultLabel = (total: number, maxTotal: number, subjectType: "main" | "activity") => {
     if (subjectType === "activity") {
       const percent = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
       return percent >= 50
-        ? { label: "ผ่าน", color: "bg-green-100 text-green-700 border-green-200" }
-        : { label: "ไม่ผ่าน", color: "bg-red-100 text-red-700 border-red-200" };
+        ? { label: "ผ่าน", point: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200" }
+        : { label: "ไม่ผ่าน", point: "ไม่ผ่าน", color: "bg-red-100 text-red-700 border-red-200" };
     }
     return getGradeLabel(total, maxTotal);
   };
@@ -396,7 +446,8 @@ export default function TeacherPortal() {
     return (totalPoints / totalCredits).toFixed(2);
   };
 
-  if (!isClient || loading) return null;
+  if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบ" />;
+  if (!isClient || loading || !teacherUser) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การใช้งาน" />;
 
   const currentSubjectObj = subjectsList.find(s => s.name?.trim().toLowerCase() === enterSubject?.trim().toLowerCase() && s.setting_id === activeSettingId);
   const currentMidtermMax = Number(currentSubjectObj?.midterm_max_score) || midtermMax;
@@ -409,669 +460,668 @@ export default function TeacherPortal() {
   const statusStudents = students.filter(s => s.classroom_id === statusClassroom);
   const homeroomStudents = students.filter(s => s.classroom_id === homeroomClass?.id);
 
-  const filledCount = currentClassroomStudents.filter(s => {
-    const r = rowScores[s.student_id];
-    return r?.midterm !== "" && r?.final !== "";
+  const savedCount = currentClassroomStudents.filter(s => {
+    return grades.some(g => g.student_id === s.student_id && g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() && g.term === enterTerm);
   }).length;
 
+  const mySubjects = teacherUser?.role === "admin"
+    ? subjectsList.filter(s => s.setting_id === activeSettingId)
+    : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId);
+
+  const myScheduleEntries = scheduleEntries.filter(e => e.teacher_id === teacherUser?.id);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-10 border-b border-indigo-100">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-white">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* ===== HEADER ===== */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Left: Logo + Info */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow border border-slate-100">
               <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800 leading-none">ระบบจัดการข้อมูลครู</h1>
-              <p className="text-xs text-gray-500">
-                {homeroomClass ? `ครูประจำชั้นห้อง ${homeroomClass.name}` : "จัดการคะแนนนักเรียน"}
-              </p>
+            <div className="min-w-0">
+              <div className="font-bold text-slate-800 text-sm leading-tight truncate">
+                {teacherUser?.username || "ครู"}
+              </div>
+              <div className="text-xs text-slate-400 font-medium truncate">
+                {homeroomClass ? `ครูประจำชั้น · ${homeroomClass.name}` : "ระบบจัดการคะแนน"}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Center: Status Badge */}
+          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${isGradingActive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isGradingActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+            {isGradingActive ? `เปิดบันทึก · เทอม ${enterTerm}` : `ปิดบันทึก · นอกช่วงเวลา`}
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleChangePassword}
-              className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition-colors"
+              title="เปลี่ยนรหัสผ่าน"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors border border-slate-200"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
               </svg>
-              เปลี่ยนรหัสผ่าน
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full transition-colors"
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-xl transition-colors border border-rose-100"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              ออกจากระบบ
+              <span className="hidden sm:inline">ออกจากระบบ</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10">
-        <div className="grid md:grid-cols-4 gap-8">
-          {/* Sidebar Tabs */}
-          <div className="space-y-2">
-            {[
-              { key: "enter", label: "1. ใส่ข้อมูลคะแนน" },
-              { key: "status", label: "2. สถานะการใส่คะแนน" },
-              { key: "homeroom", label: "3. ดูคะแนนประจำชั้น" },
-              { key: "schedule", label: "4. ตารางสอน" },
-            ].map(t => (
+      {/* ===== TAB NAV ===== */}
+      <div className="bg-white border-b border-slate-200 sticky top-16 z-10">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
+          <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-none">
+            {NAV_TABS.map(tab => (
               <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key as Tab)}
-                className={`w-full text-left px-5 py-3.5 rounded-2xl font-semibold transition-all text-sm ${
-                  activeTab === t.key
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
-                    : "bg-white text-gray-600 hover:bg-indigo-50 border border-gray-100"
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-4 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
+                  activeTab === tab.key
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
                 }`}
               >
-                {t.label}
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={tab.icon} />
+                </svg>
+                {tab.label}
+                {tab.key === "enter" && enterSubject && enterClassroom && (
+                  <span className="ml-1 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {savedCount}/{currentClassroomStudents.length}
+                  </span>
+                )}
+                {tab.key === "homeroom" && homeroomClass && (
+                  <span className="ml-1 bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {homeroomStudents.length}
+                  </span>
+                )}
               </button>
             ))}
-          </div>
+          </nav>
+        </div>
+      </div>
 
-          {/* Main Content Area */}
-          <div className="md:col-span-3 bg-white rounded-3xl shadow-md border border-indigo-100 overflow-hidden min-h-[500px]">
+      {/* ===== MAIN CONTENT ===== */}
+      <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6">
 
-            {/* ===== TAB 1: ENTER GRADES ===== */}
-            {activeTab === "enter" && (
-              <div>
-                <div className="p-6 border-b border-gray-100 bg-indigo-50/40">
-                  <div className={`mb-4 p-4 rounded-2xl border text-sm font-semibold flex items-center gap-2 shadow-sm ${
-                    isGradingActive
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                      : "bg-rose-50 border-rose-200 text-rose-800"
-                  }`}>
-                    {isGradingActive ? (
-                      <>
-                        <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                        <span>🟢 ระบบเปิดให้บันทึกคะแนนปกติ (ช่วงเวลากรอกคะแนน: {formatThaiDateRange(settingsStartDate, settingsEndDate)})</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" />
-                        <span>🔴 ปิดระบบบันทึกคะแนนชั่วคราว (อยู่นอกช่วงเวลาที่กำหนด: {formatThaiDateRange(settingsStartDate, settingsEndDate)})</span>
-                      </>
-                    )}
-                  </div>
+        {/* ==================== TAB 1: ENTER GRADES ==================== */}
+        {activeTab === "enter" && (
+          <div className="space-y-5">
 
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">บันทึกคะแนนนักเรียน</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-semibold">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                        รายวิชา <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={enterSubject}
-                        onChange={e => {
-                          setEnterSubject(e.target.value);
-                          setEnterClassroom("");
-                        }}
-                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all font-semibold"
-                      >
-                        <option value="">-- เลือกรายวิชา --</option>
-                        {teacherUser?.role === 'admin' ? (
-                          Array.from(new Set(grades.map(g => g.subject))).map(sub => (
-                            <option key={sub} value={sub}>{sub}</option>
-                          ))
-                        ) : (
-                          subjectsList
-                            .filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId)
-                            .map(s => (
-                              <option key={s.id} value={s.name}>{s.name}</option>
-                            ))
-                        )}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">เทอม / ปีการศึกษา (ล็อกโดยแอดมิน)</label>
-                      <input
-                        type="text"
-                        value={enterTerm}
-                        disabled
-                        placeholder="1/2568"
-                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-400 font-semibold cursor-not-allowed outline-none"
-                      />
-                    </div>
-                    {currentSubjectType === "activity" && (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">รูปแบบคะแนน (วิชากิจกรรม)</label>
-                        <select
-                          value={currentDisplayMode}
-                          onChange={e => handleChangeDisplayMode(e.target.value as "separate" | "combined")}
-                          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all font-semibold"
-                        >
-                          <option value="separate">แยกคะแนนเก็บ/คะแนนสอบ</option>
-                          <option value="combined">คะแนนรวมช่องเดียว</option>
-                        </select>
-                      </div>
-                    )}
-                  </div>
+            {/* Grading Status Banner */}
+            {!isGradingActive && (
+              <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl text-sm font-semibold">
+                <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>🔴 ระบบปิดรับคะแนนชั่วคราว — นอกช่วงเวลา {formatThaiDateRange(settingsStartDate, settingsEndDate)}</span>
+              </div>
+            )}
+
+            {/* Step 1: Select Subject */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+                <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">1</span>
+                <div>
+                  <div className="font-bold text-slate-800 text-sm">เลือกรายวิชา</div>
+                  <div className="text-xs text-slate-400">วิชาที่คุณสอนในเทอมนี้</div>
                 </div>
-
-                {/* Classroom Tabs */}
-                <div className="px-6 pt-5">
-                  <p className="text-sm font-semibold text-gray-500 mb-3">เลือกชั้นเรียน</p>
-                  {!enterSubject ? (
-                    <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl text-sm font-medium">
-                      ⚠️ กรุณาเลือกรายวิชาด้านบนก่อน เพื่อเปิดสิทธิ์การเลือกชั้นเรียน
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {classrooms.map(c => {
-                        const total = students.filter(s => s.classroom_id === c.id).length;
-                        const saved = students.filter(s => s.classroom_id === c.id).filter(s =>
-                          grades.some(g =>
-                            g.student_id === s.student_id &&
-                            g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
-                            g.term === enterTerm
-                          )
-                        ).length;
-                        return (
-                          <button
-                            key={c.id}
-                            onClick={() => setEnterClassroom(c.id)}
-                            className={`relative flex flex-col items-center px-5 py-2.5 rounded-2xl text-sm font-bold transition-all border ${
-                              enterClassroom === c.id
-                                ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200"
-                                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
-                            }`}
-                          >
-                            <span>{c.name}</span>
-                            {enterSubject && (
-                              <span className={`text-xs mt-0.5 font-medium ${enterClassroom === c.id ? "text-indigo-200" : "text-gray-400"}`}>
-                                {saved}/{total} คน
+              </div>
+              <div className="p-5">
+                {mySubjects.length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 text-sm">ยังไม่มีวิชาที่กำหนดให้คุณสอนในเทอมนี้</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {mySubjects.map(s => {
+                      const isSelected = enterSubject === s.name;
+                      const savedForSubject = students.filter(st => grades.some(g => g.student_id === st.student_id && g.subject.trim().toLowerCase() === s.name.trim().toLowerCase() && g.term === enterTerm)).length;
+                      const totalInSubjectClassrooms = students.filter(st => (s as any).classroom_ids?.includes(st.classroom_id)).length;
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => { setEnterSubject(s.name); setEnterClassroom(""); }}
+                          className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                              : "bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/60"
+                          }`}
+                        >
+                          <span className="font-bold text-sm">{s.name}</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
+                              {s.subject_type === "activity" ? "กิจกรรม" : `${Number(s.credit_hours) || 1} หน่วยกิต`}
+                            </span>
+                            {isSelected && (
+                              <span className="text-[11px] text-indigo-200">
+                                {savedForSubject} / {totalInSubjectClassrooms} คน
                               </span>
                             )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {enterSubject && !enterClassroom && (
-                    <div className="bg-indigo-50/50 border border-dashed border-indigo-200 text-indigo-700 py-10 px-4 text-center rounded-2xl font-semibold mb-6">
-                      👈 กรุณาเลือกชั้นเรียนด้านบนที่คุณต้องการกรอกคะแนน
-                    </div>
-                  )}
-
-                  {/* Students Table */}
-                  {enterSubject && enterClassroom && (
-                    <>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                        <div>
-                          <span className="font-bold text-gray-800 text-base">
-                            ห้อง {classrooms.find(c => c.id === enterClassroom)?.name}
-                          </span>
-                          <span className="text-gray-400 text-sm ml-2">
-                            ({currentClassroomStudents.length} คน)
-                          </span>
-                          {enterSubject && (
-                            <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
-                              กรอกแล้ว {filledCount}/{currentClassroomStudents.length} คน
-                            </span>
-                          )}
-                          {enterSubject && currentSubjectObj?.subject_type !== "activity" && (
-                            <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
-                              {Number(currentSubjectObj?.credit_hours) || 1} หน่วยกิต
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={handleSaveAll}
-                          disabled={!enterSubject || !isGradingActive}
-                          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm text-sm"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          บันทึกทั้งชั้น
-                        </button>
-                      </div>
-
-                      {/* Desktop: Table */}
-                      <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 mb-6">
-                        <table className="w-full text-sm text-left">
-                          <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-gray-600">
-                              <th className="px-4 py-3 font-semibold w-10 text-center">ที่</th>
-                              <th className="px-4 py-3 font-semibold">รหัสนักเรียน</th>
-                              <th className="px-4 py-3 font-semibold">ชื่อ-สกุล</th>
-                              {isCombined ? (
-                                <th className="px-4 py-3 font-semibold text-center w-28" colSpan={2}>
-                                  คะแนนรวม
-                                  <span className="block text-xs text-gray-400 font-normal">(เต็ม {currentMidtermMax + currentFinalMax})</span>
-                                </th>
-                              ) : (
-                                <>
-                                  <th className="px-4 py-3 font-semibold text-center w-28">
-                                    คะแนนเก็บ
-                                    <span className="block text-xs text-gray-400 font-normal">(เต็ม {currentMidtermMax})</span>
-                                  </th>
-                                  <th className="px-4 py-3 font-semibold text-center w-28">
-                                    คะแนนสอบ
-                                    <span className="block text-xs text-gray-400 font-normal">(เต็ม {currentFinalMax})</span>
-                                  </th>
-                                </>
-                              )}
-                              <th className="px-4 py-3 font-semibold text-center w-20">รวม</th>
-                              <th className="px-4 py-3 font-semibold text-center w-16">{currentSubjectType === "activity" ? "ผล" : "เกรด"}</th>
-                              <th className="px-4 py-3 font-semibold text-center w-24">บันทึก</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {currentClassroomStudents.length === 0 ? (
-                              <tr>
-                                <td colSpan={8} className="py-10 text-center text-gray-400">
-                                  ไม่มีนักเรียนในชั้นเรียนนี้
-                                </td>
-                              </tr>
-                            ) : (
-                              currentClassroomStudents.map((s, idx) => {
-                                const row = rowScores[s.student_id] || { midterm: "", final: "" };
-                                const midNum = Number(row.midterm) || 0;
-                                const finalNum = Number(row.final) || 0;
-                                const total = isCombined
-                                  ? (row.midterm !== "" ? midNum : null)
-                                  : (row.midterm !== "" || row.final !== "" ? midNum + finalNum : null);
-                                const resultInfo = total !== null ? getResultLabel(total, currentMidtermMax + currentFinalMax, currentSubjectType) : null;
-                                const existingGrade = grades.find(
-                                  g => g.student_id === s.student_id &&
-                                    g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
-                                    g.term === enterTerm
-                                );
-                                const isSaved = !!existingGrade;
-
-                                return (
-                                  <tr
-                                    key={s.id}
-                                    className={`hover:bg-indigo-50/40 transition-colors ${isSaved && enterSubject ? "bg-green-50/30" : ""}`}
-                                  >
-                                    <td className="px-4 py-3 text-center text-gray-400 font-medium">{idx + 1}</td>
-                                    <td className="px-4 py-3 font-semibold text-indigo-600">{s.student_id}</td>
-                                    <td className="px-4 py-3 text-gray-800 font-medium">{s.name}</td>
-                                    {isCombined ? (
-                                      <td className="px-4 py-3 text-center" colSpan={2}>
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          max={currentMidtermMax + currentFinalMax}
-                                          disabled={!isGradingActive}
-                                          value={row.midterm}
-                                          onChange={e =>
-                                            setRowScores(prev => ({
-                                              ...prev,
-                                              [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax + currentFinalMax), final: "0" },
-                                            }))
-                                          }
-                                          placeholder={`0-${currentMidtermMax + currentFinalMax}`}
-                                          className={`w-full text-center px-2 py-2 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-300 outline-none transition-all ${
-                                            !isGradingActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
-                                          }`}
-                                        />
-                                      </td>
-                                    ) : (
-                                      <>
-                                        <td className="px-4 py-3 text-center">
-                                          <input
-                                            type="number"
-                                            min="0"
-                                            max={currentMidtermMax}
-                                            disabled={!isGradingActive}
-                                            value={row.midterm}
-                                            onChange={e =>
-                                              setRowScores(prev => ({
-                                                ...prev,
-                                                [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax) },
-                                              }))
-                                            }
-                                            placeholder={`0-${currentMidtermMax}`}
-                                            className={`w-full text-center px-2 py-2 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-300 outline-none transition-all ${
-                                              !isGradingActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
-                                            }`}
-                                          />
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                          <input
-                                            type="number"
-                                            min="0"
-                                            max={currentFinalMax}
-                                            disabled={!isGradingActive}
-                                            value={row.final}
-                                            onChange={e =>
-                                              setRowScores(prev => ({
-                                                ...prev,
-                                                [s.student_id]: { ...prev[s.student_id], final: handleScoreChange(e.target.value, currentFinalMax) },
-                                              }))
-                                            }
-                                            placeholder={`0-${currentFinalMax}`}
-                                            className={`w-full text-center px-2 py-2 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-300 outline-none transition-all ${
-                                              !isGradingActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
-                                            }`}
-                                          />
-                                        </td>
-                                      </>
-                                    )}
-                                    <td className="px-4 py-3 text-center font-bold text-gray-800">
-                                      {total !== null ? total : <span className="text-gray-300">—</span>}
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                      {resultInfo ? (
-                                        <span className={`inline-block px-2.5 py-1 rounded-lg text-sm font-extrabold border ${resultInfo.color}`}>
-                                          {resultInfo.label}
-                                        </span>
-                                      ) : (
-                                        <span className="text-gray-300">—</span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                      <div className="flex flex-col items-center gap-1">
-                                        <div className="flex items-center gap-1.5">
-                                          <button
-                                            onClick={() => handleSaveRow(s)}
-                                            disabled={!enterSubject || !isGradingActive}
-                                            className="text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                                          >
-                                            บันทึก
-                                          </button>
-                                          {existingGrade && (
-                                            <button
-                                              onClick={() => handleDeleteGrade(existingGrade.id)}
-                                              disabled={!isGradingActive}
-                                              className="text-xs bg-red-50 hover:bg-red-100 disabled:bg-gray-200 disabled:cursor-not-allowed text-red-600 font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                                            >
-                                              ลบ
-                                            </button>
-                                          )}
-                                        </div>
-                                        {isSaved && enterSubject && (
-                                          <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            บันทึกแล้ว
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Mobile: Cards */}
-                      <div className="md:hidden space-y-3 mb-6">
-                        {currentClassroomStudents.length === 0 ? (
-                          <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                            ไม่มีนักเรียนในชั้นเรียนนี้
                           </div>
-                        ) : (
-                          currentClassroomStudents.map((s, idx) => {
-                            const row = rowScores[s.student_id] || { midterm: "", final: "" };
-                            const midNum = Number(row.midterm) || 0;
-                            const finalNum = Number(row.final) || 0;
-                            const total = isCombined
-                              ? (row.midterm !== "" ? midNum : null)
-                              : (row.midterm !== "" || row.final !== "" ? midNum + finalNum : null);
-                            const resultInfo = total !== null ? getResultLabel(total, currentMidtermMax + currentFinalMax, currentSubjectType) : null;
-                            const existingGrade = grades.find(
-                              g => g.student_id === s.student_id &&
-                                g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
-                                g.term === enterTerm
-                            );
-                            const isSaved = !!existingGrade;
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-                            return (
+                {/* Activity display mode */}
+                {currentSubjectType === "activity" && enterSubject && (
+                  <div className="mt-4 flex items-center gap-3 flex-wrap">
+                    <span className="text-xs font-semibold text-slate-500">รูปแบบกรอกคะแนน:</span>
+                    {(["separate", "combined"] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => handleChangeDisplayMode(mode)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          currentDisplayMode === mode
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+                        }`}
+                      >
+                        {mode === "separate" ? "แยกคะแนนเก็บ/สอบ" : "คะแนนรวมช่องเดียว"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Step 2: Select Classroom */}
+            {enterSubject && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">2</span>
+                  <div>
+                    <div className="font-bold text-slate-800 text-sm">เลือกห้องเรียน</div>
+                    <div className="text-xs text-slate-400">วิชา: <span className="text-indigo-600 font-semibold">{enterSubject}</span></div>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                    {classrooms.filter(c => mySubjects.find(s => s.name === enterSubject)?.classroom_ids?.includes(c.id)).map(c => {
+                      const total = students.filter(s => s.classroom_id === c.id).length;
+                      const saved = students.filter(s => s.classroom_id === c.id).filter(s =>
+                        grades.some(g =>
+                          g.student_id === s.student_id &&
+                          g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
+                          g.term === enterTerm
+                        )
+                      ).length;
+                      const isComplete = saved > 0 && saved === total;
+                      const isActive = enterClassroom === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => setEnterClassroom(c.id)}
+                          className={`relative flex flex-col items-center justify-center py-4 px-2 rounded-2xl border-2 transition-all cursor-pointer ${
+                            isActive
+                              ? "border-indigo-500 bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                              : isComplete
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60"
+                          }`}
+                        >
+                          {isComplete && !isActive && (
+                            <div className="absolute top-2 right-2 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                          <span className="font-extrabold text-base leading-tight">{c.name}</span>
+                          <span className={`text-xs mt-1.5 font-semibold ${isActive ? "text-indigo-200" : isComplete ? "text-emerald-600" : "text-slate-400"}`}>
+                            {saved}/{total} คน
+                          </span>
+                          {total > 0 && !isActive && (
+                            <div className="w-full mt-2 h-1 rounded-full bg-slate-200 overflow-hidden">
                               <div
-                                key={s.id}
-                                className={`rounded-2xl border border-gray-200 p-4 ${isSaved && enterSubject ? "bg-green-50/30" : "bg-white"}`}
-                              >
-                                <div className="flex items-start justify-between gap-2 mb-3">
-                                  <div>
-                                    <div className="text-xs text-gray-400 font-medium">ที่ {idx + 1}</div>
-                                    <div className="font-semibold text-indigo-600">{s.student_id}</div>
-                                    <div className="text-gray-800 font-medium">{s.name}</div>
-                                  </div>
-                                  {resultInfo && (
-                                    <span className={`inline-block px-2.5 py-1 rounded-lg text-sm font-extrabold border shrink-0 ${resultInfo.color}`}>
-                                      {resultInfo.label}
+                                className={`h-full rounded-full transition-all ${isComplete ? "bg-emerald-500" : "bg-indigo-400"}`}
+                                style={{ width: `${Math.round((saved / total) * 100)}%` }}
+                              />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Score Table */}
+            {enterSubject && enterClassroom && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">3</span>
+                    <div>
+                      <div className="font-bold text-slate-800 text-sm">
+                        กรอกคะแนน · ห้อง {classrooms.find(c => c.id === enterClassroom)?.name}
+                      </div>
+                      <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
+                        <span>{currentClassroomStudents.length} คน</span>
+                        <span className="text-slate-200">·</span>
+                        <span className="text-emerald-600 font-semibold">{savedCount} บันทึกแล้ว</span>
+                        {currentSubjectType !== "activity" && (
+                          <>
+                            <span className="text-slate-200">·</span>
+                            <span className="text-indigo-600 font-semibold">{Number(currentSubjectObj?.credit_hours) || 1} หน่วยกิต</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSaveAll}
+                    disabled={!isGradingActive}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    บันทึกทั้งชั้น
+                  </button>
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs">
+                        <th className="px-4 py-3 text-center font-semibold w-10">#</th>
+                        <th className="px-4 py-3 font-semibold w-28">รหัส</th>
+                        <th className="px-4 py-3 font-semibold">ชื่อ-สกุล</th>
+                        {isCombined ? (
+                          <th className="px-4 py-3 text-center font-semibold w-32">
+                            คะแนนรวม
+                            <div className="text-[10px] text-slate-400 font-normal">(/{currentMidtermMax + currentFinalMax})</div>
+                          </th>
+                        ) : (
+                          <>
+                            <th className="px-4 py-3 text-center font-semibold w-28">
+                              เก็บ
+                              <div className="text-[10px] text-slate-400 font-normal">(/{currentMidtermMax})</div>
+                            </th>
+                            <th className="px-4 py-3 text-center font-semibold w-28">
+                              สอบ
+                              <div className="text-[10px] text-slate-400 font-normal">(/{currentFinalMax})</div>
+                            </th>
+                          </>
+                        )}
+                        <th className="px-4 py-3 text-center font-semibold w-16">รวม</th>
+                        <th className="px-4 py-3 text-center font-semibold w-20">{currentSubjectType === "activity" ? "ผล" : "เกรด"}</th>
+                        <th className="px-4 py-3 text-center font-semibold w-24"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {currentClassroomStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-slate-400 text-sm">
+                            ไม่มีนักเรียนในชั้นเรียนนี้
+                          </td>
+                        </tr>
+                      ) : (
+                        currentClassroomStudents.map((s, idx) => {
+                          const row = rowScores[s.student_id] || { midterm: "", final: "" };
+                          const midNum = Number(row.midterm) || 0;
+                          const finalNum = Number(row.final) || 0;
+                          const total = isCombined
+                            ? (row.midterm !== "" ? midNum : null)
+                            : (row.midterm !== "" || row.final !== "" ? midNum + finalNum : null);
+                          const resultInfo = total !== null ? getResultLabel(total, currentMidtermMax + currentFinalMax, currentSubjectType) : null;
+                          const existingGrade = grades.find(
+                            g => g.student_id === s.student_id &&
+                              g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
+                              g.term === enterTerm
+                          );
+                          const isSaved = !!existingGrade;
+
+                          return (
+                            <tr
+                              key={s.id}
+                              className={`hover:bg-slate-50/80 transition-colors ${isSaved ? "bg-emerald-50/40" : ""}`}
+                            >
+                              <td className="px-4 py-3 text-center text-slate-400 font-medium text-xs">{idx + 1}</td>
+                              <td className="px-4 py-3 font-bold text-indigo-600 text-xs">{s.student_id}</td>
+                              <td className="px-4 py-3 text-slate-800 font-medium">
+                                <div className="flex items-center gap-2">
+                                  {s.name}
+                                  {isSaved && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold">
+                                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                      </svg>
                                     </span>
                                   )}
                                 </div>
-                                {isCombined ? (
-                                  <div className="mb-3">
-                                    <label className="block text-xs text-gray-500 mb-1">คะแนนรวม (เต็ม {currentMidtermMax + currentFinalMax})</label>
+                              </td>
+                              {isCombined ? (
+                                <td className="px-3 py-2.5 text-center">
+                                  <input
+                                    type="number" min="0" max={currentMidtermMax + currentFinalMax}
+                                    disabled={!isGradingActive}
+                                    value={row.midterm}
+                                    onChange={e => setRowScores(prev => ({
+                                      ...prev,
+                                      [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax + currentFinalMax), final: "0" },
+                                    }))}
+                                    placeholder={`0-${currentMidtermMax + currentFinalMax}`}
+                                    className="w-full text-center px-2 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                  />
+                                </td>
+                              ) : (
+                                <>
+                                  <td className="px-3 py-2.5 text-center">
                                     <input
-                                      type="number"
-                                      min="0"
-                                      max={currentMidtermMax + currentFinalMax}
+                                      type="number" min="0" max={currentMidtermMax}
                                       disabled={!isGradingActive}
                                       value={row.midterm}
-                                      onChange={e =>
-                                        setRowScores(prev => ({
-                                          ...prev,
-                                          [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax + currentFinalMax), final: "0" },
-                                        }))
-                                      }
-                                      placeholder={`0-${currentMidtermMax + currentFinalMax}`}
-                                      className={`w-full text-center px-2 py-2 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-300 outline-none transition-all ${
-                                        !isGradingActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
-                                      }`}
+                                      onChange={e => setRowScores(prev => ({
+                                        ...prev,
+                                        [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax) },
+                                      }))}
+                                      placeholder={`/${currentMidtermMax}`}
+                                      className="w-full text-center px-2 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
                                     />
-                                  </div>
-                                ) : (
-                                <div className="grid grid-cols-2 gap-3 mb-3">
-                                  <div>
-                                    <label className="block text-xs text-gray-500 mb-1">คะแนนเก็บ (เต็ม {currentMidtermMax})</label>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
                                     <input
-                                      type="number"
-                                      min="0"
-                                      max={currentMidtermMax}
-                                      disabled={!isGradingActive}
-                                      value={row.midterm}
-                                      onChange={e =>
-                                        setRowScores(prev => ({
-                                          ...prev,
-                                          [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax) },
-                                        }))
-                                      }
-                                      placeholder={`0-${currentMidtermMax}`}
-                                      className={`w-full text-center px-2 py-2 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-300 outline-none transition-all ${
-                                        !isGradingActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
-                                      }`}
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs text-gray-500 mb-1">คะแนนสอบ (เต็ม {currentFinalMax})</label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max={currentFinalMax}
+                                      type="number" min="0" max={currentFinalMax}
                                       disabled={!isGradingActive}
                                       value={row.final}
-                                      onChange={e =>
-                                        setRowScores(prev => ({
-                                          ...prev,
-                                          [s.student_id]: { ...prev[s.student_id], final: handleScoreChange(e.target.value, currentFinalMax) },
-                                        }))
-                                      }
-                                      placeholder={`0-${currentFinalMax}`}
-                                      className={`w-full text-center px-2 py-2 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-300 outline-none transition-all ${
-                                        !isGradingActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
-                                      }`}
+                                      onChange={e => setRowScores(prev => ({
+                                        ...prev,
+                                        [s.student_id]: { ...prev[s.student_id], final: handleScoreChange(e.target.value, currentFinalMax) },
+                                      }))}
+                                      placeholder={`/${currentFinalMax}`}
+                                      className="w-full text-center px-2 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
                                     />
-                                  </div>
-                                </div>
+                                  </td>
+                                </>
+                              )}
+                              <td className="px-4 py-3 text-center font-bold text-slate-800">
+                                {total !== null ? total : <span className="text-slate-300">—</span>}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {resultInfo ? (
+                                  <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-extrabold border ${resultInfo.color}`}>
+                                    {resultInfo.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300">—</span>
                                 )}
-                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                  <div className="text-sm font-bold text-gray-800">
-                                    รวม: {total !== null ? total : <span className="text-gray-300">—</span>}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {isSaved && enterSubject && (
-                                      <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        บันทึกแล้ว
-                                      </span>
-                                    )}
-                                    {existingGrade && (
-                                      <button
-                                        onClick={() => handleDeleteGrade(existingGrade.id)}
-                                        disabled={!isGradingActive}
-                                        className="text-xs bg-red-50 hover:bg-red-100 disabled:bg-gray-200 disabled:cursor-not-allowed text-red-600 font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                                      >
-                                        ลบ
-                                      </button>
-                                    )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleSaveRow(s)}
+                                    disabled={!isGradingActive}
+                                    className="text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                  >
+                                    บันทึก
+                                  </button>
+                                  {existingGrade && (
                                     <button
-                                      onClick={() => handleSaveRow(s)}
-                                      disabled={!enterSubject || !isGradingActive}
-                                      className="text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                      onClick={() => handleDeleteGrade(existingGrade.id)}
+                                      disabled={!isGradingActive}
+                                      className="text-xs text-rose-500 hover:text-rose-700 disabled:text-slate-300 disabled:cursor-not-allowed font-semibold px-2 py-1.5 rounded-lg hover:bg-rose-50 transition-colors"
                                     >
-                                      บันทึก
+                                      ลบ
                                     </button>
-                                  </div>
+                                  )}
                                 </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards */}
+                <div className="md:hidden divide-y divide-slate-100">
+                  {currentClassroomStudents.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-sm">ไม่มีนักเรียนในชั้นเรียนนี้</div>
+                  ) : (
+                    currentClassroomStudents.map((s, idx) => {
+                      const row = rowScores[s.student_id] || { midterm: "", final: "" };
+                      const midNum = Number(row.midterm) || 0;
+                      const finalNum = Number(row.final) || 0;
+                      const total = isCombined
+                        ? (row.midterm !== "" ? midNum : null)
+                        : (row.midterm !== "" || row.final !== "" ? midNum + finalNum : null);
+                      const resultInfo = total !== null ? getResultLabel(total, currentMidtermMax + currentFinalMax, currentSubjectType) : null;
+                      const existingGrade = grades.find(
+                        g => g.student_id === s.student_id &&
+                          g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
+                          g.term === enterTerm
+                      );
+                      const isSaved = !!existingGrade;
+                      return (
+                        <div key={s.id} className={`p-4 ${isSaved ? "bg-emerald-50/40" : "bg-white"}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <div className="font-bold text-slate-800">{s.name}</div>
+                              <div className="text-xs text-indigo-600 font-semibold mt-0.5">{s.student_id}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {resultInfo && (
+                                <span className={`px-2.5 py-1 rounded-lg text-sm font-extrabold border ${resultInfo.color}`}>
+                                  {resultInfo.label}
+                                </span>
+                              )}
+                              {isSaved && (
+                                <span className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
+                                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {isCombined ? (
+                            <div className="mb-3">
+                              <label className="block text-xs text-slate-500 mb-1.5 font-semibold">คะแนนรวม <span className="text-slate-400 font-normal">(เต็ม {currentMidtermMax + currentFinalMax})</span></label>
+                              <input
+                                type="number" min="0" max={currentMidtermMax + currentFinalMax}
+                                disabled={!isGradingActive}
+                                value={row.midterm}
+                                onChange={e => setRowScores(prev => ({
+                                  ...prev,
+                                  [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax + currentFinalMax), final: "0" },
+                                }))}
+                                className="w-full text-center px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
+                              />
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div>
+                                <label className="block text-xs text-slate-500 mb-1.5 font-semibold">เก็บ <span className="text-slate-400 font-normal">/{currentMidtermMax}</span></label>
+                                <input
+                                  type="number" min="0" max={currentMidtermMax}
+                                  disabled={!isGradingActive}
+                                  value={row.midterm}
+                                  onChange={e => setRowScores(prev => ({
+                                    ...prev,
+                                    [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax) },
+                                  }))}
+                                  className="w-full text-center px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                />
                               </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </>
+                              <div>
+                                <label className="block text-xs text-slate-500 mb-1.5 font-semibold">สอบ <span className="text-slate-400 font-normal">/{currentFinalMax}</span></label>
+                                <input
+                                  type="number" min="0" max={currentFinalMax}
+                                  disabled={!isGradingActive}
+                                  value={row.final}
+                                  onChange={e => setRowScores(prev => ({
+                                    ...prev,
+                                    [s.student_id]: { ...prev[s.student_id], final: handleScoreChange(e.target.value, currentFinalMax) },
+                                  }))}
+                                  className="w-full text-center px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                            <div className="text-sm font-bold text-slate-700">
+                              รวม: {total !== null ? <span className="text-indigo-600">{total}</span> : <span className="text-slate-300">—</span>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {existingGrade && (
+                                <button
+                                  onClick={() => handleDeleteGrade(existingGrade.id)}
+                                  disabled={!isGradingActive}
+                                  className="text-xs text-rose-500 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-50 transition-colors disabled:opacity-40"
+                                >ลบ</button>
+                              )}
+                              <button
+                                onClick={() => handleSaveRow(s)}
+                                disabled={!isGradingActive}
+                                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded-lg transition-colors disabled:bg-slate-200 disabled:cursor-not-allowed"
+                              >บันทึก</button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
             )}
 
-            {/* ===== TAB 2: STATUS ===== */}
-            {activeTab === "status" && (
-              <div className="p-8">
-                <div className={`mb-6 p-4 rounded-2xl border text-sm font-semibold flex items-center gap-2 shadow-sm ${
-                  isGradingActive
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                    : "bg-rose-50 border-rose-200 text-rose-800"
-                }`}>
-                  {isGradingActive ? (
-                    <>
-                      <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                      <span>🟢 ระบบเปิดให้บันทึกคะแนนปกติ (ช่วงเวลากรอกคะแนน: {formatThaiDateRange(settingsStartDate, settingsEndDate)})</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" />
-                      <span>🔴 ปิดระบบบันทึกคะแนนชั่วคราว (อยู่นอกช่วงเวลาที่กำหนด: {formatThaiDateRange(settingsStartDate, settingsEndDate)})</span>
-                    </>
-                  )}
-                </div>
+            {/* Prompt when no subject selected */}
+            {!enterSubject && (
+              <div className="text-center py-16 text-slate-400">
+                <svg className="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <p className="font-semibold text-slate-500">เริ่มต้นด้วยการเลือกรายวิชาด้านบน</p>
+              </div>
+            )}
+          </div>
+        )}
 
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">ตรวจสอบสถานะการใส่คะแนน</h2>
-                  <p className="text-gray-500 text-sm">เช็คว่าเด็กคนไหนยังไม่ถูกกรอกคะแนนในวิชาที่เลือก</p>
+        {/* ==================== TAB 2: STATUS ==================== */}
+        {activeTab === "status" && (
+          <div className="space-y-5">
+            {/* Filter Bar */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">รายวิชา</label>
+                  <select
+                    value={statusSubject}
+                    onChange={e => { setStatusSubject(e.target.value); setStatusClassroom(""); }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold"
+                  >
+                    <option value="">— เลือกรายวิชา —</option>
+                    {(teacherUser?.role === "admin"
+                      ? Array.from(new Set(grades.map(g => g.subject))).map(sub => ({ name: sub }))
+                      : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId)
+                    ).map((s, i) => (
+                      <option key={i} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
                 </div>
-
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 font-semibold">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">รายวิชา</label>
-                    <select
-                      value={statusSubject}
-                      onChange={e => {
-                        setStatusSubject(e.target.value);
-                        setStatusClassroom("");
-                      }}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
-                    >
-                      <option value="">-- เลือกรายวิชา --</option>
-                      {teacherUser?.role === 'admin' ? (
-                        Array.from(new Set(grades.map(g => g.subject))).map(sub => (
-                          <option key={sub} value={sub}>{sub}</option>
-                        ))
-                      ) : (
-                        subjectsList
-                          .filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId)
-                          .map(s => (
-                            <option key={s.id} value={s.name}>{s.name}</option>
-                          ))
-                      )}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">ชั้นเรียน</label>
-                    <select
-                      value={statusClassroom}
-                      onChange={e => setStatusClassroom(e.target.value)}
-                      disabled={!statusSubject}
-                      className={`w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white ${
-                        !statusSubject ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "font-semibold"
-                      }`}
-                    >
-                      <option value="">-- เลือกชั้นเรียน --</option>
-                      {classrooms.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">เทอม (ล็อกโดยแอดมิน)</label>
-                    <input
-                      type="text"
-                      value={statusTerm}
-                      disabled
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed font-semibold outline-none"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">ชั้นเรียน</label>
+                  <select
+                    value={statusClassroom}
+                    onChange={e => setStatusClassroom(e.target.value)}
+                    disabled={!statusSubject}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">— เลือกชั้นเรียน —</option>
+                    {classrooms.filter(c => mySubjects.find(s => s.name === statusSubject)?.classroom_ids?.includes(c.id)).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+            </div>
 
-                {statusSubject && statusClassroom ? (
-                  <>
-                    {/* Desktop: Table */}
-                    <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
-                          <tr>
-                            <th className="px-6 py-4 font-semibold w-10 text-center">ที่</th>
-                            <th className="px-6 py-4 font-semibold">รหัสนักเรียน</th>
-                            <th className="px-6 py-4 font-semibold">ชื่อนักเรียน</th>
-                            <th className="px-6 py-4 font-semibold text-center">สถานะ</th>
+            {/* Status Table */}
+            {statusSubject && statusClassroom ? (
+              (() => {
+                const hasCnt = statusStudents.filter(s => grades.some(g => g.student_id === s.student_id && g.subject.trim().toLowerCase() === statusSubject.trim().toLowerCase() && g.term === statusTerm)).length;
+                return (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-slate-800">วิชา: <span className="text-indigo-600">{statusSubject}</span></div>
+                        <div className="text-xs text-slate-400 mt-0.5">ห้อง {classrooms.find(c => c.id === statusClassroom)?.name} · เทอม {statusTerm}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-center">
+                          <div className="text-xl font-extrabold text-emerald-600">{hasCnt}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold">บันทึกแล้ว</div>
+                        </div>
+                        <div className="w-px h-8 bg-slate-200" />
+                        <div className="text-center">
+                          <div className="text-xl font-extrabold text-rose-500">{statusStudents.length - hasCnt}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold">ยังไม่บันทึก</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {statusStudents.length > 0 && (
+                      <div className="px-5 py-3 border-b border-slate-100">
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1.5">
+                          <span>ความคืบหน้า</span>
+                          <span>{Math.round((hasCnt / statusStudents.length) * 100)}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-indigo-500 transition-all"
+                            style={{ width: `${statusStudents.length > 0 ? Math.round((hasCnt / statusStudents.length) * 100) : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Desktop */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs">
+                            <th className="px-5 py-3 text-center font-semibold w-10">#</th>
+                            <th className="px-5 py-3 font-semibold w-28">รหัส</th>
+                            <th className="px-5 py-3 font-semibold">ชื่อนักเรียน</th>
+                            <th className="px-5 py-3 text-center font-semibold w-32">สถานะ</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-slate-100">
                           {statusStudents.map((s, idx) => {
-                            const hasGrade = grades.some(
-                              g =>
-                                g.student_id === s.student_id &&
-                                g.subject.trim().toLowerCase() === statusSubject.trim().toLowerCase() &&
-                                g.term === statusTerm
-                            );
+                            const has = grades.some(g => g.student_id === s.student_id && g.subject.trim().toLowerCase() === statusSubject.trim().toLowerCase() && g.term === statusTerm);
                             return (
-                              <tr key={s.id} className={`hover:bg-gray-50/50 ${hasGrade ? "bg-green-50/30" : ""}`}>
-                                <td className="px-6 py-4 text-center text-gray-400">{idx + 1}</td>
-                                <td className="px-6 py-4 font-semibold text-indigo-600">{s.student_id}</td>
-                                <td className="px-6 py-4 text-gray-800">{s.name}</td>
-                                <td className="px-6 py-4 text-center">
-                                  {hasGrade ? (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 font-semibold text-xs">
-                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                      </svg>
+                              <tr key={s.id} className={`hover:bg-slate-50 ${has ? "bg-emerald-50/40" : ""}`}>
+                                <td className="px-5 py-3.5 text-center text-slate-400 text-xs">{idx + 1}</td>
+                                <td className="px-5 py-3.5 font-bold text-indigo-600 text-xs">{s.student_id}</td>
+                                <td className="px-5 py-3.5 font-medium text-slate-800">{s.name}</td>
+                                <td className="px-5 py-3.5 text-center">
+                                  {has ? (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-xs">
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                                       บันทึกแล้ว
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 font-semibold text-xs">
-                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                      </svg>
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-700 font-semibold text-xs">
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                                       ยังไม่บันทึก
                                     </span>
                                   )}
@@ -1080,246 +1130,297 @@ export default function TeacherPortal() {
                             );
                           })}
                           {statusStudents.length === 0 && (
-                            <tr>
-                              <td colSpan={4} className="py-10 text-center text-gray-400">ไม่มีข้อมูลนักเรียนในชั้นเรียนนี้</td>
-                            </tr>
+                            <tr><td colSpan={4} className="py-10 text-center text-slate-400">ไม่มีนักเรียนในห้องนี้</td></tr>
                           )}
                         </tbody>
                       </table>
                     </div>
 
-                    {/* Mobile: Cards */}
-                    <div className="md:hidden space-y-3">
-                      {statusStudents.length === 0 ? (
-                        <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                          ไม่มีข้อมูลนักเรียนในชั้นเรียนนี้
-                        </div>
-                      ) : (
-                        statusStudents.map((s, idx) => {
-                          const hasGrade = grades.some(
-                            g =>
-                              g.student_id === s.student_id &&
-                              g.subject.trim().toLowerCase() === statusSubject.trim().toLowerCase() &&
-                              g.term === statusTerm
-                          );
-                          return (
-                            <div key={s.id} className={`flex items-center justify-between gap-3 rounded-2xl border border-gray-200 p-4 ${hasGrade ? "bg-green-50/30" : "bg-white"}`}>
-                              <div className="min-w-0">
-                                <div className="text-xs text-gray-400 font-medium">ที่ {idx + 1}</div>
-                                <div className="font-semibold text-indigo-600">{s.student_id}</div>
-                                <div className="text-gray-800">{s.name}</div>
-                              </div>
-                              {hasGrade ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 font-semibold text-xs shrink-0">
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  บันทึกแล้ว
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 font-semibold text-xs shrink-0">
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                  ยังไม่บันทึก
-                                </span>
-                              )}
+                    {/* Mobile */}
+                    <div className="md:hidden divide-y divide-slate-100">
+                      {statusStudents.map((s, idx) => {
+                        const has = grades.some(g => g.student_id === s.student_id && g.subject.trim().toLowerCase() === statusSubject.trim().toLowerCase() && g.term === statusTerm);
+                        return (
+                          <div key={s.id} className={`flex items-center justify-between p-4 ${has ? "bg-emerald-50/40" : ""}`}>
+                            <div>
+                              <div className="font-semibold text-slate-800">{s.name}</div>
+                              <div className="text-xs text-indigo-600 font-bold mt-0.5">{s.student_id}</div>
                             </div>
-                          );
-                        })
-                      )}
+                            {has ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                บันทึกแล้ว
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-100 text-rose-700 font-bold text-xs">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                ยังไม่บันทึก
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </>
-                ) : !statusSubject ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200 font-semibold">
-                    กรุณาเลือกรายวิชาในช่องด้านบน เพื่อดูสถานะการกรอกคะแนน
                   </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200 font-semibold">
-                    👈 กรุณาเลือกชั้นเรียนในช่องด้านบน เพื่อดูสถานะรายบุคคล
-                  </div>
-                )}
+                );
+              })()
+            ) : (
+              <div className="text-center py-16 text-slate-400">
+                <svg className="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                <p className="font-semibold text-slate-500">{!statusSubject ? "เลือกรายวิชาเพื่อดูสถานะ" : "เลือกชั้นเรียนเพื่อดูรายชื่อ"}</p>
               </div>
             )}
+          </div>
+        )}
 
-            {/* ===== TAB 3: HOMEROOM ===== */}
-            {activeTab === "homeroom" && (
-              <div className="p-8">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">ข้อมูลเด็กในประจำชั้น</h2>
-                  <p className="text-gray-500 text-sm">
-                    {homeroomClass
-                      ? `สรุปเกรดเฉลี่ยของเด็กห้อง ${homeroomClass.name}`
-                      : "คุณยังไม่ได้ถูกกำหนดให้เป็นครูประจำชั้น"}
-                  </p>
+        {/* ==================== TAB 3: HOMEROOM ==================== */}
+        {activeTab === "homeroom" && (
+          <div className="space-y-5">
+            {!homeroomClass ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
                 </div>
-
-                {!homeroomClass ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                    โปรดติดต่อแอดมิน เพื่อผูกข้อมูลครูประจำชั้นของคุณ
-                  </div>
-                ) : (
-                  <>
-                    {/* Desktop: Table */}
-                    <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200">
-                      <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
-                          <tr>
-                            <th className="px-5 py-3.5 font-semibold text-center w-10">ที่</th>
-                            <th className="px-5 py-3.5 font-semibold">รหัสนักเรียน</th>
-                            <th className="px-5 py-3.5 font-semibold">ชื่อ-สกุล</th>
-                            <th className="px-5 py-3.5 font-semibold text-center">จำนวนวิชา</th>
-                            <th className="px-5 py-3.5 font-semibold text-center">เกรดเฉลี่ย</th>
-                            <th className="px-5 py-3.5 font-semibold text-center">สถานะ</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {homeroomStudents.length === 0 ? (
-                            <tr>
-                              <td colSpan={6} className="py-10 text-center text-gray-400">
-                                ไม่มีข้อมูลนักเรียนในห้องประจำชั้นนี้
-                              </td>
-                            </tr>
-                          ) : (
-                            homeroomStudents.map((s, idx) => {
-                              const gpa = calculateGPAForStudent(s.student_id);
-                              const gpaNum = parseFloat(gpa);
-                              const subjectCount = grades.filter(g => g.student_id === s.student_id).length;
-                              let gpaColor = "bg-green-100 text-green-700 border-green-200";
-                              let statusLabel = "ดีเยี่ยม";
-                              if (gpaNum < 1.0) { gpaColor = "bg-red-100 text-red-700 border-red-200"; statusLabel = "ต้องปรับปรุง"; }
-                              else if (gpaNum < 2.0) { gpaColor = "bg-orange-100 text-orange-700 border-orange-200"; statusLabel = "พอใช้"; }
-                              else if (gpaNum < 3.0) { gpaColor = "bg-yellow-100 text-yellow-700 border-yellow-200"; statusLabel = "ดี"; }
-
-                              return (
-                                <tr key={s.id} className="hover:bg-indigo-50/30 transition-colors">
-                                  <td className="px-5 py-4 text-center text-gray-400">{idx + 1}</td>
-                                  <td className="px-5 py-4 font-semibold text-indigo-600">{s.student_id}</td>
-                                  <td className="px-5 py-4 font-medium text-gray-800">{s.name}</td>
-                                  <td className="px-5 py-4 text-center text-gray-600">{subjectCount} วิชา</td>
-                                  <td className="px-5 py-4 text-center">
-                                    <span className={`inline-block px-3 py-1 rounded-lg border font-bold text-base ${gpaColor}`}>
-                                      {gpa}
-                                    </span>
-                                  </td>
-                                  <td className="px-5 py-4 text-center">
-                                    <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${gpaColor}`}>
-                                      {statusLabel}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Mobile: Cards */}
-                    <div className="md:hidden space-y-3">
-                      {homeroomStudents.length === 0 ? (
-                        <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                          ไม่มีข้อมูลนักเรียนในห้องประจำชั้นนี้
-                        </div>
-                      ) : (
-                        homeroomStudents.map((s, idx) => {
-                          const gpa = calculateGPAForStudent(s.student_id);
-                          const gpaNum = parseFloat(gpa);
-                          const subjectCount = grades.filter(g => g.student_id === s.student_id).length;
-                          let gpaColor = "bg-green-100 text-green-700 border-green-200";
-                          let statusLabel = "ดีเยี่ยม";
-                          if (gpaNum < 1.0) { gpaColor = "bg-red-100 text-red-700 border-red-200"; statusLabel = "ต้องปรับปรุง"; }
-                          else if (gpaNum < 2.0) { gpaColor = "bg-orange-100 text-orange-700 border-orange-200"; statusLabel = "พอใช้"; }
-                          else if (gpaNum < 3.0) { gpaColor = "bg-yellow-100 text-yellow-700 border-yellow-200"; statusLabel = "ดี"; }
-
-                          return (
-                            <div key={s.id} className="rounded-2xl border border-gray-200 p-4 bg-white">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-xs text-gray-400 font-medium">ที่ {idx + 1}</div>
-                                  <div className="font-semibold text-indigo-600">{s.student_id}</div>
-                                  <div className="font-medium text-gray-800">{s.name}</div>
-                                </div>
-                                <span className={`inline-block px-3 py-1 rounded-lg border font-bold text-base shrink-0 ${gpaColor}`}>
-                                  {gpa}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600">
-                                <span>{subjectCount} วิชา</span>
-                                <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${gpaColor}`}>
-                                  {statusLabel}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </>
-                )}
+                <h3 className="text-lg font-bold text-slate-700 mb-1">ยังไม่ได้รับมอบหมายห้องประจำชั้น</h3>
+                <p className="text-sm text-slate-400">กรุณาติดต่อแอดมินเพื่อให้ผูกข้อมูลครูประจำชั้น</p>
               </div>
-            )}
-
-            {/* ===== TAB 4: TEACHING SCHEDULE ===== */}
-            {activeTab === "schedule" && (
-              <div className="p-8">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">ตารางสอน</h2>
-                  <p className="text-gray-500 text-sm">ตารางสอนของคุณตามที่แอดมินกำหนด</p>
+            ) : (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: "นักเรียนทั้งหมด", value: homeroomStudents.length, color: "bg-indigo-50 text-indigo-700", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
+                    { label: "GPA ≥ 3.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) >= 3.0).length, color: "bg-emerald-50 text-emerald-700", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
+                    { label: "GPA < 2.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 2.0 && parseFloat(calculateGPAForStudent(s.student_id)) > 0).length, color: "bg-amber-50 text-amber-700", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
+                    { label: "GPA < 1.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 1.0 && grades.some(g => g.student_id === s.student_id)).length, color: "bg-rose-50 text-rose-700", icon: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+                  ].map((card, i) => (
+                    <div key={i} className={`rounded-2xl border p-4 ${card.color.replace("text-", "border-").replace("700", "200").replace("50", "100").replace("bg-", "border-")} bg-white shadow-sm`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${card.color}`}>
+                        <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={card.icon} />
+                        </svg>
+                      </div>
+                      <div className="text-2xl font-extrabold text-slate-800">{card.value}</div>
+                      <div className="text-xs text-slate-500 font-medium mt-0.5">{card.label}</div>
+                    </div>
+                  ))}
                 </div>
 
-                {schedulePeriods.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                    ยังไม่มีการกำหนดคาบเรียนในเทอมนี้
+                {/* Student Table */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="font-bold text-slate-800">รายชื่อนักเรียน · ห้อง {homeroomClass.name}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">เกรดเฉลี่ยสะสม (GPA) เฉพาะวิชาหลัก</p>
+                  </div>
+
+                  {/* Desktop */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs">
+                          <th className="px-5 py-3 text-center font-semibold w-10">#</th>
+                          <th className="px-5 py-3 font-semibold w-28">รหัส</th>
+                          <th className="px-5 py-3 font-semibold">ชื่อ-สกุล</th>
+                          <th className="px-5 py-3 text-center font-semibold w-24">จำนวนวิชา</th>
+                          <th className="px-5 py-3 text-center font-semibold w-24">GPA</th>
+                          <th className="px-5 py-3 text-center font-semibold w-28">ระดับ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {homeroomStudents.length === 0 ? (
+                          <tr><td colSpan={6} className="py-12 text-center text-slate-400">ยังไม่มีนักเรียนในห้องนี้</td></tr>
+                        ) : (
+                          homeroomStudents.map((s, idx) => {
+                            const gpa = calculateGPAForStudent(s.student_id);
+                            const gpaNum = parseFloat(gpa);
+                            const subjectCount = grades.filter(g => g.student_id === s.student_id).length;
+                            let gpaColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
+                            let statusLabel = "ดีเยี่ยม";
+                            if (gpaNum < 1.0) { gpaColor = "bg-rose-100 text-rose-700 border-rose-200"; statusLabel = "ต้องปรับปรุง"; }
+                            else if (gpaNum < 2.0) { gpaColor = "bg-orange-100 text-orange-700 border-orange-200"; statusLabel = "พอใช้"; }
+                            else if (gpaNum < 3.0) { gpaColor = "bg-amber-100 text-amber-700 border-amber-200"; statusLabel = "ดี"; }
+                            return (
+                              <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-5 py-4 text-center text-slate-400 text-xs">{idx + 1}</td>
+                                <td className="px-5 py-4 font-bold text-indigo-600 text-xs">{s.student_id}</td>
+                                <td className="px-5 py-4 font-medium text-slate-800">{s.name}</td>
+                                <td className="px-5 py-4 text-center text-slate-500 text-sm">{subjectCount}</td>
+                                <td className="px-5 py-4 text-center">
+                                  <span className={`inline-block px-3 py-1 rounded-xl border font-extrabold text-base ${gpaColor}`}>{gpa}</span>
+                                </td>
+                                <td className="px-5 py-4 text-center">
+                                  <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${gpaColor}`}>{statusLabel}</span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile */}
+                  <div className="md:hidden divide-y divide-slate-100">
+                    {homeroomStudents.map((s, idx) => {
+                      const gpa = calculateGPAForStudent(s.student_id);
+                      const gpaNum = parseFloat(gpa);
+                      const subjectCount = grades.filter(g => g.student_id === s.student_id).length;
+                      let gpaColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
+                      let statusLabel = "ดีเยี่ยม";
+                      if (gpaNum < 1.0) { gpaColor = "bg-rose-100 text-rose-700 border-rose-200"; statusLabel = "ต้องปรับปรุง"; }
+                      else if (gpaNum < 2.0) { gpaColor = "bg-orange-100 text-orange-700 border-orange-200"; statusLabel = "พอใช้"; }
+                      else if (gpaNum < 3.0) { gpaColor = "bg-amber-100 text-amber-700 border-amber-200"; statusLabel = "ดี"; }
+                      return (
+                        <div key={s.id} className="p-4 flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-slate-800 truncate">{s.name}</div>
+                            <div className="text-xs text-indigo-600 font-bold mt-0.5">{s.student_id} · {subjectCount} วิชา</div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className={`px-3 py-1 rounded-xl border font-extrabold text-lg ${gpaColor}`}>{gpa}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${gpaColor}`}>{statusLabel}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ==================== TAB 4: SCHEDULE ==================== */}
+        {activeTab === "schedule" && (
+          <div className="space-y-5">
+            {schedulePeriods.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-slate-700 mb-1">ยังไม่มีตารางสอน</h3>
+                <p className="text-sm text-slate-400">แอดมินยังไม่ได้กำหนดคาบเรียนในเทอมนี้</p>
+              </div>
+            ) : (
+              <>
+                {/* Quick view: my schedule as cards per day */}
+                {myScheduleEntries.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center text-slate-400">
+                    <p className="font-semibold">ยังไม่มีตารางสอนสำหรับคุณในเทอมนี้</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-gray-200">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
-                        <tr>
-                          <th className="px-3 py-3 font-semibold">คาบ</th>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {ACTIVE_DAYS.map(day => {
+                      const dayEntries = myScheduleEntries.filter(e => Number(e.day_of_week) === day.value);
+                      if (dayEntries.length === 0) return null;
+                      return (
+                        <div key={day.value} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                          <div className={`px-4 py-3 flex items-center gap-2 border-b ${DAY_COLORS[day.value]}`}>
+                            <span className="font-extrabold text-sm">วัน{day.label}</span>
+                            <span className="ml-auto text-xs font-semibold opacity-70">{dayEntries.length} คาบ</span>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {dayEntries
+                              .sort((a, b) => Number(a.period_no) - Number(b.period_no))
+                              .map(e => {
+                                const period = schedulePeriods.find(p => p.id === e.period_id);
+                                return (
+                                  <div key={e.id} className="p-4 flex items-start gap-3">
+                                    <div className="shrink-0 text-center w-10">
+                                      <div className="text-xs font-extrabold text-slate-700">คาบ {e.period_no}</div>
+                                      <div className="text-[10px] text-slate-400">{e.start_time}</div>
+                                      <div className="text-[10px] text-slate-400">{e.end_time}</div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-bold text-slate-800 text-sm truncate">{e.subject_name}</div>
+                                      <div className="flex items-center gap-1.5 mt-1">
+                                        <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-100">
+                                          ห้อง {e.classroom_name}
+                                        </span>
+                                        {period?.label && (
+                                          <span className="text-xs bg-amber-50 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-100">
+                                            {period.label}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Full schedule grid */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="font-bold text-slate-800 text-sm">ตารางเรียนทั้งหมด (ทุกวิชา ทุกห้อง)</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
+                          <th className="px-3 py-3 text-left font-semibold sticky left-0 bg-slate-50 z-10 min-w-[80px]">คาบ</th>
                           {ACTIVE_DAYS.map(d => (
-                            <th key={d.value} className="px-3 py-3 font-semibold text-center">{d.label}</th>
+                            <th key={d.value} className="px-3 py-3 text-center font-semibold min-w-[100px]">
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${DAY_COLORS[d.value]}`}>{d.label}</span>
+                            </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-100">
                         {schedulePeriods.map(p => (
-                          <tr key={p.id} className="hover:bg-indigo-50/30 transition-colors">
-                            <td className="px-3 py-2 font-semibold text-gray-700 whitespace-nowrap align-top">
-                              คาบ {p.period_no}
-                              <div className="text-xs text-gray-400 font-normal">{p.start_time}-{p.end_time}</div>
-                              {p.label && <div className="text-xs text-amber-600 font-normal">{p.label}</div>}
+                          <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-3 py-2.5 sticky left-0 bg-white font-semibold text-slate-700 whitespace-nowrap z-10">
+                              <div>คาบ {p.period_no}</div>
+                              <div className="text-[10px] text-slate-400 font-normal">{p.start_time}–{p.end_time}</div>
+                              {p.label && <div className="text-[10px] text-amber-600 font-medium">{p.label}</div>}
                             </td>
-                            {ACTIVE_DAYS.map(d => {
-                              const entries = scheduleEntries.filter(e => e.teacher_id === teacherUser?.id && Number(e.day_of_week) === d.value && e.period_id === p.id);
-                              return (
-                                <td key={d.value} className="px-3 py-2 align-top text-center">
-                                  {entries.length === 0 ? (
-                                    <span className="text-gray-300">-</span>
-                                  ) : (
-                                    <div className="space-y-1">
-                                      {entries.map(e => (
-                                        <div key={e.id} className="bg-indigo-50 text-indigo-700 rounded-lg px-2 py-1 text-xs font-semibold">
-                                          {e.subject_name}
-                                          <div className="text-[11px] text-indigo-500 font-normal">{e.classroom_name}</div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </td>
-                              );
-                            })}
+                            {p.is_break ? (
+                              <td colSpan={ACTIVE_DAYS.length} className="px-2 py-2 align-middle text-center bg-slate-100 border border-slate-200 rounded-md">
+                                <div className="font-bold text-slate-400 tracking-widest">{p.label || "พักเบรก"}</div>
+                              </td>
+                            ) : (
+                              ACTIVE_DAYS.map(d => {
+                                const entries = myScheduleEntries.filter(e => Number(e.day_of_week) === d.value && e.period_id === p.id);
+                                return (
+                                  <td key={d.value} className="px-2 py-2 text-center align-top">
+                                    {entries.length === 0 ? (
+                                      <span className="text-slate-200">–</span>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {entries.map(e => (
+                                          <div key={e.id} className="bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-2 py-1.5 text-[11px] font-semibold">
+                                            <div className="truncate">{e.subject_name}</div>
+                                            <div className="text-indigo-400 font-normal text-[10px]">{e.classroom_name}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              })
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                )}
-              </div>
+                </div>
+              </>
             )}
           </div>
-        </div>
+        )}
+
       </main>
     </div>
   );

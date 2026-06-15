@@ -18,9 +18,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { username, password, role, student_id, homeroom_classroom_id, subjects } = await req.json();
+  const { name, username, password, role, student_id, homeroom_classroom_id, subjects } = await req.json();
 
-  if (!username?.trim() || !password?.trim() || !role) {
+  let finalName = name?.trim();
+  let finalUsername = username?.trim();
+  let finalPassword = password?.trim();
+  let finalStudentId = student_id?.trim();
+
+  if (role === 'student') {
+    if (!finalStudentId) {
+      finalStudentId = `S${Math.floor(10000 + Math.random() * 90000)}`;
+    }
+    if (!finalUsername) {
+      finalUsername = `std${Math.floor(10000 + Math.random() * 90000)}`;
+    }
+    if (!finalPassword) {
+      finalPassword = "password123"; // Default password
+    }
+  } else if (role === 'teacher') {
+    if (!finalUsername) {
+      finalUsername = finalName || `tch${Math.floor(10000 + Math.random() * 90000)}`;
+    }
+    if (!finalPassword) {
+      finalPassword = "password123";
+    }
+  }
+
+  if (!finalUsername || !finalPassword || !role) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -31,7 +55,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const hashedPassword = await bcrypt.hash(password.trim(), 10);
+  const hashedPassword = await bcrypt.hash(finalPassword, 10);
 
   // Insert ลง DB
   let result;
@@ -39,20 +63,21 @@ export async function POST(req: NextRequest) {
      result = await pool.query(
       `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, subjects)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, role, student_id, homeroom_classroom_id, subjects`,
-      [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null]
+      [finalUsername, hashedPassword, role, finalStudentId ?? null, homeroom_classroom_id ?? null, subjects ?? null]
     );
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 
   // ถ้าเป็น student ให้สร้างในตาราง students อัตโนมัติ
-  if (role === "student" && student_id) {
+  if (role === "student" && finalStudentId) {
     try {
-      const checkRes = await pool.query("SELECT id FROM students WHERE student_id = $1", [student_id]);
+      const checkRes = await pool.query("SELECT id FROM students WHERE student_id = $1", [finalStudentId]);
       if (checkRes.rows.length === 0) {
+        const studentName = finalName || finalUsername;
         await pool.query(
           "INSERT INTO students (name, student_id, classroom_id) VALUES ($1, $2, null)",
-          [username.trim(), student_id.trim()]
+          [studentName, finalStudentId]
         );
       }
     } catch (err) {

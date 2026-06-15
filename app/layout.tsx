@@ -1,11 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Kanit } from "next/font/google";
+import { Inter, Sarabun, Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 
-const kanit = Kanit({
-  variable: "--font-kanit",
-  subsets: ["thai", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const sarabun = Sarabun({
+  variable: "--font-sarabun",
+  subsets: ["thai"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const arabic = Noto_Naskh_Arabic({
+  variable: "--font-arabic",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -29,8 +40,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${kanit.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col font-[var(--font-kanit)] bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
+    <html lang="th" className={`${inter.variable} ${sarabun.variable} ${arabic.variable} h-full antialiased`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
         <Providers>
           {children}
         </Providers>

@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const result = await pool.query(
-            "SELECT id, username, password, role FROM users WHERE username = $1",
+            "SELECT id, username, password, role FROM users WHERE username = $1 OR student_id = $1",
             [credentials.username]
           );
 

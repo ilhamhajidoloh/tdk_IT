@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { setting_id, period_no, start_time, end_time, label } = await req.json();
+  const { setting_id, period_no, start_time, end_time, label, is_break } = await req.json();
   if (!setting_id || !start_time || !end_time) {
     return NextResponse.json({ error: "Missing required fields: setting_id, start_time, end_time" }, { status: 400 });
   }
@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await pool.query(
-    "INSERT INTO schedule_periods (setting_id, period_no, start_time, end_time, label) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-    [setting_id, nextPeriodNo, start_time, end_time, label || null]
+    "INSERT INTO schedule_periods (setting_id, period_no, start_time, end_time, label, is_break) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    [setting_id, nextPeriodNo, start_time, end_time, label || null, is_break || false]
   );
   return NextResponse.json(result.rows[0], { status: 201 });
 }

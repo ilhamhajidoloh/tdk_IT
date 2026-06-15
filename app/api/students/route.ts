@@ -30,11 +30,11 @@ export async function GET(req: NextRequest) {
   let result;
   if (classroomId) {
     result = await pool.query(
-      "SELECT * FROM students WHERE classroom_id = $1 ORDER BY name",
+      "SELECT * FROM students WHERE classroom_id = $1 ORDER BY student_number ASC NULLS LAST, name ASC",
       [classroomId]
     );
   } else {
-    result = await pool.query("SELECT * FROM students ORDER BY name");
+    result = await pool.query("SELECT * FROM students ORDER BY student_number ASC NULLS LAST, name ASC");
   }
   return NextResponse.json(result.rows);
 }
@@ -64,4 +64,32 @@ export async function POST(req: NextRequest) {
     [name.trim(), studentIdVal, classroom_id || null]
   );
   return NextResponse.json(result.rows[0], { status: 201 });
+}
+
+export async function PUT(req: NextRequest) {
+  if (!await verifyAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const { id, student_number } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: "Missing student ID" }, { status: 400 });
+  }
+
+  try {
+    const result = await pool.query(
+      "UPDATE students SET student_number = $1 WHERE id = $2 RETURNING *",
+      [student_number === "" || student_number === null ? null : Number(student_number), id]
+    );
+    
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+    
+    return NextResponse.json(result.rows[0]);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

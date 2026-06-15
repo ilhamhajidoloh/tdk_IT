@@ -9,7 +9,7 @@ type LoginTab = "staff" | "teacher" | "student";
 
 interface Classroom { id: string; name: string; }
 interface Teacher { id: string; username: string; }
-interface Student { id: string; name: string; student_id: string; }
+interface Student { id: string; name: string; student_id: string; student_number?: number | null; }
 
 export default function LoginPage() {
   const router = useRouter();
@@ -196,7 +196,9 @@ export default function LoginPage() {
                       <option value="" disabled>ไม่มีนักเรียนในชั้นนี้</option>
                     ) : (
                       students.map((s) => (
-                        <option key={s.id} value={s.student_id}>{s.name} ({s.student_id})</option>
+                        <option key={s.id} value={s.student_id}>
+                          {s.student_number ? `เลขที่ ${s.student_number} : ` : ""}{s.name} ({s.student_id})
+                        </option>
                       ))
                     )}
                   </select>
