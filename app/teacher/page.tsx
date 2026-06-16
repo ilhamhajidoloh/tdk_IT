@@ -527,6 +527,58 @@ export default function TeacherPortal() {
     };
   };
 
+  const handleExportTeacherSchedule = () => {
+    if (!schedulePeriods.length || !myScheduleEntries.length) return;
+    const teacherName = teacherUser?.username || "ครู";
+    const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+    const thBase = "padding:5px 8px;background:#1e293b;color:#f8fafc;font-size:10px;font-weight:700;text-align:center;border:1px solid #334155;";
+    const periodHeader = `<th style="${thBase}text-align:left;min-width:80px;">คาบ</th>`;
+    const dayHeaders = ACTIVE_DAYS.map(d => `<th style="${thBase}min-width:100px;">วัน${d.label}</th>`).join("");
+    const rows = schedulePeriods.map(p => {
+      const pCell = `<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:11px;font-weight:700;white-space:nowrap;vertical-align:middle;">
+        ${p.label ? `<div style="font-size:9px;color:#d97706;font-weight:700;">${p.label}</div>` : ""}
+        <div style="color:#374151;">คาบ ${p.period_no}</div>
+        <div style="font-size:9px;color:#94a3b8;font-weight:400;">${p.start_time}–${p.end_time}</div>
+      </td>`;
+      if (p.is_break) {
+        return `<tr>${pCell}<td colspan="${ACTIVE_DAYS.length}" style="padding:5px;text-align:center;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:10px;">${p.label || "พักเบรก"}</td></tr>`;
+      }
+      const cells = ACTIVE_DAYS.map(d => {
+        const entries = myScheduleEntries.filter(e => Number(e.day_of_week) === d.value && e.period_id === p.id);
+        if (!entries.length) return `<td style="border:1px solid #f1f5f9;min-width:100px;"></td>`;
+        return `<td style="padding:5px 6px;border:1px solid #bfdbfe;background:#eff6ff;text-align:center;vertical-align:middle;">
+          ${entries.map(e => `<div style="margin-bottom:2px;">
+            <div style="font-size:11px;font-weight:700;color:#1e40af;">${e.subject_name}</div>
+            <div style="font-size:9px;color:#3b82f6;">ห้อง ${e.classroom_name}</div>
+          </div>`).join("")}
+        </td>`;
+      }).join("");
+      return `<tr>${pCell}${cells}</tr>`;
+    }).join("");
+    const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>ตารางสอน · ${teacherName}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Inter','Sarabun','Noto Naskh Arabic',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;}
+  h1{font-size:18px;font-weight:800;margin-bottom:4px;}
+  .meta{font-size:12px;color:#64748b;margin-bottom:16px;}
+  .print-btn{position:fixed;top:12px;right:12px;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+  @media print{.print-btn{display:none;} @page{margin:1cm;size:A4 landscape;}}
+</style>
+</head><body>
+<button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+<h1>ตารางสอน · ${teacherName}</h1>
+<div class="meta">เทอม ${enterTerm} · ออกรายงาน ณ ${dateStr}</div>
+<table style="width:100%;border-collapse:collapse;font-family:inherit;">
+  <thead><tr>${periodHeader}${dayHeaders}</tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* ===== HEADER ===== */}
@@ -1407,6 +1459,20 @@ export default function TeacherPortal() {
               </div>
             ) : (
               <>
+                {/* Export button */}
+                {myScheduleEntries.length > 0 && (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleExportTeacherSchedule}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                      พิมพ์ตารางสอน
+                    </button>
+                  </div>
+                )}
                 {/* Quick view: my schedule as cards per day */}
                 {myScheduleEntries.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center text-slate-400">
