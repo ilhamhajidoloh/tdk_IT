@@ -10,11 +10,13 @@ interface DBUser {
   student_id?: string; homeroom_classroom_id?: string; subjects?: string[]; email?: string | null;
 }
 interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; student_number?: number | null; }
-interface DBSubject { id: string; name: string; teacher_id?: string; teacher_name?: string; classroom_ids?: string[]; classroom_names?: string[]; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; }
+interface DBSubject { id: string; name: string; teacher_id?: string; teacher_name?: string; teacher_ids?: string[]; teacher_names?: string[]; classroom_ids?: string[]; classroom_names?: string[]; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; }
 interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; is_break?: boolean; }
 interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;
-  subject_id: string; subject_name: string; teacher_id: string | null; teacher_name: string | null;
+  subject_id: string; subject_name: string;
+  teacher_id: string | null; teacher_name: string | null;
+  teacher_names?: string[];
   day_of_week: number | string; period_id: string; period_no: number | string; start_time: string; end_time: string; label?: string | null;
 }
 import { useRouter } from "next/navigation";
@@ -225,12 +227,13 @@ export default function AdminPortal() {
 
   // Subject Form State
   const [subjectName, setSubjectName] = useState("");
-  const [subjectTeacherId, setSubjectTeacherId] = useState("");
+  const [subjectTeacherIds, setSubjectTeacherIds] = useState<string[]>([]);
   const [subjectClassroomIds, setSubjectClassroomIds] = useState<string[]>([]);
   const [subjectSettingId, setSubjectSettingId] = useState<number | null>(null);
   const [subjectMidtermMax, setSubjectMidtermMax] = useState<number>(50);
   const [subjectFinalMax, setSubjectFinalMax] = useState<number>(50);
   const [subjectType, setSubjectType] = useState<"main" | "activity">("main");
+  const [subjectHasScore, setSubjectHasScore] = useState<boolean>(true);
   const [subjectCreditHours, setSubjectCreditHours] = useState<number>(1);
 
   // Schedule State
@@ -1367,12 +1370,13 @@ export default function AdminPortal() {
     setSubjectModalMode("add");
     setEditingSubject(null);
     setSubjectName("");
-    setSubjectTeacherId("");
+    setSubjectTeacherIds([]);
     setSubjectClassroomIds([]);
     setSubjectSettingId(selectedSubjectSettingId);
     setSubjectMidtermMax(50);
     setSubjectFinalMax(50);
     setSubjectType("main");
+    setSubjectHasScore(true);
     setSubjectCreditHours(1);
     setValidationError("");
     setIsSubjectModalOpen(true);
@@ -1382,12 +1386,19 @@ export default function AdminPortal() {
     setSubjectModalMode("edit");
     setEditingSubject(subject);
     setSubjectName(subject.name);
-    setSubjectTeacherId(subject.teacher_id || "");
+    const ids = subject.teacher_ids && subject.teacher_ids.length > 0
+      ? subject.teacher_ids
+      : subject.teacher_id ? [subject.teacher_id] : [];
+    setSubjectTeacherIds(ids);
     setSubjectClassroomIds(subject.classroom_ids || []);
     setSubjectSettingId(subject.setting_id ?? selectedSubjectSettingId);
     setSubjectMidtermMax(subject.midterm_max_score ?? 50);
     setSubjectFinalMax(subject.final_max_score ?? 50);
     setSubjectType(subject.subject_type ?? "main");
+    setSubjectHasScore(
+      (subject.subject_type ?? "main") !== "activity" ||
+      (Number(subject.midterm_max_score) + Number(subject.final_max_score)) > 0
+    );
     setSubjectCreditHours(Number(subject.credit_hours) || 1);
     setValidationError("");
     setIsSubjectModalOpen(true);
@@ -1401,11 +1412,11 @@ export default function AdminPortal() {
 
     const body: Record<string, unknown> = {
       name: subjectName.trim(),
-      teacher_id: subjectTeacherId === "none" ? null : (subjectTeacherId || null),
+      teacher_ids: subjectTeacherIds,
       classroom_ids: subjectClassroomIds,
       setting_id: subjectSettingId || null,
-      midterm_max_score: subjectMidtermMax,
-      final_max_score: subjectFinalMax,
+      midterm_max_score: subjectType === "activity" && !subjectHasScore ? 0 : subjectMidtermMax,
+      final_max_score: subjectType === "activity" && !subjectHasScore ? 0 : subjectFinalMax,
       subject_type: subjectType,
       credit_hours: subjectType === "main" ? subjectCreditHours : 1,
     };
@@ -1524,7 +1535,14 @@ export default function AdminPortal() {
     const res = await fetch("/api/schedules", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ setting_id: selectedSubjectSettingId, classroom_id: scheduleClassroomId, subject_id: subjectId, day_of_week: day, period_id: periodId }),
+      body: JSON.stringify({
+        setting_id: selectedSubjectSettingId,
+        classroom_id: scheduleClassroomId,
+        subject_id: subjectId,
+        day_of_week: day,
+        period_id: periodId,
+        teacher_id: null,
+      }),
     });
     if (!res.ok) {
       Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ", confirmButtonColor: "#4f46e5" });
@@ -1540,8 +1558,9 @@ export default function AdminPortal() {
       classroom_name: classroom?.name || "",
       subject_id: subjectId,
       subject_name: subj?.name || "",
-      teacher_id: subj?.teacher_id || null,
-      teacher_name: subj?.teacher_name || null,
+      teacher_id: null,
+      teacher_name: null,
+      teacher_names: subj?.teacher_names || (subj?.teacher_name ? [subj.teacher_name] : []),
       day_of_week: day,
       period_id: periodId,
       period_no: period?.period_no ?? 0,
@@ -1553,6 +1572,34 @@ export default function AdminPortal() {
       ...prev.filter(e => !(e.classroom_id === scheduleClassroomId && Number(e.day_of_week) === day && e.period_id === periodId)),
       newEntry,
     ]);
+  };
+
+  const handleScheduleTeacherChange = async (day: number, periodId: string, subjectId: string, teacherId: string | null, existingEntryId?: string) => {
+    if (!token || !selectedSubjectSettingId || !scheduleClassroomId) return;
+
+    const res = await fetch("/api/schedules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        setting_id: selectedSubjectSettingId,
+        classroom_id: scheduleClassroomId,
+        subject_id: subjectId,
+        day_of_week: day,
+        period_id: periodId,
+        teacher_id: teacherId || null,
+      }),
+    });
+    if (!res.ok) {
+      Swal.fire({ icon: "error", title: "บันทึกครูไม่สำเร็จ", confirmButtonColor: "#4f46e5" });
+      return;
+    }
+    const saved = await res.json();
+    const overrideTeacher = teacherId ? users.find(u => u.id === teacherId) : null;
+    setScheduleEntries(prev => prev.map(e =>
+      e.id === (existingEntryId || saved.id)
+        ? { ...e, id: saved.id, teacher_id: teacherId, teacher_name: overrideTeacher?.username || null }
+        : e
+    ));
   };
 
   const handleEditUser = (user: DBUser) => {
@@ -2673,12 +2720,26 @@ export default function AdminPortal() {
                           {subjectsList.map(sub => (
                             <tr key={sub.id} className="hover:bg-gray-50/50">
                               <td className="px-6 py-4 font-semibold text-gray-800">{sub.name}</td>
-                              <td className="px-6 py-4 text-sm text-gray-600">{sub.teacher_name || "-"}</td>
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {sub.teacher_names && sub.teacher_names.length > 0
+                                  ? sub.teacher_names.join(", ")
+                                  : (sub.teacher_name || "-")}
+                                {sub.teacher_names && sub.teacher_names.length > 1 && (
+                                  <span className="ml-1.5 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">สอนรวม</span>
+                                )}
+                              </td>
                               <td className="px-6 py-4 text-sm text-gray-600">{sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</td>
                               <td className="px-6 py-4 text-center">
                                 {sub.subject_type === "activity" ? (
-                                  <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                    วิชากิจกรรม
+                                  <span className="inline-flex flex-col items-center gap-0.5">
+                                    <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                      วิชากิจกรรม
+                                    </span>
+                                    {(Number(sub.midterm_max_score) + Number(sub.final_max_score)) > 0 ? (
+                                      <span className="text-[11px] text-amber-600 font-semibold">มีคะแนน</span>
+                                    ) : (
+                                      <span className="text-[11px] text-slate-400">ไม่มีคะแนน</span>
+                                    )}
                                   </span>
                                 ) : (
                                   <span className="inline-flex flex-col items-center gap-0.5">
@@ -2690,7 +2751,9 @@ export default function AdminPortal() {
                                 )}
                               </td>
                               <td className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
-                                {sub.midterm_max_score ?? 50} / {sub.final_max_score ?? 50}
+                                {sub.subject_type === "activity" && (Number(sub.midterm_max_score) + Number(sub.final_max_score)) === 0
+                                  ? <span className="text-slate-400">—</span>
+                                  : `${sub.midterm_max_score ?? 50} / ${sub.final_max_score ?? 50}`}
                               </td>
                               <td className="px-6 py-4 text-center">
                                 <div className="flex items-center justify-center gap-1.5">
@@ -2720,7 +2783,15 @@ export default function AdminPortal() {
                         <div key={sub.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
                           <div className="font-semibold text-gray-800">{sub.name}</div>
                           <div className="text-xs text-gray-500 mt-1.5 space-y-0.5">
-                            <div><span className="font-medium">ครูผู้สอน:</span> {sub.teacher_name || "-"}</div>
+                            <div>
+                              <span className="font-medium">ครูผู้สอน:</span>{" "}
+                              {sub.teacher_names && sub.teacher_names.length > 0
+                                ? sub.teacher_names.join(", ")
+                                : (sub.teacher_name || "-")}
+                              {sub.teacher_names && sub.teacher_names.length > 1 && (
+                                <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">สอนรวม</span>
+                              )}
+                            </div>
                             <div><span className="font-medium">ชั้นเรียน:</span> {sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</div>
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium">ประเภทวิชา:</span>
@@ -2923,18 +2994,52 @@ export default function AdminPortal() {
                                     ) : (
                                       ACTIVE_DAYS.map(d => {
                                         const entry = scheduleEntries.find(e => e.classroom_id === scheduleClassroomId && Number(e.day_of_week) === d.value && e.period_id === p.id);
+                                        const selectedSubj = entry?.subject_id ? subjectsList.find(s => s.id === entry.subject_id) : null;
+                                        const subjectTeacherDisplay = selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 0
+                                          ? selectedSubj.teacher_names.join(", ")
+                                          : (selectedSubj?.teacher_name || "");
                                         return (
-                                          <td key={d.value} className="px-3 py-2 align-top">
+                                          <td key={d.value} className="px-3 py-2 align-top min-w-[140px]">
+                                            {/* Subject Selector */}
                                             <select
                                               value={entry?.subject_id ?? ""}
                                               onChange={ev => handleScheduleCellChange(d.value, p.id, ev.target.value, entry?.id)}
                                               className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
                                             >
                                               <option value="">- ว่าง -</option>
-                                              {subjectsForClassroom.map(s => (
-                                                <option key={s.id} value={s.id}>{s.name}{s.teacher_name ? ` (${s.teacher_name})` : ""}</option>
-                                              ))}
+                                              {subjectsForClassroom.map(s => {
+                                                const tDisplay = s.teacher_names && s.teacher_names.length > 0
+                                                  ? s.teacher_names.join(", ")
+                                                  : (s.teacher_name || "");
+                                                return (
+                                                  <option key={s.id} value={s.id}>
+                                                    {s.name}{tDisplay ? ` (${tDisplay})` : ""}
+                                                  </option>
+                                                );
+                                              })}
                                             </select>
+
+                                            {/* Teacher Override Selector (Scenario B) */}
+                                            {entry?.subject_id && (
+                                              <select
+                                                value={entry.teacher_id ?? ""}
+                                                onChange={ev => handleScheduleTeacherChange(d.value, p.id, entry.subject_id, ev.target.value || null, entry.id)}
+                                                className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 bg-blue-50/60 text-[11px] text-blue-700 focus:ring-2 focus:ring-blue-300 outline-none"
+                                                title="ระบุครูผู้สอนเฉพาะห้องนี้ (กรณีครูต่างกันแต่ละชั้น)"
+                                              >
+                                                <option value="">
+                                                  {subjectTeacherDisplay ? `ครู: ${subjectTeacherDisplay}` : "-- เลือกครูผู้สอน --"}
+                                                </option>
+                                                {users.filter(u => u.role === "teacher").map(u => (
+                                                  <option key={u.id} value={u.id}>{u.username}</option>
+                                                ))}
+                                              </select>
+                                            )}
+
+                                            {/* Scenario A indicator: co-teaching */}
+                                            {entry?.subject_id && !entry.teacher_id && selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 1 && (
+                                              <div className="mt-0.5 text-[10px] text-blue-600 font-bold">สอนรวม</div>
+                                            )}
                                           </td>
                                         );
                                       })
@@ -3510,22 +3615,53 @@ export default function AdminPortal() {
                 />
               </div>
 
-              {/* Teacher Select */}
+              {/* Teacher Multi-Select (Scenario A: co-teaching) */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
                   ครูผู้สอน
+                  <span className="ml-1.5 font-normal normal-case text-slate-400">(เลือกได้หลายคน กรณีสอนรวม)</span>
                 </label>
-                <select
-                  value={subjectTeacherId}
-                  onChange={(e) => setSubjectTeacherId(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-700 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                >
-                  <option value="">-- เลือกครูผู้สอน --</option>
-                  <option value="none">ไม่มีผู้สอน (ไม่มีผู้ใช้)</option>
-                  {users.filter(u => u.role === "teacher").map(u => (
-                    <option key={u.id} value={u.id}>{u.username}</option>
-                  ))}
-                </select>
+                {users.filter(u => u.role === "teacher").length === 0 ? (
+                  <div className="text-slate-400 text-xs py-2 px-3 rounded-xl border border-dashed border-slate-200">
+                    ไม่มีครูในระบบ กรุณาเพิ่มผู้ใช้ที่มีบทบาทครูก่อน
+                  </div>
+                ) : (
+                  <div className="max-h-[120px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-50">
+                    {users.filter(u => u.role === "teacher").map(u => {
+                      const isChecked = subjectTeacherIds.includes(u.id);
+                      return (
+                        <label
+                          key={u.id}
+                          className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors ${isChecked ? "bg-indigo-50" : "hover:bg-slate-50"}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setSubjectTeacherIds([...subjectTeacherIds, u.id]);
+                              } else {
+                                setSubjectTeacherIds(subjectTeacherIds.filter(id => id !== u.id));
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                          />
+                          <span className={`text-sm font-semibold ${isChecked ? "text-indigo-700" : "text-slate-700"}`}>
+                            {u.username}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {subjectTeacherIds.length > 1 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200">
+                    <span className="text-xs font-bold text-blue-700">สอนรวม:</span>
+                    <span className="text-xs text-blue-600">
+                      {subjectTeacherIds.map(id => users.find(u => u.id === id)?.username).filter(Boolean).join(", ")}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Subject Type */}
@@ -3558,9 +3694,30 @@ export default function AdminPortal() {
                 <p className="text-[11px] text-slate-400">
                   {subjectType === "main"
                     ? "นับหน่วยกิตและคำนวณเกรด A-F เข้า GPA"
-                    : "ตัดสินผ่าน/ไม่ผ่าน ไม่นับ GPA — ครูเลือกรูปแบบกรอกคะแนนเองได้"}
+                    : "ตัดสินผ่าน/ไม่ผ่าน ไม่นับ GPA"}
                 </p>
               </div>
+
+              {/* Has Score Toggle (activity only) */}
+              {subjectType === "activity" && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <button
+                    type="button"
+                    onClick={() => setSubjectHasScore(v => !v)}
+                    className={`relative shrink-0 w-10 h-5 rounded-full border-2 transition-all ${subjectHasScore ? "bg-amber-500 border-amber-500" : "bg-slate-200 border-slate-300"}`}
+                  >
+                    <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-all ${subjectHasScore ? "left-[18px]" : "left-0.5"}`} />
+                  </button>
+                  <div>
+                    <div className="text-xs font-bold text-amber-800">มีการเก็บคะแนน</div>
+                    <div className="text-[11px] text-amber-600 mt-0.5">
+                      {subjectHasScore
+                        ? "กำหนดคะแนนเต็มด้านล่าง · ใช้คะแนนรวมตัดสิน ผ่าน/ไม่ผ่าน"
+                        : "ไม่มีช่องกรอกคะแนน · ผ่าน/ไม่ผ่านโดยไม่ใช้คะแนน"}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Credit Hours (main subjects only) */}
               {subjectType === "main" && (
@@ -3580,32 +3737,34 @@ export default function AdminPortal() {
               )}
 
               {/* Max Scores Input */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    คะแนนเก็บเต็ม <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={subjectMidtermMax}
-                    onChange={(e) => setSubjectMidtermMax(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
-                  />
+              {(subjectType !== "activity" || subjectHasScore) && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      คะแนนเก็บเต็ม <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={subjectMidtermMax}
+                      onChange={(e) => setSubjectMidtermMax(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      คะแนนสอบเต็ม <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={subjectFinalMax}
+                      onChange={(e) => setSubjectFinalMax(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    คะแนนสอบเต็ม <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={subjectFinalMax}
-                    onChange={(e) => setSubjectFinalMax(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Classroom Multi-Select (filtered by subject setting) */}
               <div className="space-y-1.5">

@@ -489,6 +489,40 @@ export default function TeacherPortal() {
 
   const myScheduleEntries = scheduleEntries.filter(e => e.teacher_id === teacherUser?.id);
 
+  const scoredActivitySubjects = subjectsList.filter(s =>
+    s.subject_type === "activity" &&
+    s.setting_id === activeSettingId &&
+    (Number(s.midterm_max_score) + Number(s.final_max_score)) > 0
+  );
+  const useCombinedActivity = scoredActivitySubjects.length >= 2;
+
+  const getCombinedActivityResult = (studentId: string, termStr: string) => {
+    if (!useCombinedActivity) return null;
+    let totalScore = 0;
+    let totalMax = 0;
+    scoredActivitySubjects.forEach(sub => {
+      const mMax = Number(sub.midterm_max_score) || 0;
+      const fMax = Number(sub.final_max_score) || 0;
+      totalMax += mMax + fMax;
+      const g = grades.find(gr =>
+        gr.student_id === studentId &&
+        gr.subject.trim().toLowerCase() === sub.name.trim().toLowerCase() &&
+        gr.term === termStr
+      );
+      if (g) totalScore += (g.midterm_score ?? 0) + (g.final_score ?? 0);
+    });
+    if (totalMax === 0) return null;
+    const percent = (totalScore / totalMax) * 100;
+    return {
+      totalScore, totalMax, percent,
+      pass: percent >= 50,
+      label: percent >= 50 ? "ผ่าน" : "ไม่ผ่าน",
+      color: percent >= 50
+        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+        : "bg-red-100 text-red-700 border-red-200",
+    };
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* ===== HEADER ===== */}
@@ -763,6 +797,13 @@ export default function TeacherPortal() {
                   </button>
                 </div>
 
+                {useCombinedActivity && currentSubjectType === "activity" && (
+                  <div className="px-5 py-2.5 bg-amber-50 border-b border-amber-100 text-xs text-amber-700 font-medium">
+                    คอลัมน์ <span className="font-bold">ผล</span> คำนวณจากคะแนนรวมทุกวิชากิจกรรมที่มีคะแนน:{" "}
+                    <span className="font-bold">{scoredActivitySubjects.map(s => s.name).join(", ")}</span>
+                  </div>
+                )}
+
                 {/* Desktop Table */}
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm">
@@ -789,7 +830,11 @@ export default function TeacherPortal() {
                           </>
                         )}
                         <th className="px-4 py-3 text-center font-semibold w-16">รวม</th>
-                        <th className="px-4 py-3 text-center font-semibold w-20">{currentSubjectType === "activity" ? "ผล" : "เกรด"}</th>
+                        <th className="px-4 py-3 text-center font-semibold w-20">
+                          {currentSubjectType === "activity"
+                            ? (useCombinedActivity ? "ผล (รวม)" : "ผล")
+                            : "เกรด"}
+                        </th>
                         <th className="px-4 py-3 text-center font-semibold w-24"></th>
                       </tr>
                     </thead>
@@ -883,7 +928,19 @@ export default function TeacherPortal() {
                                 {total !== null ? total : <span className="text-slate-300">—</span>}
                               </td>
                               <td className="px-4 py-3 text-center">
-                                {resultInfo ? (
+                                {currentSubjectType === "activity" && useCombinedActivity ? (
+                                  (() => {
+                                    const combined = getCombinedActivityResult(s.student_id, enterTerm);
+                                    return combined ? (
+                                      <div className="flex flex-col items-center gap-0.5">
+                                        <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-extrabold border ${combined.color}`}>
+                                          {combined.label}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400">{Math.round(combined.percent)}%</span>
+                                      </div>
+                                    ) : <span className="text-slate-300">—</span>;
+                                  })()
+                                ) : resultInfo ? (
                                   <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-extrabold border ${resultInfo.color}`}>
                                     {resultInfo.label}
                                   </span>
@@ -946,11 +1003,20 @@ export default function TeacherPortal() {
                               <div className="text-xs text-indigo-600 font-semibold mt-0.5">{s.student_id}</div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {resultInfo && (
+                              {currentSubjectType === "activity" && useCombinedActivity ? (
+                                (() => {
+                                  const combined = getCombinedActivityResult(s.student_id, enterTerm);
+                                  return combined ? (
+                                    <span className={`px-2.5 py-1 rounded-lg text-sm font-extrabold border ${combined.color}`}>
+                                      {combined.label}
+                                    </span>
+                                  ) : null;
+                                })()
+                              ) : resultInfo ? (
                                 <span className={`px-2.5 py-1 rounded-lg text-sm font-extrabold border ${resultInfo.color}`}>
                                   {resultInfo.label}
                                 </span>
-                              )}
+                              ) : null}
                               {isSaved && (
                                 <span className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
                                   <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -204,6 +204,39 @@ export default function StudentPortal() {
     return { letter: "F", point: "0.0", color: "bg-red-100 text-red-700 border-red-200", bar: "bg-red-500" };
   };
 
+  const scoredActivitySubjects = subjectsList.filter(s =>
+    s.subject_type === "activity" &&
+    s.setting_id === activeSettingId &&
+    (Number(s.midterm_max_score) + Number(s.final_max_score)) > 0
+  );
+  const useCombinedActivity = scoredActivitySubjects.length >= 2;
+
+  const getCombinedActivityResult = () => {
+    if (!useCombinedActivity) return null;
+    let totalScore = 0;
+    let totalMax = 0;
+    scoredActivitySubjects.forEach(sub => {
+      const mMax = Number(sub.midterm_max_score) || 0;
+      const fMax = Number(sub.final_max_score) || 0;
+      totalMax += mMax + fMax;
+      const g = filteredGrades.find(gr =>
+        gr.subject.trim().toLowerCase() === sub.name.trim().toLowerCase()
+      );
+      if (g) totalScore += (g.midterm_score ?? 0) + (g.final_score ?? 0);
+    });
+    if (totalMax === 0) return null;
+    const percent = (totalScore / totalMax) * 100;
+    return {
+      totalScore, totalMax, percent,
+      pass: percent >= 50,
+      label: percent >= 50 ? "ผ่าน" : "ไม่ผ่าน",
+      color: percent >= 50
+        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+        : "bg-red-100 text-red-700 border-red-200",
+      bar: percent >= 50 ? "bg-emerald-500" : "bg-rose-500",
+    };
+  };
+
   if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบ" />;
   if (!isClient || loading || !currentStudent) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังดึงข้อมูลส่วนตัวของคุณ" />;
 
@@ -533,6 +566,29 @@ export default function StudentPortal() {
               </div>
             ) : (
               <div className="space-y-3">
+                {useCombinedActivity && (() => {
+                  const combined = getCombinedActivityResult();
+                  if (!combined) return null;
+                  return (
+                    <div className={`rounded-2xl border-2 p-4 flex items-center gap-4 ${combined.pass ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}`}>
+                      <div className={`w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0 ${combined.color}`}>
+                        <span className="text-base font-extrabold leading-tight">{combined.label}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-slate-800 text-sm">ผลกิจกรรมรวม</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          คะแนน {combined.totalScore}/{combined.totalMax} · {Math.round(combined.percent)}%
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white mt-2 overflow-hidden border border-slate-200">
+                          <div className={`h-full rounded-full ${combined.bar}`} style={{ width: `${Math.min(100, combined.percent)}%` }} />
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          รวมจาก: {scoredActivitySubjects.map(s => s.name).join(", ")}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {filteredGrades.map(grade => {
                   const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                   const mMax = Number(subject?.midterm_max_score) || midtermMax;
@@ -541,8 +597,11 @@ export default function StudentPortal() {
                   const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
                   const isActivity = subject?.subject_type === "activity";
                   const isCombined = isActivity && subject?.score_display_mode === "combined";
+                  const combinedActResult = isActivity && useCombinedActivity ? getCombinedActivityResult() : null;
                   const info = isActivity
-                    ? (percent >= 50 ? { letter: "ผ่าน", point: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", point: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200", bar: "bg-rose-500" })
+                    ? (combinedActResult
+                        ? { letter: combinedActResult.label, point: combinedActResult.label, color: combinedActResult.color, bar: combinedActResult.bar }
+                        : (percent >= 50 ? { letter: "ผ่าน", point: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", point: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200", bar: "bg-rose-500" }))
                     : getGradeInfo(percent);
 
                   return (
