@@ -1,6 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import LineProvider from "next-auth/providers/line";
 import bcrypt from "bcrypt";
 import pool from "@/app/lib/db";
 
@@ -50,6 +51,11 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+    LineProvider({
+      clientId: process.env.LINE_CLIENT_ID!,
+      clientSecret: process.env.LINE_CLIENT_SECRET!,
+      authorization: { params: { scope: "profile openid email" } },
+    }),
   ],
   session: {
     strategy: "jwt",
@@ -64,10 +70,29 @@ export const authOptions: NextAuthOptions = {
           return `/?error=${encodeURIComponent("ไม่พบบัญชีผู้ใช้สำหรับอีเมลนี้ในระบบ กรุณาติดต่อแอดมิน")}`;
         }
       }
+      if (account?.provider === "line") {
+        if (!profile?.email) {
+          return `/?error=${encodeURIComponent("บัญชี LINE ของคุณไม่มีอีเมล กรุณาผูกอีเมลกับ LINE ก่อน แล้วลองใหม่อีกครั้ง")}`;
+        }
+        const result = await pool.query("SELECT id FROM users WHERE LOWER(email) = LOWER($1)", [profile.email]);
+        if (result.rows.length === 0) {
+          return `/?error=${encodeURIComponent("ไม่พบบัญชีผู้ใช้สำหรับอีเมลนี้ในระบบ กรุณาติดต่อแอดมิน")}`;
+        }
+      }
       return true;
     },
     async jwt({ token, user, account }) {
       if (account?.provider === "google") {
+        const result = await pool.query(
+          "SELECT id, username, role FROM users WHERE LOWER(email) = LOWER($1)",
+          [token.email]
+        );
+        if (result.rows[0]) {
+          token.id = result.rows[0].id.toString();
+          token.role = result.rows[0].role;
+          token.name = result.rows[0].username;
+        }
+      } else if (account?.provider === "line") {
         const result = await pool.query(
           "SELECT id, username, role FROM users WHERE LOWER(email) = LOWER($1)",
           [token.email]
