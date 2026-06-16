@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Sarabun, Noto_Naskh_Arabic } from "next/font/google";
+import { Inter, Sarabun, Noto_Naskh_Arabic, Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -17,6 +17,12 @@ const arabic = Noto_Naskh_Arabic({
   variable: "--font-arabic",
   subsets: ["arabic"],
   weight: ["400", "500", "600", "700"],
+});
+
+const arabicSans = Noto_Sans_Arabic({
+  variable: "--font-arabic-sans",
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -40,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${inter.variable} ${sarabun.variable} ${arabic.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="th" className={`${inter.variable} ${sarabun.variable} ${arabic.variable} ${arabicSans.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
         <Providers>
           {children}

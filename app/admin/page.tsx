@@ -35,6 +35,21 @@ const ALL_DAYS = [
   { value: 0, label: "อาทิตย์" },
 ];
 
+const TEACHER_PALETTE = [
+  { bg: "#dbeafe", text: "#1e3a8a", border: "#93c5fd" },
+  { bg: "#fce7f3", text: "#9d174d", border: "#f9a8d4" },
+  { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
+  { bg: "#fef9c3", text: "#713f12", border: "#fde047" },
+  { bg: "#ede9fe", text: "#4c1d95", border: "#c4b5fd" },
+  { bg: "#ffedd5", text: "#7c2d12", border: "#fdba74" },
+  { bg: "#ccfbf1", text: "#134e4a", border: "#5eead4" },
+  { bg: "#fdf4ff", text: "#701a75", border: "#e879f9" },
+  { bg: "#f0fdf4", text: "#14532d", border: "#86efac" },
+  { bg: "#fff1f2", text: "#881337", border: "#fda4af" },
+  { bg: "#fefce8", text: "#854d0e", border: "#fef08a" },
+  { bg: "#f0f9ff", text: "#0c4a6e", border: "#7dd3fc" },
+];
+
 const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "dashboard", label: "แดชบอร์ด", sub: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" },
   { key: "users", label: "จัดการผู้ใช้งาน", sub: "Users", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
@@ -241,6 +256,7 @@ export default function AdminPortal() {
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
   const [scheduleClassroomId, setScheduleClassroomId] = useState("");
+  const [exportLanguage, setExportLanguage] = useState<"th" | "ms-rumi" | "ms-jawi">("th");
 
   // Assign Students State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -1606,6 +1622,272 @@ export default function AdminPortal() {
     ));
   };
 
+  const handleExportSchedule = (type: "overview" | "classroom" | "teacher") => {
+    if (!selectedSubjectSettingId || schedulePeriods.length === 0) return;
+    const setting = settingsList.find((s: any) => s.id === selectedSubjectSettingId);
+    
+    const getLocalizedText = (key: string) => {
+      const dict: Record<string, { th: string; rumi: string; jawi: string }> = {
+        "คาบ": { th: "คาบ", rumi: "Waktu", jawi: "وقتو" },
+        "พักเบรก": { th: "พักเบรก", rumi: "Rehat", jawi: "ريحت" },
+        "พัก": { th: "พัก", rumi: "Rehat", jawi: "ريحت" },
+        "ห้อง": { th: "ห้อง", rumi: "Kelas", jawi: "کلس" },
+        "วัน": { th: "วัน", rumi: "Hari ", jawi: "هاري " },
+        "อ.": { th: "อ.", rumi: "Cikgu ", jawi: "چيقگو " },
+        "สีครูผู้สอน": { th: "สีครูผู้สอน", rumi: "Warna Guru", jawi: "ورنا گورو" },
+        "ภาพรวมตารางเรียน": { th: "ภาพรวมตารางเรียน", rumi: "Jadual Keseluruhan", jawi: "جادوال کستلوروهن" },
+        "ตารางเรียนรายชั้น": { th: "ตารางเรียนรายชั้น", rumi: "Jadual Kelas", jawi: "جادوال کلس" },
+        "ตารางสอนรายครู": { th: "ตารางสอนรายครู", rumi: "Jadual Guru", jawi: "جادوال گورو" },
+        "ครู": { th: "ครู", rumi: "Guru", jawi: "گورو" },
+        "ออกรายงาน ณ": { th: "ออกรายงาน ณ", rumi: "Laporan pada", jawi: "لاڤورن ڤد" },
+        "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" },
+        "ขนาดตัวอักษร:": { th: "ขนาดตัวอักษร:", rumi: "Saiz Fon:", jawi: "ساءيز فون:" },
+        "เทอม": { th: "เทอม", rumi: "Penggal", jawi: "ڤڠگل" }
+      };
+      if (exportLanguage === "ms-rumi") return dict[key]?.rumi || key;
+      if (exportLanguage === "ms-jawi") return dict[key]?.jawi || key;
+      return dict[key]?.th || key;
+    };
+
+    const getLocalizedDay = (val: number) => {
+      const th = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+      const rumi = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
+      const jawi = ["أحد", "إثنين", "ثلاثاء", "رابو", "خميس", "جمعة", "سبت"];
+      if (exportLanguage === "ms-rumi") return rumi[val];
+      if (exportLanguage === "ms-jawi") return jawi[val];
+      return th[val];
+    };
+
+    const settingTitle = setting ? `${getLocalizedText("เทอม")} ${setting.term}/${setting.academic_year}` : "";
+
+    // Assign colors to each unique effective teacher name
+    const colorMap = new Map<string, typeof TEACHER_PALETTE[0]>();
+    let ci = 0;
+    scheduleEntries.forEach(e => {
+      const name = e.teacher_id
+        ? (e.teacher_name || null)
+        : (e.teacher_names?.length === 1 ? e.teacher_names[0] : null);
+      if (name && !colorMap.has(name)) {
+        colorMap.set(name, TEACHER_PALETTE[ci++ % TEACHER_PALETTE.length]);
+      }
+    });
+
+    const cellStyle = (entry: ScheduleEntry | undefined) => {
+      if (!entry) return "";
+      const name = entry.teacher_id
+        ? (entry.teacher_name || null)
+        : (entry.teacher_names?.length === 1 ? entry.teacher_names[0] : null);
+      const c = name ? colorMap.get(name) : null;
+      return c ? `background:${c.bg};border-color:${c.border};` : "background:#f9fafb;border-color:#e5e7eb;";
+    };
+    const cellTextColor = (entry: ScheduleEntry | undefined) => {
+      const name = entry?.teacher_id
+        ? (entry.teacher_name || null)
+        : (entry?.teacher_names?.length === 1 ? entry.teacher_names[0] : null);
+      return (name ? colorMap.get(name)?.text : null) || "#374151";
+    };
+
+    const thStyle = "padding:8px 12px;background:#0f172a;color:#f8fafc;font-size:14px;font-weight:700;text-align:center;";
+    const periodHeader = `<th style="${thStyle}text-align:left;min-width:80px;">${getLocalizedText("คาบ")}</th>`;
+    const dayHeaders = ACTIVE_DAYS.map(d => `<th style="${thStyle}min-width:110px;">${getLocalizedDay(d.value)}</th>`).join("");
+
+    const buildClassroomTable = (cid: string, cname: string) => {
+      const rows = schedulePeriods.map(p => {
+        const pCell = `<td style="padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:14px;font-weight:700;white-space:nowrap;vertical-align:middle;">
+          <div style="color:#374151;">${getLocalizedText("คาบ")} ${p.period_no}</div>
+          <div style="font-size:12px;color:#94a3b8;font-weight:400;">${p.start_time}–${p.end_time}</div>
+          ${p.label ? `<div style="font-size:12px;color:#d97706;">${p.label}</div>` : ""}
+        </td>`;
+        if (p.is_break) {
+          return `<tr>${pCell}<td colspan="${ACTIVE_DAYS.length}" style="padding:6px;text-align:center;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:13px;font-weight:600;">${p.label || getLocalizedText("พักเบรก")}</td></tr>`;
+        }
+        const cells = ACTIVE_DAYS.map(d => {
+          const e = scheduleEntries.find(x => x.classroom_id === cid && Number(x.day_of_week) === d.value && x.period_id === p.id);
+          if (!e) return `<td style="border:1px solid #f1f5f9;min-width:110px;"></td>`;
+          const tc = cellTextColor(e);
+          const tDisplay = e.teacher_name || (e.teacher_names?.join(", ") || "");
+          return `<td style="padding:6px 8px;border:1px solid;${cellStyle(e)}text-align:center;vertical-align:middle;">
+            <div dir="auto" style="font-size:14px;font-weight:700;color:${tc};">${e.subject_name}</div>
+            ${tDisplay ? `<div dir="auto" style="font-size:12px;color:${tc};opacity:0.8;">${getLocalizedText("อ.")}${tDisplay}</div>` : ""}
+          </td>`;
+        }).join("");
+        return `<tr>${pCell}${cells}</tr>`;
+      }).join("");
+      return `<div style="margin-bottom:24px;break-inside:avoid;">
+        <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;">${getLocalizedText("ห้อง")} ${cname}</div>
+        <table style="width:100%;border-collapse:collapse;font-family:inherit;">
+          <thead><tr>${periodHeader}${dayHeaders}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    };
+
+    const legend = colorMap.size > 0 ? `<div style="margin-bottom:16px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+      <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">${getLocalizedText("สีครูผู้สอน")}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${Array.from(colorMap.entries()).map(([name, c]) =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:13px;font-weight:600;">
+          <span style="width:10px;height:10px;border-radius:50%;background:${c.text};flex-shrink:0;"></span>${name}
+        </span>`).join("")}
+      </div>
+    </div>` : "";
+
+    let body = "";
+    let docTitle = "";
+    // Sort classrooms: alphabetical names first, then numeric names
+    const sortedClassrooms = [...subjectClassrooms].sort((a, b) => {
+      const aStartsWithLetter = /^[a-zA-Zก-๙]/.test(a.name);
+      const bStartsWithLetter = /^[a-zA-Zก-๙]/.test(b.name);
+      const aStartsWithDigit = /^[0-9]/.test(a.name);
+      const bStartsWithDigit = /^[0-9]/.test(b.name);
+      if (aStartsWithLetter && bStartsWithDigit) return -1;
+      if (aStartsWithDigit && bStartsWithLetter) return 1;
+      return a.name.localeCompare(b.name, 'th');
+    });
+
+    if (type === "overview") {
+      docTitle = `${getLocalizedText("ภาพรวมตารางเรียน")} · ${settingTitle}`;
+      const thBase = "padding:6px 8px;background:#1e293b;color:#f8fafc;font-size:13px;font-weight:700;text-align:center;border:1px solid #334155;";
+      const dayTables = ACTIVE_DAYS.map(day => {
+        const dayEnts = scheduleEntries.filter(e => Number(e.day_of_week) === day.value);
+        if (dayEnts.length === 0) return "";
+        const periodCols = schedulePeriods.map(p => {
+          if (p.is_break) {
+            return `<th style="${thBase}background:#334155;width:80px;font-size:12px;">${p.label || getLocalizedText("พัก")}</th>`;
+          }
+          return `<th style="${thBase}min-width:100px;">
+            ${p.label ? `<div style="font-size:11px;color:#fbbf24;font-weight:700;">${p.label}</div>` : ""}
+            <div>${getLocalizedText("คาบ")} ${p.period_no}</div>
+            <div style="font-size:11px;opacity:0.65;font-weight:400;">${p.start_time}–${p.end_time}</div>
+          </th>`;
+        }).join("");
+        const classroomRows = sortedClassrooms.map(c => {
+          const cells = schedulePeriods.map(p => {
+            if (p.is_break) {
+              return `<td style="background:#e2e8f0;border:1px solid #cbd5e1;width:80px;text-align:center;font-size:12px;color:#64748b;">${p.label || getLocalizedText("พัก")}</td>`;
+            }
+            const e = dayEnts.find(x => x.classroom_id === c.id && x.period_id === p.id);
+            if (!e) return `<td style="border:1px solid #f1f5f9;min-width:100px;"></td>`;
+            const cs = cellStyle(e); const tc = cellTextColor(e);
+            const tDisplay = e.teacher_name || (e.teacher_names?.join(", ") || "");
+            return `<td style="padding:5px 6px;border:1px solid;${cs}text-align:center;vertical-align:middle;">
+              <div dir="auto" style="font-size:14px;font-weight:700;color:${tc};">${e.subject_name}</div>
+              ${tDisplay ? `<div dir="auto" style="font-size:12px;color:${tc};opacity:0.75;">${tDisplay}</div>` : ""}
+            </td>`;
+          }).join("");
+          return `<tr>
+            <td dir="auto" style="padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;white-space:nowrap;">${c.name}</td>
+            ${cells}
+          </tr>`;
+        }).join("");
+        return `<div style="margin-bottom:28px;break-inside:avoid;">
+          <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;">${getLocalizedText("วัน")}${getLocalizedDay(day.value)}</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr>
+              <th style="${thBase}text-align:left;min-width:90px;">${getLocalizedText("ห้อง")}</th>
+              ${periodCols}
+            </tr></thead>
+            <tbody>${classroomRows}</tbody>
+          </table>
+        </div>`;
+      }).join("");
+      body = legend + dayTables;
+    } else if (type === "classroom") {
+      docTitle = `${getLocalizedText("ตารางเรียนรายชั้น")} · ${settingTitle}`;
+      body = sortedClassrooms.map((c, i) =>
+        i > 0 ? `<div style="page-break-before:always;">${buildClassroomTable(c.id, c.name)}</div>` : buildClassroomTable(c.id, c.name)
+      ).join("");
+    } else {
+      docTitle = `${getLocalizedText("ตารางสอนรายครู")} · ${settingTitle}`;
+      let first = true;
+      body = users.filter((u: DBUser) => u.role === "teacher").map((teacher: DBUser) => {
+        const te = scheduleEntries.filter(e =>
+          e.teacher_id === teacher.id ||
+          (!e.teacher_id && e.teacher_names?.includes(teacher.username))
+        );
+        if (te.length === 0) return "";
+        const rows = schedulePeriods.map(p => {
+          const pCell = `<td style="padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:14px;font-weight:700;white-space:nowrap;vertical-align:middle;">
+            <div style="color:#374151;">${getLocalizedText("คาบ")} ${p.period_no}</div>
+            <div style="font-size:12px;color:#94a3b8;font-weight:400;">${p.start_time}–${p.end_time}</div>
+          </td>`;
+          if (p.is_break) {
+            return `<tr>${pCell}<td colspan="${ACTIVE_DAYS.length}" style="padding:6px;text-align:center;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:13px;font-weight:600;">${p.label || getLocalizedText("พักเบรก")}</td></tr>`;
+          }
+          const cells = ACTIVE_DAYS.map(d => {
+            const e = te.find(x => Number(x.day_of_week) === d.value && x.period_id === p.id);
+            if (!e) return `<td style="border:1px solid #f1f5f9;min-width:110px;"></td>`;
+            return `<td style="padding:6px 8px;border:1px solid #bfdbfe;background:#eff6ff;text-align:center;vertical-align:middle;">
+              <div dir="auto" style="font-size:14px;font-weight:700;color:#1e40af;">${e.subject_name}</div>
+              <div dir="auto" style="font-size:12px;color:#3b82f6;">${e.classroom_name}</div>
+            </td>`;
+          }).join("");
+          return `<tr>${pCell}${cells}</tr>`;
+        }).join("");
+        const pb = !first ? "page-break-before:always;" : "";
+        first = false;
+        return `<div style="margin-bottom:24px;${pb}">
+          <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;">${getLocalizedText("ครู")} ${teacher.username}</div>
+          <table style="width:100%;border-collapse:collapse;font-family:inherit;">
+            <thead><tr>${periodHeader}${dayHeaders}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+      }).join("");
+    }
+
+    const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+    const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${docTitle}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Inter','Sarabun','Noto Sans Arabic','Noto Naskh Arabic',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;font-size:14px;}
+  h1{font-size:22px;font-weight:800;margin-bottom:4px;}
+  .meta{font-size:14px;color:#64748b;margin-bottom:16px;}
+  .print-btn{position:fixed;top:12px;right:12px;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100;}
+  .font-controls{position:fixed;top:12px;right:200px;display:flex;align-items:center;gap:8px;background:#fff;padding:6px 14px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.12);border:1px solid #e2e8f0;z-index:100;font-size:13px;font-weight:600;color:#475569;}
+  .font-controls label{white-space:nowrap;}
+  .font-controls input[type=range]{width:100px;accent-color:#4f46e5;cursor:pointer;}
+  .font-controls .font-size-val{min-width:28px;text-align:center;font-weight:700;color:#4f46e5;}
+  .font-controls button{padding:4px 10px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;color:#475569;line-height:1;}
+  .font-controls button:hover{background:#eef2ff;border-color:#a5b4fc;color:#4f46e5;}
+  @media print{.print-btn,.font-controls{display:none;} @page{margin:1cm;size:A4 landscape;}}
+</style>
+</head><body>
+<div class="font-controls">
+  <label>🔤 ${getLocalizedText("ขนาดตัวอักษร:")}</label>
+  <button onclick="changeFontSize(-1)">A-</button>
+  <input type="range" id="fontSlider" min="60" max="160" value="100" oninput="applyFontSize(this.value)">
+  <button onclick="changeFontSize(1)">A+</button>
+  <span class="font-size-val" id="fontVal">100%</span>
+</div>
+<button class="print-btn" onclick="window.print()">🖨️ ${getLocalizedText("พิมพ์ / บันทึก PDF")}</button>
+<h1 dir="auto">${docTitle}</h1>
+<div class="meta" dir="auto">${getLocalizedText("ออกรายงาน ณ")} ${dateStr}</div>
+<div id="schedule-content">
+${body}
+</div>
+<script>
+function applyFontSize(val) {
+  var content = document.getElementById('schedule-content');
+  content.style.transform = 'scale(' + (val / 100) + ')';
+  content.style.transformOrigin = 'top left';
+  content.style.width = (10000 / val) + '%';
+  document.getElementById('fontVal').textContent = val + '%';
+  document.getElementById('fontSlider').value = val;
+}
+function changeFontSize(dir) {
+  var slider = document.getElementById('fontSlider');
+  var newVal = Math.min(160, Math.max(60, parseInt(slider.value) + dir * 10));
+  applyFontSize(newVal);
+}
+</script>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
   // Auto-fix existing entries with null teacher_id when subject has exactly 1 teacher
   useEffect(() => {
     if (!token || !selectedSubjectSettingId || scheduleEntries.length === 0 || subjectsList.length === 0) return;
@@ -2959,6 +3241,52 @@ export default function AdminPortal() {
                       </button>
                     </div>
 
+                    {/* Export Schedule */}
+                    {schedulePeriods.length > 0 && scheduleEntries.length > 0 && (
+                      <div className="mt-2 pt-5 border-t border-gray-100">
+                        <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          ส่งออกตารางเรียน
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <select
+                            value={exportLanguage}
+                            onChange={(e) => setExportLanguage(e.target.value as any)}
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
+                          >
+                            <option value="th">🇹🇭 ภาษาไทย</option>
+                            <option value="ms-rumi">🇲🇾 Rumi</option>
+                            <option value="ms-jawi">🇲🇾 Jawi (جاوي)</option>
+                          </select>
+                          <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block"></div>
+                          <button
+                            onClick={() => handleExportSchedule("overview")}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all shadow-sm border-0 cursor-pointer"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                            ภาพรวมทุกชั้น
+                          </button>
+                          <button
+                            onClick={() => handleExportSchedule("classroom")}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-all shadow-sm border-0 cursor-pointer"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            รายชั้นเรียน
+                          </button>
+                          <button
+                            onClick={() => handleExportSchedule("teacher")}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-all shadow-sm border-0 cursor-pointer"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                            รายครูผู้สอน
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-2">คลิกปุ่ม "พิมพ์ / บันทึก PDF" ในหน้าที่เปิดขึ้นมา เพื่อพิมพ์หรือบันทึกเป็น PDF</p>
+                      </div>
+                    )}
+
                     {/* Classroom Schedule Grid */}
                     <div>
                       <h3 className="text-lg font-bold text-gray-800 mb-3">ตารางสอนรายห้อง</h3>
@@ -2985,7 +3313,7 @@ export default function AdminPortal() {
                         </div>
                       ) : (
                         <div className="overflow-x-auto rounded-xl border border-gray-100">
-                          <table className="w-full text-left text-sm">
+                          <table className="w-full text-left text-base">
                             <thead className="bg-gray-50 text-gray-600">
                               <tr>
                                 <th className="px-3 py-3 font-semibold">คาบ</th>
@@ -3021,7 +3349,7 @@ export default function AdminPortal() {
                                             <select
                                               value={entry?.subject_id ?? ""}
                                               onChange={ev => handleScheduleCellChange(d.value, p.id, ev.target.value, entry?.id)}
-                                              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
+                                              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
                                             >
                                               <option value="">- ว่าง -</option>
                                               {subjectsForClassroom.map(s => {
@@ -3041,7 +3369,7 @@ export default function AdminPortal() {
                                               <select
                                                 value={entry.teacher_id ?? ""}
                                                 onChange={ev => handleScheduleTeacherChange(d.value, p.id, entry.subject_id, ev.target.value || null, entry.id)}
-                                                className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 bg-blue-50/60 text-[11px] text-blue-700 focus:ring-2 focus:ring-blue-300 outline-none"
+                                                className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 bg-blue-50/60 text-xs text-blue-700 focus:ring-2 focus:ring-blue-300 outline-none"
                                                 title="ระบุครูผู้สอนเฉพาะห้องนี้ (กรณีครูต่างกันแต่ละชั้น)"
                                               >
                                                 <option value="">
@@ -3057,7 +3385,7 @@ export default function AdminPortal() {
 
                                             {/* Scenario A indicator: co-teaching */}
                                             {entry?.subject_id && !entry.teacher_id && selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 1 && (
-                                              <div className="mt-0.5 text-[10px] text-blue-600 font-bold">สอนรวม</div>
+                                              <div className="mt-0.5 text-xs text-blue-600 font-bold">สอนรวม</div>
                                             )}
                                           </td>
                                         );

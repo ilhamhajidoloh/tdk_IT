@@ -13,6 +13,7 @@ interface SchedulePeriod { id: string; setting_id: number | string; period_no: n
 interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;
   subject_id: string; subject_name: string; teacher_id: string | null; teacher_name: string | null;
+  teacher_names?: string[];
   day_of_week: number | string; period_id: string; period_no: number | string; start_time: string; end_time: string; label?: string | null;
 }
 
@@ -467,7 +468,7 @@ export default function StudentPortal() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-sm text-slate-800 truncate">{e.subject_name}</div>
-                          {e.teacher_name && <div className="text-xs text-slate-400">อ.{e.teacher_name}</div>}
+                          {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-xs text-slate-400">อ.{t}</div> : null; })()}
                         </div>
                       </div>
                     );
@@ -701,9 +702,7 @@ export default function StudentPortal() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="font-bold text-slate-800 text-sm truncate">{e.subject_name}</div>
-                                  {e.teacher_name && (
-                                    <div className="text-[11px] text-slate-400 mt-0.5">อ.{e.teacher_name}</div>
-                                  )}
+                                  {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-[11px] text-slate-400 mt-0.5">อ.{t}</div> : null; })()}
                                 </div>
                                 {period?.label && (
                                   <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full shrink-0">{period.label}</span>
@@ -754,7 +753,7 @@ export default function StudentPortal() {
                                     {entry ? (
                                       <div className="bg-violet-50 text-violet-700 border border-violet-100 rounded-lg px-2 py-1.5 text-[11px] font-semibold">
                                         <div className="truncate">{entry.subject_name}</div>
-                                        {entry.teacher_name && <div className="text-violet-400 font-normal text-[10px]">อ.{entry.teacher_name}</div>}
+                                        {(() => { const t = entry.teacher_name || (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null); return t ? <div className="text-violet-400 font-normal text-[10px] truncate">อ.{t}</div> : null; })()}
                                       </div>
                                     ) : (
                                       <span className="text-slate-200">–</span>
