@@ -487,7 +487,11 @@ export default function TeacherPortal() {
     ? subjectsList.filter(s => s.setting_id === activeSettingId)
     : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId);
 
-  const myScheduleEntries = scheduleEntries.filter(e => e.teacher_id === teacherUser?.id);
+  const myScheduleEntries = scheduleEntries.filter(e => {
+    if (e.teacher_id) return e.teacher_id === teacherUser?.id;
+    const subj = subjectsList.find(s => s.id === e.subject_id && s.setting_id === activeSettingId);
+    return subj?.teacher_id === teacherUser?.id;
+  });
 
   const scoredActivitySubjects = subjectsList.filter(s =>
     s.subject_type === "activity" &&

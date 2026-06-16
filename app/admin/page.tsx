@@ -190,6 +190,7 @@ export default function AdminPortal() {
   const [isClient, setIsClient] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const classroomFileInputRef = useRef<HTMLInputElement>(null);
+  const autoFixedScheduleEntries = useRef<Set<string>>(new Set());
   const [adminYear, setAdminYear] = useState("2568");
   const [adminTerm, setAdminTerm] = useState("1");
   const [startDate, setStartDate] = useState("2026-05-01");
@@ -1532,6 +1533,9 @@ export default function AdminPortal() {
       return;
     }
 
+    const subj = subjectsList.find(s => s.id === subjectId);
+    const autoTeacherId = subj?.teacher_ids?.length === 1 ? subj.teacher_ids[0] : null;
+
     const res = await fetch("/api/schedules", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1541,7 +1545,7 @@ export default function AdminPortal() {
         subject_id: subjectId,
         day_of_week: day,
         period_id: periodId,
-        teacher_id: null,
+        teacher_id: autoTeacherId,
       }),
     });
     if (!res.ok) {
@@ -1549,17 +1553,17 @@ export default function AdminPortal() {
       return;
     }
     const saved = await res.json();
-    const subj = subjectsList.find(s => s.id === subjectId);
     const period = schedulePeriods.find(p => p.id === periodId);
     const classroom = subjectClassrooms.find(c => c.id === scheduleClassroomId);
+    const autoTeacher = autoTeacherId ? users.find(u => u.id === autoTeacherId) : null;
     const newEntry: ScheduleEntry = {
       id: saved.id,
       classroom_id: scheduleClassroomId,
       classroom_name: classroom?.name || "",
       subject_id: subjectId,
       subject_name: subj?.name || "",
-      teacher_id: null,
-      teacher_name: null,
+      teacher_id: autoTeacherId,
+      teacher_name: autoTeacher?.username || null,
       teacher_names: subj?.teacher_names || (subj?.teacher_name ? [subj.teacher_name] : []),
       day_of_week: day,
       period_id: periodId,
@@ -1601,6 +1605,19 @@ export default function AdminPortal() {
         : e
     ));
   };
+
+  // Auto-fix existing entries with null teacher_id when subject has exactly 1 teacher
+  useEffect(() => {
+    if (!token || !selectedSubjectSettingId || scheduleEntries.length === 0 || subjectsList.length === 0) return;
+    scheduleEntries.forEach(e => {
+      if (e.teacher_id !== null) return;
+      if (autoFixedScheduleEntries.current.has(e.id)) return;
+      const subj = subjectsList.find(s => s.id === e.subject_id);
+      if (!subj?.teacher_ids || subj.teacher_ids.length !== 1) return;
+      autoFixedScheduleEntries.current.add(e.id);
+      handleScheduleTeacherChange(Number(e.day_of_week), e.period_id, e.subject_id, subj.teacher_ids[0], e.id);
+    });
+  }, [scheduleEntries, subjectsList, token, selectedSubjectSettingId]);
 
   const handleEditUser = (user: DBUser) => {
     setModalMode("edit");
@@ -3020,7 +3037,7 @@ export default function AdminPortal() {
                                             </select>
 
                                             {/* Teacher Override Selector (Scenario B) */}
-                                            {entry?.subject_id && (
+                                            {entry?.subject_id && selectedSubj?.teacher_ids && selectedSubj.teacher_ids.length > 0 && (
                                               <select
                                                 value={entry.teacher_id ?? ""}
                                                 onChange={ev => handleScheduleTeacherChange(d.value, p.id, entry.subject_id, ev.target.value || null, entry.id)}
@@ -3030,9 +3047,11 @@ export default function AdminPortal() {
                                                 <option value="">
                                                   {subjectTeacherDisplay ? `ครู: ${subjectTeacherDisplay}` : "-- เลือกครูผู้สอน --"}
                                                 </option>
-                                                {users.filter(u => u.role === "teacher").map(u => (
-                                                  <option key={u.id} value={u.id}>{u.username}</option>
-                                                ))}
+                                                {users
+                                                  .filter(u => selectedSubj.teacher_ids!.includes(u.id))
+                                                  .map(u => (
+                                                    <option key={u.id} value={u.id}>{u.username}</option>
+                                                  ))}
                                               </select>
                                             )}
 
