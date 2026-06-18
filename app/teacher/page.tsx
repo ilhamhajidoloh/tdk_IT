@@ -97,6 +97,14 @@ export default function TeacherPortal() {
   const { user: teacherUser, loading, logout, token } = useAuth();
   const [homeroomClass, setHomeroomClass] = useState<DBClassroom | null>(null);
 
+  const [rankingsData, setRankingsData] = useState<{
+    student_id: string; student_name: string; student_number: number | null;
+    classroom_id: string; classroom_name: string; total_score: number; max_possible: number;
+    percentage: number; gpa: number; subject_count: number;
+    school_rank: number; classroom_rank: number; school_total: number; classroom_total: number;
+  }[]>([]);
+  const [rankingsLoaded, setRankingsLoaded] = useState(false);
+
   const [isGradingActive, setIsGradingActive] = useState(true);
   const [settingsStartDate, setSettingsStartDate] = useState("");
   const [settingsEndDate, setSettingsEndDate] = useState("");
@@ -199,6 +207,10 @@ export default function TeacherPortal() {
     fetch(`/api/schedules?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setScheduleEntries(data); })
+      .catch(console.error);
+    fetch(`/api/grades/rankings?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } })
       .catch(console.error);
   }, [token, activeSettingId]);
 
@@ -483,9 +495,10 @@ export default function TeacherPortal() {
     return grades.some(g => g.student_id === s.student_id && g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() && g.term === enterTerm);
   }).length;
 
-  const mySubjects = teacherUser?.role === "admin"
+  const mySubjects = (teacherUser?.role === "admin"
     ? subjectsList.filter(s => s.setting_id === activeSettingId)
-    : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId);
+    : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId)
+  ).filter(s => (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0);
 
   const myScheduleEntries = scheduleEntries.filter(e => {
     if (e.teacher_id) return e.teacher_id === teacherUser?.id;
@@ -1179,10 +1192,7 @@ export default function TeacherPortal() {
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold"
                   >
                     <option value="">— เลือกรายวิชา —</option>
-                    {(teacherUser?.role === "admin"
-                      ? Array.from(new Set(grades.map(g => g.subject))).map(sub => ({ name: sub }))
-                      : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId)
-                    ).map((s, i) => (
+                    {mySubjects.map((s, i) => (
                       <option key={i} value={s.name}>{s.name}</option>
                     ))}
                   </select>
@@ -1439,6 +1449,123 @@ export default function TeacherPortal() {
                     })}
                   </div>
                 </div>
+
+                {/* Rankings Section */}
+                {rankingsLoaded && (() => {
+                  const myClassroomId = homeroomClass?.id;
+                  const classroomRankings = rankingsData.filter(r => r.classroom_id === myClassroomId).sort((a, b) => a.classroom_rank - b.classroom_rank || b.percentage - a.percentage);
+                  const schoolRankingsForClass = rankingsData.filter(r => r.classroom_id === myClassroomId).sort((a, b) => a.school_rank - b.school_rank || b.percentage - a.percentage);
+
+                  if (classroomRankings.length === 0) return null;
+
+                  return (
+                    <div className="grid lg:grid-cols-2 gap-4">
+                      {/* Classroom Ranking */}
+                      <div className="bg-white rounded-2xl border border-purple-200 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
+                          <h3 className="font-bold text-purple-800 flex items-center gap-2 text-sm">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
+                            อันดับในห้อง {homeroomClass?.name}
+                          </h3>
+                          <p className="text-xs text-purple-500 mt-0.5">{classroomRankings.length} คน · จากคะแนนรวม</p>
+                        </div>
+                        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0 z-10">
+                              <tr>
+                                <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
+                                <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
+                                <th className="px-3 py-2.5 text-center font-bold w-20">เปอร์เซ็นต์</th>
+                                <th className="px-3 py-2.5 text-center font-bold w-16">GPA</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {classroomRankings.map(s => (
+                                <tr key={`cr-${s.student_id}`} className={`transition-colors ${s.classroom_rank <= 3 ? "bg-amber-50/40" : "hover:bg-gray-50"}`}>
+                                  <td className="px-3 py-2.5 text-center">
+                                    {s.classroom_rank <= 3 ? (
+                                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.classroom_rank === 1 ? "bg-amber-400 text-white" : s.classroom_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                        {s.classroom_rank}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-500 font-bold text-xs">{s.classroom_rank}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <div className="font-semibold text-gray-800 text-xs">{s.student_name}</div>
+                                    <div className="text-[10px] text-gray-400">{s.student_id}</div>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600" : s.percentage >= 60 ? "text-amber-600" : s.percentage >= 50 ? "text-orange-600" : "text-rose-600"}`}>
+                                      {s.percentage.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 text-emerald-700" : s.gpa >= 2.0 ? "bg-amber-100 text-amber-700" : s.gpa >= 1.0 ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700"}`}>
+                                      {s.gpa.toFixed(2)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* School Ranking */}
+                      <div className="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden">
+                        <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                          <h3 className="font-bold text-blue-800 flex items-center gap-2 text-sm">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
+                            อันดับทั้งโรงเรียน
+                          </h3>
+                          <p className="text-xs text-blue-500 mt-0.5">เฉพาะนักเรียนห้อง {homeroomClass?.name} · จาก {rankingsData.length} คนทั้งหมด</p>
+                        </div>
+                        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0 z-10">
+                              <tr>
+                                <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
+                                <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
+                                <th className="px-3 py-2.5 text-center font-bold w-20">เปอร์เซ็นต์</th>
+                                <th className="px-3 py-2.5 text-center font-bold w-16">GPA</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {schoolRankingsForClass.map(s => (
+                                <tr key={`sr-${s.student_id}`} className="hover:bg-gray-50 transition-colors">
+                                  <td className="px-3 py-2.5 text-center">
+                                    {s.school_rank <= 3 ? (
+                                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.school_rank === 1 ? "bg-amber-400 text-white" : s.school_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                        {s.school_rank}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-500 font-bold text-xs">{s.school_rank}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5">
+                                    <div className="font-semibold text-gray-800 text-xs">{s.student_name}</div>
+                                    <div className="text-[10px] text-gray-400">{s.student_id} · อันดับ {s.school_rank}/{s.school_total}</div>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600" : s.percentage >= 60 ? "text-amber-600" : s.percentage >= 50 ? "text-orange-600" : "text-rose-600"}`}>
+                                      {s.percentage.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 text-emerald-700" : s.gpa >= 2.0 ? "bg-amber-100 text-amber-700" : s.gpa >= 1.0 ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700"}`}>
+                                      {s.gpa.toFixed(2)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </>
             )}
           </div>

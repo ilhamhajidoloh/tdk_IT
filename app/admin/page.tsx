@@ -23,7 +23,41 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { formatThaiDate, formatThaiDateRange } from "../lib/format";
 
-type Tab = "dashboard" | "users" | "classrooms" | "students" | "settings" | "subjects" | "schedule";
+type Tab = "dashboard" | "users" | "classrooms" | "students" | "settings" | "subjects" | "schedule" | "grade-status" | "rankings";
+
+interface RankingRow {
+  student_id: string;
+  student_name: string;
+  student_number: number | null;
+  classroom_id: string;
+  classroom_name: string;
+  total_score: number;
+  max_possible: number;
+  percentage: number;
+  gpa: number;
+  subject_count: number;
+  school_rank: number;
+  classroom_rank: number;
+  school_total: number;
+  classroom_total: number;
+}
+
+interface GradeStatusRow {
+  subject_id: string;
+  subject_name: string;
+  subject_type: string;
+  midterm_max_score: number | null;
+  final_max_score: number | null;
+  credit_hours: number | null;
+  teacher_id: string | null;
+  teacher_name: string | null;
+  classroom_id: string | null;
+  classroom_name: string | null;
+  total_students: string;
+  graded_students: string;
+  midterm_entered: string;
+  final_entered: string;
+}
 
 const ALL_DAYS = [
   { value: 1, label: "จันทร์" },
@@ -57,6 +91,8 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "students", label: "จัดการนักเรียน", sub: "Students", icon: "M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" },
   { key: "subjects", label: "จัดการวิชาเรียน", sub: "Subjects", icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
   { key: "schedule", label: "ตารางเรียน", sub: "Schedule", icon: "M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+  { key: "grade-status", label: "สถานะคะแนน", sub: "Grade Status", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
+  { key: "rankings", label: "อันดับผลการเรียน", sub: "Rankings", icon: "M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" },
   { key: "settings", label: "ตั้งค่าระบบ", sub: "Settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" },
 ];
 
@@ -197,7 +233,7 @@ export default function AdminPortal() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [userSubTab, setUserSubTab] = useState<"all" | "admin" | "teacher" | "student">("all");
   const [userCurrentPage, setUserCurrentPage] = useState(1);
-  const [usersPerPage, setUsersPerPage] = useState(10);
+  const [usersPerPage, setUsersPerPage] = useState(5);
 
   useEffect(() => {
     setUserCurrentPage(1);
@@ -269,6 +305,29 @@ export default function AdminPortal() {
     if (studentFilterClassroomId === "unassigned") return students.filter(s => !s.classroom_id);
     return students.filter(s => s.classroom_id === studentFilterClassroomId);
   }, [students, studentFilterClassroomId]);
+
+  // Rankings State
+  const [rankingsData, setRankingsData] = useState<RankingRow[]>([]);
+  const [rankingsSettingId, setRankingsSettingId] = useState<number | null>(null);
+  const [rankingsLoading, setRankingsLoading] = useState(false);
+  const [rankingsClassroomFilter, setRankingsClassroomFilter] = useState<string>("all");
+
+  // Grade Status State
+  const [gradeStatusData, setGradeStatusData] = useState<GradeStatusRow[]>([]);
+  const [gradeStatusSettingId, setGradeStatusSettingId] = useState<number | null>(null);
+  const [gradeStatusSubTab, setGradeStatusSubTab] = useState<"summary" | "detail">("summary");
+  const [gradeStatusLoading, setGradeStatusLoading] = useState(false);
+  const [selectedGradeStatusSubject, setSelectedGradeStatusSubject] = useState<string>("");
+  const [studentDetailModal, setStudentDetailModal] = useState<{
+    open: boolean;
+    subjectName: string;
+    classroomName: string;
+    teacherName: string;
+    midtermMax: number;
+    finalMax: number;
+    students: { id: string; student_name: string; student_id: string; student_number: number | null; midterm_score: number | null; final_score: number | null }[];
+    loading: boolean;
+  }>({ open: false, subjectName: "", classroomName: "", teacherName: "", midtermMax: 50, finalMax: 50, students: [], loading: false });
 
   // Copy Classrooms State
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
@@ -344,6 +403,64 @@ export default function AdminPortal() {
     if (res.ok) setScheduleEntries(await res.json());
   };
 
+  const loadRankings = async (settingId: number, authToken: string) => {
+    setRankingsLoading(true);
+    try {
+      const res = await fetch(`/api/grades/rankings?settingId=${settingId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) setRankingsData(await res.json());
+    } finally {
+      setRankingsLoading(false);
+    }
+  };
+
+  const handleSelectRankingsSetting = (settingId: number) => {
+    setRankingsSettingId(settingId);
+    setRankingsClassroomFilter("all");
+    if (token) loadRankings(settingId, token);
+  };
+
+  const loadGradeStatus = async (settingId: number, authToken: string) => {
+    setGradeStatusLoading(true);
+    setSelectedGradeStatusSubject("");
+    try {
+      const res = await fetch(`/api/grades/status?settingId=${settingId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) setGradeStatusData(await res.json());
+    } finally {
+      setGradeStatusLoading(false);
+    }
+  };
+
+  const openStudentDetail = async (row: GradeStatusRow) => {
+    if (!row.classroom_id || !gradeStatusSettingId || !token) return;
+    const setting = settingsList.find((s: any) => s.id === gradeStatusSettingId);
+    if (!setting) return;
+    const termKey = `${setting.term}/${setting.academic_year}`;
+    setStudentDetailModal({
+      open: true, subjectName: row.subject_name, classroomName: row.classroom_name || "",
+      teacherName: row.teacher_name || "ไม่ระบุ",
+      midtermMax: Number(row.midterm_max_score) || 50, finalMax: Number(row.final_max_score) || 50,
+      students: [], loading: true,
+    });
+    const res = await fetch(`/api/grades/status/students?subjectName=${encodeURIComponent(row.subject_name)}&classroomId=${row.classroom_id}&term=${encodeURIComponent(termKey)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setStudentDetailModal(prev => ({ ...prev, students: data, loading: false }));
+    } else {
+      setStudentDetailModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleSelectGradeStatusSetting = (settingId: number) => {
+    setGradeStatusSettingId(settingId);
+    if (token) loadGradeStatus(settingId, token);
+  };
+
   const handleSelectSubjectSetting = (settingId: number) => {
     setSelectedSubjectSettingId(settingId);
     if (token) {
@@ -386,6 +503,12 @@ export default function AdminPortal() {
       loadSubjectClassrooms(activeSetting.id, authToken);
       loadSchedulePeriods(activeSetting.id, authToken);
       loadScheduleEntries(activeSetting.id, authToken);
+      // โหลด grade status
+      setGradeStatusSettingId(activeSetting.id);
+      loadGradeStatus(activeSetting.id, authToken);
+      // โหลด rankings
+      setRankingsSettingId(activeSetting.id);
+      loadRankings(activeSetting.id, authToken);
     } else {
       setIsGradingActive(false);
     }
@@ -1888,7 +2011,147 @@ function changeFontSize(dir) {
     if (win) { win.document.write(html); win.document.close(); }
   };
 
-  // Auto-fix existing entries with null teacher_id when subject has exactly 1 teacher
+  const handleExportStudents = () => {
+    let body = "";
+    let docTitle = "";
+
+    const getLocalizedText = (key: string) => {
+      const dict: Record<string, { th: string; rumi: string; jawi: string }> = {
+        "รายชื่อนักเรียน": { th: "รายชื่อนักเรียน", rumi: "Senarai Pelajar", jawi: "سنراي ڤلاجر" },
+        "ชั้นเรียน": { th: "ชั้นเรียน", rumi: "Kelas", jawi: "کلس" },
+        "เลขที่": { th: "เลขที่", rumi: "No.", jawi: "نو." },
+        "รหัสนักเรียน": { th: "รหัสนักเรียน", rumi: "ID Pelajar", jawi: "آیدي ڤلاجر" },
+        "ชื่อ-สกุล": { th: "ชื่อ-สกุล", rumi: "Nama Lengkap", jawi: "نام لڠکاڤ" },
+        "ทั้งหมด": { th: "ทั้งหมด", rumi: "Jumlah", jawi: "جمله" },
+        "คน": { th: "คน", rumi: "orang", jawi: "اورڠ" },
+        "ยังไม่ระบุชั้นเรียน": { th: "ยังไม่ระบุชั้นเรียน", rumi: "Belum Ditentukan", jawi: "بيلوم ديتنتوکن" },
+        "ออกรายงาน ณ": { th: "ออกรายงาน ณ", rumi: "Laporan pada", jawi: "لاڤورن ڤد" },
+        "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" },
+        "ขนาดตัวอักษร:": { th: "ขนาดตัวอักษร:", rumi: "Saiz Fon:", jawi: "ساءيز فون:" }
+      };
+      if (exportLanguage === "ms-rumi") return dict[key]?.rumi || key;
+      if (exportLanguage === "ms-jawi") return dict[key]?.jawi || key;
+      return dict[key]?.th || key;
+    };
+
+    // Group students by classroom
+    const studentsByClassroom = new Map<string, typeof filteredStudents>();
+    filteredStudents.forEach(s => {
+      const classroomId = s.classroom_id || "unassigned";
+      if (!studentsByClassroom.has(classroomId)) {
+        studentsByClassroom.set(classroomId, []);
+      }
+      studentsByClassroom.get(classroomId)!.push(s);
+    });
+
+    // Build tables for each classroom
+    const sortedClassrooms = Array.from(studentsByClassroom.entries())
+      .sort((a, b) => {
+        if (a[0] === "unassigned") return 1;
+        if (b[0] === "unassigned") return -1;
+        const aName = classrooms.find(c => c.id === a[0])?.name || a[0];
+        const bName = classrooms.find(c => c.id === b[0])?.name || b[0];
+        const aStartsWithLetter = /^[a-zA-Zก-๙]/.test(aName);
+        const bStartsWithLetter = /^[a-zA-Zก-๙]/.test(bName);
+        const aStartsWithDigit = /^[0-9]/.test(aName);
+        const bStartsWithDigit = /^[0-9]/.test(bName);
+        if (aStartsWithLetter && bStartsWithDigit) return -1;
+        if (aStartsWithDigit && bStartsWithLetter) return 1;
+        return aName.localeCompare(bName, 'th');
+      });
+
+    const thStyle = "padding:8px 12px;background:#0f172a;color:#f8fafc;font-size:14px;font-weight:700;text-align:center;border:1px solid #334155;";
+    const tdStyle = "padding:8px 12px;border:1px solid #e2e8f0;text-align:center;";
+    const tdLabelStyle = "padding:8px 12px;border:1px solid #e2e8f0;text-align:left;background:#f8fafc;font-weight:600;";
+
+    body = sortedClassrooms.map((entry, idx) => {
+      const [classroomId, students] = entry;
+      const classroomName = classroomId === "unassigned" 
+        ? `-- ${getLocalizedText("ยังไม่ระบุชั้นเรียน")} --`
+        : classrooms.find(c => c.id === classroomId)?.name || classroomId;
+      
+      const rows = students
+        .sort((a, b) => (a.student_number || 0) - (b.student_number || 0))
+        .map((s, i) => `
+          <tr>
+            <td style="${tdStyle}">${(s.student_number || i + 1)}</td>
+            <td style="${tdStyle}">${s.student_id}</td>
+            <td style="${tdLabelStyle}">${s.name}</td>
+          </tr>
+        `).join("");
+
+      const pb = idx > 0 ? "page-break-before:always;" : "";
+      return `<div style="margin-bottom:24px;break-inside:avoid;${pb}">
+        <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;">${getLocalizedText("ชั้นเรียน")} ${classroomName}</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="${thStyle}min-width:60px;">${getLocalizedText("เลขที่")}</th>
+              <th style="${thStyle}min-width:100px;">${getLocalizedText("รหัสนักเรียน")}</th>
+              <th style="${thStyle}">${getLocalizedText("ชื่อ-สกุล")}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-top:none;text-align:right;font-size:14px;font-weight:600;color:#0f172a;">
+          ${getLocalizedText("ทั้งหมด")}: <span style="color:#4f46e5;">${students.length}</span> ${getLocalizedText("คน")}
+        </div>
+      </div>`;
+    }).join("");
+
+    docTitle = `${getLocalizedText("รายชื่อนักเรียน")}`;
+    const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+    const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${docTitle}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Inter','Sarabun','Noto Sans Arabic','Noto Naskh Arabic',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;font-size:14px;}
+  h1{font-size:22px;font-weight:800;margin-bottom:4px;}
+  .meta{font-size:14px;color:#64748b;margin-bottom:16px;}
+  .print-btn{position:fixed;top:12px;right:12px;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100;}
+  .font-controls{position:fixed;top:12px;right:200px;display:flex;align-items:center;gap:8px;background:#fff;padding:6px 14px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.12);border:1px solid #e2e8f0;z-index:100;font-size:13px;font-weight:600;color:#475569;}
+  .font-controls label{white-space:nowrap;}
+  .font-controls input[type=range]{width:100px;accent-color:#4f46e5;cursor:pointer;}
+  .font-controls .font-size-val{min-width:28px;text-align:center;font-weight:700;color:#4f46e5;}
+  .font-controls button{padding:4px 10px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;color:#475569;line-height:1;}
+  .font-controls button:hover{background:#eef2ff;border-color:#a5b4fc;color:#4f46e5;}
+  @media print{.print-btn,.font-controls{display:none;} @page{margin:1cm;size:A4 portrait;}}
+</style>
+</head><body>
+<div class="font-controls">
+  <label>🔤 ${getLocalizedText("ขนาดตัวอักษร:")}</label>
+  <button onclick="changeFontSize(-1)">A-</button>
+  <input type="range" id="fontSlider" min="60" max="160" value="100" oninput="applyFontSize(this.value)">
+  <button onclick="changeFontSize(1)">A+</button>
+  <span class="font-size-val" id="fontVal">100%</span>
+</div>
+<button class="print-btn" onclick="window.print()">🖨️ ${getLocalizedText("พิมพ์ / บันทึก PDF")}</button>
+<h1 dir="auto">${docTitle}</h1>
+<div class="meta" dir="auto">${getLocalizedText("ออกรายงาน ณ")} ${dateStr}</div>
+<div id="students-content">
+${body}
+</div>
+<script>
+function applyFontSize(val) {
+  var content = document.getElementById('students-content');
+  content.style.transform = 'scale(' + (val / 100) + ')';
+  content.style.transformOrigin = 'top left';
+  content.style.width = (10000 / val) + '%';
+  document.getElementById('fontVal').textContent = val + '%';
+  document.getElementById('fontSlider').value = val;
+}
+function changeFontSize(dir) {
+  var slider = document.getElementById('fontSlider');
+  var newVal = Math.min(160, Math.max(60, parseInt(slider.value) + dir * 10));
+  applyFontSize(newVal);
+}
+</script>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+  };
   useEffect(() => {
     if (!token || !selectedSubjectSettingId || scheduleEntries.length === 0 || subjectsList.length === 0) return;
     scheduleEntries.forEach(e => {
@@ -2891,6 +3154,30 @@ function changeFontSize(dir) {
                     ))}
                   </select>
                 </SectionHeader>
+
+                {/* Export Students Section */}
+                <div className="mb-6 p-5 rounded-2xl border border-amber-100 bg-amber-50 flex gap-3 items-end flex-wrap">
+                  <div className="flex-1 min-w-xs">
+                    <label className="block text-xs font-semibold text-amber-700 mb-2">📄 ภาษาการส่งออก</label>
+                    <select
+                      value={exportLanguage}
+                      onChange={(e) => setExportLanguage(e.target.value as any)}
+                      className="w-full px-3 py-2.5 text-sm bg-white border border-amber-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:border-amber-300 transition-colors"
+                    >
+                      <option value="th">🇹🇭 ภาษาไทย</option>
+                      <option value="ms-rumi">🇲🇾 Bahasa Melayu (Rumi)</option>
+                      <option value="ms-jawi">🇲🇾 Bahasa Melayu (Jawi)</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleExportStudents}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2m0 0v-8m0 8H3m16-8h3m-6-4l-4-4m0 0l-4 4m4-4v12" /></svg>
+                    ส่งออกรายชื่อนักเรียน
+                  </button>
+                </div>
+
                 {/* Desktop: Table */}
                 <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
                   <table className="w-full text-left">
@@ -3427,6 +3714,539 @@ function changeFontSize(dir) {
               </div>
             )}
 
+            {activeTab === "rankings" && (
+              <div className="p-8 animate-fade-in-up">
+                <SectionHeader
+                  icon="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+                  color="purple"
+                  title="อันดับผลการเรียน"
+                  subtitle="จัดอันดับนักเรียนจากคะแนนรวม ทั้งภายในห้องเรียนและทั้งโรงเรียน"
+                >
+                  <button
+                    onClick={() => { if (rankingsSettingId && token) loadRankings(rankingsSettingId, token); }}
+                    disabled={!rankingsSettingId}
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    รีเฟรชข้อมูล
+                  </button>
+                </SectionHeader>
+
+                <TermSelector settingsList={settingsList} selectedId={rankingsSettingId} onSelect={handleSelectRankingsSetting} />
+
+                {!rankingsSettingId ? (
+                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                    กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
+                  </div>
+                ) : rankingsLoading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                    <p className="text-gray-500 font-semibold text-sm">กำลังคำนวณอันดับ...</p>
+                  </div>
+                ) : rankingsData.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                    ไม่มีข้อมูลนักเรียนในเทอมนี้
+                  </div>
+                ) : (() => {
+                  const classroomList = Array.from(new Set(rankingsData.map(r => r.classroom_name))).sort();
+                  const filtered = rankingsClassroomFilter === "all" ? rankingsData : rankingsData.filter(r => r.classroom_name === rankingsClassroomFilter);
+                  const classroomSorted = [...filtered].sort((a, b) => a.classroom_rank - b.classroom_rank || b.percentage - a.percentage);
+                  const schoolSorted = [...filtered].sort((a, b) => a.school_rank - b.school_rank || b.percentage - a.percentage);
+
+                  return (
+                    <div>
+                      {/* Classroom Filter */}
+                      <div className="mb-6 flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">กรองห้องเรียน:</span>
+                        <button
+                          onClick={() => setRankingsClassroomFilter("all")}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === "all" ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                        >
+                          ทั้งหมด
+                        </button>
+                        {classroomList.map(cn => (
+                          <button
+                            key={cn}
+                            onClick={() => setRankingsClassroomFilter(cn)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === cn ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                          >
+                            {cn}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Two-column layout */}
+                      <div className="grid lg:grid-cols-2 gap-6">
+                        {/* Classroom Ranking */}
+                        <div className="rounded-2xl border border-purple-100 bg-white shadow-sm overflow-hidden">
+                          <div className="px-5 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
+                            <h3 className="font-bold text-purple-800 flex items-center gap-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M4 21h16" /></svg>
+                              อันดับในห้องเรียน
+                            </h3>
+                            <p className="text-xs text-purple-500 mt-0.5">{filtered.length} คน</p>
+                          </div>
+                          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
+                                  <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
+                                  <th className="px-3 py-2.5 text-center font-bold w-16">ห้อง</th>
+                                  <th className="px-3 py-2.5 text-center font-bold w-20">เปอร์เซ็นต์</th>
+                                  <th className="px-3 py-2.5 text-center font-bold w-16">GPA</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {classroomSorted.map((s, i) => (
+                                  <tr key={`cr-${s.student_id}`} className={`transition-colors ${s.classroom_rank <= 3 ? "bg-amber-50/40" : "hover:bg-gray-50"}`}>
+                                    <td className="px-3 py-2.5 text-center">
+                                      {s.classroom_rank <= 3 ? (
+                                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.classroom_rank === 1 ? "bg-amber-400 text-white" : s.classroom_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                          {s.classroom_rank}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-500 font-bold text-xs">{s.classroom_rank}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                      <div className="font-semibold text-gray-800 text-xs">{s.student_name}</div>
+                                      <div className="text-[10px] text-gray-400">{s.student_id}</div>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center text-xs text-gray-600 font-semibold">{s.classroom_name}</td>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600" : s.percentage >= 60 ? "text-amber-600" : s.percentage >= 50 ? "text-orange-600" : "text-rose-600"}`}>
+                                        {s.percentage.toFixed(1)}%
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 text-emerald-700" : s.gpa >= 2.0 ? "bg-amber-100 text-amber-700" : s.gpa >= 1.0 ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700"}`}>
+                                        {s.gpa.toFixed(2)}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* School Ranking */}
+                        <div className="rounded-2xl border border-blue-100 bg-white shadow-sm overflow-hidden">
+                          <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                            <h3 className="font-bold text-blue-800 flex items-center gap-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
+                              อันดับทั้งโรงเรียน
+                            </h3>
+                            <p className="text-xs text-blue-500 mt-0.5">{rankingsData.length} คน</p>
+                          </div>
+                          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
+                                  <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
+                                  <th className="px-3 py-2.5 text-center font-bold w-16">ห้อง</th>
+                                  <th className="px-3 py-2.5 text-center font-bold w-20">เปอร์เซ็นต์</th>
+                                  <th className="px-3 py-2.5 text-center font-bold w-16">GPA</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {schoolSorted.map((s, i) => (
+                                  <tr key={`sr-${s.student_id}`} className={`transition-colors ${s.school_rank <= 3 ? "bg-amber-50/40" : "hover:bg-gray-50"}`}>
+                                    <td className="px-3 py-2.5 text-center">
+                                      {s.school_rank <= 3 ? (
+                                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.school_rank === 1 ? "bg-amber-400 text-white" : s.school_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                          {s.school_rank}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-500 font-bold text-xs">{s.school_rank}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                      <div className="font-semibold text-gray-800 text-xs">{s.student_name}</div>
+                                      <div className="text-[10px] text-gray-400">{s.student_id}</div>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center text-xs text-gray-600 font-semibold">{s.classroom_name}</td>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600" : s.percentage >= 60 ? "text-amber-600" : s.percentage >= 50 ? "text-orange-600" : "text-rose-600"}`}>
+                                        {s.percentage.toFixed(1)}%
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 text-emerald-700" : s.gpa >= 2.0 ? "bg-amber-100 text-amber-700" : s.gpa >= 1.0 ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700"}`}>
+                                        {s.gpa.toFixed(2)}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {activeTab === "grade-status" && (
+              <div className="p-8 animate-fade-in-up">
+                <SectionHeader
+                  icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  color="amber"
+                  title="สถานะการกรอกคะแนน"
+                  subtitle="ตรวจสอบความคืบหน้าการกรอกคะแนนของครูแต่ละคน แต่ละวิชา"
+                >
+                  <button
+                    onClick={() => {
+                      if (gradeStatusSettingId && token) loadGradeStatus(gradeStatusSettingId, token);
+                    }}
+                    disabled={!gradeStatusSettingId}
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    รีเฟรชข้อมูล
+                  </button>
+                </SectionHeader>
+
+                <TermSelector
+                  settingsList={settingsList}
+                  selectedId={gradeStatusSettingId}
+                  onSelect={handleSelectGradeStatusSetting}
+                />
+
+                {!gradeStatusSettingId ? (
+                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                    กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
+                  </div>
+                ) : gradeStatusLoading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                    <p className="text-gray-500 font-semibold text-sm">กำลังโหลดข้อมูล...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Sub-tabs: Summary / Detail */}
+                    <div className="flex gap-2 mb-6">
+                      <button
+                        onClick={() => {
+                          setGradeStatusSubTab("summary");
+                          setSelectedGradeStatusSubject("");
+                        }}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "summary" ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                      >
+                        <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        สรุปภาพรวม
+                      </button>
+                      <button
+                        onClick={() => setGradeStatusSubTab("detail")}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "detail" ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                      >
+                        <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        รายละเอียด
+                      </button>
+                    </div>
+
+                    {gradeStatusSubTab === "summary" && (() => {
+                      const teacherMap = new Map<string, { name: string; subjects: Map<string, { total: number; midterm: number; final: number; classrooms: string[] }> }>();
+                      gradeStatusData.forEach(row => {
+                        const tid = row.teacher_id || "__none__";
+                        const tname = row.teacher_name || "ไม่มีครูผู้สอน";
+                        if (!teacherMap.has(tid)) teacherMap.set(tid, { name: tname, subjects: new Map() });
+                        const teacher = teacherMap.get(tid)!;
+                        if (!teacher.subjects.has(row.subject_id)) {
+                          teacher.subjects.set(row.subject_id, { total: 0, midterm: 0, final: 0, classrooms: [] });
+                        }
+                        const subj = teacher.subjects.get(row.subject_id)!;
+                        subj.total += Number(row.total_students);
+                        subj.midterm += Number(row.midterm_entered);
+                        subj.final += Number(row.final_entered);
+                        if (row.classroom_name) subj.classrooms.push(row.classroom_name);
+                      });
+
+                      const teachers = Array.from(teacherMap.entries()).filter(([id]) => id !== "__none__");
+                      const totalTeachers = teachers.length;
+                      const completedTeachers = teachers.filter(([, t]) =>
+                        Array.from(t.subjects.values()).every(s => s.total > 0 && s.midterm >= s.total && s.final >= s.total)
+                      ).length;
+                      const inProgressTeachers = teachers.filter(([, t]) => {
+                        const subs = Array.from(t.subjects.values());
+                        const hasAny = subs.some(s => s.midterm > 0 || s.final > 0);
+                        const allDone = subs.every(s => s.total > 0 && s.midterm >= s.total && s.final >= s.total);
+                        return hasAny && !allDone;
+                      }).length;
+                      const notStartedTeachers = totalTeachers - completedTeachers - inProgressTeachers;
+
+                      return (
+                        <div>
+                          {/* Overview Cards */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                            <StatCard label="ครูผู้สอนทั้งหมด" value={totalTeachers} color="blue" icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <StatCard label="กรอกครบแล้ว" value={completedTeachers} sub={`${totalTeachers > 0 ? Math.round(completedTeachers / totalTeachers * 100) : 0}%`} color="green" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <StatCard label="กำลังดำเนินการ" value={inProgressTeachers} color="amber" icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <StatCard label="ยังไม่เริ่ม" value={notStartedTeachers} color="red" icon="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </div>
+
+                          {/* Teacher Cards */}
+                          {teachers.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                              ไม่มีข้อมูลครูผู้สอนในเทอมนี้
+                            </div>
+                          ) : (
+                            <div className="grid sm:grid-cols-2 gap-4">
+                              {teachers.map(([tid, teacher]) => {
+                                const subs = Array.from(teacher.subjects.entries());
+                                const allTotal = subs.reduce((a, [, s]) => a + s.total, 0);
+                                const allMidterm = subs.reduce((a, [, s]) => a + s.midterm, 0);
+                                const allFinal = subs.reduce((a, [, s]) => a + s.final, 0);
+                                const allDone = subs.every(([, s]) => s.total > 0 && s.midterm >= s.total && s.final >= s.total);
+                                const hasAny = subs.some(([, s]) => s.midterm > 0 || s.final > 0);
+                                const overallPct = allTotal > 0 ? Math.round(((allMidterm + allFinal) / (allTotal * 2)) * 100) : 0;
+
+                                let statusColor = "bg-gray-100 text-gray-500 border-gray-200";
+                                let statusText = "ยังไม่เริ่ม";
+                                if (allDone) { statusColor = "bg-emerald-100 text-emerald-800 border-emerald-200"; statusText = "ครบแล้ว"; }
+                                else if (hasAny) { statusColor = "bg-amber-100 text-amber-800 border-amber-200"; statusText = "กำลังดำเนินการ"; }
+
+                                return (
+                                  <div key={tid} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                          {teacher.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                          <div className="font-bold text-gray-800 text-sm">{teacher.name}</div>
+                                          <div className="text-xs text-gray-400">{subs.length} วิชา</div>
+                                        </div>
+                                      </div>
+                                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${statusColor}`}>
+                                        {statusText}
+                                      </span>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    <div className="mb-3">
+                                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                        <span>ความคืบหน้ารวม</span>
+                                        <span className="font-bold">{overallPct}%</span>
+                                      </div>
+                                      <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                        <div
+                                          className={`h-2.5 rounded-full transition-all ${allDone ? "bg-emerald-500" : overallPct > 0 ? "bg-amber-500" : "bg-gray-300"}`}
+                                          style={{ width: `${overallPct}%` }}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Subject breakdown */}
+                                    <div className="space-y-2">
+                                      {subs.map(([sid, s]) => {
+                                        const midPct = s.total > 0 ? Math.round((s.midterm / s.total) * 100) : 0;
+                                        const finPct = s.total > 0 ? Math.round((s.final / s.total) * 100) : 0;
+                                        const subjectRow = gradeStatusData.find(r => r.subject_id === sid);
+                                        const subjectName = subjectRow?.subject_name || sid;
+                                        return (
+                                          <div key={sid} className="bg-gray-50 rounded-xl p-3">
+                                            <div className="font-semibold text-xs text-gray-700 mb-1.5">{subjectName}</div>
+                                            <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                              <div>
+                                                <span className="text-gray-400">คะแนนเก็บ: </span>
+                                                <span className={`font-bold ${midPct >= 100 ? "text-emerald-600" : midPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                                  {s.midterm}/{s.total}
+                                                </span>
+                                              </div>
+                                              <div>
+                                                <span className="text-gray-400">คะแนนสอบ: </span>
+                                                <span className={`font-bold ${finPct >= 100 ? "text-emerald-600" : finPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                                  {s.final}/{s.total}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {gradeStatusSubTab === "detail" && (
+                      <div>
+                        {gradeStatusData.length === 0 ? (
+                          <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                            ไม่มีข้อมูลในเทอมนี้
+                          </div>
+                        ) : (
+                          <>
+                            <div className="mb-4 flex gap-3 items-end">
+                              <div className="flex-1 max-w-xs">
+                                <label className="block text-xs font-semibold text-gray-600 mb-2">เลือกวิชา</label>
+                                <select
+                                  value={selectedGradeStatusSubject}
+                                  onChange={(e) => setSelectedGradeStatusSubject(e.target.value)}
+                                  className="w-full px-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-gray-300 transition-colors"
+                                >
+                                  <option value="">ทั้งหมด</option>
+                                  {Array.from(new Set(gradeStatusData.map(row => row.subject_id)))
+                                    .map(subjectId => {
+                                      const subjectName = gradeStatusData.find(row => row.subject_id === subjectId)?.subject_name || subjectId;
+                                      return (
+                                        <option key={subjectId} value={subjectId}>{subjectName}</option>
+                                      );
+                                    })}
+                                </select>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-400 mb-3">คลิกแถวเพื่อดูรายชื่อนักเรียน</p>
+                            {/* Desktop Table */}
+                            <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
+                              <table className="w-full text-left">
+                                <thead className="bg-gray-50 text-gray-600">
+                                  <tr>
+                                    <th className="px-4 py-3 font-bold text-xs">ครูผู้สอน</th>
+                                    <th className="px-4 py-3 font-bold text-xs">วิชา</th>
+                                    <th className="px-4 py-3 font-bold text-xs">ชั้นเรียน</th>
+                                    <th className="px-4 py-3 font-bold text-xs text-center">นักเรียน</th>
+                                    <th className="px-4 py-3 font-bold text-xs text-center">คะแนนเก็บ</th>
+                                    <th className="px-4 py-3 font-bold text-xs text-center">คะแนนสอบ</th>
+                                    <th className="px-4 py-3 font-bold text-xs text-center">สถานะ</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {gradeStatusData
+                                    .filter(row => !selectedGradeStatusSubject || row.subject_id === selectedGradeStatusSubject)
+                                    .map((row, i) => {
+                                    const total = Number(row.total_students);
+                                    const mid = Number(row.midterm_entered);
+                                    const fin = Number(row.final_entered);
+                                    const midPct = total > 0 ? Math.round((mid / total) * 100) : 0;
+                                    const finPct = total > 0 ? Math.round((fin / total) * 100) : 0;
+                                    const isDone = total > 0 && mid >= total && fin >= total;
+                                    const hasAny = mid > 0 || fin > 0;
+
+                                    return (
+                                      <tr key={i} onClick={() => openStudentDetail(row)} className="hover:bg-indigo-50/50 cursor-pointer transition-colors">
+                                        <td className="px-4 py-3 text-sm font-semibold text-gray-800">
+                                          {row.teacher_name || <span className="text-gray-400">ไม่ระบุ</span>}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          <div className="text-sm font-semibold text-gray-800">{row.subject_name}</div>
+                                          <div className="text-[10px] text-gray-400">
+                                            {row.subject_type === "activity" ? "วิชากิจกรรม" : `วิชาหลัก (${row.credit_hours || 1} หน่วยกิต)`}
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-600">{row.classroom_name || "-"}</td>
+                                        <td className="px-4 py-3 text-center text-sm font-bold text-gray-700">{total}</td>
+                                        <td className="px-4 py-3 text-center">
+                                          <div className="flex items-center justify-center gap-1.5">
+                                            <div className="w-16 bg-gray-100 rounded-full h-1.5">
+                                              <div className={`h-1.5 rounded-full ${midPct >= 100 ? "bg-emerald-500" : midPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(midPct, 100)}%` }} />
+                                            </div>
+                                            <span className={`text-xs font-bold ${midPct >= 100 ? "text-emerald-600" : midPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                              {mid}/{total}
+                                            </span>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                          <div className="flex items-center justify-center gap-1.5">
+                                            <div className="w-16 bg-gray-100 rounded-full h-1.5">
+                                              <div className={`h-1.5 rounded-full ${finPct >= 100 ? "bg-emerald-500" : finPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(finPct, 100)}%` }} />
+                                            </div>
+                                            <span className={`text-xs font-bold ${finPct >= 100 ? "text-emerald-600" : finPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                              {fin}/{total}
+                                            </span>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                          {isDone ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                              ครบ
+                                            </span>
+                                          ) : hasAny ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3" /></svg>
+                                              กำลังกรอก
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+                                              ยังไม่เริ่ม
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Mobile Cards */}
+                            <div className="md:hidden space-y-3">
+                              {gradeStatusData
+                                .filter(row => !selectedGradeStatusSubject || row.subject_id === selectedGradeStatusSubject)
+                                .map((row, i) => {
+                                const total = Number(row.total_students);
+                                const mid = Number(row.midterm_entered);
+                                const fin = Number(row.final_entered);
+                                const midPct = total > 0 ? Math.round((mid / total) * 100) : 0;
+                                const finPct = total > 0 ? Math.round((fin / total) * 100) : 0;
+                                const isDone = total > 0 && mid >= total && fin >= total;
+                                const hasAny = mid > 0 || fin > 0;
+
+                                return (
+                                  <div key={i} onClick={() => openStudentDetail(row)} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all active:scale-[0.99]">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div>
+                                        <div className="font-bold text-gray-800 text-sm">{row.subject_name}</div>
+                                        <div className="text-xs text-gray-400">{row.classroom_name || "-"}</div>
+                                      </div>
+                                      {isDone ? (
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">ครบ</span>
+                                      ) : hasAny ? (
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">กำลังกรอก</span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200 shrink-0">ยังไม่เริ่ม</span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-indigo-600 font-semibold mb-2">{row.teacher_name || "ไม่ระบุครูผู้สอน"}</div>
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                      <div>
+                                        <div className="text-gray-400 mb-1">คะแนนเก็บ</div>
+                                        <div className="w-full bg-gray-100 rounded-full h-1.5 mb-0.5">
+                                          <div className={`h-1.5 rounded-full ${midPct >= 100 ? "bg-emerald-500" : midPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(midPct, 100)}%` }} />
+                                        </div>
+                                        <span className="font-bold text-gray-600">{mid}/{total}</span>
+                                      </div>
+                                      <div>
+                                        <div className="text-gray-400 mb-1">คะแนนสอบ</div>
+                                        <div className="w-full bg-gray-100 rounded-full h-1.5 mb-0.5">
+                                          <div className={`h-1.5 rounded-full ${finPct >= 100 ? "bg-emerald-500" : finPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(finPct, 100)}%` }} />
+                                        </div>
+                                        <span className="font-bold text-gray-600">{fin}/{total}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {activeTab === "settings" && (
               <div className="p-8 animate-fade-in-up">
                 <SectionHeader
@@ -3925,6 +4745,155 @@ function changeFontSize(dir) {
       )}
 
       {/* Subject Modal */}
+      {/* Student Detail Modal */}
+      {studentDetailModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in-up"
+          onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
+        >
+          <div
+            className="bg-white rounded-3xl border border-indigo-50 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-slate-100">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br from-amber-500 to-orange-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-bold text-slate-800 leading-tight truncate">{studentDetailModal.subjectName}</h3>
+                <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                  {studentDetailModal.classroomName} — ครูผู้สอน: {studentDetailModal.teacherName}
+                </p>
+              </div>
+              <button
+                onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
+                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-full transition-all cursor-pointer border-0 bg-transparent"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 overflow-y-auto flex-1">
+              {studentDetailModal.loading ? (
+                <div className="text-center py-12">
+                  <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                  <p className="text-gray-500 font-semibold text-sm">กำลังโหลดรายชื่อ...</p>
+                </div>
+              ) : studentDetailModal.students.length === 0 ? (
+                <div className="text-center py-12 text-gray-400 font-semibold">ไม่มีนักเรียนในห้องนี้</div>
+              ) : (() => {
+                const ss = studentDetailModal.students;
+                const done = ss.filter(s => s.midterm_score !== null && s.final_score !== null).length;
+                const partial = ss.filter(s => (s.midterm_score !== null || s.final_score !== null) && !(s.midterm_score !== null && s.final_score !== null)).length;
+                const notStarted = ss.length - done - partial;
+                return (
+                  <>
+                    {/* Summary badges */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
+                        ทั้งหมด {ss.length} คน
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        ครบแล้ว {done}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        กรอกบางส่วน {partial}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+                        <span className="w-2 h-2 rounded-full bg-gray-400" />
+                        ยังไม่เริ่ม {notStarted}
+                      </span>
+                    </div>
+
+                    {/* Student list */}
+                    <div className="rounded-xl border border-gray-100 overflow-hidden">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-50 text-gray-500">
+                          <tr>
+                            <th className="px-4 py-2.5 font-bold text-xs w-12">ลำดับ</th>
+                            <th className="px-4 py-2.5 font-bold text-xs">ชื่อ-นามสกุล</th>
+                            <th className="px-4 py-2.5 font-bold text-xs text-center">เก็บ (/{studentDetailModal.midtermMax})</th>
+                            <th className="px-4 py-2.5 font-bold text-xs text-center">สอบ (/{studentDetailModal.finalMax})</th>
+                            <th className="px-4 py-2.5 font-bold text-xs text-center">สถานะ</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {ss.map((s, idx) => {
+                            const hasMid = s.midterm_score !== null;
+                            const hasFin = s.final_score !== null;
+                            const isDone = hasMid && hasFin;
+                            const isPartial = (hasMid || hasFin) && !isDone;
+
+                            return (
+                              <tr key={s.id} className={`transition-colors ${isDone ? "bg-emerald-50/30" : isPartial ? "bg-amber-50/30" : ""}`}>
+                                <td className="px-4 py-2.5 text-xs text-gray-400 font-semibold">{s.student_number || idx + 1}</td>
+                                <td className="px-4 py-2.5">
+                                  <div className="text-sm font-semibold text-gray-800">{s.student_name}</div>
+                                  <div className="text-[10px] text-gray-400">{s.student_id}</div>
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  {hasMid ? (
+                                    <span className="text-sm font-bold text-gray-800">{s.midterm_score}</span>
+                                  ) : (
+                                    <span className="text-xs text-gray-300">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  {hasFin ? (
+                                    <span className="text-sm font-bold text-gray-800">{s.final_score}</span>
+                                  ) : (
+                                    <span className="text-xs text-gray-300">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  {isDone ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
+                                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                      ครบ
+                                    </span>
+                                  ) : isPartial ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700">
+                                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3" /></svg>
+                                      บางส่วน
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-400">
+                                      ยังไม่มี
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end rounded-b-3xl">
+              <button
+                onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer border-0"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isSubjectModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-slide-up-fade">
