@@ -3,13 +3,67 @@ import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 import bcrypt from "bcrypt";
 
+async function hasSubjectTeachersTable(): Promise<boolean> {
+  try {
+    await pool.query("SELECT 1 FROM subject_teachers LIMIT 0");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: NextRequest) {
   if (!await verifyAdmin(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const result = await pool.query(
-    "SELECT id, username, email, role, student_id, homeroom_classroom_id, subjects FROM users ORDER BY role, username"
-  );
+
+  const multiTeacherReady = await hasSubjectTeachersTable();
+
+  let queryText = "";
+  if (multiTeacherReady) {
+    queryText = `
+      SELECT 
+        u.id, 
+        u.username, 
+        u.email, 
+        u.role, 
+        u.student_id, 
+        u.homeroom_classroom_id,
+        COALESCE(
+          (
+            SELECT array_agg(DISTINCT s.name)
+            FROM subjects s
+            LEFT JOIN subject_teachers st ON st.subject_id = s.id
+            WHERE s.teacher_id = u.id OR st.user_id = u.id
+          ),
+          '{}'::text[]
+        ) as subjects
+      FROM users u
+      ORDER BY u.role, u.username
+    `;
+  } else {
+    queryText = `
+      SELECT 
+        u.id, 
+        u.username, 
+        u.email, 
+        u.role, 
+        u.student_id, 
+        u.homeroom_classroom_id,
+        COALESCE(
+          (
+            SELECT array_agg(DISTINCT s.name)
+            FROM subjects s
+            WHERE s.teacher_id = u.id
+          ),
+          '{}'::text[]
+        ) as subjects
+      FROM users u
+      ORDER BY u.role, u.username
+    `;
+  }
+
+  const result = await pool.query(queryText);
   return NextResponse.json(result.rows);
 }
 

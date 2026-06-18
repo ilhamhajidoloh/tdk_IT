@@ -197,7 +197,7 @@ export default function AdminPortal() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [userSubTab, setUserSubTab] = useState<"all" | "admin" | "teacher" | "student">("all");
   const [userCurrentPage, setUserCurrentPage] = useState(1);
-  const usersPerPage = 10;
+  const [usersPerPage, setUsersPerPage] = useState(10);
 
   useEffect(() => {
     setUserCurrentPage(1);
@@ -263,7 +263,7 @@ export default function AdminPortal() {
   const [targetClassroom, setTargetClassroom] = useState<{ id: string; name: string } | null>(null);
   const [selectedStudentsForAssign, setSelectedStudentsForAssign] = useState<string[]>([]);
   const [searchAssignStudent, setSearchAssignStudent] = useState("");
-  const [studentFilterClassroomId, setStudentFilterClassroomId] = useState<string>("all");
+  const [studentFilterClassroomId, setStudentFilterClassroomId] = useState<string>("unassigned");
   const filteredStudents = useMemo(() => {
     if (studentFilterClassroomId === "all") return students;
     if (studentFilterClassroomId === "unassigned") return students.filter(s => !s.classroom_id);
@@ -1625,7 +1625,7 @@ export default function AdminPortal() {
   const handleExportSchedule = (type: "overview" | "classroom" | "teacher") => {
     if (!selectedSubjectSettingId || schedulePeriods.length === 0) return;
     const setting = settingsList.find((s: any) => s.id === selectedSubjectSettingId);
-    
+
     const getLocalizedText = (key: string) => {
       const dict: Record<string, { th: string; rumi: string; jawi: string }> = {
         "คาบ": { th: "คาบ", rumi: "Waktu", jawi: "وقتو" },
@@ -1725,7 +1725,7 @@ export default function AdminPortal() {
     const legend = colorMap.size > 0 ? `<div style="margin-bottom:16px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
       <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">${getLocalizedText("สีครูผู้สอน")}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">${Array.from(colorMap.entries()).map(([name, c]) =>
-        `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:13px;font-weight:600;">
+      `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:13px;font-weight:600;">
           <span style="width:10px;height:10px;border-radius:50%;background:${c.text};flex-shrink:0;"></span>${name}
         </span>`).join("")}
       </div>
@@ -2412,50 +2412,73 @@ function changeFontSize(dir) {
                 </div>
 
                 {/* Pagination Controls */}
-                {totalUserPages > 1 && (
+                {filteredUsers.length > 0 && (
                   <div className="mt-6 flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                    <div className="text-sm font-medium text-gray-500">
-                      แสดง {(userCurrentPage - 1) * usersPerPage + 1} ถึง {Math.min(userCurrentPage * usersPerPage, filteredUsers.length)} จากทั้งหมด {filteredUsers.length} รายการ
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 font-medium">
+                      <span>
+                        แสดง {Math.min((userCurrentPage - 1) * usersPerPage + 1, filteredUsers.length)} ถึง {Math.min(userCurrentPage * usersPerPage, filteredUsers.length)} จากทั้งหมด {filteredUsers.length} รายการ
+                      </span>
+                      <span className="flex items-center gap-1.5 border-l border-gray-200 pl-4">
+                        <span>แสดงหน้าละ</span>
+                        <select
+                          value={usersPerPage}
+                          onChange={(e) => {
+                            setUsersPerPage(Number(e.target.value));
+                            setUserCurrentPage(1);
+                          }}
+                          className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all hover:bg-gray-100"
+                        >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={20}>20</option>
+                          <option value={50}>50</option>
+                          <option value={filteredUsers.length}>ทั้งหมด</option>
+                        </select>
+                        <span>รายการ</span>
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setUserCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={userCurrentPage === 1}
-                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
-                      >
-                        ก่อนหน้า
-                      </button>
-                      <div className="flex items-center gap-1 px-2">
-                        {Array.from({ length: totalUserPages }).map((_, i) => {
-                          const pageNum = i + 1;
-                          if (pageNum === 1 || pageNum === totalUserPages || (pageNum >= userCurrentPage - 1 && pageNum <= userCurrentPage + 1)) {
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => setUserCurrentPage(pageNum)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors cursor-pointer border ${userCurrentPage === pageNum
-                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                                  : "bg-white text-gray-600 border-transparent hover:border-gray-200 hover:bg-gray-50"
-                                  }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          }
-                          if (pageNum === userCurrentPage - 2 || pageNum === userCurrentPage + 2) {
-                            return <span key={pageNum} className="text-gray-400">...</span>;
-                          }
-                          return null;
-                        })}
+
+                    {totalUserPages > 1 && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setUserCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={userCurrentPage === 1}
+                          className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
+                        >
+                          ก่อนหน้า
+                        </button>
+                        <div className="flex items-center gap-1 px-2">
+                          {Array.from({ length: totalUserPages }).map((_, i) => {
+                            const pageNum = i + 1;
+                            if (pageNum === 1 || pageNum === totalUserPages || (pageNum >= userCurrentPage - 1 && pageNum <= userCurrentPage + 1)) {
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setUserCurrentPage(pageNum)}
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors cursor-pointer border ${userCurrentPage === pageNum
+                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                    : "bg-white text-gray-600 border-transparent hover:border-gray-200 hover:bg-gray-50"
+                                    }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            }
+                            if (pageNum === userCurrentPage - 2 || pageNum === userCurrentPage + 2) {
+                              return <span key={pageNum} className="text-gray-400">...</span>;
+                            }
+                            return null;
+                          })}
+                        </div>
+                        <button
+                          onClick={() => setUserCurrentPage(prev => Math.min(prev + 1, totalUserPages))}
+                          disabled={userCurrentPage === totalUserPages}
+                          className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
+                        >
+                          ถัดไป
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setUserCurrentPage(prev => Math.min(prev + 1, totalUserPages))}
-                        disabled={userCurrentPage === totalUserPages}
-                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
-                      >
-                        ถัดไป
-                      </button>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
