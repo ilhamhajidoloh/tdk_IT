@@ -104,6 +104,10 @@ export default function TeacherPortal() {
     school_rank: number; classroom_rank: number; school_total: number; classroom_total: number;
   }[]>([]);
   const [rankingsLoaded, setRankingsLoaded] = useState(false);
+  const [rankingMode, setRankingMode] = useState<"single" | "combined">("single");
+  const [combinedAvailable, setCombinedAvailable] = useState(false);
+  const [otherTermSettings, setOtherTermSettings] = useState<{ id: number; term: string; academic_year: string }[]>([]);
+  const [rankingTermSettingId, setRankingTermSettingId] = useState<number | null>(null);
 
   const [isGradingActive, setIsGradingActive] = useState(true);
   const [settingsStartDate, setSettingsStartDate] = useState("");
@@ -208,11 +212,27 @@ export default function TeacherPortal() {
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setScheduleEntries(data); })
       .catch(console.error);
-    fetch(`/api/grades/rankings?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/grades/rankings/check-combined?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        setCombinedAvailable(data.combined_available === true);
+        if (Array.isArray(data.settings)) setOtherTermSettings(data.settings);
+      })
+      .catch(console.error);
+    setRankingMode("single");
+    setRankingTermSettingId(null);
+  }, [token, activeSettingId]);
+
+  useEffect(() => {
+    if (!token || !activeSettingId) return;
+    const sid = rankingMode === "combined" ? activeSettingId : (rankingTermSettingId || activeSettingId);
+    const modeParam = rankingMode === "combined" ? "&mode=combined" : "";
+    setRankingsLoaded(false);
+    fetch(`/api/grades/rankings?settingId=${sid}${modeParam}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } })
       .catch(console.error);
-  }, [token, activeSettingId]);
+  }, [token, activeSettingId, rankingMode, rankingTermSettingId]);
 
   useEffect(() => {
     if (!enterClassroom) return;
@@ -1450,6 +1470,56 @@ export default function TeacherPortal() {
                   </div>
                 </div>
 
+                {/* Term Mode Selector for Rankings */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="font-bold text-slate-800 text-sm">เลือกช่วงเวลาดูอันดับ</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">ปีการศึกษา {otherTermSettings.length > 0 ? otherTermSettings[0].academic_year : ""}</p>
+                  </div>
+                  <div className="p-5 flex flex-wrap gap-2">
+                    {otherTermSettings.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => { setRankingMode("single"); setRankingTermSettingId(s.id); }}
+                        className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all cursor-pointer ${
+                          rankingMode === "single" && (rankingTermSettingId === s.id || (!rankingTermSettingId && s.id === activeSettingId))
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/60"
+                        }`}
+                      >
+                        เทอม {s.term}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => { if (combinedAvailable) setRankingMode("combined"); }}
+                      disabled={!combinedAvailable}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                        rankingMode === "combined"
+                          ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-100 cursor-pointer"
+                          : combinedAvailable
+                          ? "bg-white text-purple-600 border-purple-200 hover:border-purple-400 hover:bg-purple-50/60 cursor-pointer"
+                          : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                      }`}
+                    >
+                      รวม 2 เทอม
+                      {!combinedAvailable && (
+                        <span className="ml-1.5 text-[10px] font-medium text-slate-400">(ยังไม่มีคะแนนครบ)</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Rankings Loading */}
+                {!rankingsLoaded && activeSettingId && (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
+                    <div className="relative w-10 h-10 mx-auto mb-3">
+                      <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
+                      <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+                    </div>
+                    <p className="text-sm text-slate-500 font-semibold">กำลังโหลดข้อมูลอันดับ...</p>
+                  </div>
+                )}
+
                 {/* Rankings Section */}
                 {rankingsLoaded && (() => {
                   const myClassroomId = homeroomClass?.id;
@@ -1467,7 +1537,9 @@ export default function TeacherPortal() {
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
                             อันดับในห้อง {homeroomClass?.name}
                           </h3>
-                          <p className="text-xs text-purple-500 mt-0.5">{classroomRankings.length} คน · จากคะแนนรวม</p>
+                          <p className="text-xs text-purple-500 mt-0.5">
+                            {classroomRankings.length} คน · {rankingMode === "combined" ? "รวม 2 เทอม" : "จากคะแนนรวม"}
+                          </p>
                         </div>
                         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                           <table className="w-full text-sm">
@@ -1519,7 +1591,10 @@ export default function TeacherPortal() {
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
                             อันดับทั้งโรงเรียน
                           </h3>
-                          <p className="text-xs text-blue-500 mt-0.5">เฉพาะนักเรียนห้อง {homeroomClass?.name} · จาก {rankingsData.length} คนทั้งหมด</p>
+                          <p className="text-xs text-blue-500 mt-0.5">
+                            เฉพาะนักเรียนห้อง {homeroomClass?.name} · จาก {rankingsData.length} คนทั้งหมด
+                            {rankingMode === "combined" && " · รวม 2 เทอม"}
+                          </p>
                         </div>
                         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                           <table className="w-full text-sm">

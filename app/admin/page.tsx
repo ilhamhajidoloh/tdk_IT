@@ -4254,7 +4254,7 @@ function changeFontSize(dir) {
                   color="slate"
                   title="ตั้งค่าระบบ"
                   subtitle="กำหนดปีการศึกษา เทอม และช่วงเวลาการบันทึกคะแนนในระบบทั้งหมด"
-                  count={settingsList.length}
+                  count={new Set(settingsList.map((s: any) => s.academic_year)).size}
                   countLabel="ปีการศึกษา"
                 >
                   <button
