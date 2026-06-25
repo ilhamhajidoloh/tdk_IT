@@ -69,15 +69,84 @@ const NAV_TABS: { key: Tab; label: string; icon: string; }[] = [
 
 function LoadingScreen({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-blue-50 gap-4">
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
-        <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="fixed inset-0 mesh-gradient -z-10" />
+      <div className="fixed top-[-20%] left-[-10%] w-96 h-96 bg-gradient-to-br from-indigo-200/30 to-cyan-200/30 rounded-full blur-3xl animate-float-slow -z-10" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-80 h-80 bg-gradient-to-br from-violet-200/20 to-fuchsia-200/20 rounded-full blur-3xl animate-float-slow -z-10" style={{ animationDelay: '2s' }} />
+      <div className="flex flex-col items-center gap-5 animate-fade-in-scale">
+        <div className="relative w-20 h-20">
+          <div className="absolute inset-0 rounded-full border-4 border-indigo-100/50" />
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-violet-500 animate-spin" />
+          <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-cyan-400 border-l-indigo-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+        </div>
+        <div className="text-center">
+          <p className="gradient-text font-extrabold text-lg">{title}</p>
+          {subtitle && <p className="text-slate-400 text-sm mt-2 font-medium">{subtitle}</p>}
+        </div>
       </div>
-      <div className="text-center">
-        <p className="text-gray-700 font-bold">{title}</p>
-        {subtitle && <p className="text-gray-400 text-sm mt-1">{subtitle}</p>}
+    </div>
+  );
+}
+
+function SkeletonTeacherPortal() {
+  return (
+    <div className="min-h-screen flex flex-col relative">
+      <div className="fixed inset-0 mesh-gradient -z-10" />
+      <div className="fixed top-[-20%] left-[-10%] w-96 h-96 bg-gradient-to-br from-indigo-200/20 to-cyan-200/20 rounded-full blur-3xl animate-float-slow -z-10" />
+      <div className="fixed bottom-[-15%] right-[-5%] w-80 h-80 bg-gradient-to-br from-violet-200/15 to-fuchsia-200/15 rounded-full blur-3xl animate-float-slow -z-10" style={{ animationDelay: '3s' }} />
+      <div className="fixed top-[40%] right-[-15%] w-72 h-72 bg-gradient-to-br from-cyan-200/10 to-blue-200/10 rounded-full blur-3xl animate-float-slow -z-10" style={{ animationDelay: '5s' }} />
+
+      {/* Header Skeleton */}
+      <header className="header-gradient sticky top-0 z-20">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-slate-200/60 animate-pulse shrink-0 border border-white/50" />
+            <div className="min-w-0 flex flex-col gap-1.5">
+              <div className="w-24 h-4 bg-slate-200/60 rounded animate-pulse" />
+              <div className="w-32 h-3 bg-slate-200/60 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="hidden sm:flex w-40 h-8 bg-slate-200/60 rounded-2xl animate-pulse" />
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-9 h-9 bg-slate-200/60 rounded-xl animate-pulse" />
+            <div className="w-9 h-9 bg-slate-200/60 rounded-xl animate-pulse" />
+            <div className="w-24 h-9 bg-slate-200/60 rounded-xl animate-pulse hidden sm:block" />
+          </div>
+        </div>
+      </header>
+
+      {/* Tab Nav Skeleton */}
+      <div className="sticky top-16 z-10 py-3">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
+          <nav className="flex gap-1.5 overflow-x-auto scrollbar-none bg-slate-100/60 backdrop-blur-sm rounded-2xl p-1.5 border border-white/40 shadow-sm">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="w-28 h-10 bg-slate-200/60 rounded-xl animate-pulse shrink-0" />
+            ))}
+          </nav>
+        </div>
       </div>
+
+      {/* Main Content Skeleton */}
+      <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6">
+        <div className="space-y-5">
+          <div className="card-modern overflow-hidden border-slate-100">
+            <div className="px-5 py-4 border-b border-slate-100/60 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-slate-200/60 animate-pulse shrink-0" />
+              <div className="flex flex-col gap-1.5">
+                <div className="w-24 h-4 bg-slate-200/60 rounded animate-pulse" />
+                <div className="w-40 h-3 bg-slate-200/60 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="p-5">
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="w-32 sm:w-40 h-16 bg-slate-200/60 rounded-xl animate-pulse border border-slate-100" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
@@ -498,7 +567,7 @@ export default function TeacherPortal() {
   };
 
   if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบ" />;
-  if (!isClient || loading || !teacherUser) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การใช้งาน" />;
+  if (!isClient || loading || !teacherUser) return <SkeletonTeacherPortal />;
 
   const currentSubjectObj = subjectsList.find(s => s.name?.trim().toLowerCase() === enterSubject?.trim().toLowerCase() && s.setting_id === activeSettingId);
   const currentMidtermMax = Number(currentSubjectObj?.midterm_max_score) || midtermMax;
@@ -613,17 +682,22 @@ export default function TeacherPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
+      <div className="fixed inset-0 mesh-gradient -z-10" />
+      <div className="fixed top-[-20%] left-[-10%] w-96 h-96 bg-gradient-to-br from-indigo-200/20 to-cyan-200/20 rounded-full blur-3xl animate-float-slow -z-10" />
+      <div className="fixed bottom-[-15%] right-[-5%] w-80 h-80 bg-gradient-to-br from-violet-200/15 to-fuchsia-200/15 rounded-full blur-3xl animate-float-slow -z-10" style={{ animationDelay: '3s' }} />
+      <div className="fixed top-[40%] right-[-15%] w-72 h-72 bg-gradient-to-br from-cyan-200/10 to-blue-200/10 rounded-full blur-3xl animate-float-slow -z-10" style={{ animationDelay: '5s' }} />
+
       {/* ===== HEADER ===== */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+      <header className="header-gradient sticky top-0 z-20">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           {/* Left: Logo + Info */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow border border-slate-100">
+            <div className="w-10 h-10 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-indigo-200/30 border border-white/50 ring-2 ring-indigo-100/50">
               <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-slate-800 text-sm leading-tight truncate">
+              <div className="font-extrabold text-slate-800 text-sm leading-tight truncate">
                 {teacherUser?.username || "ครู"}
               </div>
               <div className="text-xs text-slate-400 font-medium truncate">
@@ -633,8 +707,8 @@ export default function TeacherPortal() {
           </div>
 
           {/* Center: Status Badge */}
-          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${isGradingActive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isGradingActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+          <div className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold border backdrop-blur-sm ${isGradingActive ? "bg-emerald-50/80 text-emerald-700 border-emerald-200/60 shadow-lg shadow-emerald-100/30" : "bg-rose-50/80 text-rose-700 border-rose-200/60 shadow-lg shadow-rose-100/30"}`}>
+            <span className={`w-2 h-2 rounded-full ${isGradingActive ? "bg-emerald-500 animate-glow-pulse" : "bg-rose-500"}`} />
             {isGradingActive ? `เปิดบันทึก · เทอม ${enterTerm}` : `ปิดบันทึก · นอกช่วงเวลา`}
           </div>
 
@@ -643,7 +717,7 @@ export default function TeacherPortal() {
             <button
               onClick={handleConnectGoogle}
               title={teacherUser?.email ? `เชื่อมต่ออีเมล: ${teacherUser.email}` : "เชื่อมต่ออีเมล Google"}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors border ${teacherUser?.email ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-slate-500 border-slate-200 hover:text-indigo-600 hover:bg-indigo-50"}`}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 border backdrop-blur-sm ${teacherUser?.email ? "text-emerald-600 border-emerald-200/60 bg-emerald-50/80 shadow-sm shadow-emerald-100/30" : "text-slate-500 border-slate-200/60 bg-white/50 hover:text-indigo-600 hover:bg-indigo-50/80 hover:border-indigo-200/60 hover:shadow-sm"}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -652,7 +726,7 @@ export default function TeacherPortal() {
             <button
               onClick={handleChangePassword}
               title="เปลี่ยนรหัสผ่าน"
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors border border-slate-200"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/80 transition-all duration-200 border border-slate-200/60 bg-white/50 backdrop-blur-sm hover:border-indigo-200/60 hover:shadow-sm"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -660,7 +734,7 @@ export default function TeacherPortal() {
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-xl transition-colors border border-rose-100"
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50/80 hover:bg-rose-100/80 px-3 py-2 rounded-xl transition-all duration-200 border border-rose-200/60 backdrop-blur-sm hover:shadow-sm hover:shadow-rose-100/30"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -672,17 +746,17 @@ export default function TeacherPortal() {
       </header>
 
       {/* ===== TAB NAV ===== */}
-      <div className="bg-white border-b border-slate-200 sticky top-16 z-10">
+      <div className="sticky top-16 z-10 py-3">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
-          <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-none">
+          <nav className="flex gap-1.5 overflow-x-auto scrollbar-none bg-slate-100/60 backdrop-blur-sm rounded-2xl p-1.5 border border-white/40 shadow-sm">
             {NAV_TABS.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-4 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer rounded-xl ${
                   activeTab === tab.key
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+                    ? "bg-white shadow-md text-indigo-600 border border-white/80"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-white/40"
                 }`}
               >
                 <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -690,12 +764,12 @@ export default function TeacherPortal() {
                 </svg>
                 {tab.label}
                 {tab.key === "enter" && enterSubject && enterClassroom && (
-                  <span className="ml-1 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span className="ml-1 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
                     {savedCount}/{currentClassroomStudents.length}
                   </span>
                 )}
                 {tab.key === "homeroom" && homeroomClass && (
-                  <span className="ml-1 bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span className="ml-1 bg-gradient-to-r from-purple-500 to-violet-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
                     {homeroomStudents.length}
                   </span>
                 )}
@@ -706,7 +780,7 @@ export default function TeacherPortal() {
       </div>
 
       {/* ===== MAIN CONTENT ===== */}
-      <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6">
+      <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6 animate-fade-in-up">
 
         {/* ==================== TAB 1: ENTER GRADES ==================== */}
         {activeTab === "enter" && (
@@ -714,7 +788,7 @@ export default function TeacherPortal() {
 
             {/* Grading Status Banner */}
             {!isGradingActive && (
-              <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl text-sm font-semibold">
+              <div className="flex items-start gap-3 bg-rose-50/80 backdrop-blur-sm border border-rose-200/60 text-rose-800 px-5 py-4 rounded-2xl text-sm font-semibold shadow-lg shadow-rose-100/20">
                 <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -723,9 +797,9 @@ export default function TeacherPortal() {
             )}
 
             {/* Step 1: Select Subject */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-                <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">1</span>
+            <div className="card-modern overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100/60 flex items-center gap-3">
+                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200/40">1</span>
                 <div>
                   <div className="font-bold text-slate-800 text-sm">เลือกรายวิชา</div>
                   <div className="text-xs text-slate-400">วิชาที่คุณสอนในเทอมนี้</div>
@@ -735,7 +809,7 @@ export default function TeacherPortal() {
                 {mySubjects.length === 0 ? (
                   <div className="text-center py-6 text-slate-400 text-sm">ยังไม่มีวิชาที่กำหนดให้คุณสอนในเทอมนี้</div>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 stagger-children">
                     {mySubjects.map(s => {
                       const isSelected = enterSubject === s.name;
                       const savedForSubject = students.filter(st => grades.some(g => g.student_id === st.student_id && g.subject.trim().toLowerCase() === s.name.trim().toLowerCase() && g.term === enterTerm)).length;
@@ -744,10 +818,10 @@ export default function TeacherPortal() {
                         <button
                           key={s.id}
                           onClick={() => { setEnterSubject(s.name); setEnterClassroom(""); }}
-                          className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          className={`flex flex-col items-start px-4 py-3 rounded-xl border text-left transition-all duration-200 cursor-pointer animate-fade-in-up ${
                             isSelected
-                              ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                              : "bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/60"
+                              ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-lg shadow-indigo-200/40 scale-[1.02]"
+                              : "bg-white/80 text-slate-700 border-slate-200/60 hover:border-indigo-300 hover:bg-indigo-50/60 hover:shadow-md hover:shadow-indigo-100/20 hover:scale-[1.01]"
                           }`}
                         >
                           <span className="font-bold text-sm">{s.name}</span>
@@ -775,10 +849,10 @@ export default function TeacherPortal() {
                       <button
                         key={mode}
                         onClick={() => handleChangeDisplayMode(mode)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 cursor-pointer ${
                           currentDisplayMode === mode
-                            ? "bg-indigo-600 text-white border-indigo-600"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+                            ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-md shadow-indigo-200/30"
+                            : "bg-white/80 text-slate-600 border-slate-200/60 hover:border-indigo-300 hover:bg-indigo-50/60"
                         }`}
                       >
                         {mode === "separate" ? "แยกคะแนนเก็บ/สอบ" : "คะแนนรวมช่องเดียว"}
@@ -791,16 +865,16 @@ export default function TeacherPortal() {
 
             {/* Step 2: Select Classroom */}
             {enterSubject && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-                  <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">2</span>
+              <div className="card-modern overflow-hidden animate-fade-in-up">
+                <div className="px-5 py-4 border-b border-slate-100/60 flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200/40">2</span>
                   <div>
                     <div className="font-bold text-slate-800 text-sm">เลือกห้องเรียน</div>
-                    <div className="text-xs text-slate-400">วิชา: <span className="text-indigo-600 font-semibold">{enterSubject}</span></div>
+                    <div className="text-xs text-slate-400">วิชา: <span className="gradient-text font-semibold">{enterSubject}</span></div>
                   </div>
                 </div>
                 <div className="p-5">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 stagger-children">
                     {classrooms.filter(c => mySubjects.find(s => s.name === enterSubject)?.classroom_ids?.includes(c.id)).map(c => {
                       const total = students.filter(s => s.classroom_id === c.id).length;
                       const saved = students.filter(s => s.classroom_id === c.id).filter(s =>
@@ -816,16 +890,16 @@ export default function TeacherPortal() {
                         <button
                           key={c.id}
                           onClick={() => setEnterClassroom(c.id)}
-                          className={`relative flex flex-col items-center justify-center py-4 px-2 rounded-2xl border-2 transition-all cursor-pointer ${
+                          className={`card-interactive relative flex flex-col items-center justify-center py-4 px-2 rounded-2xl border-2 transition-all duration-200 cursor-pointer animate-fade-in-up ${
                             isActive
-                              ? "border-indigo-500 bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                              ? "border-indigo-400 bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xl shadow-indigo-200/40 scale-[1.03]"
                               : isComplete
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60"
+                              ? "border-emerald-300/60 bg-emerald-50/80 text-emerald-700 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-100/30"
+                              : "border-slate-200/60 bg-white/80 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/60 hover:shadow-lg hover:shadow-indigo-100/20"
                           }`}
                         >
                           {isComplete && !isActive && (
-                            <div className="absolute top-2 right-2 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <div className="absolute top-2 right-2 w-5 h-5 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-sm">
                               <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                               </svg>
@@ -836,9 +910,9 @@ export default function TeacherPortal() {
                             {saved}/{total} คน
                           </span>
                           {total > 0 && !isActive && (
-                            <div className="w-full mt-2 h-1 rounded-full bg-slate-200 overflow-hidden">
+                            <div className="w-full mt-2.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${isComplete ? "bg-emerald-500" : "bg-indigo-400"}`}
+                                className={`h-full rounded-full transition-all duration-500 ${isComplete ? "bg-gradient-to-r from-emerald-400 to-emerald-600" : "bg-gradient-to-r from-indigo-400 to-violet-500"}`}
                                 style={{ width: `${Math.round((saved / total) * 100)}%` }}
                               />
                             </div>
@@ -853,10 +927,10 @@ export default function TeacherPortal() {
 
             {/* Step 3: Score Table */}
             {enterSubject && enterClassroom && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+              <div className="card-modern overflow-hidden animate-fade-in-up">
+                <div className="px-5 py-4 border-b border-slate-100/60 flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">3</span>
+                    <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200/40">3</span>
                     <div>
                       <div className="font-bold text-slate-800 text-sm">
                         กรอกคะแนน · ห้อง {classrooms.find(c => c.id === enterClassroom)?.name}
@@ -877,7 +951,7 @@ export default function TeacherPortal() {
                   <button
                     onClick={handleSaveAll}
                     disabled={!isGradingActive}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm text-sm"
+                    className="btn-primary flex items-center gap-2 disabled:bg-slate-200 disabled:cursor-not-allowed disabled:shadow-none disabled:from-slate-200 disabled:to-slate-200 font-bold px-5 py-2.5 rounded-xl text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -897,34 +971,34 @@ export default function TeacherPortal() {
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs">
-                        <th className="px-4 py-3 text-center font-semibold w-10">#</th>
-                        <th className="px-4 py-3 font-semibold w-28">รหัส</th>
-                        <th className="px-4 py-3 font-semibold">ชื่อ-สกุล</th>
+                      <tr className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b border-indigo-100/40 text-slate-600 text-xs">
+                        <th className="px-4 py-3.5 text-center font-bold w-10">#</th>
+                        <th className="px-4 py-3.5 font-bold w-28">รหัส</th>
+                        <th className="px-4 py-3.5 font-bold">ชื่อ-สกุล</th>
                         {isCombined ? (
-                          <th className="px-4 py-3 text-center font-semibold w-32">
+                          <th className="px-4 py-3.5 text-center font-bold w-32">
                             คะแนนรวม
                             <div className="text-[10px] text-slate-400 font-normal">(/{currentMidtermMax + currentFinalMax})</div>
                           </th>
                         ) : (
                           <>
-                            <th className="px-4 py-3 text-center font-semibold w-28">
+                            <th className="px-4 py-3.5 text-center font-bold w-28">
                               เก็บ
                               <div className="text-[10px] text-slate-400 font-normal">(/{currentMidtermMax})</div>
                             </th>
-                            <th className="px-4 py-3 text-center font-semibold w-28">
+                            <th className="px-4 py-3.5 text-center font-bold w-28">
                               สอบ
                               <div className="text-[10px] text-slate-400 font-normal">(/{currentFinalMax})</div>
                             </th>
                           </>
                         )}
-                        <th className="px-4 py-3 text-center font-semibold w-16">รวม</th>
-                        <th className="px-4 py-3 text-center font-semibold w-20">
+                        <th className="px-4 py-3.5 text-center font-bold w-16">รวม</th>
+                        <th className="px-4 py-3.5 text-center font-bold w-20">
                           {currentSubjectType === "activity"
                             ? (useCombinedActivity ? "ผล (รวม)" : "ผล")
                             : "เกรด"}
                         </th>
-                        <th className="px-4 py-3 text-center font-semibold w-24"></th>
+                        <th className="px-4 py-3.5 text-center font-bold w-24"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -980,7 +1054,7 @@ export default function TeacherPortal() {
                                       [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax + currentFinalMax), final: "0" },
                                     }))}
                                     placeholder={`0-${currentMidtermMax + currentFinalMax}`}
-                                    className="w-full text-center px-2 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                    className="input-modern w-full text-center px-2 py-2 text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                                   />
                                 </td>
                               ) : (
@@ -995,7 +1069,7 @@ export default function TeacherPortal() {
                                         [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax) },
                                       }))}
                                       placeholder={`/${currentMidtermMax}`}
-                                      className="w-full text-center px-2 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                      className="input-modern w-full text-center px-2 py-2 text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                                     />
                                   </td>
                                   <td className="px-3 py-2.5 text-center">
@@ -1008,7 +1082,7 @@ export default function TeacherPortal() {
                                         [s.student_id]: { ...prev[s.student_id], final: handleScoreChange(e.target.value, currentFinalMax) },
                                       }))}
                                       placeholder={`/${currentFinalMax}`}
-                                      className="w-full text-center px-2 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                                      className="input-modern w-full text-center px-2 py-2 text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                                     />
                                   </td>
                                 </>
@@ -1042,7 +1116,7 @@ export default function TeacherPortal() {
                                   <button
                                     onClick={() => handleSaveRow(s)}
                                     disabled={!isGradingActive}
-                                    className="text-xs bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                    className="text-xs bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-slate-200 disabled:from-slate-200 disabled:to-slate-200 disabled:cursor-not-allowed text-white font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md hover:shadow-indigo-200/30"
                                   >
                                     บันทึก
                                   </button>
@@ -1126,7 +1200,7 @@ export default function TeacherPortal() {
                                   ...prev,
                                   [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax + currentFinalMax), final: "0" },
                                 }))}
-                                className="w-full text-center px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                className="input-modern w-full text-center px-3 py-2.5 text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
                               />
                             </div>
                           ) : (
@@ -1141,7 +1215,7 @@ export default function TeacherPortal() {
                                     ...prev,
                                     [s.student_id]: { ...prev[s.student_id], midterm: handleScoreChange(e.target.value, currentMidtermMax) },
                                   }))}
-                                  className="w-full text-center px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                  className="input-modern w-full text-center px-3 py-2.5 text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
                                 />
                               </div>
                               <div>
@@ -1154,7 +1228,7 @@ export default function TeacherPortal() {
                                     ...prev,
                                     [s.student_id]: { ...prev[s.student_id], final: handleScoreChange(e.target.value, currentFinalMax) },
                                   }))}
-                                  className="w-full text-center px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-300 outline-none text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                  className="input-modern w-full text-center px-3 py-2.5 text-base font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
                                 />
                               </div>
                             </div>
@@ -1174,7 +1248,7 @@ export default function TeacherPortal() {
                               <button
                                 onClick={() => handleSaveRow(s)}
                                 disabled={!isGradingActive}
-                                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded-lg transition-colors disabled:bg-slate-200 disabled:cursor-not-allowed"
+                                className="text-xs bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-4 py-1.5 rounded-lg transition-all duration-200 disabled:bg-slate-200 disabled:from-slate-200 disabled:to-slate-200 disabled:cursor-not-allowed shadow-sm"
                               >บันทึก</button>
                             </div>
                           </div>
@@ -1188,11 +1262,14 @@ export default function TeacherPortal() {
 
             {/* Prompt when no subject selected */}
             {!enterSubject && (
-              <div className="text-center py-16 text-slate-400">
-                <svg className="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <p className="font-semibold text-slate-500">เริ่มต้นด้วยการเลือกรายวิชาด้านบน</p>
+              <div className="text-center py-20 text-slate-400 animate-fade-in-up">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shadow-lg shadow-indigo-100/30">
+                  <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <p className="font-bold text-slate-600 text-base">เริ่มต้นด้วยการเลือกรายวิชาด้านบน</p>
+                <p className="text-sm text-slate-400 mt-1">เลือกวิชาที่ต้องการบันทึกคะแนน</p>
               </div>
             )}
           </div>
@@ -1202,14 +1279,14 @@ export default function TeacherPortal() {
         {activeTab === "status" && (
           <div className="space-y-5">
             {/* Filter Bar */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div className="card-modern p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">รายวิชา</label>
                   <select
                     value={statusSubject}
                     onChange={e => { setStatusSubject(e.target.value); setStatusClassroom(""); }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold"
+                    className="input-modern w-full px-4 py-2.5 text-sm font-semibold"
                   >
                     <option value="">— เลือกรายวิชา —</option>
                     {mySubjects.map((s, i) => (
@@ -1223,7 +1300,7 @@ export default function TeacherPortal() {
                     value={statusClassroom}
                     onChange={e => setStatusClassroom(e.target.value)}
                     disabled={!statusSubject}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    className="input-modern w-full px-4 py-2.5 text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                   >
                     <option value="">— เลือกชั้นเรียน —</option>
                     {classrooms.filter(c => mySubjects.find(s => s.name === statusSubject)?.classroom_ids?.includes(c.id)).map(c => (
@@ -1239,10 +1316,10 @@ export default function TeacherPortal() {
               (() => {
                 const hasCnt = statusStudents.filter(s => grades.some(g => g.student_id === s.student_id && g.subject.trim().toLowerCase() === statusSubject.trim().toLowerCase() && g.term === statusTerm)).length;
                 return (
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+                  <div className="card-modern overflow-hidden animate-fade-in-up">
+                    <div className="px-5 py-4 border-b border-slate-100/60 flex items-center justify-between gap-3">
                       <div>
-                        <div className="font-bold text-slate-800">วิชา: <span className="text-indigo-600">{statusSubject}</span></div>
+                        <div className="font-bold text-slate-800">วิชา: <span className="gradient-text">{statusSubject}</span></div>
                         <div className="text-xs text-slate-400 mt-0.5">ห้อง {classrooms.find(c => c.id === statusClassroom)?.name} · เทอม {statusTerm}</div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1260,14 +1337,14 @@ export default function TeacherPortal() {
 
                     {/* Progress bar */}
                     {statusStudents.length > 0 && (
-                      <div className="px-5 py-3 border-b border-slate-100">
+                      <div className="px-5 py-3 border-b border-slate-100/60">
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1.5">
                           <span>ความคืบหน้า</span>
-                          <span>{Math.round((hasCnt / statusStudents.length) * 100)}%</span>
+                          <span className="gradient-text font-bold">{Math.round((hasCnt / statusStudents.length) * 100)}%</span>
                         </div>
-                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-indigo-500 transition-all"
+                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700 shadow-sm"
                             style={{ width: `${statusStudents.length > 0 ? Math.round((hasCnt / statusStudents.length) * 100) : 0}%` }}
                           />
                         </div>
@@ -1278,11 +1355,11 @@ export default function TeacherPortal() {
                     <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs">
-                            <th className="px-5 py-3 text-center font-semibold w-10">#</th>
-                            <th className="px-5 py-3 font-semibold w-28">รหัส</th>
-                            <th className="px-5 py-3 font-semibold">ชื่อนักเรียน</th>
-                            <th className="px-5 py-3 text-center font-semibold w-32">สถานะ</th>
+                          <tr className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b border-indigo-100/40 text-slate-600 text-xs">
+                            <th className="px-5 py-3.5 text-center font-bold w-10">#</th>
+                            <th className="px-5 py-3.5 font-bold w-28">รหัส</th>
+                            <th className="px-5 py-3.5 font-bold">ชื่อนักเรียน</th>
+                            <th className="px-5 py-3.5 text-center font-bold w-32">สถานะ</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -1345,11 +1422,14 @@ export default function TeacherPortal() {
                 );
               })()
             ) : (
-              <div className="text-center py-16 text-slate-400">
-                <svg className="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                <p className="font-semibold text-slate-500">{!statusSubject ? "เลือกรายวิชาเพื่อดูสถานะ" : "เลือกชั้นเรียนเพื่อดูรายชื่อ"}</p>
+              <div className="text-center py-20 text-slate-400 animate-fade-in-up">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shadow-lg shadow-indigo-100/30">
+                  <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                </div>
+                <p className="font-bold text-slate-600 text-base">{!statusSubject ? "เลือกรายวิชาเพื่อดูสถานะ" : "เลือกชั้นเรียนเพื่อดูรายชื่อ"}</p>
+                <p className="text-sm text-slate-400 mt-1">ตรวจสอบความคืบหน้าการบันทึกคะแนน</p>
               </div>
             )}
           </div>
@@ -1359,9 +1439,9 @@ export default function TeacherPortal() {
         {activeTab === "homeroom" && (
           <div className="space-y-5">
             {!homeroomClass ? (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="card-modern p-12 text-center animate-fade-in-up">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-slate-100 to-indigo-100 flex items-center justify-center shadow-lg shadow-indigo-100/30">
+                  <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
@@ -1371,16 +1451,16 @@ export default function TeacherPortal() {
             ) : (
               <>
                 {/* Summary Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 stagger-children">
                   {[
-                    { label: "นักเรียนทั้งหมด", value: homeroomStudents.length, color: "bg-indigo-50 text-indigo-700", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
-                    { label: "GPA ≥ 3.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) >= 3.0).length, color: "bg-emerald-50 text-emerald-700", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
-                    { label: "GPA < 2.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 2.0 && parseFloat(calculateGPAForStudent(s.student_id)) > 0).length, color: "bg-amber-50 text-amber-700", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
-                    { label: "GPA < 1.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 1.0 && grades.some(g => g.student_id === s.student_id)).length, color: "bg-rose-50 text-rose-700", icon: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+                    { label: "นักเรียนทั้งหมด", value: homeroomStudents.length, gradient: "from-indigo-500 to-violet-600", shadowColor: "shadow-indigo-200/40", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
+                    { label: "GPA >= 3.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) >= 3.0).length, gradient: "from-emerald-500 to-teal-600", shadowColor: "shadow-emerald-200/40", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
+                    { label: "GPA < 2.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 2.0 && parseFloat(calculateGPAForStudent(s.student_id)) > 0).length, gradient: "from-amber-500 to-orange-600", shadowColor: "shadow-amber-200/40", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
+                    { label: "GPA < 1.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 1.0 && grades.some(g => g.student_id === s.student_id)).length, gradient: "from-rose-500 to-pink-600", shadowColor: "shadow-rose-200/40", icon: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
                   ].map((card, i) => (
-                    <div key={i} className={`rounded-2xl border p-4 ${card.color.replace("text-", "border-").replace("700", "200").replace("50", "100").replace("bg-", "border-")} bg-white shadow-sm`}>
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${card.color}`}>
-                        <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div key={i} className="card-modern p-4 animate-fade-in-up hover:scale-[1.02] transition-transform duration-200">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-gradient-to-br ${card.gradient} shadow-lg ${card.shadowColor}`}>
+                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={card.icon} />
                         </svg>
                       </div>
@@ -1391,8 +1471,8 @@ export default function TeacherPortal() {
                 </div>
 
                 {/* Student Table */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-slate-100">
+                <div className="card-modern overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100/60">
                     <h3 className="font-bold text-slate-800">รายชื่อนักเรียน · ห้อง {homeroomClass.name}</h3>
                     <p className="text-xs text-slate-400 mt-0.5">เกรดเฉลี่ยสะสม (GPA) เฉพาะวิชาหลัก</p>
                   </div>
@@ -1401,13 +1481,13 @@ export default function TeacherPortal() {
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs">
-                          <th className="px-5 py-3 text-center font-semibold w-10">#</th>
-                          <th className="px-5 py-3 font-semibold w-28">รหัส</th>
-                          <th className="px-5 py-3 font-semibold">ชื่อ-สกุล</th>
-                          <th className="px-5 py-3 text-center font-semibold w-24">จำนวนวิชา</th>
-                          <th className="px-5 py-3 text-center font-semibold w-24">GPA</th>
-                          <th className="px-5 py-3 text-center font-semibold w-28">ระดับ</th>
+                        <tr className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b border-indigo-100/40 text-slate-600 text-xs">
+                          <th className="px-5 py-3.5 text-center font-bold w-10">#</th>
+                          <th className="px-5 py-3.5 font-bold w-28">รหัส</th>
+                          <th className="px-5 py-3.5 font-bold">ชื่อ-สกุล</th>
+                          <th className="px-5 py-3.5 text-center font-bold w-24">จำนวนวิชา</th>
+                          <th className="px-5 py-3.5 text-center font-bold w-24">GPA</th>
+                          <th className="px-5 py-3.5 text-center font-bold w-28">ระดับ</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1471,8 +1551,8 @@ export default function TeacherPortal() {
                 </div>
 
                 {/* Term Mode Selector for Rankings */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-slate-100">
+                <div className="card-modern overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100/60">
                     <h3 className="font-bold text-slate-800 text-sm">เลือกช่วงเวลาดูอันดับ</h3>
                     <p className="text-xs text-slate-400 mt-0.5">ปีการศึกษา {otherTermSettings.length > 0 ? otherTermSettings[0].academic_year : ""}</p>
                   </div>
@@ -1481,10 +1561,10 @@ export default function TeacherPortal() {
                       <button
                         key={s.id}
                         onClick={() => { setRankingMode("single"); setRankingTermSettingId(s.id); }}
-                        className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all cursor-pointer ${
+                        className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all duration-200 cursor-pointer ${
                           rankingMode === "single" && (rankingTermSettingId === s.id || (!rankingTermSettingId && s.id === activeSettingId))
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/60"
+                            ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-lg shadow-indigo-200/40"
+                            : "bg-white/80 text-slate-600 border-slate-200/60 hover:border-indigo-300 hover:bg-indigo-50/60 hover:shadow-sm"
                         }`}
                       >
                         เทอม {s.term}
@@ -1493,12 +1573,12 @@ export default function TeacherPortal() {
                     <button
                       onClick={() => { if (combinedAvailable) setRankingMode("combined"); }}
                       disabled={!combinedAvailable}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                      className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all duration-200 ${
                         rankingMode === "combined"
-                          ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-100 cursor-pointer"
+                          ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white border-purple-500 shadow-lg shadow-purple-200/40 cursor-pointer"
                           : combinedAvailable
-                          ? "bg-white text-purple-600 border-purple-200 hover:border-purple-400 hover:bg-purple-50/60 cursor-pointer"
-                          : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                          ? "bg-white/80 text-purple-600 border-purple-200/60 hover:border-purple-400 hover:bg-purple-50/60 cursor-pointer hover:shadow-sm"
+                          : "bg-slate-100/80 text-slate-400 border-slate-200/60 cursor-not-allowed"
                       }`}
                     >
                       รวม 2 เทอม
@@ -1511,10 +1591,11 @@ export default function TeacherPortal() {
 
                 {/* Rankings Loading */}
                 {!rankingsLoaded && activeSettingId && (
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
-                    <div className="relative w-10 h-10 mx-auto mb-3">
-                      <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
-                      <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+                  <div className="card-modern p-8 text-center">
+                    <div className="relative w-12 h-12 mx-auto mb-3">
+                      <div className="absolute inset-0 rounded-full border-4 border-indigo-100/50" />
+                      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-violet-500 animate-spin" />
+                      <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-cyan-400 border-l-indigo-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
                     </div>
                     <p className="text-sm text-slate-500 font-semibold">กำลังโหลดข้อมูลอันดับ...</p>
                   </div>
@@ -1531,8 +1612,8 @@ export default function TeacherPortal() {
                   return (
                     <div className="grid lg:grid-cols-2 gap-4">
                       {/* Classroom Ranking */}
-                      <div className="bg-white rounded-2xl border border-purple-200 shadow-sm overflow-hidden">
-                        <div className="px-5 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
+                      <div className="card-modern overflow-hidden border-purple-200/40 animate-fade-in-up">
+                        <div className="px-5 py-4 bg-gradient-to-r from-purple-50/80 to-indigo-50/80 border-b border-purple-100/60">
                           <h3 className="font-bold text-purple-800 flex items-center gap-2 text-sm">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
                             อันดับในห้อง {homeroomClass?.name}
@@ -1585,8 +1666,8 @@ export default function TeacherPortal() {
                       </div>
 
                       {/* School Ranking */}
-                      <div className="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden">
-                        <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                      <div className="card-modern overflow-hidden border-blue-200/40 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                        <div className="px-5 py-4 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border-b border-blue-100/60">
                           <h3 className="font-bold text-blue-800 flex items-center gap-2 text-sm">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
                             อันดับทั้งโรงเรียน
@@ -1650,9 +1731,9 @@ export default function TeacherPortal() {
         {activeTab === "schedule" && (
           <div className="space-y-5">
             {schedulePeriods.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="card-modern p-12 text-center animate-fade-in-up">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shadow-lg shadow-indigo-100/30">
+                  <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -1666,7 +1747,7 @@ export default function TeacherPortal() {
                   <div className="flex justify-end">
                     <button
                       onClick={handleExportTeacherSchedule}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-colors"
+                      className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1677,17 +1758,17 @@ export default function TeacherPortal() {
                 )}
                 {/* Quick view: my schedule as cards per day */}
                 {myScheduleEntries.length === 0 ? (
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center text-slate-400">
+                  <div className="card-modern p-10 text-center text-slate-400">
                     <p className="font-semibold">ยังไม่มีตารางสอนสำหรับคุณในเทอมนี้</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
                     {ACTIVE_DAYS.map(day => {
                       const dayEntries = myScheduleEntries.filter(e => Number(e.day_of_week) === day.value);
                       if (dayEntries.length === 0) return null;
                       return (
-                        <div key={day.value} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                          <div className={`px-4 py-3 flex items-center gap-2 border-b ${DAY_COLORS[day.value]}`}>
+                        <div key={day.value} className="card-modern overflow-hidden animate-fade-in-up hover:scale-[1.01] transition-transform duration-200">
+                          <div className={`px-4 py-3.5 flex items-center gap-2 border-b ${DAY_COLORS[day.value]} bg-gradient-to-r`}>
                             <span className="font-extrabold text-sm">วัน{day.label}</span>
                             <span className="ml-auto text-xs font-semibold opacity-70">{dayEntries.length} คาบ</span>
                           </div>
@@ -1697,8 +1778,8 @@ export default function TeacherPortal() {
                               .map(e => {
                                 const period = schedulePeriods.find(p => p.id === e.period_id);
                                 return (
-                                  <div key={e.id} className="p-4 flex items-start gap-3">
-                                    <div className="shrink-0 text-center w-10">
+                                  <div key={e.id} className="p-4 flex items-start gap-3 hover:bg-slate-50/50 transition-colors">
+                                    <div className="shrink-0 text-center w-12 py-1 px-1 rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50/50">
                                       <div className="text-xs font-extrabold text-slate-700">คาบ {e.period_no}</div>
                                       <div className="text-[10px] text-slate-400">{e.start_time}</div>
                                       <div className="text-[10px] text-slate-400">{e.end_time}</div>
@@ -1706,11 +1787,11 @@ export default function TeacherPortal() {
                                     <div className="flex-1 min-w-0">
                                       <div className="font-bold text-slate-800 text-sm truncate">{e.subject_name}</div>
                                       <div className="flex items-center gap-1.5 mt-1">
-                                        <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-100">
+                                        <span className="text-xs bg-indigo-50/80 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-100/60">
                                           ห้อง {e.classroom_name}
                                         </span>
                                         {period?.label && (
-                                          <span className="text-xs bg-amber-50 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-100">
+                                          <span className="text-xs bg-amber-50/80 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-100/60">
                                             {period.label}
                                           </span>
                                         )}
@@ -1727,15 +1808,15 @@ export default function TeacherPortal() {
                 )}
 
                 {/* Full schedule grid */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-slate-100">
+                <div className="card-modern overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100/60">
                     <h3 className="font-bold text-slate-800 text-sm">ตารางเรียนทั้งหมด (ทุกวิชา ทุกห้อง)</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
-                          <th className="px-3 py-3 text-left font-semibold sticky left-0 bg-slate-50 z-10 min-w-[80px]">คาบ</th>
+                        <tr className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b border-indigo-100/40 text-slate-600">
+                          <th className="px-3 py-3 text-left font-bold sticky left-0 bg-gradient-to-r from-slate-50 to-indigo-50/30 z-10 min-w-[80px]">คาบ</th>
                           {ACTIVE_DAYS.map(d => (
                             <th key={d.value} className="px-3 py-3 text-center font-semibold min-w-[100px]">
                               <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold border ${DAY_COLORS[d.value]}`}>{d.label}</span>
@@ -1765,7 +1846,7 @@ export default function TeacherPortal() {
                                     ) : (
                                       <div className="space-y-1">
                                         {entries.map(e => (
-                                          <div key={e.id} className="bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-2 py-1.5 text-[11px] font-semibold">
+                                          <div key={e.id} className="bg-gradient-to-br from-indigo-50 to-violet-50/50 text-indigo-700 border border-indigo-100/60 rounded-lg px-2 py-1.5 text-[11px] font-semibold shadow-sm">
                                             <div className="truncate">{e.subject_name}</div>
                                             <div className="text-indigo-400 font-normal text-[10px]">{e.classroom_name}</div>
                                           </div>

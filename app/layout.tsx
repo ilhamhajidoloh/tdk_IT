@@ -47,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th" className={`${inter.variable} ${sarabun.variable} ${arabic.variable} ${arabicSans.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white">
+      <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white antialiased">
         <Providers>
           {children}
         </Providers>

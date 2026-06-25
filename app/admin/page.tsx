@@ -108,8 +108,8 @@ const STAT_COLOR_MAP: Record<string, string> = {
 
 function StatCard({ label, value, sub, icon, color }: { label: string; value: string | number; sub?: string; icon: string; color: keyof typeof STAT_COLOR_MAP }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-3 ${STAT_COLOR_MAP[color]}`}>
+    <div className="card-interactive rounded-2xl p-5 group">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-3 ${STAT_COLOR_MAP[color]} transition-transform group-hover:scale-105`}>
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
       </div>
       <div className="text-2xl font-extrabold text-gray-800 leading-tight">{value}</div>
@@ -131,19 +131,19 @@ function SectionHeader({ icon, color, title, subtitle, count, countLabel, childr
   return (
     <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
       <div className="flex items-start gap-4">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${STAT_COLOR_MAP[color]}`}>
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${STAT_COLOR_MAP[color]} shadow-sm`}>
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
         </div>
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-2xl font-extrabold text-gray-800">{title}</h2>
             {count !== undefined && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-600 border border-white/50/50">
                 {count}{countLabel ? ` ${countLabel}` : ""}
               </span>
             )}
           </div>
-          <p className="text-gray-500 text-sm mt-0.5">{subtitle}</p>
+          <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
         </div>
       </div>
       {children && <div className="flex items-center gap-2 flex-wrap">{children}</div>}
@@ -158,27 +158,27 @@ function TermSelector({ settingsList, selectedId, onSelect }: {
 }) {
   if (settingsList.length === 0) {
     return (
-      <div className="mb-6 px-4 py-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-400">
+      <div className="mb-6 px-5 py-4 rounded-2xl border border-dashed border-gray-200 bg-gradient-to-r from-slate-50 to-indigo-50/30 text-sm text-gray-400">
         ยังไม่มีปีการศึกษาในระบบ กรุณาเพิ่มที่แท็บ ตั้งค่าระบบ
       </div>
     );
   }
   return (
-    <div className="mb-6 p-3 rounded-2xl border border-gray-100 bg-gray-50/70">
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">เลือกปีการศึกษา / เทอม</div>
+    <div className="mb-6 p-3.5 rounded-2xl border border-gray-100/80 bg-gradient-to-r from-slate-50/80 to-indigo-50/30 glass">
+      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5 px-1">เลือกปีการศึกษา / เทอม</div>
       <div className="flex flex-wrap gap-2">
         {settingsList.map((s) => (
           <button
             key={s.id}
             onClick={() => onSelect(s.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${selectedId === s.id
-              ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-              : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${selectedId === s.id
+              ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-lg shadow-indigo-200/50/50"
+              : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-sm"
               }`}
           >
             ปี {s.academic_year} เทอม {s.term}
             {s.is_active && (
-              <span className="ml-2 bg-emerald-100 text-emerald-700 text-xs px-1.5 py-0.5 rounded-full">Active</span>
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${selectedId === s.id ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"}`}>Active</span>
             )}
           </button>
         ))}
@@ -191,9 +191,9 @@ function QuickLinkCard({ label, sub, icon, onClick }: { label: string; sub: stri
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md hover:border-indigo-200 hover:bg-indigo-50/40 transition-all text-left cursor-pointer group"
+      className="card-interactive flex items-center gap-4 p-4 text-left cursor-pointer group"
     >
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-600 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-50 to-violet-50 text-indigo-600 shrink-0 group-hover:from-indigo-600 group-hover:to-violet-600 group-hover:text-white transition-all group-hover:shadow-lg group-hover:shadow-indigo-200/50">
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
       </div>
       <div className="min-w-0">
@@ -207,14 +207,17 @@ function QuickLinkCard({ label, sub, icon, onClick }: { label: string; sub: stri
 
 function LoadingScreen({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-blue-50 gap-4">
-      <div className="relative w-16 h-16">
+    <div className="min-h-screen flex flex-col items-center justify-center mesh-gradient gap-4 relative overflow-hidden">
+      <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-gradient-to-br from-indigo-200/25 to-cyan-200/15 rounded-full blur-3xl animate-float-slow" />
+      <div className="absolute bottom-[-20%] left-[-10%] w-96 h-96 bg-gradient-to-br from-violet-200/20 to-pink-200/15 rounded-full blur-3xl animate-float-slow" style={{ animationDelay: "-10s" }} />
+      <div className="relative w-20 h-20">
         <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
-        <div className="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-violet-500 animate-spin" />
+        <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-purple-400 border-l-cyan-400 animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
       </div>
-      <div className="text-center">
-        <p className="text-gray-700 font-bold">{title}</p>
-        {subtitle && <p className="text-gray-400 text-sm mt-1">{subtitle}</p>}
+      <div className="text-center relative z-10">
+        <p className="text-gray-700 font-extrabold text-lg">{title}</p>
+        {subtitle && <p className="text-gray-400 text-sm mt-1.5 font-medium">{subtitle}</p>}
       </div>
     </div>
   );
@@ -565,9 +568,9 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-indigo-100 p-8 shadow-xl bg-white max-w-md w-full",
+        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
         title: "text-2xl font-extrabold text-gray-800 mb-4",
-        confirmButton: "bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
+        confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
@@ -685,9 +688,9 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-indigo-100 p-8 shadow-xl bg-white max-w-md w-full",
+        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
         title: "text-2xl font-extrabold text-gray-800 mb-4",
-        confirmButton: "bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
+        confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
@@ -1365,9 +1368,9 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-indigo-100 p-8 shadow-xl bg-white max-w-md w-full",
+        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
         title: "text-2xl font-extrabold text-gray-800 mb-4",
-        confirmButton: "bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
+        confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
@@ -1452,9 +1455,9 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-indigo-100 p-8 shadow-xl bg-white max-w-md w-full",
+        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
         title: "text-2xl font-extrabold text-gray-800 mb-4",
-        confirmButton: "bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
+        confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
@@ -2250,76 +2253,89 @@ function changeFontSize(dir) {
   if (!isClient || loading) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การเข้าใช้งาน" />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex flex-col">
+    <div className="min-h-screen mesh-gradient flex flex-col relative">
+      {/* Background decorations */}
+      <div className="fixed top-[-20%] right-[-15%] w-[600px] h-[600px] bg-gradient-to-br from-indigo-200/15 to-cyan-200/10 rounded-full blur-3xl animate-float-slow -z-10 pointer-events-none" />
+      <div className="fixed bottom-[-20%] left-[-15%] w-[500px] h-[500px] bg-gradient-to-br from-violet-200/15 to-pink-200/10 rounded-full blur-3xl animate-float-slow -z-10 pointer-events-none" style={{ animationDelay: "-10s" }} />
+
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-10 border-b border-indigo-100">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-white">
-              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+      <header className="header-gradient shadow-sm sticky top-0 z-20 border-b border-white/50">
+        <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-15 blur-sm" />
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-white relative border border-white/80">
+                <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+              </div>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-800 leading-none">ระบบแอดมิน</h1>
-              <p className="text-xs text-gray-500">จัดการโครงสร้างระบบและผู้ใช้งาน</p>
+              <h1 className="text-lg font-extrabold text-gray-800 leading-none gradient-text">ระบบแอดมิน</h1>
+              <p className="text-xs text-gray-500 font-medium mt-0.5">จัดการโครงสร้างระบบและผู้ใช้งาน</p>
             </div>
           </div>
           <div className="hidden sm:flex flex-col items-end mr-2">
-            <span className="text-sm font-bold text-gray-700">สวัสดี, {adminUser?.username || "ผู้ดูแลระบบ"} 👋</span>
+            <span className="text-sm font-bold text-gray-700">สวัสดี, {adminUser?.username || "ผู้ดูแลระบบ"}</span>
             <span className="text-xs text-gray-400">{formatThaiDate(new Date().toISOString())}</span>
           </div>
-          <button
-            onClick={handleConnectGoogle}
-            title={adminUser?.email ? `เชื่อมต่ออีเมล: ${adminUser.email}` : "เชื่อมต่ออีเมล Google"}
-            className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors shrink-0 border ${adminUser?.email ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-500 border-gray-200 hover:text-indigo-600 hover:bg-indigo-50"}`}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </button>
-          <button
-            onClick={handleChangePassword}
-            title="เปลี่ยนรหัสผ่าน"
-            className="flex items-center justify-center w-9 h-9 rounded-full text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0 border border-gray-200"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-          </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1 text-sm text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-4 py-2 rounded-full transition-colors shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            ออกจากระบบ
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleConnectGoogle}
+              title={adminUser?.email ? `เชื่อมต่ออีเมล: ${adminUser.email}` : "เชื่อมต่ออีเมล Google"}
+              className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all shrink-0 border ${adminUser?.email ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-500 border-gray-200 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200"}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </button>
+            <button
+              onClick={handleChangePassword}
+              title="เปลี่ยนรหัสผ่าน"
+              className="flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-all shrink-0 border border-gray-200"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl transition-all shrink-0 border border-rose-100 hover:border-rose-200"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="hidden sm:inline">ออกจากระบบ</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
-        <div className="grid md:grid-cols-4 gap-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+        <div className="grid md:grid-cols-4 gap-6">
           {/* Sidebar Tabs */}
           <div className="space-y-1.5">
-            {NAV_ITEMS.map(item => (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key)}
-                className={`w-full flex items-center gap-3 text-left px-4 py-3.5 rounded-2xl font-semibold text-sm transition-all ${activeTab === item.key ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" : "bg-white text-gray-600 hover:bg-indigo-50 border border-gray-100"
-                  }`}
-              >
-                <svg className={`w-5 h-5 shrink-0 ${activeTab === item.key ? "text-white" : "text-indigo-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-                </svg>
-                <span>{item.label}</span>
-              </button>
-            ))}
+            <div className="glass-strong rounded-2xl p-2 space-y-1">
+              {NAV_ITEMS.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className={`w-full flex items-center gap-3 text-left px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === item.key
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200/50/50"
+                    : "text-gray-600 hover:bg-indigo-50/80"
+                    }`}
+                >
+                  <svg className={`w-5 h-5 shrink-0 ${activeTab === item.key ? "text-white" : "text-indigo-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                  </svg>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
 
             {/* Active term summary */}
-            <div className="hidden md:block mt-4 p-4 rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div className="hidden md:block mt-3 p-4 rounded-2xl glass-strong">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ปีการศึกษาปัจจุบัน</div>
               <div className="text-sm font-extrabold text-gray-800">ปีการศึกษา {adminYear}</div>
-              <div className="text-xs text-indigo-600 font-semibold mb-3">ภาคเรียนที่ {adminTerm}</div>
+              <div className="text-xs font-semibold mb-3 gradient-text">ภาคเรียนที่ {adminTerm}</div>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${isGradingActive ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
                 }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isGradingActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
@@ -2329,16 +2345,16 @@ function changeFontSize(dir) {
           </div>
 
           {/* Main Content Area */}
-          <div className="md:col-span-3 bg-white rounded-3xl shadow-md border border-indigo-100 overflow-hidden min-h-[500px]">
+          <div className="md:col-span-3 glass-strong rounded-3xl overflow-hidden min-h-[500px]">
             {activeTab === "dashboard" && (
               <div className="p-8 animate-fade-in-up">
                 <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-800">แดชบอร์ดภาพรวม</h2>
-                  <p className="text-gray-500 text-sm">สรุปข้อมูลสำคัญของระบบ ประจำปีการศึกษา {adminYear} ภาคเรียนที่ {adminTerm}</p>
+                  <h2 className="text-2xl font-extrabold text-gray-800">แดชบอร์ดภาพรวม</h2>
+                  <p className="text-gray-500 text-sm mt-1">สรุปข้อมูลสำคัญของระบบ ประจำปีการศึกษา {adminYear} ภาคเรียนที่ {adminTerm}</p>
                 </div>
 
                 {/* Stat Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8 stagger-children">
                   <StatCard
                     label="ผู้ใช้งานทั้งหมด"
                     value={users.length}
@@ -2399,7 +2415,9 @@ function changeFontSize(dir) {
 
                 <div className="grid lg:grid-cols-3 gap-6">
                   {/* Current Term Status */}
-                  <div className="lg:col-span-1 rounded-3xl p-6 bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-lg shadow-indigo-200 flex flex-col justify-between">
+                  <div className="lg:col-span-1 rounded-3xl p-6 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 text-white shadow-lg shadow-indigo-200/50 flex flex-col justify-between animate-gradient-shift relative overflow-hidden">
+                    <div className="absolute top-[-20px] right-[-20px] w-40 h-40 bg-white/10 rounded-full" />
+                    <div className="absolute bottom-[-30px] left-[-10px] w-32 h-32 bg-white/5 rounded-full" />
                     <div>
                       <div className="text-xs font-bold uppercase tracking-wider text-indigo-100 mb-1.5">ภาคเรียนปัจจุบัน</div>
                       <div className="text-2xl font-extrabold leading-tight">ปีการศึกษา {adminYear}</div>
@@ -2459,7 +2477,7 @@ function changeFontSize(dir) {
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     นำเข้า (CSV/Excel)
                   </button>
-                  <button onClick={handleAddUser} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer">
+                  <button onClick={handleAddUser} className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มผู้ใช้ใหม่
                   </button>
@@ -2476,7 +2494,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={() => setUserSubTab("all")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "all"
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
                       : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
                       }`}
                   >
@@ -2489,7 +2507,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={() => setUserSubTab("admin")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "admin"
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
                       : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
                       }`}
                   >
@@ -2502,7 +2520,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={() => setUserSubTab("teacher")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "teacher"
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
                       : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
                       }`}
                   >
@@ -2515,7 +2533,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={() => setUserSubTab("student")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "student"
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
                       : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
                       }`}
                   >
@@ -2530,7 +2548,7 @@ function changeFontSize(dir) {
                 {/* Desktop: Table */}
                 <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
                   <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-600">
+                    <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
                       <tr>
                         <th className="px-6 py-4 font-semibold w-12 text-center">
                           <input
@@ -2617,7 +2635,7 @@ function changeFontSize(dir) {
                 {/* Mobile: Cards */}
                 <div className="md:hidden space-y-3">
                   {paginatedUsers.map(u => (
-                    <div key={u.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+                    <div key={u.id} className="card-modern p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="pt-1 shrink-0">
                           <input
@@ -2719,7 +2737,7 @@ function changeFontSize(dir) {
                                   key={pageNum}
                                   onClick={() => setUserCurrentPage(pageNum)}
                                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors cursor-pointer border ${userCurrentPage === pageNum
-                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-sm"
                                     : "bg-white text-gray-600 border-transparent hover:border-gray-200 hover:bg-gray-50"
                                     }`}
                                 >
@@ -2791,7 +2809,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={handleAddClassroom}
                     disabled={!selectedSettingId}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มชั้นเรียนใหม่
@@ -2867,7 +2885,7 @@ function changeFontSize(dir) {
 
                 {/* Assign Students Modal */}
                 {isAssignModalOpen && targetClassroom && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
                     <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col border border-slate-100 animate-slide-up overflow-hidden">
                       {/* Header */}
                       <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
@@ -2987,7 +3005,7 @@ function changeFontSize(dir) {
                         <button
                           onClick={handleSaveAssignedStudents}
                           disabled={selectedStudentsForAssign.length === 0}
-                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-md cursor-pointer flex items-center gap-2"
+                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-md cursor-pointer flex items-center gap-2"
                         >
                           บันทึก ({selectedStudentsForAssign.length})
                         </button>
@@ -2998,7 +3016,7 @@ function changeFontSize(dir) {
 
                 {/* Copy Classrooms Modal */}
                 {isCopyModalOpen && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
                     <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-slate-100 animate-slide-up overflow-hidden">
                       <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
                         <div>
@@ -3122,7 +3140,7 @@ function changeFontSize(dir) {
                         <button
                           onClick={handleSaveCopyClassrooms}
                           disabled={!copySourceSettingId || !copyTargetSettingId || sourceClassrooms.filter(c => copyClassroomsMap[c.id]?.selected).length === 0}
-                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-md cursor-pointer flex items-center gap-2"
+                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-md cursor-pointer flex items-center gap-2"
                         >
                           บันทึกการคัดลอก
                         </button>
@@ -3181,7 +3199,7 @@ function changeFontSize(dir) {
                 {/* Desktop: Table */}
                 <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
                   <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-600">
+                    <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
                       <tr>
                         <th className="px-6 py-4 font-semibold w-24">เลขที่</th>
                         <th className="px-6 py-4 font-semibold">รหัสนักเรียน</th>
@@ -3209,7 +3227,7 @@ function changeFontSize(dir) {
                           <td className="px-6 py-4 font-bold text-indigo-600">{s.student_id}</td>
                           <td className="px-6 py-4 text-gray-800 font-semibold">{s.name}</td>
                           <td className="px-6 py-4 text-gray-500">
-                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-white/50">
                               ชั้น {classrooms.find(c => c.id === s.classroom_id)?.name || 'ยังไม่ระบุ'}
                             </span>
                           </td>
@@ -3232,7 +3250,7 @@ function changeFontSize(dir) {
                 {/* Mobile: Cards */}
                 <div className="md:hidden space-y-3 animate-fade-in-up">
                   {filteredStudents.map(s => (
-                    <div key={s.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+                    <div key={s.id} className="card-modern p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -3250,7 +3268,7 @@ function changeFontSize(dir) {
                             <div className="font-bold text-indigo-600">{s.student_id}</div>
                           </div>
                           <div className="text-gray-800 font-semibold mt-0.5">{s.name}</div>
-                          <span className="inline-block mt-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+                          <span className="inline-block mt-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-white/50">
                             ชั้น {classrooms.find(c => c.id === s.classroom_id)?.name || 'ยังไม่ระบุ'}
                           </span>
                         </div>
@@ -3287,7 +3305,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={handleAddSubject}
                     disabled={!selectedSubjectSettingId}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มวิชาเรียนใหม่
@@ -3315,7 +3333,7 @@ function changeFontSize(dir) {
                     {/* Desktop: Table */}
                     <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
                       <table className="w-full text-left">
-                        <thead className="bg-gray-50 text-gray-600">
+                        <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
                           <tr>
                             <th className="px-6 py-4 font-semibold font-bold">ชื่อวิชาเรียน</th>
                             <th className="px-6 py-4 font-semibold font-bold">ครูผู้สอน</th>
@@ -3389,7 +3407,7 @@ function changeFontSize(dir) {
                     {/* Mobile: Cards */}
                     <div className="md:hidden space-y-3 animate-fade-in-up">
                       {subjectsList.map(sub => (
-                        <div key={sub.id} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4">
+                        <div key={sub.id} className="card-modern p-4">
                           <div className="font-semibold text-gray-800">{sub.name}</div>
                           <div className="text-xs text-gray-500 mt-1.5 space-y-0.5">
                             <div>
@@ -3467,7 +3485,7 @@ function changeFontSize(dir) {
                       <h3 className="text-lg font-bold text-gray-800 mb-3">คาบเรียน</h3>
                       <div className="overflow-x-auto rounded-xl border border-gray-100">
                         <table className="w-full text-left">
-                          <thead className="bg-gray-50 text-gray-600">
+                          <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
                             <tr>
                               <th className="px-4 py-3 font-semibold text-center">คาบที่</th>
                               <th className="px-4 py-3 font-semibold">เวลาเริ่ม</th>
@@ -3544,7 +3562,7 @@ function changeFontSize(dir) {
                       </div>
                       <button
                         onClick={handleAddPeriod}
-                        className="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                        className="mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                         เพิ่มคาบเรียน
@@ -3573,7 +3591,7 @@ function changeFontSize(dir) {
                           <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block"></div>
                           <button
                             onClick={() => handleExportSchedule("overview")}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-all shadow-sm border-0 cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-sm font-bold transition-all shadow-sm border-0 cursor-pointer"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                             ภาพรวมทุกชั้น
@@ -3624,7 +3642,7 @@ function changeFontSize(dir) {
                       ) : (
                         <div className="overflow-x-auto rounded-xl border border-gray-100">
                           <table className="w-full text-left text-base">
-                            <thead className="bg-gray-50 text-gray-600">
+                            <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
                               <tr>
                                 <th className="px-3 py-3 font-semibold">คาบ</th>
                                 {ACTIVE_DAYS.map(d => (
@@ -3725,7 +3743,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={() => { if (rankingsSettingId && token) loadRankings(rankingsSettingId, token); }}
                     disabled={!rankingsSettingId}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     รีเฟรชข้อมูล
@@ -3760,7 +3778,7 @@ function changeFontSize(dir) {
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">กรองห้องเรียน:</span>
                         <button
                           onClick={() => setRankingsClassroomFilter("all")}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === "all" ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === "all" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
                         >
                           ทั้งหมด
                         </button>
@@ -3768,7 +3786,7 @@ function changeFontSize(dir) {
                           <button
                             key={cn}
                             onClick={() => setRankingsClassroomFilter(cn)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === cn ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === cn ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
                           >
                             {cn}
                           </button>
@@ -3778,7 +3796,7 @@ function changeFontSize(dir) {
                       {/* Two-column layout */}
                       <div className="grid lg:grid-cols-2 gap-6">
                         {/* Classroom Ranking */}
-                        <div className="rounded-2xl border border-purple-100 bg-white shadow-sm overflow-hidden">
+                        <div className="card-modern overflow-hidden border-purple-100/60">
                           <div className="px-5 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
                             <h3 className="font-bold text-purple-800 flex items-center gap-2">
                               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M4 21h16" /></svg>
@@ -3832,7 +3850,7 @@ function changeFontSize(dir) {
                         </div>
 
                         {/* School Ranking */}
-                        <div className="rounded-2xl border border-blue-100 bg-white shadow-sm overflow-hidden">
+                        <div className="card-modern overflow-hidden border-blue-100/60">
                           <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
                             <h3 className="font-bold text-blue-800 flex items-center gap-2">
                               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
@@ -3904,7 +3922,7 @@ function changeFontSize(dir) {
                       if (gradeStatusSettingId && token) loadGradeStatus(gradeStatusSettingId, token);
                     }}
                     disabled={!gradeStatusSettingId}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     รีเฟรชข้อมูล
@@ -3935,14 +3953,14 @@ function changeFontSize(dir) {
                           setGradeStatusSubTab("summary");
                           setSelectedGradeStatusSubject("");
                         }}
-                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "summary" ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "summary" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
                       >
                         <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                         สรุปภาพรวม
                       </button>
                       <button
                         onClick={() => setGradeStatusSubTab("detail")}
-                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "detail" ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "detail" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
                       >
                         <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
                         รายละเอียด
@@ -4011,7 +4029,7 @@ function changeFontSize(dir) {
                                 else if (hasAny) { statusColor = "bg-amber-100 text-amber-800 border-amber-200"; statusText = "กำลังดำเนินการ"; }
 
                                 return (
-                                  <div key={tid} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+                                  <div key={tid} className="card-interactive p-5">
                                     <div className="flex items-start justify-between gap-2 mb-3">
                                       <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
@@ -4109,7 +4127,7 @@ function changeFontSize(dir) {
                             {/* Desktop Table */}
                             <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
                               <table className="w-full text-left">
-                                <thead className="bg-gray-50 text-gray-600">
+                                <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
                                   <tr>
                                     <th className="px-4 py-3 font-bold text-xs">ครูผู้สอน</th>
                                     <th className="px-4 py-3 font-bold text-xs">วิชา</th>
@@ -4203,7 +4221,7 @@ function changeFontSize(dir) {
                                 const hasAny = mid > 0 || fin > 0;
 
                                 return (
-                                  <div key={i} onClick={() => openStudentDetail(row)} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-4 cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all active:scale-[0.99]">
+                                  <div key={i} onClick={() => openStudentDetail(row)} className="card-modern p-4 cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all active:scale-[0.99]">
                                     <div className="flex items-start justify-between gap-2 mb-2">
                                       <div>
                                         <div className="font-bold text-gray-800 text-sm">{row.subject_name}</div>
@@ -4259,7 +4277,7 @@ function changeFontSize(dir) {
                 >
                   <button
                     onClick={handleAddSetting}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มปีการศึกษาใหม่
@@ -4296,7 +4314,7 @@ function changeFontSize(dir) {
                   {/* Desktop: Table */}
                   <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
                     <table className="w-full text-left">
-                      <thead className="bg-gray-50 text-gray-600">
+                      <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
                         <tr>
                           <th className="px-6 py-4 font-semibold font-bold">ปีการศึกษา / เทอม</th>
                           <th className="px-6 py-4 font-semibold">ช่วงเวลากรอกคะแนน</th>
@@ -4392,7 +4410,7 @@ function changeFontSize(dir) {
                         const isWaiting = (s.start_date ?? "") > todayStr;
 
                         return (
-                          <div key={s.id} className={`rounded-2xl border border-gray-100 bg-white shadow-sm p-4 ${s.is_active ? 'bg-indigo-50/20' : ''}`}>
+                          <div key={s.id} className={`card-modern p-4 ${s.is_active ? 'bg-indigo-50/20' : ''}`}>
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <div className="font-bold text-gray-800">ปีการศึกษา {s.academic_year}</div>
@@ -4457,11 +4475,11 @@ function changeFontSize(dir) {
       {/* Modern React Modal for Adding/Editing Users */}
       {isUserModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 animate-fade-in-up"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md transition-opacity duration-300 animate-fade-in-up"
           onClick={() => setIsUserModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl border border-indigo-50 shadow-2xl w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100 flex flex-col"
+            className="bg-white rounded-3xl border border-white/60 shadow-2xl glass-strong w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -4748,11 +4766,11 @@ function changeFontSize(dir) {
       {/* Student Detail Modal */}
       {studentDetailModal.open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in-up"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in-up"
           onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
         >
           <div
-            className="bg-white rounded-3xl border border-indigo-50 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            className="bg-white rounded-3xl border border-white/60 shadow-2xl glass-strong w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -4895,7 +4913,7 @@ function changeFontSize(dir) {
       )}
 
       {isSubjectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-slide-up-fade">
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between relative">
@@ -4932,7 +4950,7 @@ function changeFontSize(dir) {
               {subjectSettingId && (() => {
                 const s = settingsList.find(s => s.id === subjectSettingId);
                 return s ? (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-100">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 border border-white/50">
                     <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     <span className="text-xs font-bold text-indigo-700">ปีการศึกษา {s.academic_year} ภาคเรียนที่ {s.term}</span>
                     {s.is_active && <span className="ml-auto bg-emerald-100 text-emerald-700 text-xs px-1.5 py-0.5 rounded-full font-bold">Active</span>}
@@ -5013,7 +5031,7 @@ function changeFontSize(dir) {
                     type="button"
                     onClick={() => setSubjectType("main")}
                     className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${subjectType === "main"
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
                       : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
                       }`}
                   >
@@ -5023,7 +5041,7 @@ function changeFontSize(dir) {
                     type="button"
                     onClick={() => setSubjectType("activity")}
                     className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${subjectType === "activity"
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
                       : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
                       }`}
                   >

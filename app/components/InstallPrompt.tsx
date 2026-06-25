@@ -78,9 +78,12 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-sm z-50 animate-fade-in-up">
-      <div className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-white shadow-xl p-4">
-        <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-white shadow-sm">
-          <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+      <div className="flex items-start gap-3 rounded-2xl glass-strong shadow-xl p-4">
+        <div className="relative shrink-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-15 blur-sm" />
+          <div className="w-11 h-11 rounded-xl overflow-hidden bg-white shadow-sm relative border border-white/80">
+            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+          </div>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-gray-800">ติดตั้งแอประบบจัดการโรงเรียน</p>
@@ -95,14 +98,14 @@ export default function InstallPrompt() {
             {!isIOS && (
               <button
                 onClick={handleInstall}
-                className="px-3 py-1.5 rounded-full text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors cursor-pointer"
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 transition-all cursor-pointer shadow-sm shadow-indigo-200/50"
               >
                 ติดตั้ง
               </button>
             )}
             <button
               onClick={handleDismiss}
-              className="px-3 py-1.5 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer"
             >
               ไม่ใช่ตอนนี้
             </button>
