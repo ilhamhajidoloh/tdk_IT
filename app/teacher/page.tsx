@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
+import ChatWidget from "../components/ChatWidget";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
 import { formatThaiDateRange } from "../lib/format";
@@ -1869,6 +1870,7 @@ export default function TeacherPortal() {
         )}
 
       </main>
+      {teacherUser && <ChatWidget userId={teacherUser.id} userRole="teacher" />}
     </div>
   );
 }

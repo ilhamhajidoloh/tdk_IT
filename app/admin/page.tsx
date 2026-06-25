@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, type ReactNode, useMemo } from "react";
 import { useAuth } from "../lib/useAuth";
 import * as XLSX from "xlsx";
+import ChatWidget from "../components/ChatWidget";
 
 interface DBUser {
   id: string; firebase_uid: string; username: string;
@@ -5177,6 +5178,7 @@ function changeFontSize(dir) {
           </div>
         </div>
       )}
+      {adminUser && <ChatWidget userId={adminUser.id} userRole="admin" />}
     </div>
   );
 }

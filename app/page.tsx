@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { signIn } from "next-auth/react";
+import GuestChatWidget from "./components/GuestChatWidget";
 
 type LoginTab = "staff" | "teacher" | "student";
 
@@ -452,6 +453,7 @@ export default function LoginPage() {
           ระบบจัดการโรงเรียน &copy; {new Date().getFullYear()}
         </p>
       </div>
+      <GuestChatWidget />
     </div>
   );
 }

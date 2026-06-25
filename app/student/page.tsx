@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
+import ChatWidget from "../components/ChatWidget";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
 
@@ -888,6 +889,7 @@ export default function StudentPortal() {
           </div>
         )}
       </main>
+      {user && <ChatWidget userId={user.id} userRole="student" />}
     </div>
   );
 }
