@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
 import ChatWidget from "../components/ChatWidget";
+import ThemeToggle from "../components/ThemeToggle";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
 
@@ -19,13 +20,13 @@ interface ScheduleEntry {
 }
 
 const ALL_DAYS = [
-  { value: 1, label: "จันทร์", color: "bg-yellow-100 text-yellow-800 border-yellow-200", gradient: "from-amber-400 to-yellow-300" },
-  { value: 2, label: "อังคาร", color: "bg-pink-100 text-pink-800 border-pink-200", gradient: "from-pink-400 to-rose-300" },
-  { value: 3, label: "พุธ", color: "bg-green-100 text-green-800 border-green-200", gradient: "from-emerald-400 to-green-300" },
-  { value: 4, label: "พฤหัสบดี", color: "bg-orange-100 text-orange-800 border-orange-200", gradient: "from-orange-400 to-amber-300" },
-  { value: 5, label: "ศุกร์", color: "bg-blue-100 text-blue-800 border-blue-200", gradient: "from-blue-400 to-sky-300" },
-  { value: 6, label: "เสาร์", color: "bg-purple-100 text-purple-800 border-purple-200", gradient: "from-purple-400 to-violet-300" },
-  { value: 0, label: "อาทิตย์", color: "bg-red-100 text-red-800 border-red-200", gradient: "from-red-400 to-rose-300" },
+  { value: 1, label: "จันทร์", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30", gradient: "from-amber-400 to-yellow-300" },
+  { value: 2, label: "อังคาร", color: "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/30", gradient: "from-pink-400 to-rose-300" },
+  { value: 3, label: "พุธ", color: "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", gradient: "from-emerald-400 to-green-300" },
+  { value: 4, label: "พฤหัสบดี", color: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30", gradient: "from-orange-400 to-amber-300" },
+  { value: 5, label: "ศุกร์", color: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", gradient: "from-blue-400 to-sky-300" },
+  { value: 6, label: "เสาร์", color: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30", gradient: "from-purple-400 to-violet-300" },
+  { value: 0, label: "อาทิตย์", color: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", gradient: "from-red-400 to-rose-300" },
 ];
 
 type Tab = "overview" | "grades" | "schedule";
@@ -38,25 +39,15 @@ const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
 
 function LoadingScreen({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center mesh-gradient gap-4">
-      {/* Floating orbs */}
-      <div className="fixed top-[-10%] right-[-5%] w-80 h-80 bg-gradient-to-br from-violet-300/20 to-cyan-300/20 rounded-full blur-3xl animate-float-slow" />
-      <div className="fixed bottom-[-10%] left-[-5%] w-72 h-72 bg-gradient-to-br from-fuchsia-300/20 to-indigo-300/20 rounded-full blur-3xl animate-float-slow" />
-
-      <div className="relative w-20 h-20">
-        {/* Outer animated ring */}
-        <div className="absolute -inset-2 rounded-full border-2 border-violet-200/50 animate-[spin_3s_linear_infinite]" />
-        {/* Middle ring */}
-        <div className="absolute -inset-1 rounded-full border-2 border-indigo-200/30 animate-[spin_5s_linear_infinite_reverse]" />
-        {/* Main spinner */}
-        <div className="absolute inset-0 rounded-full border-4 border-violet-100/50" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-violet-600 border-r-fuchsia-500 animate-spin" />
-        {/* Center glow */}
-        <div className="absolute inset-3 rounded-full bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 animate-glow-pulse" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-5 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 grid-backdrop opacity-60" />
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 rounded-full border-4 border-border" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
       </div>
-      <div className="text-center mt-2">
-        <p className="text-slate-700 font-bold text-lg">{title}</p>
-        {subtitle && <p className="text-slate-400 text-sm mt-1.5">{subtitle}</p>}
+      <div className="text-center relative z-10">
+        <p className="text-foreground font-bold text-lg">{title}</p>
+        {subtitle && <p className="text-muted-foreground text-sm mt-1.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -207,14 +198,14 @@ export default function StudentPortal() {
   };
 
   const getGradeInfo = (percent: number) => {
-    if (percent >= 80) return { letter: "A", point: "4.0", color: "bg-emerald-100 text-emerald-700 border-emerald-200", bar: "bg-emerald-500" };
-    if (percent >= 75) return { letter: "B+", point: "3.5", color: "bg-green-100 text-green-700 border-green-200", bar: "bg-green-500" };
-    if (percent >= 70) return { letter: "B", point: "3.0", color: "bg-teal-100 text-teal-700 border-teal-200", bar: "bg-teal-500" };
-    if (percent >= 65) return { letter: "C+", point: "2.5", color: "bg-sky-100 text-sky-700 border-sky-200", bar: "bg-sky-500" };
-    if (percent >= 60) return { letter: "C", point: "2.0", color: "bg-blue-100 text-blue-700 border-blue-200", bar: "bg-blue-500" };
-    if (percent >= 55) return { letter: "D+", point: "1.5", color: "bg-yellow-100 text-yellow-700 border-yellow-200", bar: "bg-yellow-500" };
-    if (percent >= 50) return { letter: "D", point: "1.0", color: "bg-orange-100 text-orange-700 border-orange-200", bar: "bg-orange-500" };
-    return { letter: "F", point: "0.0", color: "bg-red-100 text-red-700 border-red-200", bar: "bg-red-500" };
+    if (percent >= 80) return { letter: "A", point: "4.0", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" };
+    if (percent >= 75) return { letter: "B+", point: "3.5", color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", bar: "bg-green-500" };
+    if (percent >= 70) return { letter: "B", point: "3.0", color: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:border-teal-500/30", bar: "bg-teal-500" };
+    if (percent >= 65) return { letter: "C+", point: "2.5", color: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/30", bar: "bg-sky-500" };
+    if (percent >= 60) return { letter: "C", point: "2.0", color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", bar: "bg-blue-500" };
+    if (percent >= 55) return { letter: "D+", point: "1.5", color: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/30", bar: "bg-yellow-500" };
+    if (percent >= 50) return { letter: "D", point: "1.0", color: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30", bar: "bg-orange-500" };
+    return { letter: "F", point: "0.0", color: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", bar: "bg-red-500" };
   };
 
   const scoredActivitySubjects = subjectsList.filter(s =>
@@ -244,8 +235,8 @@ export default function StudentPortal() {
       pass: percent >= 50,
       label: percent >= 50 ? "ผ่าน" : "ไม่ผ่าน",
       color: percent >= 50
-        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-        : "bg-red-100 text-red-700 border-red-200",
+        ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30"
+        : "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30",
       bar: percent >= 50 ? "bg-emerald-500" : "bg-rose-500",
     };
   };
@@ -261,8 +252,8 @@ export default function StudentPortal() {
     return scheduleEntries.filter(e => e.classroom_id === currentStudent.classroom_id && Number(e.day_of_week) === today);
   })();
 
-  const gpaColor = gpaNum >= 3.5 ? "text-emerald-600" : gpaNum >= 2.5 ? "text-blue-600" : gpaNum >= 1.5 ? "text-amber-600" : "text-rose-600";
-  const gpaRingColor = gpaNum >= 3.5 ? "border-emerald-400" : gpaNum >= 2.5 ? "border-blue-400" : gpaNum >= 1.5 ? "border-amber-400" : "border-rose-400";
+  const gpaColor = gpaNum >= 3.5 ? "text-emerald-600 dark:text-emerald-400" : gpaNum >= 2.5 ? "text-blue-600 dark:text-blue-400" : gpaNum >= 1.5 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400";
+  const gpaRingColor = gpaNum >= 3.5 ? "border-emerald-400 dark:border-emerald-500/60" : gpaNum >= 2.5 ? "border-blue-400 dark:border-blue-500/60" : gpaNum >= 1.5 ? "border-amber-400 dark:border-amber-500/60" : "border-rose-400 dark:border-rose-500/60";
 
   const handleExportStudentSchedule = () => {
     if (!schedulePeriods.length || !currentStudent) return;
@@ -319,31 +310,27 @@ export default function StudentPortal() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative">
-      {/* Modern mesh gradient background */}
-      <div className="fixed inset-0 mesh-gradient -z-10" />
-      {/* Floating gradient orbs */}
-      <div className="fixed top-[-20%] right-[-10%] w-96 h-96 bg-gradient-to-br from-violet-200/20 to-cyan-200/20 rounded-full blur-3xl animate-float-slow -z-10" />
-      <div className="fixed bottom-[-15%] left-[-10%] w-80 h-80 bg-gradient-to-br from-fuchsia-200/15 to-indigo-200/15 rounded-full blur-3xl animate-float-slow -z-10" />
-      <div className="fixed top-[40%] left-[60%] w-64 h-64 bg-gradient-to-br from-pink-200/10 to-violet-200/10 rounded-full blur-3xl animate-float-slow -z-10" />
+    <div className="min-h-screen flex flex-col relative bg-background text-foreground">
+      <div className="pointer-events-none fixed inset-0 grid-backdrop opacity-50 -z-10" />
 
       {/* ── HEADER ── */}
-      <header className="header-gradient border-b border-white/50 sticky top-0 z-20 shadow-sm">
+      <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-xl">
         <div className="max-w-screen-lg mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-md shadow-violet-100/50 border border-white/60 ring-2 ring-violet-100/30">
+            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 ring-1 ring-border shadow-sm">
               <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-slate-800 text-sm leading-tight truncate">{currentStudent.name}</div>
-              <div className="text-xs text-slate-400 font-medium">รหัส {currentStudent.student_id} · ห้อง {classroom?.name || "—"}</div>
+              <div className="font-bold text-foreground text-sm leading-tight truncate">{currentStudent.name}</div>
+              <div className="text-xs text-muted-foreground font-medium">รหัส {currentStudent.student_id} · ห้อง {classroom?.name || "—"}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggle className="!h-9 !w-9" />
             <button
               onClick={handleConnectGoogle}
               title={user?.email ? `เชื่อมต่ออีเมล: ${user.email}` : "เชื่อมต่ออีเมล Google"}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 border backdrop-blur-sm ${user?.email ? "text-emerald-600 border-emerald-200/70 bg-emerald-50/80 shadow-sm shadow-emerald-100/50" : "text-slate-500 border-white/60 bg-white/40 hover:text-violet-600 hover:bg-violet-50/80 hover:border-violet-200/70 hover:shadow-sm"}`}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors border ${user?.email ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10" : "text-muted-foreground border-border bg-card hover:text-foreground hover:bg-muted"}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -352,7 +339,7 @@ export default function StudentPortal() {
             <button
               onClick={handleChangePassword}
               title="เปลี่ยนรหัสผ่าน"
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-violet-600 hover:bg-violet-50/80 transition-all duration-200 border border-white/60 bg-white/40 backdrop-blur-sm hover:border-violet-200/70 hover:shadow-sm"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -360,7 +347,7 @@ export default function StudentPortal() {
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 bg-rose-50/80 hover:bg-rose-100/90 px-3 py-2 rounded-xl transition-all duration-200 border border-rose-100/70 backdrop-blur-sm hover:shadow-sm"
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 px-3 py-2 rounded-xl transition-colors border border-rose-100 dark:border-rose-500/30"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -372,25 +359,22 @@ export default function StudentPortal() {
       </header>
 
       {/* ── TAB NAV ── */}
-      <div className="header-gradient border-b border-white/40 sticky top-16 z-10">
+      <div className="sticky top-16 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-3">
-          <div className="p-1.5 bg-slate-100/60 rounded-2xl backdrop-blur-sm inline-flex gap-1">
+          <div className="ui-segment inline-flex">
             {NAV_TABS.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl whitespace-nowrap transition-all duration-200 cursor-pointer ${
-                  activeTab === tab.key
-                    ? "bg-white shadow-md shadow-indigo-100/50 text-violet-700"
-                    : "text-slate-500 hover:text-slate-700 hover:bg-white/40"
-                }`}
+                data-active={activeTab === tab.key}
+                className="ui-segment-item px-4 !flex-none"
               >
                 <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={tab.icon} />
                 </svg>
                 {tab.label}
                 {tab.key === "grades" && filteredGrades.length > 0 && (
-                  <span className="ml-1 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                  <span className="ml-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                     {filteredGrades.length}
                   </span>
                 )}
@@ -408,31 +392,19 @@ export default function StudentPortal() {
           <div className="space-y-6 animate-fade-in-up">
 
             {/* Profile Hero Card */}
-            <div className="relative bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-500 rounded-3xl p-7 text-white overflow-hidden shadow-xl shadow-violet-200/40 animate-gradient-shift">
-              {/* decorative elements */}
-              <div className="absolute -top-8 -right-8 w-44 h-44 rounded-full bg-white/10" />
-              <div className="absolute -bottom-10 -left-6 w-36 h-36 rounded-full bg-white/5" />
-              <div className="absolute top-1/2 right-1/4 w-24 h-24 rounded-full border border-white/10" />
-              <div className="absolute bottom-4 right-12 w-16 h-16 rounded-full border border-white/5" />
-              {/* dot pattern decoration */}
-              <div className="absolute top-4 right-4 dot-pattern w-20 h-20 opacity-20" />
-
+            <div className="aurora-panel relative rounded-2xl p-7 text-white overflow-hidden shadow-lg">
               <div className="relative z-10 flex items-center gap-5">
-                {/* Avatar with glow */}
-                <div className="relative">
-                  <div className="absolute -inset-1 bg-white/20 rounded-2xl blur-sm animate-glow-pulse" />
-                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 border-2 border-white/50 flex items-center justify-center shrink-0 backdrop-blur-sm ring-2 ring-white/20 ring-offset-2 ring-offset-purple-600/0">
-                    <span className="text-3xl sm:text-4xl font-extrabold drop-shadow-sm">{currentStudent.name.charAt(0)}</span>
-                  </div>
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/15 border border-white/40 flex items-center justify-center shrink-0 backdrop-blur-sm">
+                  <span className="text-3xl sm:text-4xl font-extrabold drop-shadow-sm">{currentStudent.name.charAt(0)}</span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-xl sm:text-2xl font-extrabold leading-tight truncate drop-shadow-sm">{currentStudent.name}</h2>
                   <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                    <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/25 shadow-sm">
+                    <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/20">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>
                       {currentStudent.student_id}
                     </span>
-                    <span className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/25 shadow-sm">
+                    <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/20">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                       ห้อง {classroom?.name || "—"}
                     </span>
@@ -443,9 +415,9 @@ export default function StudentPortal() {
 
             {/* Term Selector */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h3 className="font-bold text-slate-700 text-sm">สรุปผลการเรียน</h3>
+              <h3 className="font-bold text-foreground text-sm">สรุปผลการเรียน</h3>
               <select
-                className="input-modern px-4 py-2 text-sm font-semibold text-violet-700 cursor-pointer"
+                className="ui-input !w-auto py-2 text-sm font-semibold text-primary"
                 value={activeSettingId || ""}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -469,34 +441,32 @@ export default function StudentPortal() {
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-4 stagger-children">
               {/* GPA */}
-              <div className="col-span-3 sm:col-span-1 card-interactive rounded-3xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                {/* Gradient accent bar */}
+              <div className="col-span-3 sm:col-span-1 ui-card-interactive p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
-                <div className={`w-22 h-22 rounded-full border-4 ${gpaRingColor} flex items-center justify-center mb-3 shadow-sm relative`}>
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white to-slate-50" />
+                <div className={`w-22 h-22 rounded-full border-4 ${gpaRingColor} flex items-center justify-center mb-3 relative bg-muted`}>
                   <span className={`relative text-2xl font-extrabold ${gpaColor}`}>{gpaData.value}</span>
                 </div>
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">เกรดเฉลี่ย (GPA)</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">{gpaData.credits} หน่วยกิต</div>
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">เกรดเฉลี่ย (GPA)</div>
+                <div className="text-[11px] text-subtle-foreground mt-0.5">{gpaData.credits} หน่วยกิต</div>
               </div>
 
               {/* Right stats */}
               <div className="col-span-3 sm:col-span-2 grid grid-cols-2 gap-4">
-                <div className="card-interactive rounded-3xl p-5 relative overflow-hidden">
+                <div className="ui-card-interactive p-5 relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-400 to-indigo-500" />
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                  <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center mb-2">
+                    <svg className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                   </div>
-                  <div className="text-3xl font-extrabold text-violet-600 mb-1">{filteredGrades.length}</div>
-                  <div className="text-xs font-semibold text-slate-500">วิชาที่มีคะแนน</div>
-                  <div className="text-[11px] text-slate-400">เทอมนี้</div>
+                  <div className="text-3xl font-extrabold text-violet-600 dark:text-violet-400 mb-1">{filteredGrades.length}</div>
+                  <div className="text-xs font-semibold text-muted-foreground">วิชาที่มีคะแนน</div>
+                  <div className="text-[11px] text-subtle-foreground">เทอมนี้</div>
                 </div>
-                <div className="card-interactive rounded-3xl p-5 relative overflow-hidden">
+                <div className="ui-card-interactive p-5 relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-400 to-rose-500" />
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                  <div className="w-9 h-9 rounded-xl bg-pink-100 dark:bg-pink-500/15 flex items-center justify-center mb-2">
+                    <svg className="w-4.5 h-4.5 text-pink-600 dark:text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
                   </div>
-                  <div className="text-3xl font-extrabold text-pink-500 mb-1">
+                  <div className="text-3xl font-extrabold text-pink-500 dark:text-pink-400 mb-1">
                     {filteredGrades.filter(g => {
                       const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                       const mMax = Number(sub?.midterm_max_score) || midtermMax;
@@ -505,15 +475,15 @@ export default function StudentPortal() {
                       return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 80;
                     }).length}
                   </div>
-                  <div className="text-xs font-semibold text-slate-500">เกรด A</div>
-                  <div className="text-[11px] text-slate-400">คะแนน ≥ 80%</div>
+                  <div className="text-xs font-semibold text-muted-foreground">เกรด A</div>
+                  <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 80%</div>
                 </div>
-                <div className="card-interactive rounded-3xl p-5 relative overflow-hidden">
+                <div className="ui-card-interactive p-5 relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500" />
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-2">
+                    <svg className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  <div className="text-3xl font-extrabold text-emerald-600 mb-1">
+                  <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mb-1">
                     {filteredGrades.filter(g => {
                       const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                       const mMax = Number(sub?.midterm_max_score) || midtermMax;
@@ -522,15 +492,15 @@ export default function StudentPortal() {
                       return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 50;
                     }).length}
                   </div>
-                  <div className="text-xs font-semibold text-slate-500">ผ่านทั้งหมด</div>
-                  <div className="text-[11px] text-slate-400">คะแนน ≥ 50%</div>
+                  <div className="text-xs font-semibold text-muted-foreground">ผ่านทั้งหมด</div>
+                  <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 50%</div>
                 </div>
-                <div className="card-interactive rounded-3xl p-5 relative overflow-hidden">
+                <div className="ui-card-interactive p-5 relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-red-500" />
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-100 to-red-100 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center mb-2">
+                    <svg className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                   </div>
-                  <div className="text-3xl font-extrabold text-rose-500 mb-1">
+                  <div className="text-3xl font-extrabold text-rose-500 dark:text-rose-400 mb-1">
                     {filteredGrades.filter(g => {
                       const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                       const mMax = Number(sub?.midterm_max_score) || midtermMax;
@@ -539,35 +509,34 @@ export default function StudentPortal() {
                       return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 < 50;
                     }).length}
                   </div>
-                  <div className="text-xs font-semibold text-slate-500">ต้องปรับปรุง</div>
-                  <div className="text-[11px] text-slate-400">คะแนน &lt; 50%</div>
+                  <div className="text-xs font-semibold text-muted-foreground">ต้องปรับปรุง</div>
+                  <div className="text-[11px] text-subtle-foreground">คะแนน &lt; 50%</div>
                 </div>
               </div>
             </div>
 
             {/* Today's schedule quick view */}
             {myScheduleToday.length > 0 && (
-              <div className="card-modern rounded-3xl overflow-hidden animate-fade-in-up">
-                <div className="px-5 py-4 border-b border-slate-100/80 flex items-center justify-between">
+              <div className="ui-card overflow-hidden animate-fade-in-up">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 animate-pulse shadow-sm shadow-violet-300" />
-                    <span className="font-bold text-slate-800 text-sm">คาบเรียนวันนี้</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                    <span className="font-bold text-foreground text-sm">คาบเรียนวันนี้</span>
                   </div>
-                  <button onClick={() => setActiveTab("schedule")} className="text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors">ดูทั้งหมด →</button>
+                  <button onClick={() => setActiveTab("schedule")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
                 </div>
-                <div className="divide-y divide-slate-100/80 stagger-children">
+                <div className="divide-y divide-border stagger-children">
                   {myScheduleToday.sort((a, b) => Number(a.period_no) - Number(b.period_no)).map(e => {
-                    const period = schedulePeriods.find(p => p.id === e.period_id);
                     return (
-                      <div key={e.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-violet-50/30 transition-colors">
+                      <div key={e.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
                         <div className="text-center shrink-0 w-10">
-                          <div className="text-[11px] font-bold text-slate-600">คาบ {e.period_no}</div>
-                          <div className="text-[10px] text-slate-400">{e.start_time}</div>
+                          <div className="text-[11px] font-bold text-muted-foreground">คาบ {e.period_no}</div>
+                          <div className="text-[10px] text-subtle-foreground">{e.start_time}</div>
                         </div>
-                        <div className="w-px h-8 bg-gradient-to-b from-violet-200 to-transparent" />
+                        <div className="w-px h-8 bg-border" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-slate-800 truncate">{e.subject_name}</div>
-                          {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-xs text-slate-400">อ.{t}</div> : null; })()}
+                          <div className="font-semibold text-sm text-foreground truncate">{e.subject_name}</div>
+                          {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-xs text-muted-foreground">อ.{t}</div> : null; })()}
                         </div>
                       </div>
                     );
@@ -578,12 +547,12 @@ export default function StudentPortal() {
 
             {/* Quick Grades Preview */}
             {filteredGrades.length > 0 && (
-              <div className="card-modern rounded-3xl overflow-hidden animate-fade-in-up">
-                <div className="px-5 py-4 border-b border-slate-100/80 flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-sm">คะแนนล่าสุด</span>
-                  <button onClick={() => setActiveTab("grades")} className="text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors">ดูทั้งหมด →</button>
+              <div className="ui-card overflow-hidden animate-fade-in-up">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                  <span className="font-bold text-foreground text-sm">คะแนนล่าสุด</span>
+                  <button onClick={() => setActiveTab("grades")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
                 </div>
-                <div className="divide-y divide-slate-100/80 stagger-children">
+                <div className="divide-y divide-border stagger-children">
                   {filteredGrades.slice(0, 4).map(grade => {
                     const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                     const mMax = Number(subject?.midterm_max_score) || midtermMax;
@@ -592,20 +561,20 @@ export default function StudentPortal() {
                     const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
                     const isActivity = subject?.subject_type === "activity";
                     const info = isActivity
-                      ? (percent >= 50 ? { letter: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200", bar: "bg-rose-500" })
+                      ? (percent >= 50 ? { letter: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" })
                       : getGradeInfo(percent);
                     return (
-                      <div key={grade.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-violet-50/30 transition-colors">
+                      <div key={grade.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
                         <span className={`w-10 text-center py-1.5 rounded-xl border text-xs font-extrabold shrink-0 ${info.color}`}>{info.letter}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-slate-800 truncate">{grade.subject}</div>
-                          <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                          <div className="font-semibold text-sm text-foreground truncate">{grade.subject}</div>
+                          <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
                             <div className={`h-full rounded-full transition-all duration-500 ${info.bar}`} style={{ width: `${Math.min(100, percent)}%` }} />
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <div className="font-bold text-sm text-slate-800">{totalScore}</div>
-                          <div className="text-[11px] text-slate-400">/{mMax + fMax}</div>
+                          <div className="font-bold text-sm text-foreground">{totalScore}</div>
+                          <div className="text-[11px] text-subtle-foreground">/{mMax + fMax}</div>
                         </div>
                       </div>
                     );
@@ -622,11 +591,11 @@ export default function StudentPortal() {
             {/* Term selector */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <h3 className="font-bold text-slate-700">ผลการเรียน</h3>
-                <p className="text-xs text-slate-400 mt-0.5">เทอม {activeTermStr}</p>
+                <h3 className="font-bold text-foreground">ผลการเรียน</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">เทอม {activeTermStr}</p>
               </div>
               <select
-                className="input-modern px-4 py-2 text-sm font-semibold text-violet-700 cursor-pointer"
+                className="ui-input !w-auto py-2 text-sm font-semibold text-primary"
                 value={activeSettingId || ""}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -642,28 +611,28 @@ export default function StudentPortal() {
 
             {/* GPA Summary bar */}
             {filteredGrades.length > 0 && (
-              <div className="card-modern rounded-3xl px-6 py-5 flex items-center gap-5 relative overflow-hidden">
+              <div className="ui-card px-6 py-5 flex items-center gap-5 relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
                 <div className={`text-3xl font-extrabold ${gpaColor}`}>{gpaData.value}</div>
                 <div className="flex-1">
-                  <div className="text-xs font-bold text-slate-500 mb-1.5">เกรดเฉลี่ยสะสม (GPA) · {gpaData.credits} หน่วยกิต</div>
-                  <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="text-xs font-bold text-muted-foreground mb-1.5">เกรดเฉลี่ยสะสม (GPA) · {gpaData.credits} หน่วยกิต</div>
+                  <div className="h-2.5 rounded-full bg-muted overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500" style={{ width: `${(gpaNum / 4) * 100}%` }} />
                   </div>
                 </div>
-                <div className="text-xs font-bold text-slate-400">/ 4.00</div>
+                <div className="text-xs font-bold text-subtle-foreground">/ 4.00</div>
               </div>
             )}
 
             {filteredGrades.length === 0 ? (
-              <div className="card-modern rounded-3xl p-14 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-violet-100 to-indigo-100 rounded-2xl flex items-center justify-center shadow-sm">
-                  <svg className="w-8 h-8 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="ui-card p-14 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-primary-soft rounded-2xl flex items-center justify-center" style={{ background: "var(--primary-soft)" }}>
+                  <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <h3 className="font-bold text-slate-600 mb-1 text-base">ยังไม่มีผลการเรียน</h3>
-                <p className="text-sm text-slate-400">กรุณารอคุณครูบันทึกคะแนนในเทอมนี้</p>
+                <h3 className="font-bold text-foreground mb-1 text-base">ยังไม่มีผลการเรียน</h3>
+                <p className="text-sm text-muted-foreground">กรุณารอคุณครูบันทึกคะแนนในเทอมนี้</p>
               </div>
             ) : (
               <div className="space-y-3 stagger-children">
@@ -671,19 +640,19 @@ export default function StudentPortal() {
                   const combined = getCombinedActivityResult();
                   if (!combined) return null;
                   return (
-                    <div className={`rounded-3xl border-2 p-5 flex items-center gap-4 backdrop-blur-sm ${combined.pass ? "bg-emerald-50/80 border-emerald-200" : "bg-rose-50/80 border-rose-200"}`}>
+                    <div className={`rounded-2xl border p-5 flex items-center gap-4 ${combined.pass ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30" : "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30"}`}>
                       <div className={`w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0 ${combined.color}`}>
                         <span className="text-base font-extrabold leading-tight">{combined.label}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-800 text-sm">ผลกิจกรรมรวม</div>
-                        <div className="text-xs text-slate-500 mt-0.5">
+                        <div className="font-bold text-foreground text-sm">ผลกิจกรรมรวม</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
                           คะแนน {combined.totalScore}/{combined.totalMax} · {Math.round(combined.percent)}%
                         </div>
-                        <div className="h-2 rounded-full bg-white mt-2 overflow-hidden border border-slate-200/60 shadow-inner">
+                        <div className="h-2 rounded-full bg-card mt-2 overflow-hidden border border-border">
                           <div className={`h-full rounded-full transition-all duration-500 ${combined.bar}`} style={{ width: `${Math.min(100, combined.percent)}%` }} />
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-1">
+                        <div className="text-[10px] text-subtle-foreground mt-1">
                           รวมจาก: {scoredActivitySubjects.map(s => s.name).join(", ")}
                         </div>
                       </div>
@@ -702,16 +671,15 @@ export default function StudentPortal() {
                   const info = isActivity
                     ? (combinedActResult
                         ? { letter: combinedActResult.label, point: combinedActResult.label, color: combinedActResult.color, bar: combinedActResult.bar }
-                        : (percent >= 50 ? { letter: "ผ่าน", point: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", point: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200", bar: "bg-rose-500" }))
+                        : (percent >= 50 ? { letter: "ผ่าน", point: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", point: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" }))
                     : getGradeInfo(percent);
 
                   return (
-                    <div key={grade.id} className="card-modern rounded-3xl overflow-hidden relative">
-                      {/* Gradient left accent border */}
+                    <div key={grade.id} className="ui-card overflow-hidden relative">
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${isActivity ? "bg-gradient-to-b from-amber-400 to-orange-400" : "bg-gradient-to-b from-violet-400 to-fuchsia-400"}`} />
                       <div className="p-5 pl-6 flex items-center gap-4">
                         {/* Grade Badge */}
-                        <div className={`w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0 ${info.color} shadow-sm`}>
+                        <div className={`w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0 ${info.color}`}>
                           <span className="text-lg font-extrabold leading-tight">{info.letter}</span>
                           {!isActivity && <span className="text-[10px] font-semibold opacity-70">{info.point}</span>}
                         </div>
@@ -719,29 +687,29 @@ export default function StudentPortal() {
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                            <span className="font-bold text-slate-800 text-sm truncate">{grade.subject}</span>
+                            <span className="font-bold text-foreground text-sm truncate">{grade.subject}</span>
                             {isActivity ? (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200/70">กิจกรรม</span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30">กิจกรรม</span>
                             ) : (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-50 to-indigo-50 text-violet-700 border border-violet-200/70">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/30">
                                 {Number(subject?.credit_hours) || 1} หน่วยกิต
                               </span>
                             )}
                           </div>
 
                           {/* Score bar */}
-                          <div className="h-2 rounded-full bg-slate-100 overflow-hidden mb-2 shadow-inner">
+                          <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
                             <div className={`h-full rounded-full transition-all duration-500 ${info.bar}`} style={{ width: `${Math.min(100, percent)}%` }} />
                           </div>
 
                           {/* Score breakdown */}
-                          <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium">
+                          <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
                             {isCombined ? (
                               <span>รวม {totalScore}/{mMax + fMax}</span>
                             ) : (
                               <>
                                 <span>เก็บ {grade.midterm_score ?? 0}/{mMax}</span>
-                                <span className="text-slate-300">·</span>
+                                <span className="text-subtle-foreground">·</span>
                                 <span>สอบ {grade.final_score ?? 0}/{fMax}</span>
                               </>
                             )}
@@ -750,8 +718,8 @@ export default function StudentPortal() {
 
                         {/* Total score */}
                         <div className="text-right shrink-0">
-                          <div className="text-2xl font-extrabold text-slate-800">{totalScore}</div>
-                          <div className="text-xs text-slate-400 font-medium">/{mMax + fMax}</div>
+                          <div className="text-2xl font-extrabold text-foreground">{totalScore}</div>
+                          <div className="text-xs text-subtle-foreground font-medium">/{mMax + fMax}</div>
                           <div className={`text-[11px] font-bold mt-0.5 ${info.color.split(" ")[1]}`}>{Math.round(percent)}%</div>
                         </div>
                       </div>
@@ -767,23 +735,20 @@ export default function StudentPortal() {
         {activeTab === "schedule" && (
           <div className="space-y-5 animate-fade-in-up">
             {schedulePeriods.length === 0 ? (
-              <div className="card-modern rounded-3xl p-14 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-violet-100 to-indigo-100 rounded-2xl flex items-center justify-center shadow-sm">
-                  <svg className="w-8 h-8 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="ui-card p-14 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: "var(--primary-soft)" }}>
+                  <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h3 className="font-bold text-slate-600 mb-1 text-base">ยังไม่มีตารางเรียน</h3>
-                <p className="text-sm text-slate-400">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
+                <h3 className="font-bold text-foreground mb-1 text-base">ยังไม่มีตารางเรียน</h3>
+                <p className="text-sm text-muted-foreground">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
               </div>
             ) : (
               <>
                 {/* Export button */}
                 <div className="flex justify-end">
-                  <button
-                    onClick={handleExportStudentSchedule}
-                    className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-semibold"
-                  >
+                  <button onClick={handleExportStudentSchedule} className="ui-btn ui-btn-primary">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
@@ -797,7 +762,7 @@ export default function StudentPortal() {
                     if (dayEntries.length === 0) return null;
                     const isToday = new Date().getDay() === day.value;
                     return (
-                      <div key={day.value} className={`card-modern rounded-3xl overflow-hidden ${isToday ? "ring-2 ring-violet-300/50 shadow-lg shadow-violet-100/30" : ""}`}>
+                      <div key={day.value} className={`ui-card overflow-hidden ${isToday ? "ring-2 ring-primary/40" : ""}`}>
                         {/* Gradient day header */}
                         <div className={`px-5 py-3.5 flex items-center gap-2 bg-gradient-to-r ${day.gradient} text-white border-b border-white/20`}>
                           <span className="font-extrabold text-sm drop-shadow-sm">วัน{day.label}</span>
@@ -806,22 +771,22 @@ export default function StudentPortal() {
                           )}
                           <span className="ml-auto text-xs font-semibold opacity-90">{dayEntries.length} คาบ</span>
                         </div>
-                        <div className="divide-y divide-slate-100/80">
+                        <div className="divide-y divide-border">
                           {dayEntries.sort((a, b) => Number(a.period_no) - Number(b.period_no)).map(e => {
                             const period = schedulePeriods.find(p => p.id === e.period_id);
                             return (
-                              <div key={e.id} className="px-5 py-3.5 flex items-center gap-3 hover:bg-violet-50/30 transition-colors">
+                              <div key={e.id} className="px-5 py-3.5 flex items-center gap-3 hover:bg-muted transition-colors">
                                 <div className="shrink-0 text-center w-10">
-                                  <div className="text-xs font-extrabold text-slate-600">คาบ {e.period_no}</div>
-                                  <div className="text-[10px] text-slate-400">{e.start_time}</div>
+                                  <div className="text-xs font-extrabold text-muted-foreground">คาบ {e.period_no}</div>
+                                  <div className="text-[10px] text-subtle-foreground">{e.start_time}</div>
                                 </div>
-                                <div className="w-px h-8 bg-gradient-to-b from-slate-200 to-transparent" />
+                                <div className="w-px h-8 bg-border" />
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-bold text-slate-800 text-sm truncate">{e.subject_name}</div>
-                                  {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-[11px] text-slate-400 mt-0.5">อ.{t}</div> : null; })()}
+                                  <div className="font-bold text-foreground text-sm truncate">{e.subject_name}</div>
+                                  {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-[11px] text-muted-foreground mt-0.5">อ.{t}</div> : null; })()}
                                 </div>
                                 {period?.label && (
-                                  <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full shrink-0">{period.label}</span>
+                                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30 px-2 py-0.5 rounded-full shrink-0">{period.label}</span>
                                 )}
                               </div>
                             );
@@ -833,15 +798,15 @@ export default function StudentPortal() {
                 </div>
 
                 {/* Full grid table */}
-                <div className="card-modern rounded-3xl overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-100/80">
-                    <h3 className="font-bold text-slate-800 text-sm">ตารางเรียนแบบตาราง</h3>
+                <div className="ui-card overflow-hidden">
+                  <div className="px-6 py-4 border-b border-border">
+                    <h3 className="font-bold text-foreground text-sm">ตารางเรียนแบบตาราง</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-100/80 text-slate-500">
-                          <th className="px-3 py-3.5 text-left font-semibold sticky left-0 bg-gradient-to-r from-slate-50 to-slate-100/50 z-10 min-w-[72px]">คาบ</th>
+                        <tr className="bg-muted border-b border-border text-muted-foreground">
+                          <th className="px-3 py-3.5 text-left font-semibold sticky left-0 bg-muted z-10 min-w-[72px]">คาบ</th>
                           {ACTIVE_DAYS.map(d => (
                             <th key={d.value} className="px-2 py-3.5 text-center font-semibold min-w-[90px]">
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${d.color}`}>{d.label}</span>
@@ -849,17 +814,17 @@ export default function StudentPortal() {
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100/80">
+                      <tbody className="divide-y divide-border">
                         {schedulePeriods.map(p => (
-                          <tr key={p.id} className="hover:bg-violet-50/20 transition-colors">
-                            <td className="px-3 py-2.5 sticky left-0 bg-white font-semibold text-slate-700 whitespace-nowrap z-10">
+                          <tr key={p.id} className="hover:bg-muted/60 transition-colors">
+                            <td className="px-3 py-2.5 sticky left-0 bg-card font-semibold text-foreground whitespace-nowrap z-10">
                               <div>คาบ {p.period_no}</div>
-                              <div className="text-[10px] text-slate-400 font-normal">{p.start_time}–{p.end_time}</div>
-                              {p.label && <div className="text-[10px] text-amber-600 font-medium">{p.label}</div>}
+                              <div className="text-[10px] text-subtle-foreground font-normal">{p.start_time}–{p.end_time}</div>
+                              {p.label && <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{p.label}</div>}
                             </td>
                             {p.is_break ? (
-                              <td colSpan={ACTIVE_DAYS.length} className="px-2 py-2.5 align-middle text-center bg-slate-50/80 border border-slate-200/50 rounded-md">
-                                <div className="font-bold text-slate-400 tracking-widest">{p.label || "พักเบรก"}</div>
+                              <td colSpan={ACTIVE_DAYS.length} className="px-2 py-2.5 align-middle text-center bg-muted border border-border">
+                                <div className="font-bold text-subtle-foreground tracking-widest">{p.label || "พักเบรก"}</div>
                               </td>
                             ) : (
                               ACTIVE_DAYS.map(d => {
@@ -867,12 +832,12 @@ export default function StudentPortal() {
                                 return (
                                   <td key={d.value} className="px-2 py-2 text-center align-top">
                                     {entry ? (
-                                      <div className="bg-gradient-to-br from-violet-50 to-indigo-50 text-violet-700 border border-violet-100/80 rounded-xl px-2 py-2 text-[11px] font-semibold shadow-sm">
+                                      <div className="bg-violet-50 text-violet-700 border border-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30 rounded-xl px-2 py-2 text-[11px] font-semibold">
                                         <div className="truncate">{entry.subject_name}</div>
                                         {(() => { const t = entry.teacher_name || (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null); return t ? <div className="text-violet-400 font-normal text-[10px] truncate">อ.{t}</div> : null; })()}
                                       </div>
                                     ) : (
-                                      <span className="text-slate-200">–</span>
+                                      <span className="text-border">–</span>
                                     )}
                                   </td>
                                 );

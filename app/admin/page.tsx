@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, type ReactNode, useMemo } from "react";
 import { useAuth } from "../lib/useAuth";
 import * as XLSX from "xlsx";
 import ChatWidget from "../components/ChatWidget";
+import ThemeToggle from "../components/ThemeToggle";
 
 interface DBUser {
   id: string; firebase_uid: string; username: string;
@@ -98,13 +99,13 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
 ];
 
 const STAT_COLOR_MAP: Record<string, string> = {
-  indigo: "bg-indigo-50 text-indigo-600",
-  green: "bg-green-50 text-green-600",
-  blue: "bg-blue-50 text-blue-600",
-  red: "bg-red-50 text-red-600",
-  purple: "bg-purple-50 text-purple-600",
-  amber: "bg-amber-50 text-amber-600",
-  slate: "bg-slate-100 text-slate-600",
+  indigo: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  green: "bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400",
+  blue: "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  red: "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400",
+  purple: "bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  amber: "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  slate: "bg-muted text-foreground",
 };
 
 function StatCard({ label, value, sub, icon, color }: { label: string; value: string | number; sub?: string; icon: string; color: keyof typeof STAT_COLOR_MAP }) {
@@ -113,9 +114,9 @@ function StatCard({ label, value, sub, icon, color }: { label: string; value: st
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-3 ${STAT_COLOR_MAP[color]} transition-transform group-hover:scale-105`}>
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
       </div>
-      <div className="text-2xl font-extrabold text-gray-800 leading-tight">{value}</div>
-      <div className="text-sm text-gray-500 font-medium mt-0.5">{label}</div>
-      {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
+      <div className="text-2xl font-extrabold text-foreground leading-tight">{value}</div>
+      <div className="text-sm text-muted-foreground font-medium mt-0.5">{label}</div>
+      {sub && <div className="text-xs text-subtle-foreground mt-1">{sub}</div>}
     </div>
   );
 }
@@ -137,14 +138,14 @@ function SectionHeader({ icon, color, title, subtitle, count, countLabel, childr
         </div>
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-2xl font-extrabold text-gray-800">{title}</h2>
+            <h2 className="text-2xl font-extrabold text-foreground">{title}</h2>
             {count !== undefined && (
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-600 border border-white/50/50">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-indigo-50 dark:from-indigo-500/10 to-violet-50 dark:to-violet-500/10 text-indigo-600 dark:text-indigo-400 border border-border/50/50">
                 {count}{countLabel ? ` ${countLabel}` : ""}
               </span>
             )}
           </div>
-          <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
+          <p className="text-muted-foreground text-sm mt-1">{subtitle}</p>
         </div>
       </div>
       {children && <div className="flex items-center gap-2 flex-wrap">{children}</div>}
@@ -159,14 +160,14 @@ function TermSelector({ settingsList, selectedId, onSelect }: {
 }) {
   if (settingsList.length === 0) {
     return (
-      <div className="mb-6 px-5 py-4 rounded-2xl border border-dashed border-gray-200 bg-gradient-to-r from-slate-50 to-indigo-50/30 text-sm text-gray-400">
+      <div className="mb-6 px-5 py-4 rounded-2xl border border-dashed border-border bg-muted text-sm text-subtle-foreground">
         ยังไม่มีปีการศึกษาในระบบ กรุณาเพิ่มที่แท็บ ตั้งค่าระบบ
       </div>
     );
   }
   return (
-    <div className="mb-6 p-3.5 rounded-2xl border border-gray-100/80 bg-gradient-to-r from-slate-50/80 to-indigo-50/30 glass">
-      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5 px-1">เลือกปีการศึกษา / เทอม</div>
+    <div className="mb-6 p-3.5 rounded-2xl border border-border/80 bg-muted">
+      <div className="text-xs font-bold text-subtle-foreground uppercase tracking-wider mb-2.5 px-1">เลือกปีการศึกษา / เทอม</div>
       <div className="flex flex-wrap gap-2">
         {settingsList.map((s) => (
           <button
@@ -174,12 +175,12 @@ function TermSelector({ settingsList, selectedId, onSelect }: {
             onClick={() => onSelect(s.id)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${selectedId === s.id
               ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-lg shadow-indigo-200/50/50"
-              : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-sm"
+              : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:shadow-sm"
               }`}
           >
             ปี {s.academic_year} เทอม {s.term}
             {s.is_active && (
-              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${selectedId === s.id ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"}`}>Active</span>
+              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${selectedId === s.id ? "bg-card/20 text-white" : "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"}`}>Active</span>
             )}
           </button>
         ))}
@@ -194,31 +195,29 @@ function QuickLinkCard({ label, sub, icon, onClick }: { label: string; sub: stri
       onClick={onClick}
       className="card-interactive flex items-center gap-4 p-4 text-left cursor-pointer group"
     >
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-50 to-violet-50 text-indigo-600 shrink-0 group-hover:from-indigo-600 group-hover:to-violet-600 group-hover:text-white transition-all group-hover:shadow-lg group-hover:shadow-indigo-200/50">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-50 dark:from-indigo-500/10 to-violet-50 dark:to-violet-500/10 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:from-indigo-600 group-hover:to-violet-600 group-hover:text-white transition-all group-hover:shadow-lg group-hover:shadow-indigo-200/50">
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} /></svg>
       </div>
       <div className="min-w-0">
-        <div className="font-bold text-gray-800 text-sm">{label}</div>
-        <div className="text-xs text-gray-400 truncate">{sub}</div>
+        <div className="font-bold text-foreground text-sm">{label}</div>
+        <div className="text-xs text-subtle-foreground truncate">{sub}</div>
       </div>
-      <svg className="w-4 h-4 text-gray-300 ml-auto shrink-0 group-hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+      <svg className="w-4 h-4 text-subtle-foreground ml-auto shrink-0 group-hover:text-indigo-500 dark:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
     </button>
   );
 }
 
 function LoadingScreen({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center mesh-gradient gap-4 relative overflow-hidden">
-      <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-gradient-to-br from-indigo-200/25 to-cyan-200/15 rounded-full blur-3xl animate-float-slow" />
-      <div className="absolute bottom-[-20%] left-[-10%] w-96 h-96 bg-gradient-to-br from-violet-200/20 to-pink-200/15 rounded-full blur-3xl animate-float-slow" style={{ animationDelay: "-10s" }} />
-      <div className="relative w-20 h-20">
-        <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-violet-500 animate-spin" />
-        <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-purple-400 border-l-cyan-400 animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-5 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 grid-backdrop opacity-60" />
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 rounded-full border-4 border-border" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
       </div>
       <div className="text-center relative z-10">
-        <p className="text-gray-700 font-extrabold text-lg">{title}</p>
-        {subtitle && <p className="text-gray-400 text-sm mt-1.5 font-medium">{subtitle}</p>}
+        <p className="text-foreground font-extrabold text-lg">{title}</p>
+        {subtitle && <p className="text-muted-foreground text-sm mt-1.5 font-medium">{subtitle}</p>}
       </div>
     </div>
   );
@@ -524,41 +523,41 @@ export default function AdminPortal() {
       html: `
         <div class="space-y-4 text-left mt-4">
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ปีการศึกษา <span class="text-red-500">*</span></label>
-            <input id="swal-year" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" placeholder="เช่น 2569">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ปีการศึกษา <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-year" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="เช่น 2569">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">เทอม <span class="text-red-500">*</span></label>
-            <input id="swal-term" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" placeholder="เช่น 1 หรือ 2">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">เทอม <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-term" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="เช่น 1 หรือ 2">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">วันเริ่มต้นภาคเรียน <span class="text-red-500">*</span></label>
-            <input id="swal-start-date" type="date" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">วันเริ่มต้นภาคเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-start-date" type="date" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">วันสิ้นสุดภาคเรียน <span class="text-red-500">*</span></label>
-            <input id="swal-end-date" type="date" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">วันสิ้นสุดภาคเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-end-date" type="date" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm">
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">คะแนนเก็บเต็ม <span class="text-red-500">*</span></label>
-              <input id="swal-midterm-max" type="number" min="1" value="50" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm">
+              <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">คะแนนเก็บเต็ม <span class="text-red-500 dark:text-red-400">*</span></label>
+              <input id="swal-midterm-max" type="number" min="1" value="50" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm">
             </div>
             <div>
-              <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">คะแนนสอบเต็ม <span class="text-red-500">*</span></label>
-              <input id="swal-final-max" type="number" min="1" value="50" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm">
+              <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">คะแนนสอบเต็ม <span class="text-red-500 dark:text-red-400">*</span></label>
+              <input id="swal-final-max" type="number" min="1" value="50" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm">
             </div>
           </div>
           <div class="mt-2">
-            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">วันที่มีการเรียนการสอน</label>
+            <label class="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">วันที่มีการเรียนการสอน</label>
             <div class="grid grid-cols-3 gap-2">
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="1" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" checked> จันทร์</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="2" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" checked> อังคาร</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="3" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" checked> พุธ</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="4" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" checked> พฤหัสบดี</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="5" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" checked> ศุกร์</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="6" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300"> เสาร์</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="0" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300"> อาทิตย์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="1" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" checked> จันทร์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="2" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" checked> อังคาร</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="3" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" checked> พุธ</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="4" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" checked> พฤหัสบดี</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="5" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" checked> ศุกร์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="6" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border"> เสาร์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="0" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border"> อาทิตย์</label>
             </div>
           </div>
         </div>
@@ -569,10 +568,10 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
-        title: "text-2xl font-extrabold text-gray-800 mb-4",
+        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
-        cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
+        cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
         const year = (document.getElementById("swal-year") as HTMLInputElement).value;
@@ -644,41 +643,41 @@ export default function AdminPortal() {
       html: `
         <div class="space-y-4 text-left mt-4">
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ปีการศึกษา <span class="text-red-500">*</span></label>
-            <input id="swal-year" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" value="${setting.academic_year}">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ปีการศึกษา <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-year" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${setting.academic_year}">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">เทอม <span class="text-red-500">*</span></label>
-            <input id="swal-term" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" value="${setting.term}">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">เทอม <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-term" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${setting.term}">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">วันเริ่มต้นภาคเรียน <span class="text-red-500">*</span></label>
-            <input id="swal-start-date" type="date" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" value="${setting.start_date || ''}">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">วันเริ่มต้นภาคเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-start-date" type="date" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${setting.start_date || ''}">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">วันสิ้นสุดภาคเรียน <span class="text-red-500">*</span></label>
-            <input id="swal-end-date" type="date" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" value="${setting.end_date || ''}">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">วันสิ้นสุดภาคเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-end-date" type="date" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${setting.end_date || ''}">
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">คะแนนเก็บเต็ม <span class="text-red-500">*</span></label>
-              <input id="swal-midterm-max" type="number" min="1" value="${setting.midterm_max_score ?? 50}" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm">
+              <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">คะแนนเก็บเต็ม <span class="text-red-500 dark:text-red-400">*</span></label>
+              <input id="swal-midterm-max" type="number" min="1" value="${setting.midterm_max_score ?? 50}" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm">
             </div>
             <div>
-              <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">คะแนนสอบเต็ม <span class="text-red-500">*</span></label>
-              <input id="swal-final-max" type="number" min="1" value="${setting.final_max_score ?? 50}" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm">
+              <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">คะแนนสอบเต็ม <span class="text-red-500 dark:text-red-400">*</span></label>
+              <input id="swal-final-max" type="number" min="1" value="${setting.final_max_score ?? 50}" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm">
             </div>
           </div>
           <div class="mt-2">
-            <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">วันที่มีการเรียนการสอน</label>
+            <label class="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">วันที่มีการเรียนการสอน</label>
             <div class="grid grid-cols-3 gap-2">
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="1" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" ${isChecked(1)}> จันทร์</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="2" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" ${isChecked(2)}> อังคาร</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="3" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" ${isChecked(3)}> พุธ</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="4" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" ${isChecked(4)}> พฤหัสบดี</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="5" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" ${isChecked(5)}> ศุกร์</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="6" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" ${isChecked(6)}> เสาร์</label>
-              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"><input type="checkbox" value="0" class="swal-day-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" ${isChecked(0)}> อาทิตย์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="1" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(1)}> จันทร์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="2" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(2)}> อังคาร</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="3" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(3)}> พุธ</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="4" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(4)}> พฤหัสบดี</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="5" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(5)}> ศุกร์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="6" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(6)}> เสาร์</label>
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="0" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(0)}> อาทิตย์</label>
             </div>
           </div>
         </div>
@@ -689,10 +688,10 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
-        title: "text-2xl font-extrabold text-gray-800 mb-4",
+        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
-        cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
+        cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
         const year = (document.getElementById("swal-year") as HTMLInputElement).value;
@@ -1348,16 +1347,16 @@ export default function AdminPortal() {
       html: `
         <div class="space-y-4 text-left mt-4">
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID) <span class="text-red-500">*</span></label>
-            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" placeholder="เช่น S006">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID) <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="เช่น S006">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
-            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-800 placeholder-gray-400 shadow-sm" placeholder="เช่น นายสมศักดิ์ รักดี">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล <span class="text-red-500 dark:text-red-400">*</span></label>
+            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="เช่น นายสมศักดิ์ รักดี">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ชั้นเรียน <span class="text-red-500">*</span></label>
-            <select id="swal-student-classroom" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-700 shadow-sm">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชั้นเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
+            <select id="swal-student-classroom" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground shadow-sm">
               ${classroomOptions}
             </select>
           </div>
@@ -1369,10 +1368,10 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
-        title: "text-2xl font-extrabold text-gray-800 mb-4",
+        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
-        cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
+        cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
         const studentId = (document.getElementById("swal-student-id") as HTMLInputElement).value;
@@ -1435,16 +1434,16 @@ export default function AdminPortal() {
       html: `
         <div class="space-y-4 text-left mt-4">
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID)</label>
-            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-100 focus:outline-none transition-all text-sm font-semibold text-gray-500 shadow-sm cursor-not-allowed" value="${student.student_id}" disabled>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID)</label>
+            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-border bg-muted focus:outline-none transition-all text-sm font-semibold text-muted-foreground shadow-sm cursor-not-allowed" value="${student.student_id}" disabled>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล</label>
-            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-slate-100 focus:outline-none transition-all text-sm font-semibold text-gray-500 shadow-sm cursor-not-allowed" value="${student.name}" disabled>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล</label>
+            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-border bg-muted focus:outline-none transition-all text-sm font-semibold text-muted-foreground shadow-sm cursor-not-allowed" value="${student.name}" disabled>
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">ชั้นเรียน <span class="text-red-500">*</span></label>
-            <select id="swal-student-classroom" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-gray-700 shadow-sm">
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชั้นเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
+            <select id="swal-student-classroom" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground shadow-sm">
               ${classroomOptions}
             </select>
           </div>
@@ -1456,10 +1455,10 @@ export default function AdminPortal() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-white/50 p-8 shadow-xl bg-white max-w-md w-full",
-        title: "text-2xl font-extrabold text-gray-800 mb-4",
+        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
-        cancelButton: "bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
+        cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
       },
       preConfirm: () => {
         const studentId = (document.getElementById("swal-student-id") as HTMLInputElement).value;
@@ -2254,35 +2253,35 @@ function changeFontSize(dir) {
   if (!isClient || loading) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การเข้าใช้งาน" />;
 
   return (
-    <div className="min-h-screen mesh-gradient flex flex-col relative">
-      {/* Background decorations */}
-      <div className="fixed top-[-20%] right-[-15%] w-[600px] h-[600px] bg-gradient-to-br from-indigo-200/15 to-cyan-200/10 rounded-full blur-3xl animate-float-slow -z-10 pointer-events-none" />
-      <div className="fixed bottom-[-20%] left-[-15%] w-[500px] h-[500px] bg-gradient-to-br from-violet-200/15 to-pink-200/10 rounded-full blur-3xl animate-float-slow -z-10 pointer-events-none" style={{ animationDelay: "-10s" }} />
+    <div className="min-h-screen bg-background text-foreground flex flex-col relative">
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 grid-backdrop opacity-50 -z-10" />
 
       {/* Header */}
-      <header className="header-gradient shadow-sm sticky top-0 z-20 border-b border-white/50">
+      <header className="header-gradient shadow-sm sticky top-0 z-20 border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-15 blur-sm" />
-              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-white relative border border-white/80">
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-card relative border border-border/80">
                 <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
               </div>
             </div>
             <div>
-              <h1 className="text-lg font-extrabold text-gray-800 leading-none gradient-text">ระบบแอดมิน</h1>
-              <p className="text-xs text-gray-500 font-medium mt-0.5">จัดการโครงสร้างระบบและผู้ใช้งาน</p>
+              <h1 className="text-lg font-extrabold text-foreground leading-none gradient-text">ระบบแอดมิน</h1>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">จัดการโครงสร้างระบบและผู้ใช้งาน</p>
             </div>
           </div>
           <div className="hidden sm:flex flex-col items-end mr-2">
-            <span className="text-sm font-bold text-gray-700">สวัสดี, {adminUser?.username || "ผู้ดูแลระบบ"}</span>
-            <span className="text-xs text-gray-400">{formatThaiDate(new Date().toISOString())}</span>
+            <span className="text-sm font-bold text-foreground">สวัสดี, {adminUser?.username || "ผู้ดูแลระบบ"}</span>
+            <span className="text-xs text-subtle-foreground">{formatThaiDate(new Date().toISOString())}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggle className="!h-9 !w-9" />
             <button
               onClick={handleConnectGoogle}
               title={adminUser?.email ? `เชื่อมต่ออีเมล: ${adminUser.email}` : "เชื่อมต่ออีเมล Google"}
-              className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all shrink-0 border ${adminUser?.email ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-gray-500 border-gray-200 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200"}`}
+              className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all shrink-0 border ${adminUser?.email ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10" : "text-muted-foreground border-border hover:text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:border-indigo-200 dark:border-indigo-500/30"}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -2291,7 +2290,7 @@ function changeFontSize(dir) {
             <button
               onClick={handleChangePassword}
               title="เปลี่ยนรหัสผ่าน"
-              className="flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-all shrink-0 border border-gray-200"
+              className="flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:border-indigo-200 dark:border-indigo-500/30 transition-all shrink-0 border border-border"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -2299,7 +2298,7 @@ function changeFontSize(dir) {
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl transition-all shrink-0 border border-rose-100 hover:border-rose-200"
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:bg-rose-500/15 px-3.5 py-2 rounded-xl transition-all shrink-0 border border-rose-100 dark:border-rose-500/25 hover:border-rose-200 dark:border-rose-500/30"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -2321,7 +2320,7 @@ function changeFontSize(dir) {
                   onClick={() => setActiveTab(item.key)}
                   className={`w-full flex items-center gap-3 text-left px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === item.key
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200/50/50"
-                    : "text-gray-600 hover:bg-indigo-50/80"
+                    : "text-muted-foreground hover:bg-indigo-50/80 dark:hover:bg-indigo-500/20 hover:text-indigo-600 dark:hover:text-indigo-300"
                     }`}
                 >
                   <svg className={`w-5 h-5 shrink-0 ${activeTab === item.key ? "text-white" : "text-indigo-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2334,10 +2333,10 @@ function changeFontSize(dir) {
 
             {/* Active term summary */}
             <div className="hidden md:block mt-3 p-4 rounded-2xl glass-strong">
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ปีการศึกษาปัจจุบัน</div>
-              <div className="text-sm font-extrabold text-gray-800">ปีการศึกษา {adminYear}</div>
+              <div className="text-xs font-bold text-subtle-foreground uppercase tracking-wider mb-2">ปีการศึกษาปัจจุบัน</div>
+              <div className="text-sm font-extrabold text-foreground">ปีการศึกษา {adminYear}</div>
               <div className="text-xs font-semibold mb-3 gradient-text">ภาคเรียนที่ {adminTerm}</div>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${isGradingActive ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${isGradingActive ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"
                 }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isGradingActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
                 {isGradingActive ? "เปิดกรอกคะแนน" : "ปิดกรอกคะแนน"}
@@ -2350,8 +2349,8 @@ function changeFontSize(dir) {
             {activeTab === "dashboard" && (
               <div className="p-8 animate-fade-in-up">
                 <div className="mb-8">
-                  <h2 className="text-2xl font-extrabold text-gray-800">แดชบอร์ดภาพรวม</h2>
-                  <p className="text-gray-500 text-sm mt-1">สรุปข้อมูลสำคัญของระบบ ประจำปีการศึกษา {adminYear} ภาคเรียนที่ {adminTerm}</p>
+                  <h2 className="text-2xl font-extrabold text-foreground">แดชบอร์ดภาพรวม</h2>
+                  <p className="text-muted-foreground text-sm mt-1">สรุปข้อมูลสำคัญของระบบ ประจำปีการศึกษา {adminYear} ภาคเรียนที่ {adminTerm}</p>
                 </div>
 
                 {/* Stat Cards */}
@@ -2417,8 +2416,8 @@ function changeFontSize(dir) {
                 <div className="grid lg:grid-cols-3 gap-6">
                   {/* Current Term Status */}
                   <div className="lg:col-span-1 rounded-3xl p-6 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 text-white shadow-lg shadow-indigo-200/50 flex flex-col justify-between animate-gradient-shift relative overflow-hidden">
-                    <div className="absolute top-[-20px] right-[-20px] w-40 h-40 bg-white/10 rounded-full" />
-                    <div className="absolute bottom-[-30px] left-[-10px] w-32 h-32 bg-white/5 rounded-full" />
+                    <div className="absolute top-[-20px] right-[-20px] w-40 h-40 bg-card/10 rounded-full" />
+                    <div className="absolute bottom-[-30px] left-[-10px] w-32 h-32 bg-card/5 rounded-full" />
                     <div>
                       <div className="text-xs font-bold uppercase tracking-wider text-indigo-100 mb-1.5">ภาคเรียนปัจจุบัน</div>
                       <div className="text-2xl font-extrabold leading-tight">ปีการศึกษา {adminYear}</div>
@@ -2436,7 +2435,7 @@ function changeFontSize(dir) {
 
                   {/* Quick Links */}
                   <div className="lg:col-span-2">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">ทางลัดจัดการระบบ</h3>
+                    <h3 className="text-xs font-bold text-subtle-foreground uppercase tracking-wider mb-3">ทางลัดจัดการระบบ</h3>
                     <div className="grid sm:grid-cols-2 gap-3">
                       {NAV_ITEMS.filter(item => item.key !== "dashboard").map(item => (
                         <QuickLinkCard
@@ -2470,11 +2469,11 @@ function changeFontSize(dir) {
                     ref={fileInputRef}
                     onChange={handleImportUsers}
                   />
-                  <button onClick={handleDownloadTemplate} className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm">
+                  <button onClick={handleDownloadTemplate} className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     โหลดเทมเพลต
                   </button>
-                  <button onClick={() => fileInputRef.current?.click()} className="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer">
+                  <button onClick={() => fileInputRef.current?.click()} className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     นำเข้า (CSV/Excel)
                   </button>
@@ -2491,16 +2490,16 @@ function changeFontSize(dir) {
                 </SectionHeader>
 
                 {/* Sub-tabs for User Roles */}
-                <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-100 pb-4">
+                <div className="flex flex-wrap gap-2 mb-6 border-b border-border pb-4">
                   <button
                     onClick={() => setUserSubTab("all")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "all"
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/20"
                       }`}
                   >
                     <span>ทั้งหมด</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "all" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "all" ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                       }`}>
                       {users.length}
                     </span>
@@ -2509,11 +2508,11 @@ function changeFontSize(dir) {
                     onClick={() => setUserSubTab("admin")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "admin"
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/20"
                       }`}
                   >
                     <span>ผู้ดูแลระบบ (Admin)</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "admin" ? "bg-white/20 text-white" : "bg-red-50 text-red-600"
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "admin" ? "bg-card/20 text-white" : "bg-red-50 dark:bg-red-950/80 text-red-600 dark:text-red-300"
                       }`}>
                       {users.filter(u => u.role === "admin").length}
                     </span>
@@ -2522,11 +2521,11 @@ function changeFontSize(dir) {
                     onClick={() => setUserSubTab("teacher")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "teacher"
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/20"
                       }`}
                   >
                     <span>ครูผู้สอน (Teacher)</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "teacher" ? "bg-white/20 text-white" : "bg-blue-50 text-blue-600"
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "teacher" ? "bg-card/20 text-white" : "bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-300"
                       }`}>
                       {users.filter(u => u.role === "teacher").length}
                     </span>
@@ -2535,11 +2534,11 @@ function changeFontSize(dir) {
                     onClick={() => setUserSubTab("student")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer ${userSubTab === "student"
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/20"
                       }`}
                   >
                     <span>นักเรียน (Student)</span>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "student" ? "bg-white/20 text-white" : "bg-green-50 text-green-600"
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${userSubTab === "student" ? "bg-card/20 text-white" : "bg-green-50 dark:bg-green-950/80 text-green-600 dark:text-green-300"
                       }`}>
                       {users.filter(u => u.role === "student").length}
                     </span>
@@ -2547,14 +2546,14 @@ function changeFontSize(dir) {
                 </div>
 
                 {/* Desktop: Table */}
-                <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
+                <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
                   <table className="w-full text-left">
-                    <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
+                    <thead className="bg-muted text-muted-foreground">
                       <tr>
                         <th className="px-6 py-4 font-semibold w-12 text-center">
                           <input
                             type="checkbox"
-                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-border text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 cursor-pointer"
                             checked={paginatedUsers.filter(u => u.id !== adminUser?.id).length > 0 && paginatedUsers.filter(u => u.id !== adminUser?.id).every(u => selectedUserIds.includes(u.id))}
                             onChange={(e) => {
                               const currentPageIds = paginatedUsers.filter(u => u.id !== adminUser?.id).map(u => u.id);
@@ -2572,13 +2571,13 @@ function changeFontSize(dir) {
                         <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-border">
                       {paginatedUsers.map(u => (
-                        <tr key={u.id} className="hover:bg-gray-50/50">
+                        <tr key={u.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4 text-center">
                             <input
                               type="checkbox"
-                              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-4 h-4 rounded border-border text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               checked={selectedUserIds.includes(u.id)}
                               disabled={u.id === adminUser?.id}
                               onChange={(e) => {
@@ -2591,31 +2590,31 @@ function changeFontSize(dir) {
                             />
                           </td>
                           <td className="px-6 py-4">
-                            <div className="font-semibold text-gray-800">{u.username}</div>
+                            <div className="font-semibold text-foreground">{u.username}</div>
                             {u.email && (
-                              <div className="text-[11px] text-gray-400 mt-0.5">{u.email}</div>
+                              <div className="text-[11px] text-subtle-foreground mt-0.5">{u.email}</div>
                             )}
                             {u.role === "teacher" && (
-                              <div className="text-[11px] text-gray-500 mt-1 space-y-0.5">
+                              <div className="text-[11px] text-muted-foreground mt-1 space-y-0.5">
                                 <div><span className="font-medium">ห้องประจำชั้น:</span> {classrooms.find(c => c.id === u.homeroom_classroom_id)?.name || "ไม่มี"}</div>
                                 <div><span className="font-medium">วิชาที่สอน:</span> {u.subjects && u.subjects.length > 0 ? u.subjects.join(", ") : "ไม่มี"}</div>
                               </div>
                             )}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-red-100 text-red-700' :
-                              u.role === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-red-100 dark:bg-red-900/80 text-red-700 dark:text-red-200' :
+                              u.role === 'teacher' ? 'bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-200' : 'bg-green-100 dark:bg-green-900/80 text-green-700 dark:text-green-200'
                               }`}>
                               {u.role.toUpperCase()}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-gray-500">{u.student_id || '-'}</td>
+                          <td className="px-6 py-4 text-muted-foreground">{u.student_id || '-'}</td>
                           <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
-                              <button onClick={() => handleEditUser(u)} className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
+                              <button onClick={() => handleEditUser(u)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
                                 แก้ไข
                               </button>
-                              <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
+                              <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
                                 ลบ
                               </button>
                             </div>
@@ -2624,7 +2623,7 @@ function changeFontSize(dir) {
                       ))}
                       {paginatedUsers.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 text-gray-400 bg-gray-50/50">
+                          <td colSpan={5} className="text-center py-8 text-subtle-foreground bg-muted/50">
                             ไม่มีข้อมูลผู้ใช้งานในหมวดหมู่นี้
                           </td>
                         </tr>
@@ -2641,7 +2640,7 @@ function changeFontSize(dir) {
                         <div className="pt-1 shrink-0">
                           <input
                             type="checkbox"
-                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-4 h-4 rounded border-border text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             checked={selectedUserIds.includes(u.id)}
                             disabled={u.id === adminUser?.id}
                             onChange={(e) => {
@@ -2654,32 +2653,32 @@ function changeFontSize(dir) {
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-gray-800 break-all">{u.username}</div>
+                          <div className="font-semibold text-foreground break-all">{u.username}</div>
                           {u.email && (
-                            <div className="text-[11px] text-gray-400 break-all">{u.email}</div>
+                            <div className="text-[11px] text-subtle-foreground break-all">{u.email}</div>
                           )}
-                          <span className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-red-100 text-red-700' :
-                            u.role === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                          <span className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-red-100 dark:bg-red-900/80 text-red-700 dark:text-red-200' :
+                            u.role === 'teacher' ? 'bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-200' : 'bg-green-100 dark:bg-green-900/80 text-green-700 dark:text-green-200'
                             }`}>
                             {u.role.toUpperCase()}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <button onClick={() => handleEditUser(u)} className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
+                          <button onClick={() => handleEditUser(u)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
                             แก้ไข
                           </button>
-                          <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
+                          <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
                             ลบ
                           </button>
                         </div>
                       </div>
                       {u.student_id && (
-                        <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                        <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
                           <span className="font-medium">Student ID:</span> {u.student_id}
                         </div>
                       )}
                       {u.role === "teacher" && (
-                        <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100 space-y-0.5">
+                        <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border space-y-0.5">
                           <div><span className="font-medium">ห้องประจำชั้น:</span> {classrooms.find(c => c.id === u.homeroom_classroom_id)?.name || "ไม่มี"}</div>
                           <div><span className="font-medium">วิชาที่สอน:</span> {u.subjects && u.subjects.length > 0 ? u.subjects.join(", ") : "ไม่มี"}</div>
                         </div>
@@ -2687,7 +2686,7 @@ function changeFontSize(dir) {
                     </div>
                   ))}
                   {paginatedUsers.length === 0 && (
-                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                       ไม่มีข้อมูลผู้ใช้งานในหมวดหมู่นี้
                     </div>
                   )}
@@ -2695,12 +2694,12 @@ function changeFontSize(dir) {
 
                 {/* Pagination Controls */}
                 {filteredUsers.length > 0 && (
-                  <div className="mt-6 flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 font-medium">
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground font-medium">
                       <span>
                         แสดง {Math.min((userCurrentPage - 1) * usersPerPage + 1, filteredUsers.length)} ถึง {Math.min(userCurrentPage * usersPerPage, filteredUsers.length)} จากทั้งหมด {filteredUsers.length} รายการ
                       </span>
-                      <span className="flex items-center gap-1.5 border-l border-gray-200 pl-4">
+                      <span className="flex items-center gap-1.5 border-l border-border pl-4">
                         <span>แสดงหน้าละ</span>
                         <select
                           value={usersPerPage}
@@ -2708,7 +2707,7 @@ function changeFontSize(dir) {
                             setUsersPerPage(Number(e.target.value));
                             setUserCurrentPage(1);
                           }}
-                          className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs font-bold text-gray-700 outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all hover:bg-gray-100"
+                          className="bg-muted border border-border rounded-lg px-2 py-1 text-xs font-bold text-foreground outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-all hover:bg-muted"
                         >
                           <option value={5}>5</option>
                           <option value={10}>10</option>
@@ -2725,7 +2724,7 @@ function changeFontSize(dir) {
                         <button
                           onClick={() => setUserCurrentPage(prev => Math.max(prev - 1, 1))}
                           disabled={userCurrentPage === 1}
-                          className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
                         >
                           ก่อนหน้า
                         </button>
@@ -2739,7 +2738,7 @@ function changeFontSize(dir) {
                                   onClick={() => setUserCurrentPage(pageNum)}
                                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors cursor-pointer border ${userCurrentPage === pageNum
                                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-sm"
-                                    : "bg-white text-gray-600 border-transparent hover:border-gray-200 hover:bg-gray-50"
+                                    : "bg-card text-muted-foreground border-transparent hover:border-border hover:bg-muted"
                                     }`}
                                 >
                                   {pageNum}
@@ -2747,7 +2746,7 @@ function changeFontSize(dir) {
                               );
                             }
                             if (pageNum === userCurrentPage - 2 || pageNum === userCurrentPage + 2) {
-                              return <span key={pageNum} className="text-gray-400">...</span>;
+                              return <span key={pageNum} className="text-subtle-foreground">...</span>;
                             }
                             return null;
                           })}
@@ -2755,7 +2754,7 @@ function changeFontSize(dir) {
                         <button
                           onClick={() => setUserCurrentPage(prev => Math.min(prev + 1, totalUserPages))}
                           disabled={userCurrentPage === totalUserPages}
-                          className="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors cursor-pointer"
                         >
                           ถัดไป
                         </button>
@@ -2783,11 +2782,11 @@ function changeFontSize(dir) {
                     accept=".xlsx, .xls, .csv"
                     onChange={handleImportClassrooms}
                   />
-                  <button onClick={handleDownloadClassroomTemplate} className="bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm">
+                  <button onClick={handleDownloadClassroomTemplate} className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     โหลดเทมเพลต
                   </button>
-                  <button onClick={() => classroomFileInputRef.current?.click()} className="bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer">
+                  <button onClick={() => classroomFileInputRef.current?.click()} className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     นำเข้า (Excel)
                   </button>
@@ -2810,7 +2809,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={handleAddClassroom}
                     disabled={!selectedSettingId}
-                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มชั้นเรียนใหม่
@@ -2830,17 +2829,17 @@ function changeFontSize(dir) {
 
                 {/* Classroom Grid */}
                 {!selectedSettingId ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                     กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
                   </div>
                 ) : classrooms.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                     ยังไม่มีชั้นเรียนในเทอมนี้ กด &quot;เพิ่มชั้นเรียนใหม่&quot; เพื่อเริ่ม
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in-up">
                     {classrooms.map(c => (
-                      <div key={c.id} className={`bg-gradient-to-br p-5 rounded-2xl border flex flex-col justify-between hover:shadow-md transition-all relative ${selectedClassroomIds.includes(c.id) ? "from-red-50/40 to-orange-50/40 border-red-200" : "from-indigo-50/40 to-blue-50/40 border-indigo-100"}`}>
+                      <div key={c.id} className={`bg-gradient-to-br p-5 rounded-2xl border flex flex-col justify-between hover:shadow-md transition-all relative ${selectedClassroomIds.includes(c.id) ? "from-red-50/40 dark:from-red-500/10 to-orange-50/40 dark:to-orange-500/10 border-red-200 dark:border-red-500/30" : "from-indigo-50/40 dark:from-indigo-500/10 to-blue-50/40 dark:to-blue-500/10 border-indigo-100 dark:border-indigo-500/25"}`}>
                         <div className="absolute top-4 right-4">
                           <input
                             type="checkbox"
@@ -2852,29 +2851,29 @@ function changeFontSize(dir) {
                                 setSelectedClassroomIds(prev => prev.filter(id => id !== c.id));
                               }
                             }}
-                            className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            className="w-5 h-5 rounded border-border text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 cursor-pointer"
                           />
                         </div>
                         <div className="pr-8">
-                          <div className="font-extrabold text-lg text-indigo-700">{c.name}</div>
-                          <div className="text-slate-400 text-xs mt-1 font-semibold truncate">ID: {c.id}</div>
+                          <div className="font-extrabold text-lg text-indigo-700 dark:text-indigo-300">{c.name}</div>
+                          <div className="text-muted-foreground text-xs mt-1 font-semibold truncate">ID: {c.id}</div>
                         </div>
-                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30 flex-wrap">
+                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30 dark:border-indigo-500/25 flex-wrap">
                           <button
                             onClick={() => handleOpenAssignModal(c)}
-                            className="text-emerald-600 hover:text-emerald-800 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                            className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                           >
                             เพิ่มนักเรียน
                           </button>
                           <button
                             onClick={() => handleEditClassroom(c)}
-                            className="text-indigo-600 hover:text-indigo-800 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                           >
                             แก้ไข
                           </button>
                           <button
                             onClick={() => handleDeleteClassroom(c.id, c.name)}
-                            className="text-red-500 hover:text-red-700 px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                            className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                           >
                             ลบ
                           </button>
@@ -2887,16 +2886,16 @@ function changeFontSize(dir) {
                 {/* Assign Students Modal */}
                 {isAssignModalOpen && targetClassroom && (
                   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col border border-slate-100 animate-slide-up overflow-hidden">
+                    <div className="bg-card rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col border border-border animate-slide-up overflow-hidden">
                       {/* Header */}
-                      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                      <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/50">
                         <div>
-                          <h3 className="text-xl font-extrabold text-slate-800">เพิ่มนักเรียนเข้าชั้นเรียน</h3>
-                          <p className="text-sm font-semibold text-indigo-600 mt-0.5">ชั้น {targetClassroom.name}</p>
+                          <h3 className="text-xl font-extrabold text-foreground">เพิ่มนักเรียนเข้าชั้นเรียน</h3>
+                          <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">ชั้น {targetClassroom.name}</p>
                         </div>
                         <button
                           onClick={() => setIsAssignModalOpen(false)}
-                          className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                          className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm cursor-pointer"
                         >
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2912,9 +2911,9 @@ function changeFontSize(dir) {
                             placeholder="ค้นหานักเรียนด้วยชื่อ หรือรหัส..."
                             value={searchAssignStudent}
                             onChange={(e) => setSearchAssignStudent(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
                           />
-                          <svg className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-5 h-5 text-muted-foreground absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
                         </div>
@@ -2928,21 +2927,21 @@ function changeFontSize(dir) {
                               );
                               return (
                                 <>
-                                  <h4 className="text-sm font-bold text-gray-700 mb-3">นักเรียนในชั้นเรียนนี้ ({assigned.length} คน)</h4>
-                                  <div className="border border-slate-100 rounded-xl max-h-60 overflow-y-auto bg-white shadow-sm">
+                                  <h4 className="text-sm font-bold text-foreground mb-3">นักเรียนในชั้นเรียนนี้ ({assigned.length} คน)</h4>
+                                  <div className="border border-border rounded-xl max-h-60 overflow-y-auto bg-card shadow-sm">
                                     {assigned.length === 0 ? (
-                                      <div className="p-6 text-center text-slate-400 text-sm font-semibold">ยังไม่มีนักเรียนในชั้นเรียนนี้</div>
+                                      <div className="p-6 text-center text-muted-foreground text-sm font-semibold">ยังไม่มีนักเรียนในชั้นเรียนนี้</div>
                                     ) : (
-                                      <div className="divide-y divide-slate-100">
+                                      <div className="divide-y divide-border">
                                         {assigned.map(s => (
-                                          <div key={s.id} className="flex items-center justify-between p-3 hover:bg-slate-50 transition-colors">
+                                          <div key={s.id} className="flex items-center justify-between p-3 hover:bg-muted transition-colors">
                                             <div>
-                                              <div className="font-bold text-slate-700">{s.name}</div>
-                                              <div className="text-xs font-semibold text-slate-400">รหัส: {s.student_id}</div>
+                                              <div className="font-bold text-foreground">{s.name}</div>
+                                              <div className="text-xs font-semibold text-muted-foreground">รหัส: {s.student_id}</div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                              <button onClick={() => handleEditStudent(s)} className="text-indigo-600 hover:text-indigo-800 text-xs font-bold px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">แก้ไข</button>
-                                              <button onClick={() => handleRemoveStudentFromClass(s)} className="text-amber-600 hover:text-amber-800 text-xs font-bold px-3 py-1.5 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors">นำออก</button>
+                                              <button onClick={() => handleEditStudent(s)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 text-xs font-bold px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors">แก้ไข</button>
+                                              <button onClick={() => handleRemoveStudentFromClass(s)} className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:text-amber-300 text-xs font-bold px-3 py-1.5 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:bg-amber-500/15 rounded-lg transition-colors">นำออก</button>
                                             </div>
                                           </div>
                                         ))}
@@ -2962,14 +2961,14 @@ function changeFontSize(dir) {
                               );
                               return (
                                 <>
-                                  <h4 className="text-sm font-bold text-gray-700 mb-3">เพิ่มนักเรียนที่ยังไม่มีชั้นเรียน ({unassigned.length} คน)</h4>
-                                  <div className="border border-slate-100 rounded-xl max-h-60 overflow-y-auto bg-slate-50/30">
+                                  <h4 className="text-sm font-bold text-foreground mb-3">เพิ่มนักเรียนที่ยังไม่มีชั้นเรียน ({unassigned.length} คน)</h4>
+                                  <div className="border border-border rounded-xl max-h-60 overflow-y-auto bg-muted/30">
                                     {unassigned.length === 0 ? (
-                                      <div className="p-6 text-center text-slate-400 text-sm font-semibold">ไม่พบนักเรียนที่ยังไม่มีห้อง</div>
+                                      <div className="p-6 text-center text-muted-foreground text-sm font-semibold">ไม่พบนักเรียนที่ยังไม่มีห้อง</div>
                                     ) : (
-                                      <div className="divide-y divide-slate-100">
+                                      <div className="divide-y divide-border">
                                         {unassigned.map(s => (
-                                          <label key={s.id} className="flex items-center gap-3 p-3 hover:bg-indigo-50/50 cursor-pointer transition-colors">
+                                          <label key={s.id} className="flex items-center gap-3 p-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/20 cursor-pointer transition-colors">
                                             <input
                                               type="checkbox"
                                               checked={selectedStudentsForAssign.includes(s.id)}
@@ -2977,11 +2976,11 @@ function changeFontSize(dir) {
                                                 if (e.target.checked) setSelectedStudentsForAssign(prev => [...prev, s.id]);
                                                 else setSelectedStudentsForAssign(prev => prev.filter(id => id !== s.id));
                                               }}
-                                              className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                              className="w-5 h-5 text-indigo-600 dark:text-indigo-400 rounded border-border focus:ring-indigo-500"
                                             />
                                             <div>
-                                              <div className="font-bold text-slate-700">{s.name}</div>
-                                              <div className="text-xs font-semibold text-slate-400">รหัส: {s.student_id}</div>
+                                              <div className="font-bold text-foreground">{s.name}</div>
+                                              <div className="text-xs font-semibold text-muted-foreground">รหัส: {s.student_id}</div>
                                             </div>
                                           </label>
                                         ))}
@@ -2996,10 +2995,10 @@ function changeFontSize(dir) {
                       </div>
 
                       {/* Footer */}
-                      <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                      <div className="px-6 py-5 border-t border-border bg-muted/50 flex justify-end gap-3">
                         <button
                           onClick={() => setIsAssignModalOpen(false)}
-                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                          className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground bg-card border border-border hover:bg-muted transition-colors shadow-sm cursor-pointer"
                         >
                           ยกเลิก
                         </button>
@@ -3018,13 +3017,13 @@ function changeFontSize(dir) {
                 {/* Copy Classrooms Modal */}
                 {isCopyModalOpen && (
                   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-slate-100 animate-slide-up overflow-hidden">
-                      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                    <div className="bg-card rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-border animate-slide-up overflow-hidden">
+                      <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/50">
                         <div>
-                          <h3 className="text-xl font-extrabold text-slate-800">คัดลอกชั้นเรียนและเลื่อนชั้น</h3>
-                          <p className="text-sm font-semibold text-indigo-600 mt-0.5">ดึงข้อมูลชั้นเรียนและนักเรียนจากเทอมอื่นมายังเทอมเป้าหมาย</p>
+                          <h3 className="text-xl font-extrabold text-foreground">คัดลอกชั้นเรียนและเลื่อนชั้น</h3>
+                          <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">ดึงข้อมูลชั้นเรียนและนักเรียนจากเทอมอื่นมายังเทอมเป้าหมาย</p>
                         </div>
-                        <button onClick={() => setIsCopyModalOpen(false)} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                        <button onClick={() => setIsCopyModalOpen(false)} className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm cursor-pointer">
                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                       </div>
@@ -3033,11 +3032,11 @@ function changeFontSize(dir) {
                         <div className="grid grid-cols-2 gap-6">
                           {/* Source Term */}
                           <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">1. เทอมต้นทาง (ที่ต้องการคัดลอก)</label>
+                            <label className="block text-sm font-bold text-foreground mb-2">1. เทอมต้นทาง (ที่ต้องการคัดลอก)</label>
                             <select
                               value={copySourceSettingId?.toString() || ""}
                               onChange={e => setCopySourceSettingId(e.target.value || null)}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold text-slate-700"
+                              className="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold text-foreground"
                             >
                               <option value="">-- เลือกเทอมต้นทาง --</option>
                               {settingsList.map(s => {
@@ -3054,11 +3053,11 @@ function changeFontSize(dir) {
                           </div>
                           {/* Target Term */}
                           <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">2. เทอมปลายทาง (เป้าหมาย)</label>
+                            <label className="block text-sm font-bold text-foreground mb-2">2. เทอมปลายทาง (เป้าหมาย)</label>
                             <select
                               value={copyTargetSettingId?.toString() || ""}
                               onChange={e => setCopyTargetSettingId(e.target.value || null)}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold text-slate-700"
+                              className="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-semibold text-foreground"
                             >
                               <option value="">-- เลือกเทอมปลายทาง --</option>
                               {settingsList.map(s => {
@@ -3077,10 +3076,10 @@ function changeFontSize(dir) {
 
                         {copySourceSettingId && sourceClassrooms.length > 0 && (
                           <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">3. เลือกชั้นเรียนที่ต้องการคัดลอก</label>
-                            <div className="border border-slate-200 rounded-xl overflow-hidden">
-                              <table className="w-full text-left bg-white">
-                                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                            <label className="block text-sm font-bold text-foreground mb-2">3. เลือกชั้นเรียนที่ต้องการคัดลอก</label>
+                            <div className="border border-border rounded-xl overflow-hidden">
+                              <table className="w-full text-left bg-card">
+                                <thead className="bg-muted text-foreground border-b border-border">
                                   <tr>
                                     <th className="px-4 py-3 font-semibold text-center w-16">คัดลอก</th>
                                     <th className="px-4 py-3 font-semibold">ชื่อชั้นเรียนเดิม</th>
@@ -3088,28 +3087,28 @@ function changeFontSize(dir) {
                                     <th className="px-4 py-3 font-semibold text-center">ย้ายนักเรียนมาด้วย</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-border">
                                   {sourceClassrooms.map(c => {
                                     const m = copyClassroomsMap[c.id];
                                     if (!m) return null;
                                     return (
-                                      <tr key={c.id} className={m.selected ? 'bg-indigo-50/20' : 'bg-slate-50/50'}>
+                                      <tr key={c.id} className={m.selected ? 'bg-indigo-50/20 dark:bg-indigo-500/10' : 'bg-muted/50'}>
                                         <td className="px-4 py-3 text-center">
                                           <input
                                             type="checkbox"
                                             checked={m.selected}
                                             onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], selected: e.target.checked } }))}
-                                            className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                                            className="w-5 h-5 text-indigo-600 dark:text-indigo-400 rounded border-border focus:ring-indigo-500 cursor-pointer"
                                           />
                                         </td>
-                                        <td className="px-4 py-3 font-bold text-slate-700">{c.name}</td>
+                                        <td className="px-4 py-3 font-bold text-foreground">{c.name}</td>
                                         <td className="px-4 py-3">
                                           <input
                                             type="text"
                                             value={m.newName}
                                             onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], newName: e.target.value } }))}
                                             disabled={!m.selected}
-                                            className="w-full px-3 py-2 rounded-lg border border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm font-semibold text-slate-700 transition-all"
+                                            className="w-full px-3 py-2 rounded-lg border border-border disabled:bg-muted disabled:text-muted-foreground focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm font-semibold text-foreground transition-all"
                                           />
                                         </td>
                                         <td className="px-4 py-3 text-center">
@@ -3118,7 +3117,7 @@ function changeFontSize(dir) {
                                             checked={m.moveStudents}
                                             disabled={!m.selected}
                                             onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], moveStudents: e.target.checked } }))}
-                                            className="w-5 h-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
+                                            className="w-5 h-5 text-emerald-600 dark:text-emerald-400 rounded border-border focus:ring-emerald-500 cursor-pointer disabled:opacity-50"
                                           />
                                         </td>
                                       </tr>
@@ -3130,12 +3129,12 @@ function changeFontSize(dir) {
                           </div>
                         )}
                         {copySourceSettingId && sourceClassrooms.length === 0 && (
-                          <div className="text-center py-8 text-slate-400 font-semibold bg-slate-50 rounded-xl border border-dashed border-slate-200">ไม่มีชั้นเรียนในเทอมต้นทางนี้</div>
+                          <div className="text-center py-8 text-muted-foreground font-semibold bg-muted rounded-xl border border-dashed border-border">ไม่มีชั้นเรียนในเทอมต้นทางนี้</div>
                         )}
                       </div>
 
-                      <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
-                        <button onClick={() => setIsCopyModalOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                      <div className="px-6 py-5 border-t border-border bg-muted/50 flex justify-end gap-3">
+                        <button onClick={() => setIsCopyModalOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground bg-card border border-border hover:bg-muted transition-colors shadow-sm cursor-pointer">
                           ยกเลิก
                         </button>
                         <button
@@ -3163,7 +3162,7 @@ function changeFontSize(dir) {
                   countLabel="คน"
                 >
                   <select
-                    className="border border-gray-200 rounded-xl px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    className="border border-border rounded-xl px-4 py-2 bg-card text-sm font-medium text-foreground hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     value={studentFilterClassroomId}
                     onChange={(e) => setStudentFilterClassroomId(e.target.value)}
                   >
@@ -3175,13 +3174,13 @@ function changeFontSize(dir) {
                 </SectionHeader>
 
                 {/* Export Students Section */}
-                <div className="mb-6 p-5 rounded-2xl border border-amber-100 bg-amber-50 flex gap-3 items-end flex-wrap">
+                <div className="mb-6 p-5 rounded-2xl border border-amber-100 dark:border-amber-500/25 bg-amber-50 dark:bg-amber-500/10 flex gap-3 items-end flex-wrap">
                   <div className="flex-1 min-w-xs">
-                    <label className="block text-xs font-semibold text-amber-700 mb-2">📄 ภาษาการส่งออก</label>
+                    <label className="block text-xs font-semibold text-amber-700 dark:text-amber-300 mb-2">📄 ภาษาการส่งออก</label>
                     <select
                       value={exportLanguage}
                       onChange={(e) => setExportLanguage(e.target.value as any)}
-                      className="w-full px-3 py-2.5 text-sm bg-white border border-amber-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:border-amber-300 transition-colors"
+                      className="w-full px-3 py-2.5 text-sm bg-card border border-amber-200 dark:border-amber-500/30 rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:border-amber-300 transition-colors"
                     >
                       <option value="th">🇹🇭 ภาษาไทย</option>
                       <option value="ms-rumi">🇲🇾 Bahasa Melayu (Rumi)</option>
@@ -3198,9 +3197,9 @@ function changeFontSize(dir) {
                 </div>
 
                 {/* Desktop: Table */}
-                <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
+                <div className="hidden md:block overflow-x-auto rounded-xl border border-border animate-fade-in-up">
                   <table className="w-full text-left">
-                    <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
+                    <thead className="bg-muted text-muted-foreground">
                       <tr>
                         <th className="px-6 py-4 font-semibold w-24">เลขที่</th>
                         <th className="px-6 py-4 font-semibold">รหัสนักเรียน</th>
@@ -3209,13 +3208,13 @@ function changeFontSize(dir) {
                         <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-border">
                       {filteredStudents.map(s => (
-                        <tr key={s.id} className="hover:bg-gray-50/50">
+                        <tr key={s.id} className="hover:bg-muted/50">
                           <td className="px-6 py-4">
                             <input
                               type="number"
-                              className="w-16 px-2 py-1.5 border border-gray-200 rounded-lg text-center text-sm font-medium text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-white hover:bg-gray-50"
+                              className="w-16 px-2 py-1.5 border border-border rounded-lg text-center text-sm font-medium text-foreground focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-card hover:bg-muted"
                               defaultValue={s.student_number || ""}
                               placeholder="-"
                               onBlur={(e) => {
@@ -3225,10 +3224,10 @@ function changeFontSize(dir) {
                               }}
                             />
                           </td>
-                          <td className="px-6 py-4 font-bold text-indigo-600">{s.student_id}</td>
-                          <td className="px-6 py-4 text-gray-800 font-semibold">{s.name}</td>
-                          <td className="px-6 py-4 text-gray-500">
-                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-white/50">
+                          <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">{s.student_id}</td>
+                          <td className="px-6 py-4 text-foreground font-semibold">{s.name}</td>
+                          <td className="px-6 py-4 text-muted-foreground">
+                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-border/50">
                               ชั้น {classrooms.find(c => c.id === s.classroom_id)?.name || 'ยังไม่ระบุ'}
                             </span>
                           </td>
@@ -3236,7 +3235,7 @@ function changeFontSize(dir) {
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => handleEditStudent(s)}
-                                className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                               >
                                 แก้ไขข้อมูล / จัดห้องเรียน
                               </button>
@@ -3258,7 +3257,7 @@ function changeFontSize(dir) {
                             <input
                               type="number"
                               placeholder="เลขที่"
-                              className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-center text-xs font-medium text-gray-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-white hover:bg-gray-50"
+                              className="w-16 px-2 py-1 border border-border rounded-lg text-center text-xs font-medium text-foreground focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-card hover:bg-muted"
                               defaultValue={s.student_number || ""}
                               onBlur={(e) => {
                                 if (e.target.value !== (s.student_number?.toString() || "")) {
@@ -3266,18 +3265,18 @@ function changeFontSize(dir) {
                                 }
                               }}
                             />
-                            <div className="font-bold text-indigo-600">{s.student_id}</div>
+                            <div className="font-bold text-indigo-600 dark:text-indigo-400">{s.student_id}</div>
                           </div>
-                          <div className="text-gray-800 font-semibold mt-0.5">{s.name}</div>
-                          <span className="inline-block mt-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-white/50">
+                          <div className="text-foreground font-semibold mt-0.5">{s.name}</div>
+                          <span className="inline-block mt-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-border/50">
                             ชั้น {classrooms.find(c => c.id === s.classroom_id)?.name || 'ยังไม่ระบุ'}
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
                         <button
                           onClick={() => handleEditStudent(s)}
-                          className="flex-1 text-center text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                          className="flex-1 text-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                         >
                           แก้ไขข้อมูล / จัดห้องเรียน
                         </button>
@@ -3285,7 +3284,7 @@ function changeFontSize(dir) {
                     </div>
                   ))}
                   {filteredStudents.length === 0 && (
-                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                       ไม่มีข้อมูลนักเรียน
                     </div>
                   )}
@@ -3306,7 +3305,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={handleAddSubject}
                     disabled={!selectedSubjectSettingId}
-                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                     เพิ่มวิชาเรียนใหม่
@@ -3322,19 +3321,19 @@ function changeFontSize(dir) {
 
                 {/* Subjects Table */}
                 {!selectedSubjectSettingId ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                     กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
                   </div>
                 ) : subjectsList.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                     ยังไม่มีวิชาเรียนในเทอมนี้ กด &quot;เพิ่มวิชาเรียนใหม่&quot; เพื่อเริ่ม
                   </div>
                 ) : (
                   <>
                     {/* Desktop: Table */}
-                    <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-border animate-fade-in-up">
                       <table className="w-full text-left">
-                        <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
+                        <thead className="bg-muted text-muted-foreground">
                           <tr>
                             <th className="px-6 py-4 font-semibold font-bold">ชื่อวิชาเรียน</th>
                             <th className="px-6 py-4 font-semibold font-bold">ครูผู้สอน</th>
@@ -3344,56 +3343,56 @@ function changeFontSize(dir) {
                             <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-border">
                           {subjectsList.map(sub => (
-                            <tr key={sub.id} className="hover:bg-gray-50/50">
-                              <td className="px-6 py-4 font-semibold text-gray-800">{sub.name}</td>
-                              <td className="px-6 py-4 text-sm text-gray-600">
+                            <tr key={sub.id} className="hover:bg-muted/50">
+                              <td className="px-6 py-4 font-semibold text-foreground">{sub.name}</td>
+                              <td className="px-6 py-4 text-sm text-muted-foreground">
                                 {sub.teacher_names && sub.teacher_names.length > 0
                                   ? sub.teacher_names.join(", ")
                                   : (sub.teacher_name || "-")}
                                 {sub.teacher_names && sub.teacher_names.length > 1 && (
-                                  <span className="ml-1.5 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">สอนรวม</span>
+                                  <span className="ml-1.5 text-xs bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-bold">สอนรวม</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 text-sm text-gray-600">{sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</td>
+                              <td className="px-6 py-4 text-sm text-muted-foreground">{sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</td>
                               <td className="px-6 py-4 text-center">
                                 {sub.subject_type === "activity" ? (
                                   <span className="inline-flex flex-col items-center gap-0.5">
-                                    <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                                       วิชากิจกรรม
                                     </span>
                                     {(Number(sub.midterm_max_score) + Number(sub.final_max_score)) > 0 ? (
-                                      <span className="text-[11px] text-amber-600 font-semibold">มีคะแนน</span>
+                                      <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">มีคะแนน</span>
                                     ) : (
-                                      <span className="text-[11px] text-slate-400">ไม่มีคะแนน</span>
+                                      <span className="text-[11px] text-muted-foreground">ไม่มีคะแนน</span>
                                     )}
                                   </span>
                                 ) : (
                                   <span className="inline-flex flex-col items-center gap-0.5">
-                                    <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                                       วิชาหลัก
                                     </span>
-                                    <span className="text-[11px] text-gray-500">{Number(sub.credit_hours) || 1} หน่วยกิต</span>
+                                    <span className="text-[11px] text-muted-foreground">{Number(sub.credit_hours) || 1} หน่วยกิต</span>
                                   </span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                              <td className="px-6 py-4 text-center text-sm font-semibold text-foreground">
                                 {sub.subject_type === "activity" && (Number(sub.midterm_max_score) + Number(sub.final_max_score)) === 0
-                                  ? <span className="text-slate-400">—</span>
+                                  ? <span className="text-muted-foreground">—</span>
                                   : `${sub.midterm_max_score ?? 50} / ${sub.final_max_score ?? 50}`}
                               </td>
                               <td className="px-6 py-4 text-center">
                                 <div className="flex items-center justify-center gap-1.5">
                                   <button
                                     onClick={() => handleEditSubject(sub)}
-                                    className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                                   >
                                     แก้ไขชื่อวิชา
                                   </button>
                                   <button
                                     onClick={() => handleDeleteSubject(sub.id, sub.name)}
-                                    className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                                   >
                                     ลบ
                                   </button>
@@ -3409,42 +3408,42 @@ function changeFontSize(dir) {
                     <div className="md:hidden space-y-3 animate-fade-in-up">
                       {subjectsList.map(sub => (
                         <div key={sub.id} className="card-modern p-4">
-                          <div className="font-semibold text-gray-800">{sub.name}</div>
-                          <div className="text-xs text-gray-500 mt-1.5 space-y-0.5">
+                          <div className="font-semibold text-foreground">{sub.name}</div>
+                          <div className="text-xs text-muted-foreground mt-1.5 space-y-0.5">
                             <div>
                               <span className="font-medium">ครูผู้สอน:</span>{" "}
                               {sub.teacher_names && sub.teacher_names.length > 0
                                 ? sub.teacher_names.join(", ")
                                 : (sub.teacher_name || "-")}
                               {sub.teacher_names && sub.teacher_names.length > 1 && (
-                                <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">สอนรวม</span>
+                                <span className="ml-1 text-[10px] bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-bold">สอนรวม</span>
                               )}
                             </div>
                             <div><span className="font-medium">ชั้นเรียน:</span> {sub.classroom_names && sub.classroom_names.length > 0 ? sub.classroom_names.join(", ") : "-"}</div>
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium">ประเภทวิชา:</span>
                               {sub.subject_type === "activity" ? (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                                   วิชากิจกรรม
                                 </span>
                               ) : (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                                   วิชาหลัก ({Number(sub.credit_hours) || 1} หน่วยกิต)
                                 </span>
                               )}
                             </div>
                             <div><span className="font-medium">คะแนนเต็ม:</span> เก็บ {sub.midterm_max_score ?? 50} / สอบ {sub.final_max_score ?? 50}</div>
                           </div>
-                          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
+                          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
                             <button
                               onClick={() => handleEditSubject(sub)}
-                              className="flex-1 text-center text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                              className="flex-1 text-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                             >
                               แก้ไขชื่อวิชา
                             </button>
                             <button
                               onClick={() => handleDeleteSubject(sub.id, sub.name)}
-                              className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                              className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                             >
                               ลบ
                             </button>
@@ -3476,17 +3475,17 @@ function changeFontSize(dir) {
                 />
 
                 {!selectedSubjectSettingId ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                     กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
                   </div>
                 ) : (
                   <div className="space-y-10">
                     {/* Period Management */}
                     <div>
-                      <h3 className="text-lg font-bold text-gray-800 mb-3">คาบเรียน</h3>
-                      <div className="overflow-x-auto rounded-xl border border-gray-100">
+                      <h3 className="text-lg font-bold text-foreground mb-3">คาบเรียน</h3>
+                      <div className="overflow-x-auto rounded-xl border border-border">
                         <table className="w-full text-left">
-                          <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
+                          <thead className="bg-muted text-muted-foreground">
                             <tr>
                               <th className="px-4 py-3 font-semibold text-center">คาบที่</th>
                               <th className="px-4 py-3 font-semibold">เวลาเริ่ม</th>
@@ -3496,16 +3495,16 @@ function changeFontSize(dir) {
                               <th className="px-4 py-3 font-semibold text-center">จัดการ</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-100">
+                          <tbody className="divide-y divide-border">
                             {schedulePeriods.map((p, idx) => (
-                              <tr key={p.id} className="hover:bg-gray-50/50">
-                                <td className="px-4 py-2 text-center font-semibold text-gray-700">{p.period_no}</td>
+                              <tr key={p.id} className="hover:bg-muted/50">
+                                <td className="px-4 py-2 text-center font-semibold text-foreground">{p.period_no}</td>
                                 <td className="px-4 py-2">
                                   <input
                                     type="time"
                                     value={p.start_time}
                                     onChange={e => updatePeriodField(idx, "start_time", e.target.value)}
-                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                                    className="px-3 py-1.5 rounded-lg border border-border text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
                                   />
                                 </td>
                                 <td className="px-4 py-2">
@@ -3513,7 +3512,7 @@ function changeFontSize(dir) {
                                     type="time"
                                     value={p.end_time}
                                     onChange={e => updatePeriodField(idx, "end_time", e.target.value)}
-                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                                    className="px-3 py-1.5 rounded-lg border border-border text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
                                   />
                                 </td>
                                 <td className="px-4 py-2">
@@ -3522,7 +3521,7 @@ function changeFontSize(dir) {
                                     value={p.label ?? ""}
                                     onChange={e => updatePeriodField(idx, "label", e.target.value)}
                                     placeholder="เช่น พักเที่ยง"
-                                    className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                                    className="w-full px-3 py-1.5 rounded-lg border border-border text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
                                   />
                                 </td>
                                 <td className="px-4 py-2 text-center">
@@ -3530,20 +3529,20 @@ function changeFontSize(dir) {
                                     type="checkbox"
                                     checked={!!p.is_break}
                                     onChange={e => updatePeriodField(idx, "is_break", e.target.checked)}
-                                    className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    className="w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border focus:ring-indigo-500"
                                   />
                                 </td>
                                 <td className="px-4 py-2">
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button
                                       onClick={() => handleSavePeriod(p)}
-                                      className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                                     >
                                       บันทึก
                                     </button>
                                     <button
                                       onClick={() => handleDeletePeriod(p.id)}
-                                      className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                                     >
                                       ลบ
                                     </button>
@@ -3553,7 +3552,7 @@ function changeFontSize(dir) {
                             ))}
                             {schedulePeriods.length === 0 && (
                               <tr>
-                                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                                <td colSpan={5} className="px-4 py-6 text-center text-subtle-foreground">
                                   ยังไม่มีคาบเรียน กด &quot;เพิ่มคาบเรียน&quot; เพื่อเริ่ม
                                 </td>
                               </tr>
@@ -3572,9 +3571,9 @@ function changeFontSize(dir) {
 
                     {/* Export Schedule */}
                     {schedulePeriods.length > 0 && scheduleEntries.length > 0 && (
-                      <div className="mt-2 pt-5 border-t border-gray-100">
-                        <h3 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-                          <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="mt-2 pt-5 border-t border-border">
+                        <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
                           ส่งออกตารางเรียน
@@ -3583,13 +3582,13 @@ function changeFontSize(dir) {
                           <select
                             value={exportLanguage}
                             onChange={(e) => setExportLanguage(e.target.value as any)}
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
+                            className="px-3 py-2 bg-card border border-border rounded-xl text-sm font-bold text-foreground focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
                           >
                             <option value="th">🇹🇭 ภาษาไทย</option>
                             <option value="ms-rumi">🇲🇾 Rumi</option>
                             <option value="ms-jawi">🇲🇾 Jawi (جاوي)</option>
                           </select>
-                          <div className="w-px h-6 bg-gray-200 mx-1 hidden sm:block"></div>
+                          <div className="w-px h-6 bg-muted mx-1 hidden sm:block"></div>
                           <button
                             onClick={() => handleExportSchedule("overview")}
                             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-sm font-bold transition-all shadow-sm border-0 cursor-pointer"
@@ -3612,18 +3611,18 @@ function changeFontSize(dir) {
                             รายครูผู้สอน
                           </button>
                         </div>
-                        <p className="text-xs text-slate-400 mt-2">คลิกปุ่ม "พิมพ์ / บันทึก PDF" ในหน้าที่เปิดขึ้นมา เพื่อพิมพ์หรือบันทึกเป็น PDF</p>
+                        <p className="text-xs text-muted-foreground mt-2">คลิกปุ่ม "พิมพ์ / บันทึก PDF" ในหน้าที่เปิดขึ้นมา เพื่อพิมพ์หรือบันทึกเป็น PDF</p>
                       </div>
                     )}
 
                     {/* Classroom Schedule Grid */}
                     <div>
-                      <h3 className="text-lg font-bold text-gray-800 mb-3">ตารางสอนรายห้อง</h3>
+                      <h3 className="text-lg font-bold text-foreground mb-3">ตารางสอนรายห้อง</h3>
                       <div className="mb-4">
                         <select
                           value={scheduleClassroomId}
                           onChange={e => setScheduleClassroomId(e.target.value)}
-                          className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 focus:ring-2 focus:ring-indigo-400 outline-none"
+                          className="px-4 py-2.5 rounded-xl border border-border bg-card text-sm font-semibold text-foreground focus:ring-2 focus:ring-indigo-400 outline-none"
                         >
                           <option value="">-- เลือกห้องเรียน --</option>
                           {subjectClassrooms.map(c => (
@@ -3633,17 +3632,17 @@ function changeFontSize(dir) {
                       </div>
 
                       {!scheduleClassroomId ? (
-                        <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                           กรุณาเลือกห้องเรียนด้านบน
                         </div>
                       ) : schedulePeriods.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border">
                           กรุณาเพิ่มคาบเรียนก่อน
                         </div>
                       ) : (
-                        <div className="overflow-x-auto rounded-xl border border-gray-100">
+                        <div className="overflow-x-auto rounded-xl border border-border">
                           <table className="w-full text-left text-base">
-                            <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
+                            <thead className="bg-muted text-muted-foreground">
                               <tr>
                                 <th className="px-3 py-3 font-semibold">คาบ</th>
                                 {ACTIVE_DAYS.map(d => (
@@ -3651,19 +3650,19 @@ function changeFontSize(dir) {
                                 ))}
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-border">
                               {schedulePeriods.map(p => {
                                 const subjectsForClassroom = subjectsList.filter(s => s.classroom_ids?.includes(scheduleClassroomId));
                                 return (
-                                  <tr key={p.id} className="hover:bg-gray-50/50">
-                                    <td className="px-3 py-2 font-semibold text-gray-700 whitespace-nowrap align-top">
+                                  <tr key={p.id} className="hover:bg-muted/50">
+                                    <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap align-top">
                                       คาบ {p.period_no}
-                                      <div className="text-xs text-gray-400 font-normal">{p.start_time}-{p.end_time}</div>
-                                      {p.label && <div className="text-xs text-amber-600 font-normal">{p.label}</div>}
+                                      <div className="text-xs text-subtle-foreground font-normal">{p.start_time}-{p.end_time}</div>
+                                      {p.label && <div className="text-xs text-amber-600 dark:text-amber-400 font-normal">{p.label}</div>}
                                     </td>
                                     {p.is_break ? (
-                                      <td colSpan={ACTIVE_DAYS.length} className="px-3 py-2 align-middle text-center bg-slate-100 border border-slate-200 rounded-md">
-                                        <div className="font-bold text-slate-400 tracking-widest">{p.label || "พักเบรก"}</div>
+                                      <td colSpan={ACTIVE_DAYS.length} className="px-3 py-2 align-middle text-center bg-muted border border-border rounded-md">
+                                        <div className="font-bold text-muted-foreground tracking-widest">{p.label || "พักเบรก"}</div>
                                       </td>
                                     ) : (
                                       ACTIVE_DAYS.map(d => {
@@ -3678,7 +3677,7 @@ function changeFontSize(dir) {
                                             <select
                                               value={entry?.subject_id ?? ""}
                                               onChange={ev => handleScheduleCellChange(d.value, p.id, ev.target.value, entry?.id)}
-                                              className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                                              className="w-full px-2 py-1.5 rounded-lg border border-border text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
                                             >
                                               <option value="">- ว่าง -</option>
                                               {subjectsForClassroom.map(s => {
@@ -3698,7 +3697,7 @@ function changeFontSize(dir) {
                                               <select
                                                 value={entry.teacher_id ?? ""}
                                                 onChange={ev => handleScheduleTeacherChange(d.value, p.id, entry.subject_id, ev.target.value || null, entry.id)}
-                                                className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 bg-blue-50/60 text-xs text-blue-700 focus:ring-2 focus:ring-blue-300 outline-none"
+                                                className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-300 outline-none"
                                                 title="ระบุครูผู้สอนเฉพาะห้องนี้ (กรณีครูต่างกันแต่ละชั้น)"
                                               >
                                                 <option value="">
@@ -3714,7 +3713,7 @@ function changeFontSize(dir) {
 
                                             {/* Scenario A indicator: co-teaching */}
                                             {entry?.subject_id && !entry.teacher_id && selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 1 && (
-                                              <div className="mt-0.5 text-xs text-blue-600 font-bold">สอนรวม</div>
+                                              <div className="mt-0.5 text-xs text-blue-600 dark:text-blue-400 font-bold">สอนรวม</div>
                                             )}
                                           </td>
                                         );
@@ -3744,7 +3743,7 @@ function changeFontSize(dir) {
                   <button
                     onClick={() => { if (rankingsSettingId && token) loadRankings(rankingsSettingId, token); }}
                     disabled={!rankingsSettingId}
-                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     รีเฟรชข้อมูล
@@ -3754,16 +3753,16 @@ function changeFontSize(dir) {
                 <TermSelector settingsList={settingsList} selectedId={rankingsSettingId} onSelect={handleSelectRankingsSetting} />
 
                 {!rankingsSettingId ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
                     กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
                   </div>
                 ) : rankingsLoading ? (
                   <div className="text-center py-12">
-                    <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
-                    <p className="text-gray-500 font-semibold text-sm">กำลังคำนวณอันดับ...</p>
+                    <div className="inline-block w-8 h-8 border-4 border-indigo-200 dark:border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                    <p className="text-muted-foreground font-semibold text-sm">กำลังคำนวณอันดับ...</p>
                   </div>
                 ) : rankingsData.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
                     ไม่มีข้อมูลนักเรียนในเทอมนี้
                   </div>
                 ) : (() => {
@@ -3776,10 +3775,10 @@ function changeFontSize(dir) {
                     <div>
                       {/* Classroom Filter */}
                       <div className="mb-6 flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">กรองห้องเรียน:</span>
+                        <span className="text-xs font-bold text-subtle-foreground uppercase tracking-wider">กรองห้องเรียน:</span>
                         <button
                           onClick={() => setRankingsClassroomFilter("all")}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === "all" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === "all" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"}`}
                         >
                           ทั้งหมด
                         </button>
@@ -3787,7 +3786,7 @@ function changeFontSize(dir) {
                           <button
                             key={cn}
                             onClick={() => setRankingsClassroomFilter(cn)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === cn ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${rankingsClassroomFilter === cn ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"}`}
                           >
                             {cn}
                           </button>
@@ -3797,17 +3796,17 @@ function changeFontSize(dir) {
                       {/* Two-column layout */}
                       <div className="grid lg:grid-cols-2 gap-6">
                         {/* Classroom Ranking */}
-                        <div className="card-modern overflow-hidden border-purple-100/60">
-                          <div className="px-5 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
-                            <h3 className="font-bold text-purple-800 flex items-center gap-2">
+                        <div className="card-modern overflow-hidden border-purple-100/60 dark:border-purple-500/25">
+                          <div className="px-5 py-4 bg-gradient-to-r from-purple-50 dark:from-purple-500/10 to-indigo-50 dark:to-indigo-500/10 border-b border-purple-100 dark:border-purple-500/25">
+                            <h3 className="font-bold text-purple-800 dark:text-purple-300 flex items-center gap-2">
                               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M4 21h16" /></svg>
                               อันดับในห้องเรียน
                             </h3>
-                            <p className="text-xs text-purple-500 mt-0.5">{filtered.length} คน</p>
+                            <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{filtered.length} คน</p>
                           </div>
                           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                             <table className="w-full text-sm">
-                              <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0 z-10">
+                              <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
                                 <tr>
                                   <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
                                   <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
@@ -3816,30 +3815,30 @@ function changeFontSize(dir) {
                                   <th className="px-3 py-2.5 text-center font-bold w-16">GPA</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-gray-50">
+                              <tbody className="divide-y divide-border">
                                 {classroomSorted.map((s, i) => (
-                                  <tr key={`cr-${s.student_id}`} className={`transition-colors ${s.classroom_rank <= 3 ? "bg-amber-50/40" : "hover:bg-gray-50"}`}>
+                                  <tr key={`cr-${s.student_id}`} className={`transition-colors ${s.classroom_rank <= 3 ? "bg-amber-50/40 dark:bg-amber-500/10" : "hover:bg-muted"}`}>
                                     <td className="px-3 py-2.5 text-center">
                                       {s.classroom_rank <= 3 ? (
                                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.classroom_rank === 1 ? "bg-amber-400 text-white" : s.classroom_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
                                           {s.classroom_rank}
                                         </span>
                                       ) : (
-                                        <span className="text-gray-500 font-bold text-xs">{s.classroom_rank}</span>
+                                        <span className="text-muted-foreground font-bold text-xs">{s.classroom_rank}</span>
                                       )}
                                     </td>
                                     <td className="px-3 py-2.5">
-                                      <div className="font-semibold text-gray-800 text-xs">{s.student_name}</div>
-                                      <div className="text-[10px] text-gray-400">{s.student_id}</div>
+                                      <div className="font-semibold text-foreground text-xs">{s.student_name}</div>
+                                      <div className="text-[10px] text-subtle-foreground">{s.student_id}</div>
                                     </td>
-                                    <td className="px-3 py-2.5 text-center text-xs text-gray-600 font-semibold">{s.classroom_name}</td>
+                                    <td className="px-3 py-2.5 text-center text-xs text-muted-foreground font-semibold">{s.classroom_name}</td>
                                     <td className="px-3 py-2.5 text-center">
-                                      <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600" : s.percentage >= 60 ? "text-amber-600" : s.percentage >= 50 ? "text-orange-600" : "text-rose-600"}`}>
+                                      <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600 dark:text-emerald-400" : s.percentage >= 60 ? "text-amber-600 dark:text-amber-400" : s.percentage >= 50 ? "text-orange-600 dark:text-orange-400" : "text-rose-600 dark:text-rose-400"}`}>
                                         {s.percentage.toFixed(1)}%
                                       </span>
                                     </td>
                                     <td className="px-3 py-2.5 text-center">
-                                      <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 text-emerald-700" : s.gpa >= 2.0 ? "bg-amber-100 text-amber-700" : s.gpa >= 1.0 ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700"}`}>
+                                      <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : s.gpa >= 2.0 ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300" : s.gpa >= 1.0 ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"}`}>
                                         {s.gpa.toFixed(2)}
                                       </span>
                                     </td>
@@ -3851,17 +3850,17 @@ function changeFontSize(dir) {
                         </div>
 
                         {/* School Ranking */}
-                        <div className="card-modern overflow-hidden border-blue-100/60">
-                          <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-                            <h3 className="font-bold text-blue-800 flex items-center gap-2">
+                        <div className="card-modern overflow-hidden border-blue-100/60 dark:border-blue-500/25">
+                          <div className="px-5 py-4 bg-gradient-to-r from-blue-50 dark:from-blue-500/10 to-indigo-50 dark:to-indigo-500/10 border-b border-blue-100 dark:border-blue-500/25">
+                            <h3 className="font-bold text-blue-800 dark:text-blue-300 flex items-center gap-2">
                               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
                               อันดับทั้งโรงเรียน
                             </h3>
-                            <p className="text-xs text-blue-500 mt-0.5">{rankingsData.length} คน</p>
+                            <p className="text-xs text-blue-500 dark:text-blue-400 mt-0.5">{rankingsData.length} คน</p>
                           </div>
                           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                             <table className="w-full text-sm">
-                              <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0 z-10">
+                              <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
                                 <tr>
                                   <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
                                   <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
@@ -3870,30 +3869,30 @@ function changeFontSize(dir) {
                                   <th className="px-3 py-2.5 text-center font-bold w-16">GPA</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-gray-50">
+                              <tbody className="divide-y divide-border">
                                 {schoolSorted.map((s, i) => (
-                                  <tr key={`sr-${s.student_id}`} className={`transition-colors ${s.school_rank <= 3 ? "bg-amber-50/40" : "hover:bg-gray-50"}`}>
+                                  <tr key={`sr-${s.student_id}`} className={`transition-colors ${s.school_rank <= 3 ? "bg-amber-50/40 dark:bg-amber-500/10" : "hover:bg-muted"}`}>
                                     <td className="px-3 py-2.5 text-center">
                                       {s.school_rank <= 3 ? (
                                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.school_rank === 1 ? "bg-amber-400 text-white" : s.school_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
                                           {s.school_rank}
                                         </span>
                                       ) : (
-                                        <span className="text-gray-500 font-bold text-xs">{s.school_rank}</span>
+                                        <span className="text-muted-foreground font-bold text-xs">{s.school_rank}</span>
                                       )}
                                     </td>
                                     <td className="px-3 py-2.5">
-                                      <div className="font-semibold text-gray-800 text-xs">{s.student_name}</div>
-                                      <div className="text-[10px] text-gray-400">{s.student_id}</div>
+                                      <div className="font-semibold text-foreground text-xs">{s.student_name}</div>
+                                      <div className="text-[10px] text-subtle-foreground">{s.student_id}</div>
                                     </td>
-                                    <td className="px-3 py-2.5 text-center text-xs text-gray-600 font-semibold">{s.classroom_name}</td>
+                                    <td className="px-3 py-2.5 text-center text-xs text-muted-foreground font-semibold">{s.classroom_name}</td>
                                     <td className="px-3 py-2.5 text-center">
-                                      <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600" : s.percentage >= 60 ? "text-amber-600" : s.percentage >= 50 ? "text-orange-600" : "text-rose-600"}`}>
+                                      <span className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600 dark:text-emerald-400" : s.percentage >= 60 ? "text-amber-600 dark:text-amber-400" : s.percentage >= 50 ? "text-orange-600 dark:text-orange-400" : "text-rose-600 dark:text-rose-400"}`}>
                                         {s.percentage.toFixed(1)}%
                                       </span>
                                     </td>
                                     <td className="px-3 py-2.5 text-center">
-                                      <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 text-emerald-700" : s.gpa >= 2.0 ? "bg-amber-100 text-amber-700" : s.gpa >= 1.0 ? "bg-orange-100 text-orange-700" : "bg-rose-100 text-rose-700"}`}>
+                                      <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : s.gpa >= 2.0 ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300" : s.gpa >= 1.0 ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"}`}>
                                         {s.gpa.toFixed(2)}
                                       </span>
                                     </td>
@@ -3923,7 +3922,7 @@ function changeFontSize(dir) {
                       if (gradeStatusSettingId && token) loadGradeStatus(gradeStatusSettingId, token);
                     }}
                     disabled={!gradeStatusSettingId}
-                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     รีเฟรชข้อมูล
@@ -3937,13 +3936,13 @@ function changeFontSize(dir) {
                 />
 
                 {!gradeStatusSettingId ? (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                  <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
                     กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
                   </div>
                 ) : gradeStatusLoading ? (
                   <div className="text-center py-12">
-                    <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
-                    <p className="text-gray-500 font-semibold text-sm">กำลังโหลดข้อมูล...</p>
+                    <div className="inline-block w-8 h-8 border-4 border-indigo-200 dark:border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                    <p className="text-muted-foreground font-semibold text-sm">กำลังโหลดข้อมูล...</p>
                   </div>
                 ) : (
                   <>
@@ -3954,14 +3953,14 @@ function changeFontSize(dir) {
                           setGradeStatusSubTab("summary");
                           setSelectedGradeStatusSubject("");
                         }}
-                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "summary" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "summary" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"}`}
                       >
                         <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                         สรุปภาพรวม
                       </button>
                       <button
                         onClick={() => setGradeStatusSubTab("detail")}
-                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "detail" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50"}`}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${gradeStatusSubTab === "detail" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md" : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"}`}
                       >
                         <svg className="w-4 h-4 inline mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
                         รายละเอียด
@@ -4010,7 +4009,7 @@ function changeFontSize(dir) {
 
                           {/* Teacher Cards */}
                           {teachers.length === 0 ? (
-                            <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                            <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
                               ไม่มีข้อมูลครูผู้สอนในเทอมนี้
                             </div>
                           ) : (
@@ -4024,21 +4023,21 @@ function changeFontSize(dir) {
                                 const hasAny = subs.some(([, s]) => s.midterm > 0 || s.final > 0);
                                 const overallPct = allTotal > 0 ? Math.round(((allMidterm + allFinal) / (allTotal * 2)) * 100) : 0;
 
-                                let statusColor = "bg-gray-100 text-gray-500 border-gray-200";
+                                let statusColor = "bg-muted text-muted-foreground border-border";
                                 let statusText = "ยังไม่เริ่ม";
-                                if (allDone) { statusColor = "bg-emerald-100 text-emerald-800 border-emerald-200"; statusText = "ครบแล้ว"; }
-                                else if (hasAny) { statusColor = "bg-amber-100 text-amber-800 border-amber-200"; statusText = "กำลังดำเนินการ"; }
+                                if (allDone) { statusColor = "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"; statusText = "ครบแล้ว"; }
+                                else if (hasAny) { statusColor = "bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"; statusText = "กำลังดำเนินการ"; }
 
                                 return (
                                   <div key={tid} className="card-interactive p-5">
                                     <div className="flex items-start justify-between gap-2 mb-3">
                                       <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
                                           {teacher.name.charAt(0)}
                                         </div>
                                         <div>
-                                          <div className="font-bold text-gray-800 text-sm">{teacher.name}</div>
-                                          <div className="text-xs text-gray-400">{subs.length} วิชา</div>
+                                          <div className="font-bold text-foreground text-sm">{teacher.name}</div>
+                                          <div className="text-xs text-subtle-foreground">{subs.length} วิชา</div>
                                         </div>
                                       </div>
                                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${statusColor}`}>
@@ -4048,13 +4047,13 @@ function changeFontSize(dir) {
 
                                     {/* Progress bar */}
                                     <div className="mb-3">
-                                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
                                         <span>ความคืบหน้ารวม</span>
                                         <span className="font-bold">{overallPct}%</span>
                                       </div>
-                                      <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                      <div className="w-full bg-muted rounded-full h-2.5">
                                         <div
-                                          className={`h-2.5 rounded-full transition-all ${allDone ? "bg-emerald-500" : overallPct > 0 ? "bg-amber-500" : "bg-gray-300"}`}
+                                          className={`h-2.5 rounded-full transition-all ${allDone ? "bg-emerald-500" : overallPct > 0 ? "bg-amber-500" : "bg-border"}`}
                                           style={{ width: `${overallPct}%` }}
                                         />
                                       </div>
@@ -4068,18 +4067,18 @@ function changeFontSize(dir) {
                                         const subjectRow = gradeStatusData.find(r => r.subject_id === sid);
                                         const subjectName = subjectRow?.subject_name || sid;
                                         return (
-                                          <div key={sid} className="bg-gray-50 rounded-xl p-3">
-                                            <div className="font-semibold text-xs text-gray-700 mb-1.5">{subjectName}</div>
+                                          <div key={sid} className="bg-muted rounded-xl p-3">
+                                            <div className="font-semibold text-xs text-foreground mb-1.5">{subjectName}</div>
                                             <div className="grid grid-cols-2 gap-2 text-[11px]">
                                               <div>
-                                                <span className="text-gray-400">คะแนนเก็บ: </span>
-                                                <span className={`font-bold ${midPct >= 100 ? "text-emerald-600" : midPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                                <span className="text-subtle-foreground">คะแนนเก็บ: </span>
+                                                <span className={`font-bold ${midPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : midPct > 0 ? "text-amber-600 dark:text-amber-400" : "text-subtle-foreground"}`}>
                                                   {s.midterm}/{s.total}
                                                 </span>
                                               </div>
                                               <div>
-                                                <span className="text-gray-400">คะแนนสอบ: </span>
-                                                <span className={`font-bold ${finPct >= 100 ? "text-emerald-600" : finPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                                <span className="text-subtle-foreground">คะแนนสอบ: </span>
+                                                <span className={`font-bold ${finPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : finPct > 0 ? "text-amber-600 dark:text-amber-400" : "text-subtle-foreground"}`}>
                                                   {s.final}/{s.total}
                                                 </span>
                                               </div>
@@ -4100,18 +4099,18 @@ function changeFontSize(dir) {
                     {gradeStatusSubTab === "detail" && (
                       <div>
                         {gradeStatusData.length === 0 ? (
-                          <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                          <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
                             ไม่มีข้อมูลในเทอมนี้
                           </div>
                         ) : (
                           <>
                             <div className="mb-4 flex gap-3 items-end">
                               <div className="flex-1 max-w-xs">
-                                <label className="block text-xs font-semibold text-gray-600 mb-2">เลือกวิชา</label>
+                                <label className="block text-xs font-semibold text-muted-foreground mb-2">เลือกวิชา</label>
                                 <select
                                   value={selectedGradeStatusSubject}
                                   onChange={(e) => setSelectedGradeStatusSubject(e.target.value)}
-                                  className="w-full px-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-gray-300 transition-colors"
+                                  className="w-full px-3 py-2.5 text-sm bg-card border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-border transition-colors"
                                 >
                                   <option value="">ทั้งหมด</option>
                                   {Array.from(new Set(gradeStatusData.map(row => row.subject_id)))
@@ -4124,11 +4123,11 @@ function changeFontSize(dir) {
                                 </select>
                               </div>
                             </div>
-                            <p className="text-xs text-gray-400 mb-3">คลิกแถวเพื่อดูรายชื่อนักเรียน</p>
+                            <p className="text-xs text-subtle-foreground mb-3">คลิกแถวเพื่อดูรายชื่อนักเรียน</p>
                             {/* Desktop Table */}
-                            <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100">
+                            <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
                               <table className="w-full text-left">
-                                <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
+                                <thead className="bg-muted text-muted-foreground">
                                   <tr>
                                     <th className="px-4 py-3 font-bold text-xs">ครูผู้สอน</th>
                                     <th className="px-4 py-3 font-bold text-xs">วิชา</th>
@@ -4139,7 +4138,7 @@ function changeFontSize(dir) {
                                     <th className="px-4 py-3 font-bold text-xs text-center">สถานะ</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-border">
                                   {gradeStatusData
                                     .filter(row => !selectedGradeStatusSubject || row.subject_id === selectedGradeStatusSubject)
                                     .map((row, i) => {
@@ -4152,51 +4151,51 @@ function changeFontSize(dir) {
                                     const hasAny = mid > 0 || fin > 0;
 
                                     return (
-                                      <tr key={i} onClick={() => openStudentDetail(row)} className="hover:bg-indigo-50/50 cursor-pointer transition-colors">
-                                        <td className="px-4 py-3 text-sm font-semibold text-gray-800">
-                                          {row.teacher_name || <span className="text-gray-400">ไม่ระบุ</span>}
+                                      <tr key={i} onClick={() => openStudentDetail(row)} className="hover:bg-indigo-50/50 dark:hover:bg-indigo-500/20 cursor-pointer transition-colors">
+                                        <td className="px-4 py-3 text-sm font-semibold text-foreground">
+                                          {row.teacher_name || <span className="text-subtle-foreground">ไม่ระบุ</span>}
                                         </td>
                                         <td className="px-4 py-3">
-                                          <div className="text-sm font-semibold text-gray-800">{row.subject_name}</div>
-                                          <div className="text-[10px] text-gray-400">
+                                          <div className="text-sm font-semibold text-foreground">{row.subject_name}</div>
+                                          <div className="text-[10px] text-subtle-foreground">
                                             {row.subject_type === "activity" ? "วิชากิจกรรม" : `วิชาหลัก (${row.credit_hours || 1} หน่วยกิต)`}
                                           </div>
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">{row.classroom_name || "-"}</td>
-                                        <td className="px-4 py-3 text-center text-sm font-bold text-gray-700">{total}</td>
+                                        <td className="px-4 py-3 text-sm text-muted-foreground">{row.classroom_name || "-"}</td>
+                                        <td className="px-4 py-3 text-center text-sm font-bold text-foreground">{total}</td>
                                         <td className="px-4 py-3 text-center">
                                           <div className="flex items-center justify-center gap-1.5">
-                                            <div className="w-16 bg-gray-100 rounded-full h-1.5">
-                                              <div className={`h-1.5 rounded-full ${midPct >= 100 ? "bg-emerald-500" : midPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(midPct, 100)}%` }} />
+                                            <div className="w-16 bg-muted rounded-full h-1.5">
+                                              <div className={`h-1.5 rounded-full ${midPct >= 100 ? "bg-emerald-500" : midPct > 0 ? "bg-amber-500" : "bg-border"}`} style={{ width: `${Math.min(midPct, 100)}%` }} />
                                             </div>
-                                            <span className={`text-xs font-bold ${midPct >= 100 ? "text-emerald-600" : midPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                            <span className={`text-xs font-bold ${midPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : midPct > 0 ? "text-amber-600 dark:text-amber-400" : "text-subtle-foreground"}`}>
                                               {mid}/{total}
                                             </span>
                                           </div>
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                           <div className="flex items-center justify-center gap-1.5">
-                                            <div className="w-16 bg-gray-100 rounded-full h-1.5">
-                                              <div className={`h-1.5 rounded-full ${finPct >= 100 ? "bg-emerald-500" : finPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(finPct, 100)}%` }} />
+                                            <div className="w-16 bg-muted rounded-full h-1.5">
+                                              <div className={`h-1.5 rounded-full ${finPct >= 100 ? "bg-emerald-500" : finPct > 0 ? "bg-amber-500" : "bg-border"}`} style={{ width: `${Math.min(finPct, 100)}%` }} />
                                             </div>
-                                            <span className={`text-xs font-bold ${finPct >= 100 ? "text-emerald-600" : finPct > 0 ? "text-amber-600" : "text-gray-400"}`}>
+                                            <span className={`text-xs font-bold ${finPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : finPct > 0 ? "text-amber-600 dark:text-amber-400" : "text-subtle-foreground"}`}>
                                               {fin}/{total}
                                             </span>
                                           </div>
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                           {isDone ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                                               ครบ
                                             </span>
                                           ) : hasAny ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3" /></svg>
                                               กำลังกรอก
                                             </span>
                                           ) : (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border">
                                               ยังไม่เริ่ม
                                             </span>
                                           )}
@@ -4222,35 +4221,35 @@ function changeFontSize(dir) {
                                 const hasAny = mid > 0 || fin > 0;
 
                                 return (
-                                  <div key={i} onClick={() => openStudentDetail(row)} className="card-modern p-4 cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all active:scale-[0.99]">
+                                  <div key={i} onClick={() => openStudentDetail(row)} className="card-modern p-4 cursor-pointer hover:border-indigo-200 dark:border-indigo-500/30 hover:shadow-md transition-all active:scale-[0.99]">
                                     <div className="flex items-start justify-between gap-2 mb-2">
                                       <div>
-                                        <div className="font-bold text-gray-800 text-sm">{row.subject_name}</div>
-                                        <div className="text-xs text-gray-400">{row.classroom_name || "-"}</div>
+                                        <div className="font-bold text-foreground text-sm">{row.subject_name}</div>
+                                        <div className="text-xs text-subtle-foreground">{row.classroom_name || "-"}</div>
                                       </div>
                                       {isDone ? (
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">ครบ</span>
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shrink-0">ครบ</span>
                                       ) : hasAny ? (
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">กำลังกรอก</span>
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shrink-0">กำลังกรอก</span>
                                       ) : (
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200 shrink-0">ยังไม่เริ่ม</span>
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border shrink-0">ยังไม่เริ่ม</span>
                                       )}
                                     </div>
-                                    <div className="text-xs text-indigo-600 font-semibold mb-2">{row.teacher_name || "ไม่ระบุครูผู้สอน"}</div>
+                                    <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mb-2">{row.teacher_name || "ไม่ระบุครูผู้สอน"}</div>
                                     <div className="grid grid-cols-2 gap-3 text-xs">
                                       <div>
-                                        <div className="text-gray-400 mb-1">คะแนนเก็บ</div>
-                                        <div className="w-full bg-gray-100 rounded-full h-1.5 mb-0.5">
-                                          <div className={`h-1.5 rounded-full ${midPct >= 100 ? "bg-emerald-500" : midPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(midPct, 100)}%` }} />
+                                        <div className="text-subtle-foreground mb-1">คะแนนเก็บ</div>
+                                        <div className="w-full bg-muted rounded-full h-1.5 mb-0.5">
+                                          <div className={`h-1.5 rounded-full ${midPct >= 100 ? "bg-emerald-500" : midPct > 0 ? "bg-amber-500" : "bg-border"}`} style={{ width: `${Math.min(midPct, 100)}%` }} />
                                         </div>
-                                        <span className="font-bold text-gray-600">{mid}/{total}</span>
+                                        <span className="font-bold text-muted-foreground">{mid}/{total}</span>
                                       </div>
                                       <div>
-                                        <div className="text-gray-400 mb-1">คะแนนสอบ</div>
-                                        <div className="w-full bg-gray-100 rounded-full h-1.5 mb-0.5">
-                                          <div className={`h-1.5 rounded-full ${finPct >= 100 ? "bg-emerald-500" : finPct > 0 ? "bg-amber-500" : "bg-gray-300"}`} style={{ width: `${Math.min(finPct, 100)}%` }} />
+                                        <div className="text-subtle-foreground mb-1">คะแนนสอบ</div>
+                                        <div className="w-full bg-muted rounded-full h-1.5 mb-0.5">
+                                          <div className={`h-1.5 rounded-full ${finPct >= 100 ? "bg-emerald-500" : finPct > 0 ? "bg-amber-500" : "bg-border"}`} style={{ width: `${Math.min(finPct, 100)}%` }} />
                                         </div>
-                                        <span className="font-bold text-gray-600">{fin}/{total}</span>
+                                        <span className="font-bold text-muted-foreground">{fin}/{total}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -4288,8 +4287,8 @@ function changeFontSize(dir) {
                 <div className="space-y-6">
                   {/* Status Banner */}
                   <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isGradingActive
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                    : "bg-rose-50 border-rose-200 text-rose-800"
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+                    : "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300"
                     }`}>
                     <div className="flex items-center gap-2 font-bold text-base">
                       {isGradingActive ? (
@@ -4304,18 +4303,18 @@ function changeFontSize(dir) {
                         </>
                       )}
                     </div>
-                    <div className="text-xs text-gray-600/90 space-y-1 mt-1.5 font-medium">
-                      <div><span className="font-bold text-gray-700">ปีการศึกษาปัจจุบัน:</span> {adminYear}</div>
-                      <div><span className="font-bold text-gray-700">เทอมปัจจุบัน:</span> {adminTerm}</div>
-                      <div><span className="font-bold text-gray-700">ช่วงเวลาทำงานปัจจุบัน:</span> {formatThaiDateRange(startDate, endDate)}</div>
+                    <div className="text-xs text-muted-foreground/90 space-y-1 mt-1.5 font-medium">
+                      <div><span className="font-bold text-foreground">ปีการศึกษาปัจจุบัน:</span> {adminYear}</div>
+                      <div><span className="font-bold text-foreground">เทอมปัจจุบัน:</span> {adminTerm}</div>
+                      <div><span className="font-bold text-foreground">ช่วงเวลาทำงานปัจจุบัน:</span> {formatThaiDateRange(startDate, endDate)}</div>
                     </div>
                   </div>
 
                   {/* Settings List */}
                   {/* Desktop: Table */}
-                  <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 animate-fade-in-up">
+                  <div className="hidden md:block overflow-x-auto rounded-xl border border-border animate-fade-in-up">
                     <table className="w-full text-left">
-                      <thead className="bg-gradient-to-r from-slate-50 to-indigo-50/30 text-gray-600">
+                      <thead className="bg-muted text-muted-foreground">
                         <tr>
                           <th className="px-6 py-4 font-semibold font-bold">ปีการศึกษา / เทอม</th>
                           <th className="px-6 py-4 font-semibold">ช่วงเวลากรอกคะแนน</th>
@@ -4324,10 +4323,10 @@ function changeFontSize(dir) {
                           <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-border">
                         {settingsList.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="px-6 py-8 text-center text-gray-400 font-semibold">
+                            <td colSpan={5} className="px-6 py-8 text-center text-subtle-foreground font-semibold">
                               ไม่มีข้อมูลปีการศึกษาในระบบ
                             </td>
                           </tr>
@@ -4338,36 +4337,36 @@ function changeFontSize(dir) {
                             const isWaiting = (s.start_date ?? "") > todayStr;
 
                             return (
-                              <tr key={s.id} className={`hover:bg-gray-50/50 ${s.is_active ? 'bg-indigo-50/20' : ''}`}>
+                              <tr key={s.id} className={`hover:bg-muted/50 ${s.is_active ? 'bg-indigo-50/20 dark:bg-indigo-500/10' : ''}`}>
                                 <td className="px-6 py-4">
-                                  <div className="font-bold text-gray-800">ปีการศึกษา {s.academic_year}</div>
-                                  <div className="text-xs text-indigo-600 font-semibold mt-0.5">ภาคเรียนที่ (เทอม) {s.term}</div>
+                                  <div className="font-bold text-foreground">ปีการศึกษา {s.academic_year}</div>
+                                  <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">ภาคเรียนที่ (เทอม) {s.term}</div>
                                 </td>
                                 <td className="px-6 py-4">
-                                  <div className="text-sm text-gray-700 font-semibold">{formatThaiDateRange(s.start_date, s.end_date)}</div>
-                                  <div className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                                  <div className="text-sm text-foreground font-semibold">{formatThaiDateRange(s.start_date, s.end_date)}</div>
+                                  <div className="text-[10px] text-subtle-foreground font-semibold mt-0.5">
                                     {isPeriodActive ? (
-                                      <span className="text-emerald-600 font-bold">● กำลังอยู่ในช่วงเวลากรอกคะแนน</span>
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">● กำลังอยู่ในช่วงเวลากรอกคะแนน</span>
                                     ) : (
-                                      <span className="text-rose-500 font-bold">● อยู่นอกช่วงเวลากรอกคะแนน</span>
+                                      <span className="text-rose-500 dark:text-rose-400 font-bold">● อยู่นอกช่วงเวลากรอกคะแนน</span>
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                                <td className="px-6 py-4 text-center text-sm font-semibold text-foreground">
                                   {s.midterm_max_score ?? 50} / {s.final_max_score ?? 50}
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                   {s.is_active ? (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                       กำลังใช้งาน (ปัจจุบัน)
                                     </span>
                                   ) : isWaiting ? (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                                       รอเปิดใช้งาน
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border">
                                       สิ้นสุดแล้ว
                                     </span>
                                   )}
@@ -4376,14 +4375,14 @@ function changeFontSize(dir) {
                                   <div className="flex items-center justify-center gap-1.5">
                                     <button
                                       onClick={() => handleEditSetting(s)}
-                                      className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                                     >
                                       แก้ไข
                                     </button>
                                     {!s.is_active && (
                                       <button
                                         onClick={() => handleDeleteSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)}
-                                        className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                                       >
                                         ลบ
                                       </button>
@@ -4401,7 +4400,7 @@ function changeFontSize(dir) {
                   {/* Mobile: Cards */}
                   <div className="md:hidden space-y-3 animate-fade-in-up">
                     {settingsList.length === 0 ? (
-                      <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 font-semibold">
+                      <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
                         ไม่มีข้อมูลปีการศึกษาในระบบ
                       </div>
                     ) : (
@@ -4411,51 +4410,51 @@ function changeFontSize(dir) {
                         const isWaiting = (s.start_date ?? "") > todayStr;
 
                         return (
-                          <div key={s.id} className={`card-modern p-4 ${s.is_active ? 'bg-indigo-50/20' : ''}`}>
+                          <div key={s.id} className={`card-modern p-4 ${s.is_active ? 'bg-indigo-50/20 dark:bg-indigo-500/10' : ''}`}>
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <div className="font-bold text-gray-800">ปีการศึกษา {s.academic_year}</div>
-                                <div className="text-xs text-indigo-600 font-semibold mt-0.5">ภาคเรียนที่ (เทอม) {s.term}</div>
+                                <div className="font-bold text-foreground">ปีการศึกษา {s.academic_year}</div>
+                                <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">ภาคเรียนที่ (เทอม) {s.term}</div>
                               </div>
                               {s.is_active ? (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shrink-0">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                   กำลังใช้งาน
                                 </span>
                               ) : isWaiting ? (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shrink-0">
                                   รอเปิดใช้งาน
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200 shrink-0">
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border shrink-0">
                                   สิ้นสุดแล้ว
                                 </span>
                               )}
                             </div>
-                            <div className="mt-2 pt-2 border-t border-gray-100">
-                              <div className="text-sm text-gray-700 font-semibold">{formatThaiDateRange(s.start_date, s.end_date)}</div>
-                              <div className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                            <div className="mt-2 pt-2 border-t border-border">
+                              <div className="text-sm text-foreground font-semibold">{formatThaiDateRange(s.start_date, s.end_date)}</div>
+                              <div className="text-[10px] text-subtle-foreground font-semibold mt-0.5">
                                 {isPeriodActive ? (
-                                  <span className="text-emerald-600 font-bold">● กำลังอยู่ในช่วงเวลากรอกคะแนน</span>
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">● กำลังอยู่ในช่วงเวลากรอกคะแนน</span>
                                 ) : (
-                                  <span className="text-rose-500 font-bold">● อยู่นอกช่วงเวลากรอกคะแนน</span>
+                                  <span className="text-rose-500 dark:text-rose-400 font-bold">● อยู่นอกช่วงเวลากรอกคะแนน</span>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-600 font-semibold mt-1.5">
+                              <div className="text-xs text-muted-foreground font-semibold mt-1.5">
                                 คะแนนเต็ม: เก็บ {s.midterm_max_score ?? 50} / สอบ {s.final_max_score ?? 50}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
+                            <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
                               <button
                                 onClick={() => handleEditSetting(s)}
-                                className="text-indigo-600 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                               >
                                 แก้ไข
                               </button>
                               {!s.is_active && (
                                 <button
                                   onClick={() => handleDeleteSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)}
-                                  className="text-red-500 hover:text-red-700 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                  className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                                 >
                                   ลบ
                                 </button>
@@ -4480,11 +4479,11 @@ function changeFontSize(dir) {
           onClick={() => setIsUserModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl border border-white/60 shadow-2xl glass-strong w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100 flex flex-col"
+            className="bg-card rounded-3xl border border-border/60 shadow-2xl glass-strong w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-slate-100">
+            <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-border">
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br ${modalMode === "add" ? "from-indigo-500 to-violet-600" : "from-amber-500 to-orange-600"
                 }`}>
                 {modalMode === "add" ? (
@@ -4498,16 +4497,16 @@ function changeFontSize(dir) {
                 )}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800 leading-tight">
+                <h3 className="text-lg font-bold text-foreground leading-tight">
                   {modalMode === "add" ? "เพิ่มผู้ใช้งานใหม่" : "แก้ไขข้อมูลผู้ใช้งาน"}
                 </h3>
-                <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                <p className="text-xs text-muted-foreground font-semibold mt-0.5">
                   {modalMode === "add" ? "กรอกรายละเอียดเพื่อสร้างผู้ใช้ใหม่" : `กำลังแก้ไขผู้ใช้: ${editingUser?.username}`}
                 </p>
               </div>
               <button
                 onClick={() => setIsUserModalOpen(false)}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-650 p-1.5 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer border-0 bg-transparent"
+                className="absolute top-5 right-5 text-muted-foreground hover:text-foreground p-1.5 hover:bg-muted rounded-full transition-all duration-200 cursor-pointer border-0 bg-transparent"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -4518,8 +4517,8 @@ function changeFontSize(dir) {
             {/* Modal Body */}
             <div className="px-6 py-5 space-y-4 overflow-y-auto max-h-[60vh]">
               {validationError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-                  <svg className="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+                  <svg className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <span>{validationError}</span>
@@ -4529,11 +4528,11 @@ function changeFontSize(dir) {
               {/* Name Input (Optional) */}
               {(role === "student" || role === "teacher") && modalMode === "add" && (
                 <div className="space-y-1.5 animate-fade-in-up">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     ชื่อ-นามสกุล (Name)
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
@@ -4543,7 +4542,7 @@ function changeFontSize(dir) {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="ชื่อ นามสกุล"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                     />
                   </div>
                 </div>
@@ -4551,11 +4550,11 @@ function changeFontSize(dir) {
 
               {/* Username Input */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  ชื่อผู้ใช้ (Username) {role === "admin" && <span className="text-red-500">*</span>}
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  ชื่อผู้ใช้ (Username) {role === "admin" && <span className="text-red-500 dark:text-red-400">*</span>}
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
@@ -4565,18 +4564,18 @@ function changeFontSize(dir) {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder={(role === "student" || role === "teacher") && modalMode === "add" ? "เว้นว่างเพื่อสุ่มอัตโนมัติ" : "เช่น teacher2, s002"}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                   />
                 </div>
               </div>
 
               {/* Password Input */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  รหัสผ่าน (Password) {role === "admin" && <span className="text-red-500">*</span>}
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  รหัสผ่าน (Password) {role === "admin" && <span className="text-red-500 dark:text-red-400">*</span>}
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
@@ -4586,18 +4585,18 @@ function changeFontSize(dir) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={modalMode === "edit" ? "ปล่อยว่างหากไม่ต้องการเปลี่ยนรหัสผ่าน" : ((role === "student" || role === "teacher") ? "เว้นว่างเพื่อใช้ค่าเริ่มต้น password123" : "รหัสผ่านสำหรับเข้าใช้งาน")}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                   />
                 </div>
               </div>
 
               {/* Email Input (for Google login) */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   อีเมล (สำหรับเข้าสู่ระบบด้วย Google)
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
@@ -4607,7 +4606,7 @@ function changeFontSize(dir) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="เช่น user@gmail.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                   />
                 </div>
               </div>
@@ -4615,8 +4614,8 @@ function changeFontSize(dir) {
               {/* Role Select (Only for Add) */}
               {modalMode === "add" ? (
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    บทบาทหน้าที่ (Role) <span className="text-red-500">*</span>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    บทบาทหน้าที่ (Role) <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2.5">
                     {/* Student */}
@@ -4624,11 +4623,11 @@ function changeFontSize(dir) {
                       type="button"
                       onClick={() => setRole("student")}
                       className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer ${role === "student"
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm ring-2 ring-emerald-400/20"
-                        : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-slate-100"
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 shadow-sm ring-2 ring-emerald-400/20"
+                        : "border-border bg-muted text-muted-foreground hover:border-border hover:bg-muted"
                         }`}
                     >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${role === "student" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${role === "student" ? "bg-emerald-500 text-white" : "bg-border text-muted-foreground"
                         }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -4643,11 +4642,11 @@ function changeFontSize(dir) {
                       type="button"
                       onClick={() => setRole("teacher")}
                       className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all cursor-pointer ${role === "teacher"
-                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm ring-2 ring-blue-400/20"
-                        : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 hover:bg-slate-100"
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-400/20"
+                        : "border-border bg-muted text-muted-foreground hover:border-border hover:bg-muted"
                         }`}
                     >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${role === "teacher" ? "bg-blue-500 text-white" : "bg-slate-200 text-slate-500"
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1 ${role === "teacher" ? "bg-blue-500 text-white" : "bg-border text-muted-foreground"
                         }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4a2 2 0 00-2-2m2 2a2 2 0 01-2 2m2 5a2 2 0 01-2 2m0-3a3 3 0 10-6 0 3 3 0 006 0z" />
@@ -4660,13 +4659,13 @@ function changeFontSize(dir) {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     บทบาทหน้าที่ (Role)
                   </label>
                   <div>
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${role === 'admin' ? 'bg-rose-50 text-rose-700 border-rose-100' :
-                      role === 'teacher' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                        'bg-emerald-50 text-emerald-700 border-emerald-100'
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${role === 'admin' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-500/25' :
+                      role === 'teacher' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-500/25' :
+                        'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-500/25'
                       }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${role === 'admin' ? 'bg-rose-500' :
                         role === 'teacher' ? 'bg-blue-500' : 'bg-emerald-500'
@@ -4680,11 +4679,11 @@ function changeFontSize(dir) {
               {/* Student Fields */}
               {role === "student" && (
                 <div className="space-y-1.5 animate-fade-in-up">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     รหัสนักเรียน (Student ID)
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 014 0" />
                       </svg>
@@ -4695,7 +4694,7 @@ function changeFontSize(dir) {
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
                       placeholder={modalMode === "add" ? "เว้นว่างเพื่อสุ่มอัตโนมัติ" : "รหัสนักเรียน"}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                     />
                     <datalist id="student-id-options">
                       {students.map(s => (
@@ -4710,11 +4709,11 @@ function changeFontSize(dir) {
                 <div className="space-y-4 animate-fade-in-up">
                   {/* Homeroom Selection */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                       ห้องประจำชั้น (Homeroom)
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
@@ -4722,7 +4721,7 @@ function changeFontSize(dir) {
                       <select
                         value={homeroomClassroomId}
                         onChange={(e) => setHomeroomClassroomId(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-700 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none appearance-none cursor-pointer"
+                        className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none appearance-none cursor-pointer"
                       >
                         <option value="">-- ไม่มีห้องประจำชั้น --</option>
                         {classrooms.map((c) => (
@@ -4731,7 +4730,7 @@ function changeFontSize(dir) {
                           </option>
                         ))}
                       </select>
-                      <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                      <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-muted-foreground">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -4743,11 +4742,11 @@ function changeFontSize(dir) {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5 rounded-b-3xl">
+            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-2.5 rounded-b-3xl">
               <button
                 type="button"
                 onClick={() => setIsUserModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer border-0"
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground hover:text-foreground bg-muted hover:bg-border transition-all cursor-pointer border-0"
               >
                 ยกเลิก
               </button>
@@ -4771,25 +4770,25 @@ function changeFontSize(dir) {
           onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
         >
           <div
-            className="bg-white rounded-3xl border border-white/60 shadow-2xl glass-strong w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            className="bg-card rounded-3xl border border-border/60 shadow-2xl glass-strong w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-slate-100">
+            <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-border">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br from-amber-500 to-orange-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="text-lg font-bold text-slate-800 leading-tight truncate">{studentDetailModal.subjectName}</h3>
-                <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                <h3 className="text-lg font-bold text-foreground leading-tight truncate">{studentDetailModal.subjectName}</h3>
+                <p className="text-xs text-muted-foreground font-semibold mt-0.5">
                   {studentDetailModal.classroomName} — ครูผู้สอน: {studentDetailModal.teacherName}
                 </p>
               </div>
               <button
                 onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-full transition-all cursor-pointer border-0 bg-transparent"
+                className="absolute top-5 right-5 text-muted-foreground hover:text-foreground p-1.5 hover:bg-muted rounded-full transition-all cursor-pointer border-0 bg-transparent"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -4801,11 +4800,11 @@ function changeFontSize(dir) {
             <div className="px-6 py-4 overflow-y-auto flex-1">
               {studentDetailModal.loading ? (
                 <div className="text-center py-12">
-                  <div className="inline-block w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-3" />
-                  <p className="text-gray-500 font-semibold text-sm">กำลังโหลดรายชื่อ...</p>
+                  <div className="inline-block w-8 h-8 border-4 border-indigo-200 dark:border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
+                  <p className="text-muted-foreground font-semibold text-sm">กำลังโหลดรายชื่อ...</p>
                 </div>
               ) : studentDetailModal.students.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 font-semibold">ไม่มีนักเรียนในห้องนี้</div>
+                <div className="text-center py-12 text-subtle-foreground font-semibold">ไม่มีนักเรียนในห้องนี้</div>
               ) : (() => {
                 const ss = studentDetailModal.students;
                 const done = ss.filter(s => s.midterm_score !== null && s.final_score !== null).length;
@@ -4815,27 +4814,27 @@ function changeFontSize(dir) {
                   <>
                     {/* Summary badges */}
                     <div className="flex flex-wrap gap-2 mb-4">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-muted text-foreground">
                         ทั้งหมด {ss.length} คน
                       </span>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                         <span className="w-2 h-2 rounded-full bg-emerald-500" />
                         ครบแล้ว {done}
                       </span>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                         <span className="w-2 h-2 rounded-full bg-amber-500" />
                         กรอกบางส่วน {partial}
                       </span>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border">
                         <span className="w-2 h-2 rounded-full bg-gray-400" />
                         ยังไม่เริ่ม {notStarted}
                       </span>
                     </div>
 
                     {/* Student list */}
-                    <div className="rounded-xl border border-gray-100 overflow-hidden">
+                    <div className="rounded-xl border border-border overflow-hidden">
                       <table className="w-full text-left">
-                        <thead className="bg-gray-50 text-gray-500">
+                        <thead className="bg-muted text-muted-foreground">
                           <tr>
                             <th className="px-4 py-2.5 font-bold text-xs w-12">ลำดับ</th>
                             <th className="px-4 py-2.5 font-bold text-xs">ชื่อ-นามสกุล</th>
@@ -4844,7 +4843,7 @@ function changeFontSize(dir) {
                             <th className="px-4 py-2.5 font-bold text-xs text-center">สถานะ</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-border">
                           {ss.map((s, idx) => {
                             const hasMid = s.midterm_score !== null;
                             const hasFin = s.final_score !== null;
@@ -4852,39 +4851,39 @@ function changeFontSize(dir) {
                             const isPartial = (hasMid || hasFin) && !isDone;
 
                             return (
-                              <tr key={s.id} className={`transition-colors ${isDone ? "bg-emerald-50/30" : isPartial ? "bg-amber-50/30" : ""}`}>
-                                <td className="px-4 py-2.5 text-xs text-gray-400 font-semibold">{s.student_number || idx + 1}</td>
+                              <tr key={s.id} className={`transition-colors ${isDone ? "bg-emerald-50/30 dark:bg-emerald-500/10" : isPartial ? "bg-amber-50/30 dark:bg-amber-500/10" : ""}`}>
+                                <td className="px-4 py-2.5 text-xs text-subtle-foreground font-semibold">{s.student_number || idx + 1}</td>
                                 <td className="px-4 py-2.5">
-                                  <div className="text-sm font-semibold text-gray-800">{s.student_name}</div>
-                                  <div className="text-[10px] text-gray-400">{s.student_id}</div>
+                                  <div className="text-sm font-semibold text-foreground">{s.student_name}</div>
+                                  <div className="text-[10px] text-subtle-foreground">{s.student_id}</div>
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                   {hasMid ? (
-                                    <span className="text-sm font-bold text-gray-800">{s.midterm_score}</span>
+                                    <span className="text-sm font-bold text-foreground">{s.midterm_score}</span>
                                   ) : (
-                                    <span className="text-xs text-gray-300">—</span>
+                                    <span className="text-xs text-subtle-foreground">—</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                   {hasFin ? (
-                                    <span className="text-sm font-bold text-gray-800">{s.final_score}</span>
+                                    <span className="text-sm font-bold text-foreground">{s.final_score}</span>
                                   ) : (
-                                    <span className="text-xs text-gray-300">—</span>
+                                    <span className="text-xs text-subtle-foreground">—</span>
                                   )}
                                 </td>
                                 <td className="px-4 py-2.5 text-center">
                                   {isDone ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                                       ครบ
                                     </span>
                                   ) : isPartial ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300">
                                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3" /></svg>
                                       บางส่วน
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-400">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-muted text-subtle-foreground">
                                       ยังไม่มี
                                     </span>
                                   )}
@@ -4901,10 +4900,10 @@ function changeFontSize(dir) {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end rounded-b-3xl">
+            <div className="px-6 py-3 bg-muted border-t border-border flex justify-end rounded-b-3xl">
               <button
                 onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
-                className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer border-0"
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground hover:text-foreground bg-muted hover:bg-border transition-all cursor-pointer border-0"
               >
                 ปิด
               </button>
@@ -4915,14 +4914,14 @@ function changeFontSize(dir) {
 
       {isSubjectModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-slide-up-fade">
+          <div className="bg-card rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-slide-up-fade">
             {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between relative">
+            <div className="px-6 py-5 border-b border-border bg-muted/50 flex items-center justify-between relative">
               <div>
-                <h3 className="text-xl font-extrabold text-slate-800">
+                <h3 className="text-xl font-extrabold text-foreground">
                   {subjectModalMode === "add" ? "เพิ่มวิชาเรียนใหม่" : "แก้ไขวิชาเรียน"}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium mt-1">
+                <p className="text-xs text-muted-foreground font-medium mt-1">
                   {(() => {
                     const s = settingsList.find(s => s.id === subjectSettingId);
                     return s ? `ปีการศึกษา ${s.academic_year} เทอม ${s.term}` : "ระบุชื่อวิชา เลือกครูผู้สอน และชั้นเรียน";
@@ -4931,7 +4930,7 @@ function changeFontSize(dir) {
               </div>
               <button
                 onClick={() => setIsSubjectModalOpen(false)}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-full transition-all duration-200 cursor-pointer border-0 bg-transparent"
+                className="absolute top-5 right-5 text-muted-foreground hover:text-foreground p-1.5 hover:bg-muted rounded-full transition-all duration-200 cursor-pointer border-0 bg-transparent"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -4942,7 +4941,7 @@ function changeFontSize(dir) {
             {/* Modal Body */}
             <div className="px-6 py-5 space-y-4">
               {validationError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold">
                   {validationError}
                 </div>
               )}
@@ -4951,46 +4950,46 @@ function changeFontSize(dir) {
               {subjectSettingId && (() => {
                 const s = settingsList.find(s => s.id === subjectSettingId);
                 return s ? (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 border border-white/50">
-                    <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <span className="text-xs font-bold text-indigo-700">ปีการศึกษา {s.academic_year} ภาคเรียนที่ {s.term}</span>
-                    {s.is_active && <span className="ml-auto bg-emerald-100 text-emerald-700 text-xs px-1.5 py-0.5 rounded-full font-bold">Active</span>}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-border/50">
+                    <svg className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">ปีการศึกษา {s.academic_year} ภาคเรียนที่ {s.term}</span>
+                    {s.is_active && <span className="ml-auto bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs px-1.5 py-0.5 rounded-full font-bold">Active</span>}
                   </div>
                 ) : null;
               })()}
 
               {/* Subject Name Input */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  ชื่อวิชาเรียน <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  ชื่อวิชาเรียน <span className="text-red-500 dark:text-red-400">*</span>
                 </label>
                 <input
                   type="text"
                   value={subjectName}
                   onChange={(e) => setSubjectName(e.target.value)}
                   placeholder="เช่น ภาษาไทย พื้นฐาน"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                 />
               </div>
 
               {/* Teacher Multi-Select (Scenario A: co-teaching) */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   ครูผู้สอน
-                  <span className="ml-1.5 font-normal normal-case text-slate-400">(เลือกได้หลายคน กรณีสอนรวม)</span>
+                  <span className="ml-1.5 font-normal normal-case text-muted-foreground">(เลือกได้หลายคน กรณีสอนรวม)</span>
                 </label>
                 {users.filter(u => u.role === "teacher").length === 0 ? (
-                  <div className="text-slate-400 text-xs py-2 px-3 rounded-xl border border-dashed border-slate-200">
+                  <div className="text-muted-foreground text-xs py-2 px-3 rounded-xl border border-dashed border-border">
                     ไม่มีครูในระบบ กรุณาเพิ่มผู้ใช้ที่มีบทบาทครูก่อน
                   </div>
                 ) : (
-                  <div className="max-h-[120px] overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-50">
+                  <div className="max-h-[120px] overflow-y-auto border border-border rounded-xl divide-y divide-slate-50">
                     {users.filter(u => u.role === "teacher").map(u => {
                       const isChecked = subjectTeacherIds.includes(u.id);
                       return (
                         <label
                           key={u.id}
-                          className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors ${isChecked ? "bg-indigo-50" : "hover:bg-slate-50"}`}
+                          className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors ${isChecked ? "bg-indigo-50 dark:bg-indigo-500/10" : "hover:bg-muted"}`}
                         >
                           <input
                             type="checkbox"
@@ -5002,9 +5001,9 @@ function changeFontSize(dir) {
                                 setSubjectTeacherIds(subjectTeacherIds.filter(id => id !== u.id));
                               }
                             }}
-                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                            className="w-4 h-4 rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 border-border cursor-pointer"
                           />
-                          <span className={`text-sm font-semibold ${isChecked ? "text-indigo-700" : "text-slate-700"}`}>
+                          <span className={`text-sm font-semibold ${isChecked ? "text-indigo-700 dark:text-indigo-300" : "text-foreground"}`}>
                             {u.username}
                           </span>
                         </label>
@@ -5013,9 +5012,9 @@ function changeFontSize(dir) {
                   </div>
                 )}
                 {subjectTeacherIds.length > 1 && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200">
-                    <span className="text-xs font-bold text-blue-700">สอนรวม:</span>
-                    <span className="text-xs text-blue-600">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30">
+                    <span className="text-xs font-bold text-blue-700 dark:text-blue-300">สอนรวม:</span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400">
                       {subjectTeacherIds.map(id => users.find(u => u.id === id)?.username).filter(Boolean).join(", ")}
                     </span>
                   </div>
@@ -5024,7 +5023,7 @@ function changeFontSize(dir) {
 
               {/* Subject Type */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   ประเภทวิชา
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -5033,7 +5032,7 @@ function changeFontSize(dir) {
                     onClick={() => setSubjectType("main")}
                     className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${subjectType === "main"
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                      : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      : "bg-muted/50 text-foreground border-border hover:bg-muted"
                       }`}
                   >
                     วิชาหลัก
@@ -5043,13 +5042,13 @@ function changeFontSize(dir) {
                     onClick={() => setSubjectType("activity")}
                     className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${subjectType === "activity"
                       ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-100"
-                      : "bg-slate-50/50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                      : "bg-muted/50 text-foreground border-border hover:bg-muted"
                       }`}
                   >
                     วิชากิจกรรม
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-muted-foreground">
                   {subjectType === "main"
                     ? "นับหน่วยกิตและคำนวณเกรด A-F เข้า GPA"
                     : "ตัดสินผ่าน/ไม่ผ่าน ไม่นับ GPA"}
@@ -5058,17 +5057,17 @@ function changeFontSize(dir) {
 
               {/* Has Score Toggle (activity only) */}
               {subjectType === "activity" && (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
                   <button
                     type="button"
                     onClick={() => setSubjectHasScore(v => !v)}
-                    className={`relative shrink-0 w-10 h-5 rounded-full border-2 transition-all ${subjectHasScore ? "bg-amber-500 border-amber-500" : "bg-slate-200 border-slate-300"}`}
+                    className={`relative shrink-0 w-10 h-5 rounded-full border-2 transition-all ${subjectHasScore ? "bg-amber-500 border-amber-500" : "bg-border border-border"}`}
                   >
-                    <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-all ${subjectHasScore ? "left-[18px]" : "left-0.5"}`} />
+                    <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-card shadow transition-all ${subjectHasScore ? "left-[18px]" : "left-0.5"}`} />
                   </button>
                   <div>
-                    <div className="text-xs font-bold text-amber-800">มีการเก็บคะแนน</div>
-                    <div className="text-[11px] text-amber-600 mt-0.5">
+                    <div className="text-xs font-bold text-amber-800 dark:text-amber-300">มีการเก็บคะแนน</div>
+                    <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
                       {subjectHasScore
                         ? "กำหนดคะแนนเต็มด้านล่าง · ใช้คะแนนรวมตัดสิน ผ่าน/ไม่ผ่าน"
                         : "ไม่มีช่องกรอกคะแนน · ผ่าน/ไม่ผ่านโดยไม่ใช้คะแนน"}
@@ -5080,8 +5079,8 @@ function changeFontSize(dir) {
               {/* Credit Hours (main subjects only) */}
               {subjectType === "main" && (
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    หน่วยกิต <span className="text-red-500">*</span>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    หน่วยกิต <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <input
                     type="number"
@@ -5089,7 +5088,7 @@ function changeFontSize(dir) {
                     step="0.5"
                     value={subjectCreditHours}
                     onChange={(e) => setSubjectCreditHours(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                   />
                 </div>
               )}
@@ -5098,27 +5097,27 @@ function changeFontSize(dir) {
               {(subjectType !== "activity" || subjectHasScore) && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      คะแนนเก็บเต็ม <span className="text-red-500">*</span>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      คะแนนเก็บเต็ม <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <input
                       type="number"
                       min="1"
                       value={subjectMidtermMax}
                       onChange={(e) => setSubjectMidtermMax(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                      className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      คะแนนสอบเต็ม <span className="text-red-500">*</span>
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      คะแนนสอบเต็ม <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <input
                       type="number"
                       min="1"
                       value={subjectFinalMax}
                       onChange={(e) => setSubjectFinalMax(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
+                      className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-400"
                     />
                   </div>
                 </div>
@@ -5126,17 +5125,17 @@ function changeFontSize(dir) {
 
               {/* Classroom Multi-Select (filtered by subject setting) */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   ชั้นเรียน (เลือกได้หลายห้อง)
                 </label>
                 {subjectClassrooms.length === 0 ? (
-                  <div className="text-slate-400 text-xs py-2">ไม่มีชั้นเรียนในเทอมนี้ กรุณาเพิ่มที่เมนู จัดการชั้นเรียน</div>
+                  <div className="text-muted-foreground text-xs py-2">ไม่มีชั้นเรียนในเทอมนี้ กรุณาเพิ่มที่เมนู จัดการชั้นเรียน</div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 mt-1 max-h-[150px] overflow-y-auto pr-1">
                     {subjectClassrooms.map((c) => {
                       const isChecked = subjectClassroomIds.includes(c.id);
                       return (
-                        <label key={c.id} className="flex items-center gap-2 px-3 py-2 border border-slate-100 rounded-xl bg-slate-50/30 hover:bg-slate-50 hover:border-slate-200 cursor-pointer transition-all">
+                        <label key={c.id} className="flex items-center gap-2 px-3 py-2 border border-border rounded-xl bg-muted/30 hover:bg-muted hover:border-border cursor-pointer transition-all">
                           <input
                             type="checkbox"
                             checked={isChecked}
@@ -5147,9 +5146,9 @@ function changeFontSize(dir) {
                                 setSubjectClassroomIds(subjectClassroomIds.filter(id => id !== c.id));
                               }
                             }}
-                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                            className="w-4 h-4 rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 border-border cursor-pointer"
                           />
-                          <span className="text-xs font-bold text-slate-700">{c.name}</span>
+                          <span className="text-xs font-bold text-foreground">{c.name}</span>
                         </label>
                       );
                     })}
@@ -5159,11 +5158,11 @@ function changeFontSize(dir) {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5 rounded-b-3xl">
+            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-2.5 rounded-b-3xl">
               <button
                 type="button"
                 onClick={() => setIsSubjectModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer border-0"
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground hover:text-foreground bg-muted hover:bg-border transition-all cursor-pointer border-0"
               >
                 ยกเลิก
               </button>
@@ -5182,3 +5181,4 @@ function changeFontSize(dir) {
     </div>
   );
 }
+

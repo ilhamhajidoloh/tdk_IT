@@ -5,12 +5,59 @@ import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { signIn } from "next-auth/react";
 import GuestChatWidget from "./components/GuestChatWidget";
+import ThemeToggle from "./components/ThemeToggle";
 
 type LoginTab = "staff" | "teacher" | "student";
 
 interface Classroom { id: string; name: string; }
 interface Teacher { id: string; username: string; }
 interface Student { id: string; name: string; student_id: string; student_number?: number | null; }
+
+/* Reusable password field with show/hide toggle */
+function PasswordField({
+  value,
+  onChange,
+  show,
+  onToggle,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  show: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div>
+      <label className="ui-label">รหัสผ่าน</label>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="ui-input pr-11"
+          placeholder="กรอกรหัสผ่าน"
+          required
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-subtle-foreground hover:text-primary focus:outline-none transition-colors"
+          aria-label={show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+        >
+          {show ? (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          ) : (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -162,92 +209,119 @@ export default function LoginPage() {
     { key: "staff", label: "บุคลากร", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" },
   ];
 
+  const features = [
+    { icon: "M9 12l2 2 4-4", title: "จัดการคะแนน", desc: "บันทึกและติดตามผลการเรียนแบบเรียลไทม์" },
+    { icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-6a4 4 0 11-8 0 4 4 0 018 0z", title: "รวมทุกบทบาท", desc: "นักเรียน คุณครู และบุคลากรในที่เดียว" },
+    { icon: "M13 10V3L4 14h7v7l9-11h-7z", title: "รวดเร็วทันสมัย", desc: "ใช้งานง่าย ลื่นไหล ทั้งบนมือถือและคอมพิวเตอร์" },
+  ];
+
   return (
-    <div className="min-h-screen mesh-gradient flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Animated background orbs */}
-      <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-gradient-to-br from-indigo-300/30 via-violet-300/20 to-transparent rounded-full blur-3xl animate-float-slow" />
-      <div className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-br from-purple-300/25 via-cyan-300/15 to-transparent rounded-full blur-3xl animate-float-slow" style={{ animationDelay: "-7s" }} />
-      <div className="absolute top-[40%] left-[60%] w-72 h-72 bg-gradient-to-br from-pink-200/20 to-indigo-200/20 rounded-full blur-3xl animate-float-slow" style={{ animationDelay: "-14s" }} />
-
-      {/* Dot pattern overlay */}
-      <div className="absolute inset-0 dot-pattern opacity-30 pointer-events-none" />
-
-      <div className="w-full max-w-lg relative z-10 animate-fade-in-up">
-        {/* Main card */}
-        <div className="glass-strong rounded-[2rem] shadow-xl overflow-hidden animate-glow-pulse">
-
-          {/* Header */}
-          <div className="relative px-8 pt-10 pb-8 text-center overflow-hidden">
-            {/* Decorative rings */}
-            <div className="absolute top-4 right-8 w-20 h-20 border border-indigo-100/50 rounded-full" />
-            <div className="absolute top-8 right-12 w-10 h-10 border border-violet-100/50 rounded-full" />
-            <div className="absolute bottom-2 left-6 w-16 h-16 border border-purple-100/30 rounded-full" />
-
-            <div className="relative w-20 h-20 mx-auto mb-5">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl rotate-6 opacity-20" />
-              <div className="absolute inset-0 bg-white rounded-2xl shadow-lg border border-white/80 overflow-hidden rotate-3 hover:rotate-0 transition-transform duration-500">
-                <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
-              </div>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              <span className="gradient-text">ระบบจัดการโรงเรียน</span>
-            </h1>
-            <p className="text-slate-500 mt-2.5 font-medium text-sm">เข้าสู่ระบบเพื่อดำเนินการต่อ</p>
+    <div className="relative min-h-screen grid lg:grid-cols-2 bg-background text-foreground">
+      {/* ===================== LEFT — BRAND PANEL (desktop) ===================== */}
+      <aside className="aurora-panel hidden lg:flex flex-col justify-between p-12 xl:p-16 text-white">
+        <div className="relative z-10 flex items-center gap-3 animate-fade-in-down">
+          <div className="h-11 w-11 rounded-2xl bg-white/15 backdrop-blur-md ring-1 ring-white/25 overflow-hidden shadow-lg">
+            <img src="/logo.jpg" alt="Logo" className="h-full w-full object-cover" />
           </div>
+          <span className="text-lg font-bold tracking-tight">ระบบจัดการโรงเรียน</span>
+        </div>
 
-          {/* Tab Navigation */}
-          <div className="px-6 pb-2">
-            <div className="flex gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all duration-300 ${
-                    activeTab === tab.key
-                      ? "bg-white text-indigo-700 shadow-md shadow-indigo-100/50"
-                      : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-                  }`}
-                >
-                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={tab.icon} />
+        <div className="relative z-10 max-w-md animate-fade-in-up">
+          <h2 className="text-4xl xl:text-5xl font-extrabold leading-tight tracking-tight">
+            บริหารจัดการ<br />ทั้งโรงเรียน<br />
+            <span className="text-white/80">ในระบบเดียว</span>
+          </h2>
+          <p className="mt-5 text-white/75 text-base leading-relaxed">
+            แพลตฟอร์มจัดการคะแนนและข้อมูลนักเรียน ออกแบบใหม่ให้ทันสมัย ใช้งานง่าย และรวดเร็ว
+          </p>
+
+          <ul className="mt-9 space-y-4">
+            {features.map((f) => (
+              <li key={f.title} className="flex items-start gap-3.5">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d={f.icon} />
                   </svg>
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.label}</span>
-                </button>
-              ))}
+                </span>
+                <div>
+                  <p className="font-semibold">{f.title}</p>
+                  <p className="text-sm text-white/70">{f.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative z-10 text-sm text-white/60">
+          &copy; {new Date().getFullYear()} ระบบจัดการโรงเรียน
+        </p>
+      </aside>
+
+      {/* ===================== RIGHT — FORM ===================== */}
+      <main className="relative flex flex-col items-center justify-center p-6 sm:p-10">
+        {/* subtle grid backdrop */}
+        <div className="pointer-events-none absolute inset-0 grid-backdrop opacity-70" />
+
+        {/* theme toggle */}
+        <div className="absolute top-5 right-5 z-20">
+          <ThemeToggle />
+        </div>
+
+        <div className="relative z-10 w-full max-w-md animate-fade-in-up">
+          {/* Mobile brand */}
+          <div className="lg:hidden mb-8 flex flex-col items-center text-center">
+            <div className="h-14 w-14 rounded-2xl overflow-hidden ring-1 ring-border shadow-md mb-3">
+              <img src="/logo.jpg" alt="Logo" className="h-full w-full object-cover" />
             </div>
           </div>
 
-          {/* Form Body */}
-          <div className="px-8 pt-4 pb-8">
-            <form onSubmit={handleLogin} className="space-y-4">
+          {/* Heading */}
+          <div className="mb-7">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              ยินดีต้อนรับ<span className="brand-text"> กลับมา</span>
+            </h1>
+            <p className="mt-1.5 text-muted-foreground text-sm">
+              เลือกบทบาทของคุณและเข้าสู่ระบบเพื่อดำเนินการต่อ
+            </p>
+          </div>
 
+          {/* Segmented tabs */}
+          <div className="ui-segment mb-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                data-active={activeTab === tab.key}
+                className="ui-segment-item"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={tab.icon} />
+                </svg>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Card */}
+          <div className="ui-card p-6 sm:p-7">
+            <form onSubmit={handleLogin} className="space-y-4">
               {/* STUDENT TAB */}
               {activeTab === "student" && (
                 <div className="space-y-4 animate-fade-in-up">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">ปีการศึกษา</label>
+                    <label className="ui-label">ปีการศึกษา</label>
                     <div className="relative">
-                      <select
-                        value={studentYear}
-                        disabled
-                        className="w-full px-4 py-3 rounded-xl border-1.5 border-slate-200 bg-slate-50 text-slate-400 shadow-sm cursor-not-allowed font-semibold text-sm"
-                      >
-                        <option value={studentYear}>{studentYear}</option>
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">ล็อก</span>
-                      </div>
+                      <input value={studentYear} disabled className="ui-input pr-16" />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 ui-chip ui-chip-warning">ล็อก</span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">ชั้นเรียน</label>
+                    <label className="ui-label">ชั้นเรียน</label>
                     <select
                       value={studentClassroom}
                       onChange={(e) => setStudentClassroom(e.target.value)}
-                      className="input-modern text-sm"
+                      className="ui-input"
                       required
                     >
                       {classrooms.map((c) => (
@@ -256,11 +330,11 @@ export default function LoginPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">ชื่อนักเรียน</label>
+                    <label className="ui-label">ชื่อนักเรียน</label>
                     <select
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
-                      className="input-modern text-sm"
+                      className="ui-input"
                       required
                     >
                       {students.length === 0 ? (
@@ -274,35 +348,7 @@ export default function LoginPage() {
                       )}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">รหัสผ่าน</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={studentPassword}
-                        onChange={(e) => setStudentPassword(e.target.value)}
-                        className="input-modern text-sm pr-10"
-                        placeholder="กรอกรหัสผ่าน"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-indigo-500 focus:outline-none transition-colors"
-                      >
-                        {showPassword ? (
-                          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  <PasswordField value={studentPassword} onChange={setStudentPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
                 </div>
               )}
 
@@ -310,11 +356,11 @@ export default function LoginPage() {
               {activeTab === "teacher" && (
                 <div className="space-y-4 animate-fade-in-up">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">ชื่อคุณครู</label>
+                    <label className="ui-label">ชื่อคุณครู</label>
                     <select
                       value={teacherUsername}
                       onChange={(e) => setTeacherUsername(e.target.value)}
-                      className="input-modern text-sm"
+                      className="ui-input"
                       required
                     >
                       {teachers.map((t) => (
@@ -322,35 +368,7 @@ export default function LoginPage() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">รหัสผ่าน</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={teacherPassword}
-                        onChange={(e) => setTeacherPassword(e.target.value)}
-                        className="input-modern text-sm pr-10"
-                        placeholder="กรอกรหัสผ่าน"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-indigo-500 focus:outline-none transition-colors"
-                      >
-                        {showPassword ? (
-                          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  <PasswordField value={teacherPassword} onChange={setTeacherPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
                 </div>
               )}
 
@@ -358,73 +376,35 @@ export default function LoginPage() {
               {activeTab === "staff" && (
                 <div className="space-y-4 animate-fade-in-up">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">ชื่อผู้ใช้งาน (Username)</label>
+                    <label className="ui-label">ชื่อผู้ใช้งาน (Username)</label>
                     <input
                       type="text"
                       value={staffUsername}
                       onChange={(e) => setStaffUsername(e.target.value)}
-                      className="input-modern text-sm"
+                      className="ui-input"
                       placeholder="admin"
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">รหัสผ่าน</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={staffPassword}
-                        onChange={(e) => setStaffPassword(e.target.value)}
-                        className="input-modern text-sm pr-10"
-                        placeholder="กรอกรหัสผ่าน"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-indigo-500 focus:outline-none transition-colors"
-                      >
-                        {showPassword ? (
-                          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  <PasswordField value={staffPassword} onChange={setStaffPassword} show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
                 </div>
               )}
 
-              <button
-                type="submit"
-                className="w-full btn-primary py-4 text-base mt-6 relative overflow-hidden group"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                  </svg>
-                  เข้าสู่ระบบ
-                </span>
+              <button type="submit" className="ui-btn ui-btn-primary w-full py-3.5 text-base mt-2 group">
+                <svg className="w-5 h-5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                เข้าสู่ระบบ
               </button>
-
             </form>
 
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">หรือ</span>
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-            </div>
+            <div className="ui-divider my-6 text-xs font-semibold uppercase tracking-wider">หรือ</div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all border border-slate-200/80 hover:border-indigo-200 hover:shadow-md group"
+                className="ui-btn ui-btn-outline w-full py-3 group"
               >
                 <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -437,7 +417,8 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleLineLogin}
-                className="w-full flex items-center justify-center gap-2.5 bg-[#00B900] hover:bg-[#00a000] text-white font-bold py-3.5 px-4 rounded-xl shadow-sm transition-all border border-[#00B900]/30 hover:shadow-md group"
+                className="ui-btn w-full py-3 text-white group"
+                style={{ background: "#06C755" }}
               >
                 <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="white">
                   <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.070 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
@@ -446,13 +427,13 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Footer text */}
-        <p className="text-center text-xs text-slate-400/80 mt-6 font-medium">
-          ระบบจัดการโรงเรียน &copy; {new Date().getFullYear()}
-        </p>
-      </div>
+          <p className="lg:hidden text-center text-xs text-subtle-foreground mt-6">
+            ระบบจัดการโรงเรียน &copy; {new Date().getFullYear()}
+          </p>
+        </div>
+      </main>
+
       <GuestChatWidget />
     </div>
   );

@@ -34,11 +34,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4f46e5",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0b10" },
+  ],
 };
 
 import { Providers } from "./providers";
 import InstallPrompt from "./components/InstallPrompt";
+
+// Applies the saved/preferred theme before first paint to avoid a flash.
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 export default function RootLayout({
   children,
@@ -46,8 +52,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${inter.variable} ${sarabun.variable} ${arabic.variable} ${arabicSans.variable} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white antialiased">
+    <html
+      lang="th"
+      data-theme="light"
+      className={`${inter.variable} ${sarabun.variable} ${arabic.variable} ${arabicSans.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground selection:bg-primary selection:text-primary-foreground antialiased">
         <Providers>
           {children}
         </Providers>

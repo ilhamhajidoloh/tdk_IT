@@ -208,16 +208,16 @@ export default function ChatWidget({ userId, userRole }: { userId: string; userR
   };
 
   const getRoleBadge = (role: string | null) => {
-    if (role === "admin") return { text: "แอดมิน", color: "bg-red-100 text-red-700" };
-    if (role === "teacher") return { text: "ครู", color: "bg-blue-100 text-blue-700" };
-    if (role === "student") return { text: "นักเรียน", color: "bg-green-100 text-green-700" };
+    if (role === "admin") return { text: "แอดมิน", color: "bg-red-100 dark:bg-red-900/80 text-red-700 dark:text-red-200" };
+    if (role === "teacher") return { text: "ครู", color: "bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-200" };
+    if (role === "student") return { text: "นักเรียน", color: "bg-green-100 dark:bg-green-900/80 text-green-700 dark:text-green-200" };
     return { text: "ผู้เยี่ยมชม", color: "bg-gray-100 text-gray-700" };
   };
 
   const getContactTypeBadge = (type: string) => {
     if (type === "homeroom" || type === "homeroom_teacher") return { text: "ประจำชั้น", color: "bg-amber-100 text-amber-700" };
     if (type === "subject" || type === "subject_teacher") return { text: "ประจำวิชา", color: "bg-purple-100 text-purple-700" };
-    if (type === "admin") return { text: "แอดมิน", color: "bg-red-100 text-red-700" };
+    if (type === "admin") return { text: "แอดมิน", color: "bg-red-100 dark:bg-red-900/80 text-red-700 dark:text-red-200" };
     return null;
   };
 
