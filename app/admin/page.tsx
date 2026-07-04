@@ -3077,7 +3077,8 @@ function changeFontSize(dir) {
                         {copySourceSettingId && sourceClassrooms.length > 0 && (
                           <div>
                             <label className="block text-sm font-bold text-foreground mb-2">3. เลือกชั้นเรียนที่ต้องการคัดลอก</label>
-                            <div className="border border-border rounded-xl overflow-hidden">
+                            {/* Desktop: Table */}
+                            <div className="hidden md:block border border-border rounded-xl overflow-hidden">
                               <table className="w-full text-left bg-card">
                                 <thead className="bg-muted text-foreground border-b border-border">
                                   <tr>
@@ -3125,6 +3126,49 @@ function changeFontSize(dir) {
                                   })}
                                 </tbody>
                               </table>
+                            </div>
+
+                            {/* Mobile: Cards */}
+                            <div className="md:hidden space-y-3">
+                              {sourceClassrooms.map(c => {
+                                const m = copyClassroomsMap[c.id];
+                                if (!m) return null;
+                                return (
+                                  <div key={c.id} className={`p-4 rounded-xl border border-border transition-colors ${m.selected ? 'bg-indigo-50/20 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30' : 'bg-card'}`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={m.selected}
+                                          onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], selected: e.target.checked } }))}
+                                          className="w-5 h-5 text-indigo-600 dark:text-indigo-400 rounded border-border focus:ring-indigo-500"
+                                        />
+                                        <span className="font-bold text-foreground text-sm">{c.name}</span>
+                                      </label>
+                                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={m.moveStudents}
+                                          disabled={!m.selected}
+                                          onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], moveStudents: e.target.checked } }))}
+                                          className="w-4 h-4 text-emerald-600 dark:text-emerald-400 rounded border-border focus:ring-emerald-500 disabled:opacity-50"
+                                        />
+                                        ย้ายนักเรียนมาด้วย
+                                      </label>
+                                    </div>
+                                    <div>
+                                      <label className="block text-[11px] font-semibold text-subtle-foreground mb-1">ชื่อชั้นเรียนใหม่</label>
+                                      <input
+                                        type="text"
+                                        value={m.newName}
+                                        onChange={e => setCopyClassroomsMap(prev => ({ ...prev, [c.id]: { ...prev[c.id], newName: e.target.value } }))}
+                                        disabled={!m.selected}
+                                        className="w-full px-3 py-1.5 rounded-lg border border-border disabled:bg-muted disabled:text-muted-foreground focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-xs font-semibold text-foreground bg-card"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -3483,7 +3527,8 @@ function changeFontSize(dir) {
                     {/* Period Management */}
                     <div>
                       <h3 className="text-lg font-bold text-foreground mb-3">คาบเรียน</h3>
-                      <div className="overflow-x-auto rounded-xl border border-border">
+                      {/* Desktop: Table */}
+                      <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
                         <table className="w-full text-left">
                           <thead className="bg-muted text-muted-foreground">
                             <tr>
@@ -3560,6 +3605,76 @@ function changeFontSize(dir) {
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Mobile: Cards */}
+                      <div className="md:hidden space-y-3">
+                        {schedulePeriods.map((p, idx) => (
+                          <div key={p.id} className="card-modern p-4">
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
+                              <div className="font-extrabold text-foreground text-sm">คาบที่ {p.period_no}</div>
+                              <label className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.is_break}
+                                  onChange={e => updatePeriodField(idx, "is_break", e.target.checked)}
+                                  className="w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border focus:ring-indigo-500"
+                                />
+                                คาบพัก
+                              </label>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-subtle-foreground mb-1">เวลาเริ่ม</label>
+                                <input
+                                  type="time"
+                                  value={p.start_time}
+                                  onChange={e => updatePeriodField(idx, "start_time", e.target.value)}
+                                  className="w-full px-3 py-1.5 rounded-lg border border-border text-xs font-semibold focus:ring-2 focus:ring-indigo-400 outline-none bg-card"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-semibold text-subtle-foreground mb-1">เวลาจบ</label>
+                                <input
+                                  type="time"
+                                  value={p.end_time}
+                                  onChange={e => updatePeriodField(idx, "end_time", e.target.value)}
+                                  className="w-full px-3 py-1.5 rounded-lg border border-border text-xs font-semibold focus:ring-2 focus:ring-indigo-400 outline-none bg-card"
+                                />
+                              </div>
+                            </div>
+                            <div className="mb-3">
+                              <label className="block text-[11px] font-semibold text-subtle-foreground mb-1">หมายเหตุ</label>
+                              <input
+                                type="text"
+                                value={p.label ?? ""}
+                                onChange={e => updatePeriodField(idx, "label", e.target.value)}
+                                placeholder="เช่น พักเที่ยง"
+                                className="w-full px-3 py-1.5 rounded-lg border border-border text-xs focus:ring-2 focus:ring-indigo-400 outline-none bg-card"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 pt-2 border-t border-border">
+                              <button
+                                onClick={() => handleSavePeriod(p)}
+                                className="flex-1 text-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                              >
+                                บันทึก
+                              </button>
+                              <button
+                                onClick={() => handleDeletePeriod(p.id)}
+                                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                              >
+                                ลบ
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {schedulePeriods.length === 0 && (
+                          <div className="text-center py-6 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border text-xs font-semibold">
+                            ยังไม่มีคาบเรียน กด &quot;เพิ่มคาบเรียน&quot; เพื่อเริ่ม
+                          </div>
+                        )}
+                      </div>
+
                       <button
                         onClick={handleAddPeriod}
                         className="mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
@@ -3640,44 +3755,126 @@ function changeFontSize(dir) {
                           กรุณาเพิ่มคาบเรียนก่อน
                         </div>
                       ) : (
-                        <div className="overflow-x-auto rounded-xl border border-border">
-                          <table className="w-full text-left text-base">
-                            <thead className="bg-muted text-muted-foreground">
-                              <tr>
-                                <th className="px-3 py-3 font-semibold">คาบ</th>
-                                {ACTIVE_DAYS.map(d => (
-                                  <th key={d.value} className="px-3 py-3 font-semibold text-center">{d.label}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                              {schedulePeriods.map(p => {
-                                const subjectsForClassroom = subjectsList.filter(s => s.classroom_ids?.includes(scheduleClassroomId));
-                                return (
-                                  <tr key={p.id} className="hover:bg-muted/50">
-                                    <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap align-top">
-                                      คาบ {p.period_no}
-                                      <div className="text-xs text-subtle-foreground font-normal">{p.start_time}-{p.end_time}</div>
-                                      {p.label && <div className="text-xs text-amber-600 dark:text-amber-400 font-normal">{p.label}</div>}
-                                    </td>
-                                    {p.is_break ? (
-                                      <td colSpan={ACTIVE_DAYS.length} className="px-3 py-2 align-middle text-center bg-muted border border-border rounded-md">
-                                        <div className="font-bold text-muted-foreground tracking-widest">{p.label || "พักเบรก"}</div>
+                        <>
+                          {/* Desktop: Grid Table */}
+                          <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+                            <table className="w-full text-left text-base">
+                              <thead className="bg-muted text-muted-foreground">
+                                <tr>
+                                  <th className="px-3 py-3 font-semibold">คาบ</th>
+                                  {ACTIVE_DAYS.map(d => (
+                                    <th key={d.value} className="px-3 py-3 font-semibold text-center">{d.label}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {schedulePeriods.map(p => {
+                                  const subjectsForClassroom = subjectsList.filter(s => s.classroom_ids?.includes(scheduleClassroomId));
+                                  return (
+                                    <tr key={p.id} className="hover:bg-muted/50">
+                                      <td className="px-3 py-2 font-semibold text-foreground whitespace-nowrap align-top">
+                                        คาบ {p.period_no}
+                                        <div className="text-xs text-subtle-foreground font-normal">{p.start_time}-{p.end_time}</div>
+                                        {p.label && <div className="text-xs text-amber-600 dark:text-amber-400 font-normal">{p.label}</div>}
                                       </td>
-                                    ) : (
-                                      ACTIVE_DAYS.map(d => {
+                                      {p.is_break ? (
+                                        <td colSpan={ACTIVE_DAYS.length} className="px-3 py-2 align-middle text-center bg-muted border border-border rounded-md">
+                                          <div className="font-bold text-muted-foreground tracking-widest">{p.label || "พักเบรก"}</div>
+                                        </td>
+                                      ) : (
+                                        ACTIVE_DAYS.map(d => {
+                                          const entry = scheduleEntries.find(e => e.classroom_id === scheduleClassroomId && Number(e.day_of_week) === d.value && e.period_id === p.id);
+                                          const selectedSubj = entry?.subject_id ? subjectsList.find(s => s.id === entry.subject_id) : null;
+                                          const subjectTeacherDisplay = selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 0
+                                            ? selectedSubj.teacher_names.join(", ")
+                                            : (selectedSubj?.teacher_name || "");
+                                          return (
+                                            <td key={d.value} className="px-3 py-2 align-top min-w-[140px]">
+                                              {/* Subject Selector */}
+                                              <select
+                                                value={entry?.subject_id ?? ""}
+                                                onChange={ev => handleScheduleCellChange(d.value, p.id, ev.target.value, entry?.id)}
+                                                className="w-full px-2 py-1.5 rounded-lg border border-border text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                                              >
+                                                <option value="">- ว่าง -</option>
+                                                {subjectsForClassroom.map(s => {
+                                                  const tDisplay = s.teacher_names && s.teacher_names.length > 0
+                                                    ? s.teacher_names.join(", ")
+                                                    : (s.teacher_name || "");
+                                                  return (
+                                                    <option key={s.id} value={s.id}>
+                                                      {s.name}{tDisplay ? ` (${tDisplay})` : ""}
+                                                    </option>
+                                                  );
+                                                })}
+                                              </select>
+
+                                              {/* Teacher Override Selector (Scenario B) */}
+                                              {entry?.subject_id && selectedSubj?.teacher_ids && selectedSubj.teacher_ids.length > 0 && (
+                                                <select
+                                                  value={entry.teacher_id ?? ""}
+                                                  onChange={ev => handleScheduleTeacherChange(d.value, p.id, entry.subject_id, ev.target.value || null, entry.id)}
+                                                  className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-300 outline-none"
+                                                  title="ระบุครูผู้สอนเฉพาะห้องนี้ (กรณีครูต่างกันแต่ละชั้น)"
+                                                >
+                                                  <option value="">
+                                                    {subjectTeacherDisplay ? `ครู: ${subjectTeacherDisplay}` : "-- เลือกครูผู้สอน --"}
+                                                  </option>
+                                                  {users
+                                                    .filter(u => selectedSubj.teacher_ids!.includes(u.id))
+                                                    .map(u => (
+                                                      <option key={u.id} value={u.id}>{u.username}</option>
+                                                    ))}
+                                                </select>
+                                              )}
+
+                                              {/* Scenario A indicator: co-teaching */}
+                                              {entry?.subject_id && !entry.teacher_id && selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 1 && (
+                                                <div className="mt-0.5 text-xs text-blue-600 dark:text-blue-400 font-bold">สอนรวม</div>
+                                              )}
+                                            </td>
+                                          );
+                                        })
+                                      )}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Mobile: Cards */}
+                          <div className="md:hidden space-y-4">
+                            {schedulePeriods.map(p => {
+                              const subjectsForClassroom = subjectsList.filter(s => s.classroom_ids?.includes(scheduleClassroomId));
+                              return (
+                                <div key={`p-mob-${p.id}`} className="card-modern p-4">
+                                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-border">
+                                    <div>
+                                      <span className="font-extrabold text-foreground text-sm">คาบ {p.period_no}</span>
+                                      <span className="ml-2 text-xs text-subtle-foreground">({p.start_time} - {p.end_time})</span>
+                                    </div>
+                                    {p.label && <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">{p.label}</span>}
+                                  </div>
+                                  {p.is_break ? (
+                                    <div className="p-3 text-center bg-muted rounded-xl text-xs font-bold text-muted-foreground tracking-widest">
+                                      {p.label || "พักเบรก"}
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      {ACTIVE_DAYS.map(d => {
                                         const entry = scheduleEntries.find(e => e.classroom_id === scheduleClassroomId && Number(e.day_of_week) === d.value && e.period_id === p.id);
                                         const selectedSubj = entry?.subject_id ? subjectsList.find(s => s.id === entry.subject_id) : null;
                                         const subjectTeacherDisplay = selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 0
                                           ? selectedSubj.teacher_names.join(", ")
                                           : (selectedSubj?.teacher_name || "");
                                         return (
-                                          <td key={d.value} className="px-3 py-2 align-top min-w-[140px]">
-                                            {/* Subject Selector */}
+                                          <div key={d.value} className="p-2.5 rounded-xl border border-border bg-card">
+                                            <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1.5">วัน{d.label}</div>
                                             <select
                                               value={entry?.subject_id ?? ""}
                                               onChange={ev => handleScheduleCellChange(d.value, p.id, ev.target.value, entry?.id)}
-                                              className="w-full px-2 py-1.5 rounded-lg border border-border text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                                              className="w-full px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold focus:ring-2 focus:ring-indigo-400 outline-none bg-card"
                                             >
                                               <option value="">- ว่าง -</option>
                                               {subjectsForClassroom.map(s => {
@@ -3692,13 +3889,11 @@ function changeFontSize(dir) {
                                               })}
                                             </select>
 
-                                            {/* Teacher Override Selector (Scenario B) */}
                                             {entry?.subject_id && selectedSubj?.teacher_ids && selectedSubj.teacher_ids.length > 0 && (
                                               <select
                                                 value={entry.teacher_id ?? ""}
                                                 onChange={ev => handleScheduleTeacherChange(d.value, p.id, entry.subject_id, ev.target.value || null, entry.id)}
-                                                className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-300 outline-none"
-                                                title="ระบุครูผู้สอนเฉพาะห้องนี้ (กรณีครูต่างกันแต่ละชั้น)"
+                                                className="w-full mt-1.5 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-300 outline-none"
                                               >
                                                 <option value="">
                                                   {subjectTeacherDisplay ? `ครู: ${subjectTeacherDisplay}` : "-- เลือกครูผู้สอน --"}
@@ -3711,20 +3906,19 @@ function changeFontSize(dir) {
                                               </select>
                                             )}
 
-                                            {/* Scenario A indicator: co-teaching */}
                                             {entry?.subject_id && !entry.teacher_id && selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 1 && (
-                                              <div className="mt-0.5 text-xs text-blue-600 dark:text-blue-400 font-bold">สอนรวม</div>
+                                              <div className="mt-1 text-[11px] text-blue-600 dark:text-blue-400 font-bold">สอนรวม</div>
                                             )}
-                                          </td>
+                                          </div>
                                         );
-                                      })
-                                    )}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
@@ -3804,7 +3998,8 @@ function changeFontSize(dir) {
                             </h3>
                             <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{filtered.length} คน</p>
                           </div>
-                          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                          {/* Desktop: Table */}
+                          <div className="hidden md:block overflow-x-auto max-h-[600px] overflow-y-auto">
                             <table className="w-full text-sm">
                               <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
                                 <tr>
@@ -3847,6 +4042,40 @@ function changeFontSize(dir) {
                               </tbody>
                             </table>
                           </div>
+                          {/* Mobile: Cards */}
+                          <div className="md:hidden max-h-[600px] overflow-y-auto p-3 space-y-2.5">
+                            {classroomSorted.map((s, i) => (
+                              <div key={`cr-mob-${s.student_id}`} className={`p-3 rounded-xl border border-border flex items-center justify-between gap-3 ${s.classroom_rank <= 3 ? "bg-amber-50/40 dark:bg-amber-500/10 border-amber-200/50" : "bg-card"}`}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="shrink-0">
+                                    {s.classroom_rank <= 3 ? (
+                                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.classroom_rank === 1 ? "bg-amber-400 text-white" : s.classroom_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                        {s.classroom_rank}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted text-muted-foreground font-bold text-xs">
+                                        {s.classroom_rank}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-foreground text-xs truncate">{s.student_name}</div>
+                                    <div className="text-[10px] text-subtle-foreground">รหัส {s.student_id} • ห้อง {s.classroom_name}</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 text-right">
+                                  <div>
+                                    <div className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600 dark:text-emerald-400" : s.percentage >= 60 ? "text-amber-600 dark:text-amber-400" : s.percentage >= 50 ? "text-orange-600 dark:text-orange-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                      {s.percentage.toFixed(1)}%
+                                    </div>
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : s.gpa >= 2.0 ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300" : s.gpa >= 1.0 ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"}`}>
+                                      GPA {s.gpa.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
 
                         {/* School Ranking */}
@@ -3858,7 +4087,8 @@ function changeFontSize(dir) {
                             </h3>
                             <p className="text-xs text-blue-500 dark:text-blue-400 mt-0.5">{rankingsData.length} คน</p>
                           </div>
-                          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                          {/* Desktop: Table */}
+                          <div className="hidden md:block overflow-x-auto max-h-[600px] overflow-y-auto">
                             <table className="w-full text-sm">
                               <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
                                 <tr>
@@ -3900,6 +4130,40 @@ function changeFontSize(dir) {
                                 ))}
                               </tbody>
                             </table>
+                          </div>
+                          {/* Mobile: Cards */}
+                          <div className="md:hidden max-h-[600px] overflow-y-auto p-3 space-y-2.5">
+                            {schoolSorted.map((s, i) => (
+                              <div key={`sr-mob-${s.student_id}`} className={`p-3 rounded-xl border border-border flex items-center justify-between gap-3 ${s.school_rank <= 3 ? "bg-amber-50/40 dark:bg-amber-500/10 border-amber-200/50" : "bg-card"}`}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="shrink-0">
+                                    {s.school_rank <= 3 ? (
+                                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.school_rank === 1 ? "bg-amber-400 text-white" : s.school_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                        {s.school_rank}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted text-muted-foreground font-bold text-xs">
+                                        {s.school_rank}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-foreground text-xs truncate">{s.student_name}</div>
+                                    <div className="text-[10px] text-subtle-foreground">รหัส {s.student_id} • ห้อง {s.classroom_name}</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 text-right">
+                                  <div>
+                                    <div className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600 dark:text-emerald-400" : s.percentage >= 60 ? "text-amber-600 dark:text-amber-400" : s.percentage >= 50 ? "text-orange-600 dark:text-orange-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                      {s.percentage.toFixed(1)}%
+                                    </div>
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : s.gpa >= 2.0 ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300" : s.gpa >= 1.0 ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"}`}>
+                                      GPA {s.gpa.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -4832,7 +5096,8 @@ function changeFontSize(dir) {
                     </div>
 
                     {/* Student list */}
-                    <div className="rounded-xl border border-border overflow-hidden">
+                    {/* Desktop: Table */}
+                    <div className="hidden md:block rounded-xl border border-border overflow-hidden">
                       <table className="w-full text-left">
                         <thead className="bg-muted text-muted-foreground">
                           <tr>
@@ -4893,6 +5158,53 @@ function changeFontSize(dir) {
                           })}
                         </tbody>
                       </table>
+                    </div>
+
+                    {/* Mobile: Cards */}
+                    <div className="md:hidden space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+                      {ss.map((s, idx) => {
+                        const hasMid = s.midterm_score !== null;
+                        const hasFin = s.final_score !== null;
+                        const isDone = hasMid && hasFin;
+                        const isPartial = (hasMid || hasFin) && !isDone;
+
+                        return (
+                          <div key={`sd-${s.id}`} className={`p-3 rounded-xl border border-border transition-colors ${isDone ? "bg-emerald-50/30 dark:bg-emerald-500/10 border-emerald-200/50" : isPartial ? "bg-amber-50/30 dark:bg-amber-500/10 border-amber-200/50" : "bg-card"}`}>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div>
+                                <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">เลขที่ {s.student_number || idx + 1}</div>
+                                <div className="text-sm font-semibold text-foreground">{s.student_name}</div>
+                                <div className="text-[10px] text-subtle-foreground">รหัส {s.student_id}</div>
+                              </div>
+                              {isDone ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shrink-0">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                  ครบ
+                                </span>
+                              ) : isPartial ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 shrink-0">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3" /></svg>
+                                  บางส่วน
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-muted text-subtle-foreground shrink-0">
+                                  ยังไม่มี
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60 text-xs">
+                              <div>
+                                <span className="text-subtle-foreground font-medium">คะแนนเก็บ (/{studentDetailModal.midtermMax}):</span>{" "}
+                                {hasMid ? <span className="font-bold text-foreground">{s.midterm_score}</span> : <span className="text-subtle-foreground">—</span>}
+                              </div>
+                              <div>
+                                <span className="text-subtle-foreground font-medium">คะแนนสอบ (/{studentDetailModal.finalMax}):</span>{" "}
+                                {hasFin ? <span className="font-bold text-foreground">{s.final_score}</span> : <span className="text-subtle-foreground">—</span>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 );

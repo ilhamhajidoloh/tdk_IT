@@ -798,7 +798,7 @@ export default function StudentPortal() {
                 </div>
 
                 {/* Full grid table */}
-                <div className="ui-card overflow-hidden">
+                <div className="ui-card overflow-hidden hidden md:block">
                   <div className="px-6 py-4 border-b border-border">
                     <h3 className="font-bold text-foreground text-sm">ตารางเรียนแบบตาราง</h3>
                   </div>

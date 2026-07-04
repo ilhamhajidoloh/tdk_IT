@@ -1613,7 +1613,8 @@ export default function TeacherPortal() {
                             {classroomRankings.length} คน · {rankingMode === "combined" ? "รวม 2 เทอม" : "จากคะแนนรวม"}
                           </p>
                         </div>
-                        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        {/* Desktop: Table */}
+                        <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto">
                           <table className="w-full text-sm">
                             <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
                               <tr>
@@ -1654,6 +1655,40 @@ export default function TeacherPortal() {
                             </tbody>
                           </table>
                         </div>
+                        {/* Mobile: Cards */}
+                        <div className="md:hidden max-h-[500px] overflow-y-auto p-3 space-y-2.5">
+                          {classroomRankings.map(s => (
+                            <div key={`cr-mob-${s.student_id}`} className={`p-3 rounded-xl border border-border flex items-center justify-between gap-3 ${s.classroom_rank <= 3 ? "bg-amber-50/40 dark:bg-amber-500/10 border-amber-200/50" : "bg-card"}`}>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="shrink-0">
+                                  {s.classroom_rank <= 3 ? (
+                                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.classroom_rank === 1 ? "bg-amber-400 text-white" : s.classroom_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                      {s.classroom_rank}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted text-muted-foreground font-bold text-xs">
+                                      {s.classroom_rank}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-foreground text-xs truncate">{s.student_name}</div>
+                                  <div className="text-[10px] text-subtle-foreground">รหัส {s.student_id}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0 text-right">
+                                <div>
+                                  <div className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600 dark:text-emerald-400" : s.percentage >= 60 ? "text-amber-600 dark:text-amber-400" : s.percentage >= 50 ? "text-orange-600 dark:text-orange-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                    {s.percentage.toFixed(1)}%
+                                  </div>
+                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : s.gpa >= 2.0 ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300" : s.gpa >= 1.0 ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"}`}>
+                                    GPA {s.gpa.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
                       {/* School Ranking */}
@@ -1668,7 +1703,8 @@ export default function TeacherPortal() {
                             {rankingMode === "combined" && " · รวม 2 เทอม"}
                           </p>
                         </div>
-                        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        {/* Desktop: Table */}
+                        <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto">
                           <table className="w-full text-sm">
                             <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
                               <tr>
@@ -1708,6 +1744,40 @@ export default function TeacherPortal() {
                               ))}
                             </tbody>
                           </table>
+                        </div>
+                        {/* Mobile: Cards */}
+                        <div className="md:hidden max-h-[500px] overflow-y-auto p-3 space-y-2.5">
+                          {schoolRankingsForClass.map(s => (
+                            <div key={`sr-mob-${s.student_id}`} className="p-3 rounded-xl border border-border flex items-center justify-between gap-3 bg-card">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="shrink-0">
+                                  {s.school_rank <= 3 ? (
+                                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-extrabold ${s.school_rank === 1 ? "bg-amber-400 text-white" : s.school_rank === 2 ? "bg-gray-300 text-white" : "bg-orange-300 text-white"}`}>
+                                      {s.school_rank}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted text-muted-foreground font-bold text-xs">
+                                      {s.school_rank}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-foreground text-xs truncate">{s.student_name}</div>
+                                  <div className="text-[10px] text-subtle-foreground">รหัส {s.student_id} • อันดับโรงเรียน {s.school_rank}/{s.school_total}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0 text-right">
+                                <div>
+                                  <div className={`text-xs font-extrabold ${s.percentage >= 80 ? "text-emerald-600 dark:text-emerald-400" : s.percentage >= 60 ? "text-amber-600 dark:text-amber-400" : s.percentage >= 50 ? "text-orange-600 dark:text-orange-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                    {s.percentage.toFixed(1)}%
+                                  </div>
+                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${s.gpa >= 3.0 ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : s.gpa >= 2.0 ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300" : s.gpa >= 1.0 ? "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"}`}>
+                                    GPA {s.gpa.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -1799,7 +1869,7 @@ export default function TeacherPortal() {
                 )}
 
                 {/* Full schedule grid */}
-                <div className="card-modern overflow-hidden">
+                <div className="card-modern overflow-hidden hidden md:block">
                   <div className="px-5 py-4 border-b border-border/60">
                     <h3 className="font-bold text-foreground text-sm">ตารางเรียนทั้งหมด (ทุกวิชา ทุกห้อง)</h3>
                   </div>
