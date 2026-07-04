@@ -108,6 +108,67 @@ const STAT_COLOR_MAP: Record<string, string> = {
   slate: "bg-muted text-foreground",
 };
 
+function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
+  const dict: Record<string, { th: string; rumi: string; jawi: string }> = {
+    "รายงานสรุปผลการเรียนประจำชั้นเรียน": {
+      th: "รายงานสรุปผลการเรียนประจำชั้นเรียน",
+      rumi: "Laporan Keputusan Peperiksaan Mengikut Kelas",
+      jawi: "لاڤورن كڤوتوسن ڤڤريقسان مڠيكوت كلس"
+    },
+    "ใบรายงานผลการเรียนรายบุคคล": {
+      th: "ใบรายงานผลการเรียนรายบุคคล",
+      rumi: "Slip Keputusan Peperiksaan Individu",
+      jawi: "سليڤ كڤوتوسن ڤڤريقسان اينديويدو"
+    },
+    "ชั้นเรียน": { th: "ชั้นเรียน", rumi: "Kelas", jawi: "كلس" },
+    "ชั้น": { th: "ชั้น", rumi: "Kelas", jawi: "كلس" },
+    "ปีการศึกษา": { th: "ปีการศึกษา", rumi: "Tahun Pengajian", jawi: "تاهون ڤڠاجين" },
+    "ภาคเรียนที่": { th: "ภาคเรียนที่", rumi: "Penggal", jawi: "ڤڠگل" },
+    "จำนวนนักเรียนทั้งหมด:": { th: "จำนวนนักเรียนทั้งหมด:", rumi: "Jumlah Murid:", jawi: "جومله موريد:" },
+    "คน": { th: "คน", rumi: "orang", jawi: "اورڠ" },
+    "จำนวนวิชาที่ส่งออก:": { th: "จำนวนวิชาที่ส่งออก:", rumi: "Jumlah Subjek:", jawi: "جومله سوبجيك:" },
+    "วิชา": { th: "วิชา", rumi: "subjek", jawi: "سوبجيك" },
+    "วันที่ออกรายงาน:": { th: "วันที่ออกรายงาน:", rumi: "Tarikh Dikeluarkan:", jawi: "تاريخ دكلواركن:" },
+    "ลำดับ": { th: "ลำดับ", rumi: "Bil.", jawi: "بيل." },
+    "รหัสประจำตัว": { th: "รหัสประจำตัว", rumi: "No. ID", jawi: "نومبور اءي-دي" },
+    "ชื่อ - นามสกุล": { th: "ชื่อ - นามสกุล", rumi: "Nama Murid", jawi: "نام موريد" },
+    "เลขที่": { th: "เลขที่", rumi: "No.", jawi: "نومبور" },
+    "ประเภท": { th: "ประเภท", rumi: "Kategori", jawi: "كاتڬوري" },
+    "หน่วยกิต": { th: "หน่วยกิต", rumi: "Jam Kredit", jawi: "جام ك ريديت" },
+    "นก.": { th: "นก.", rumi: "kredit", jawi: "ك ريديت" },
+    "คะแนนเก็บ": { th: "คะแนนเก็บ", rumi: "Kerja Kursus", jawi: "كرج كورسوس" },
+    "คะแนนสอบ": { th: "คะแนนสอบ", rumi: "Peperiksaan", jawi: "ڤڤريقسان" },
+    "คะแนนรวม": { th: "คะแนนรวม", rumi: "Jumlah Markah", jawi: "جومله مركه" },
+    "รวมคะแนน": { th: "รวมคะแนน", rumi: "Jumlah Markah", jawi: "جومله مركه" },
+    "เกรด": { th: "เกรด", rumi: "Gred", jawi: "ڬريد" },
+    "เฉลี่ย %": { th: "เฉลี่ย %", rumi: "Peratus %", jawi: "ڤراتوس %" },
+    "เกรดเฉลี่ย (GPA)": { th: "เกรดเฉลี่ย (GPA)", rumi: "Purata Gred (GPA)", jawi: "ڤوراتا ڬريد (GPA)" },
+    "GPA": { th: "GPA", rumi: "GPA", jawi: "GPA" },
+    "อันดับ": { th: "อันดับ", rumi: "Kedudukan", jawi: "كدودوقن" },
+    "อันดับในห้องเรียน": { th: "อันดับในห้องเรียน", rumi: "Kedudukan Dalam Kelas", jawi: "كدودوقن دالم كلس" },
+    "อันดับที่": { th: "อันดับที่", rumi: "Ke-", jawi: "ك-" },
+    "วิชาหลัก": { th: "วิชาหลัก", rumi: "Subjek Teras", jawi: "سوبجيك ت رس" },
+    "กิจกรรม": { th: "กิจกรรม", rumi: "Aktiviti", jawi: "اكتيۏيتي" },
+    "ผ.": { th: "ผ.", rumi: "L", jawi: "ل" },
+    "มผ.": { th: "มผ.", rumi: "G", jawi: "ڬ" },
+    "ผ่าน": { th: "ผ่าน", rumi: "Lulus", jawi: "لولوس" },
+    "ไม่ผ่าน": { th: "ไม่ผ่าน", rumi: "Gagal", jawi: "ڬاڬل" },
+    "คะแนนรวมวิชาหลัก": { th: "คะแนนรวมวิชาหลัก", rumi: "Jumlah Markah Teras", jawi: "جومله مركه ت رس" },
+    "คิดเป็นร้อยละ": { th: "คิดเป็นร้อยละ", rumi: "Peratusan", jawi: "ڤراتوسن" },
+    "ครูประจำชั้น": { th: "ครูประจำชั้น", rumi: "Guru Kelas", jawi: "ڬورو كلس" },
+    "หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ": {
+      th: "หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ",
+      rumi: "Guru Penolong Kanan / Pengetua",
+      jawi: "ڬورو ڤنولوڠ كنان / ڤڠتوا"
+    },
+    "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" }
+  };
+
+  if (lang === "ms-rumi") return dict[key]?.rumi || key;
+  if (lang === "ms-jawi") return dict[key]?.jawi || key;
+  return dict[key]?.th || key;
+}
+
 function StatCard({ label, value, sub, icon, color }: { label: string; value: string | number; sub?: string; icon: string; color: keyof typeof STAT_COLOR_MAP }) {
   return (
     <div className="card-interactive rounded-2xl p-5 group">
@@ -338,6 +399,32 @@ export default function AdminPortal() {
   const [copyTargetSettingId, setCopyTargetSettingId] = useState<string | number | null>(null);
   const [sourceClassrooms, setSourceClassrooms] = useState<{ id: string; name: string }[]>([]);
   const [copyClassroomsMap, setCopyClassroomsMap] = useState<Record<string, { selected: boolean; newName: string; moveStudents: boolean }>>({});
+
+  // Export Classroom & Individual Scores State
+  const [isExportScoreModalOpen, setIsExportScoreModalOpen] = useState(false);
+  const [exportMode, setExportMode] = useState<"classroom" | "individual">("classroom");
+  const [exportSettingId, setExportSettingId] = useState<number | null>(null);
+  const [exportClassroomId, setExportClassroomId] = useState<string>("");
+  const [exportStudentId, setExportStudentId] = useState<string>("all");
+  const [includeActivitySubjects, setIncludeActivitySubjects] = useState<boolean>(false);
+  const [exportSubjectList, setExportSubjectList] = useState<DBSubject[]>([]);
+  const [exportSelectedSubjectIds, setExportSelectedSubjectIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!exportSettingId || !exportClassroomId) {
+      setExportSubjectList([]);
+      setExportSelectedSubjectIds([]);
+      return;
+    }
+    const subjs = subjectsList.filter(s => {
+      const isForClass = s.classroom_ids?.includes(exportClassroomId);
+      if (!isForClass) return false;
+      if (!includeActivitySubjects && s.subject_type === "activity") return false;
+      return true;
+    });
+    setExportSubjectList(subjs);
+    setExportSelectedSubjectIds(subjs.map(s => s.id));
+  }, [exportSettingId, exportClassroomId, includeActivitySubjects, subjectsList]);
 
   useEffect(() => {
     setIsClient(true);
@@ -1542,7 +1629,7 @@ export default function AdminPortal() {
       (subject.subject_type ?? "main") !== "activity" ||
       (Number(subject.midterm_max_score) + Number(subject.final_max_score)) > 0
     );
-    setSubjectCreditHours(Number(subject.credit_hours) || 1);
+    setSubjectCreditHours(Number(subject.credit_hours ?? 1));
     setValidationError("");
     setIsSubjectModalOpen(true);
   };
@@ -1752,22 +1839,25 @@ export default function AdminPortal() {
     if (!selectedSubjectSettingId || schedulePeriods.length === 0) return;
     const setting = settingsList.find((s: any) => s.id === selectedSubjectSettingId);
 
+    const langDir = exportLanguage === "ms-jawi" ? "rtl" : "ltr";
+    const alignLeftOrRight = exportLanguage === "ms-jawi" ? "right" : "left";
+
     const getLocalizedText = (key: string) => {
       const dict: Record<string, { th: string; rumi: string; jawi: string }> = {
-        "คาบ": { th: "คาบ", rumi: "Waktu", jawi: "وقتو" },
-        "พักเบรก": { th: "พักเบรก", rumi: "Rehat", jawi: "ريحت" },
-        "พัก": { th: "พัก", rumi: "Rehat", jawi: "ريحت" },
-        "ห้อง": { th: "ห้อง", rumi: "Kelas", jawi: "کلس" },
+        "คาบ": { th: "คาบ", rumi: "Masa", jawi: "وقتو" },
+        "พักเบรก": { th: "พักเบรก", rumi: "Rehat", jawi: "ريحة" },
+        "พัก": { th: "พัก", rumi: "Rehat", jawi: "ريحة" },
+        "ห้อง": { th: "ห้อง", rumi: "Kelas", jawi: "كلس" },
         "วัน": { th: "วัน", rumi: "Hari ", jawi: "هاري " },
-        "อ.": { th: "อ.", rumi: "Cikgu ", jawi: "چيقگو " },
-        "สีครูผู้สอน": { th: "สีครูผู้สอน", rumi: "Warna Guru", jawi: "ورنا گورو" },
-        "ภาพรวมตารางเรียน": { th: "ภาพรวมตารางเรียน", rumi: "Jadual Keseluruhan", jawi: "جادوال کستلوروهن" },
-        "ตารางเรียนรายชั้น": { th: "ตารางเรียนรายชั้น", rumi: "Jadual Kelas", jawi: "جادوال کلس" },
-        "ตารางสอนรายครู": { th: "ตารางสอนรายครู", rumi: "Jadual Guru", jawi: "جادوال گورو" },
-        "ครู": { th: "ครู", rumi: "Guru", jawi: "گورو" },
-        "ออกรายงาน ณ": { th: "ออกรายงาน ณ", rumi: "Laporan pada", jawi: "لاڤورن ڤد" },
+        "อ.": { th: "อ.", rumi: "Cikgu ", jawi: "چيقڬو " },
+        "สีครูผู้สอน": { th: "สีครูผู้สอน", rumi: "Warna Guru", jawi: "ورنا ڬورو" },
+        "ภาพรวมตารางเรียน": { th: "ภาพรวมตารางเรียน", rumi: "Jadual Keseluruhan", jawi: "جادوال كستلوروهن" },
+        "ตารางเรียนรายชั้น": { th: "ตารางเรียนรายชั้น", rumi: "Jadual Mengikut Kelas", jawi: "جادوال مڠيكوت كلس" },
+        "ตารางสอนรายครู": { th: "ตารางสอนรายครู", rumi: "Jadual Mengikut Guru", jawi: "جادوال مڠيكوت ڬورو" },
+        "ครู": { th: "ครู", rumi: "Guru", jawi: "ڬورو" },
+        "ออกรายงาน ณ": { th: "ออกรายงาน ณ", rumi: "Dikeluarkan pada", jawi: "دكلواركن ڤد" },
         "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" },
-        "ขนาดตัวอักษร:": { th: "ขนาดตัวอักษร:", rumi: "Saiz Fon:", jawi: "ساءيز فون:" },
+        "ขนาดตัวอักษร:": { th: "ขนาดตัวอักษร:", rumi: "Saiz Font:", jawi: "ساءيز فونت:" },
         "เทอม": { th: "เทอม", rumi: "Penggal", jawi: "ڤڠگل" }
       };
       if (exportLanguage === "ms-rumi") return dict[key]?.rumi || key;
@@ -1778,7 +1868,7 @@ export default function AdminPortal() {
     const getLocalizedDay = (val: number) => {
       const th = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
       const rumi = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
-      const jawi = ["أحد", "إثنين", "ثلاثاء", "رابو", "خميس", "جمعة", "سبت"];
+      const jawi = ["أحد", "إثنين", "ثلاث", "رابو", "خميس", "جمعة", "سبتو"];
       if (exportLanguage === "ms-rumi") return rumi[val];
       if (exportLanguage === "ms-jawi") return jawi[val];
       return th[val];
@@ -1906,10 +1996,10 @@ export default function AdminPortal() {
           </tr>`;
         }).join("");
         return `<div style="margin-bottom:28px;break-inside:avoid;">
-          <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;">${getLocalizedText("วัน")}${getLocalizedDay(day.value)}</div>
+          <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;text-align:${alignLeftOrRight};">${getLocalizedText("วัน")}${getLocalizedDay(day.value)}</div>
           <table style="width:100%;border-collapse:collapse;">
             <thead><tr>
-              <th style="${thBase}text-align:left;min-width:90px;">${getLocalizedText("ห้อง")}</th>
+              <th style="${thBase}text-align:${alignLeftOrRight};min-width:90px;">${getLocalizedText("ห้อง")}</th>
               ${periodCols}
             </tr></thead>
             <tbody>${classroomRows}</tbody>
@@ -1962,16 +2052,16 @@ export default function AdminPortal() {
     }
 
     const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
-    const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${docTitle}</title>
+    const html = `<!DOCTYPE html><html dir="${langDir}" lang="${exportLanguage}"><head><meta charset="UTF-8"><title>${docTitle}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  body{font-family:'Inter','Sarabun','Noto Sans Arabic','Noto Naskh Arabic',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;font-size:14px;}
+  body{font-family:'Amiri','Cairo','Noto Naskh Arabic','Noto Sans Arabic','Inter','Sarabun',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;font-size:14px;direction:${langDir};text-align:${alignLeftOrRight};}
   h1{font-size:22px;font-weight:800;margin-bottom:4px;}
   .meta{font-size:14px;color:#64748b;margin-bottom:16px;}
-  .print-btn{position:fixed;top:12px;right:12px;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100;}
-  .font-controls{position:fixed;top:12px;right:200px;display:flex;align-items:center;gap:8px;background:#fff;padding:6px 14px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.12);border:1px solid #e2e8f0;z-index:100;font-size:13px;font-weight:600;color:#475569;}
+  .print-btn{position:fixed;top:12px;${exportLanguage === "ms-jawi" ? "left:12px;" : "right:12px;"}padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100;}
+  .font-controls{position:fixed;top:12px;${exportLanguage === "ms-jawi" ? "left:200px;" : "right:200px;"}display:flex;align-items:center;gap:8px;background:#fff;padding:6px 14px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.12);border:1px solid #e2e8f0;z-index:100;font-size:13px;font-weight:600;color:#475569;}
   .font-controls label{white-space:nowrap;}
   .font-controls input[type=range]{width:100px;accent-color:#4f46e5;cursor:pointer;}
   .font-controls .font-size-val{min-width:28px;text-align:center;font-weight:700;color:#4f46e5;}
@@ -1997,7 +2087,7 @@ ${body}
 function applyFontSize(val) {
   var content = document.getElementById('schedule-content');
   content.style.transform = 'scale(' + (val / 100) + ')';
-  content.style.transformOrigin = 'top left';
+  content.style.transformOrigin = '${exportLanguage === "ms-jawi" ? "top right" : "top left"}';
   content.style.width = (10000 / val) + '%';
   document.getElementById('fontVal').textContent = val + '%';
   document.getElementById('fontSlider').value = val;
@@ -2106,10 +2196,10 @@ function changeFontSize(dir) {
     const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
     const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${docTitle}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  body{font-family:'Inter','Sarabun','Noto Sans Arabic','Noto Naskh Arabic',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;font-size:14px;}
+  body{font-family:'Amiri','Cairo','Noto Naskh Arabic','Noto Sans Arabic','Inter','Sarabun',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;font-size:14px;}
   h1{font-size:22px;font-weight:800;margin-bottom:4px;}
   .meta{font-size:14px;color:#64748b;margin-bottom:16px;}
   .print-btn{position:fixed;top:12px;right:12px;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100;}
@@ -2154,6 +2244,423 @@ function changeFontSize(dir) {
 
     const win = window.open("", "_blank");
     if (win) { win.document.write(html); win.document.close(); }
+  };
+
+  const handleOpenExportScoreModal = (classroomId?: string, studentId?: string, mode: "classroom" | "individual" = "classroom") => {
+    const settingId = selectedSettingId || selectedSubjectSettingId || gradeStatusSettingId || (settingsList[0]?.id ?? null);
+    setExportSettingId(settingId);
+    setExportClassroomId(classroomId || classrooms[0]?.id || "");
+    setExportStudentId(studentId || "all");
+    setExportMode(mode);
+    setIncludeActivitySubjects(false);
+    setIsExportScoreModalOpen(true);
+  };
+
+  const moveExportSubjectUp = (index: number) => {
+    if (index <= 0) return;
+    setExportSubjectList(prev => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[index - 1];
+      copy[index - 1] = temp;
+      return copy;
+    });
+  };
+
+  const moveExportSubjectDown = (index: number) => {
+    setExportSubjectList(prev => {
+      if (index >= prev.length - 1) return prev;
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[index + 1];
+      copy[index + 1] = temp;
+      return copy;
+    });
+  };
+
+  const handleExecuteClassroomScoreExport = async () => {
+    if (!exportSettingId || !exportClassroomId || !token) {
+      Swal.fire("ข้อผิดพลาด", "กรุณาเลือกปีการศึกษาและชั้นเรียน", "warning");
+      return;
+    }
+
+    const setting = settingsList.find(s => s.id === exportSettingId);
+    const classroom = classrooms.find(c => c.id === exportClassroomId);
+    if (!setting || !classroom) {
+      Swal.fire("ข้อผิดพลาด", "ไม่พบข้อมูลชั้นเรียนหรือปีการศึกษา", "error");
+      return;
+    }
+
+    const selectedSubjects = exportSubjectList.filter(s => exportSelectedSubjectIds.includes(s.id));
+    if (selectedSubjects.length === 0) {
+      Swal.fire("ข้อผิดพลาด", "กรุณาเลือกวิชาเรียนอย่างน้อย 1 วิชาที่ต้องการส่งออก", "warning");
+      return;
+    }
+
+    const classStudents = students.filter(s => s.classroom_id === exportClassroomId)
+      .sort((a, b) => (a.student_number || 999) - (b.student_number || 999));
+
+    if (classStudents.length === 0) {
+      Swal.fire("ข้อผิดพลาด", "ไม่มีนักเรียนในชั้นเรียนนี้", "warning");
+      return;
+    }
+
+    const termKey = `${setting.term}/${setting.academic_year}`;
+    const gradesRes = await fetch(`/api/grades?term=${encodeURIComponent(termKey)}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const allGrades: { student_id: string; subject: string; midterm_score: number | null; final_score: number | null }[] = gradesRes.ok ? await gradesRes.json() : [];
+
+    const gradeMap = new Map<string, Map<string, { midterm: number | null; final: number | null }>>();
+    allGrades.forEach(g => {
+      if (!gradeMap.has(g.student_id)) gradeMap.set(g.student_id, new Map());
+      const sMap = gradeMap.get(g.student_id)!;
+      sMap.set(g.subject?.trim().toLowerCase(), { midterm: g.midterm_score, final: g.final_score });
+    });
+
+    const t = (k: string) => getScoreExportText(k, exportLanguage);
+    const langDir = exportLanguage === "ms-jawi" ? "rtl" : "ltr";
+
+    const studentRows = classStudents.map(st => {
+      const sMap = gradeMap.get(st.student_id) || new Map();
+      let totalMainScore = 0;
+      let maxPossibleMain = 0;
+      let totalGpaPoints = 0;
+      let totalCredits = 0;
+
+      const subjectScores: Record<string, { total: number | null; midterm: number | null; final: number | null; gradeStr: string; isActivity: boolean; passed?: boolean }> = {};
+
+      selectedSubjects.forEach(sub => {
+        const subKey = sub.name?.trim().toLowerCase();
+        const scoreData = sMap.get(subKey);
+        const mMax = Number(sub.midterm_max_score) || 50;
+        const fMax = Number(sub.final_max_score) || 50;
+        const subMax = mMax + fMax;
+        const credits = Number(sub.credit_hours) || 1;
+
+        if (scoreData && (scoreData.midterm !== null || scoreData.final !== null)) {
+          const mid = scoreData.midterm ?? 0;
+          const fin = scoreData.final ?? 0;
+          const total = mid + fin;
+
+          if (sub.subject_type === "activity") {
+            const passed = subMax > 0 ? (total / subMax) >= 0.5 : true;
+            subjectScores[sub.id] = {
+              total,
+              midterm: scoreData.midterm,
+              final: scoreData.final,
+              gradeStr: passed ? t("ผ.") : t("มผ."),
+              isActivity: true,
+              passed
+            };
+          } else {
+            const pct = subMax > 0 ? (total / subMax) * 100 : 0;
+            let point = 0;
+            let gStr = "0";
+            if (pct >= 80) { point = 4.0; gStr = "4.0"; }
+            else if (pct >= 75) { point = 3.5; gStr = "3.5"; }
+            else if (pct >= 70) { point = 3.0; gStr = "3.0"; }
+            else if (pct >= 65) { point = 2.5; gStr = "2.5"; }
+            else if (pct >= 60) { point = 2.0; gStr = "2.0"; }
+            else if (pct >= 55) { point = 1.5; gStr = "1.5"; }
+            else if (pct >= 50) { point = 1.0; gStr = "1.0"; }
+
+            totalMainScore += total;
+            maxPossibleMain += subMax;
+            totalGpaPoints += point * credits;
+            totalCredits += credits;
+
+            subjectScores[sub.id] = {
+              total,
+              midterm: scoreData.midterm,
+              final: scoreData.final,
+              gradeStr: gStr,
+              isActivity: false
+            };
+          }
+        } else {
+          subjectScores[sub.id] = {
+            total: null,
+            midterm: null,
+            final: null,
+            gradeStr: "—",
+            isActivity: sub.subject_type === "activity"
+          };
+        }
+      });
+
+      const pct = maxPossibleMain > 0 ? (totalMainScore / maxPossibleMain) * 100 : 0;
+      const gpa = totalCredits > 0 ? totalGpaPoints / totalCredits : 0;
+
+      return {
+        student_id: st.student_id,
+        name: st.name,
+        student_number: st.student_number,
+        subjectScores,
+        totalMainScore,
+        maxPossibleMain,
+        percentage: Math.round(pct * 100) / 100,
+        gpa: Math.round(gpa * 100) / 100,
+        rank: 0,
+      };
+    });
+
+    const sortedForRank = [...studentRows].sort((a, b) => b.percentage - a.percentage || b.totalMainScore - a.totalMainScore);
+    sortedForRank.forEach((r, idx) => {
+      r.rank = idx + 1;
+    });
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+    const alignLeftOrRight = exportLanguage === "ms-jawi" ? "right" : "left";
+
+    if (exportMode === "classroom") {
+      const subjectsHeaderHTML = selectedSubjects.map(s => `
+        <th style="padding:8px 6px;text-align:center;border:1px solid #cbd5e1;background:#f8fafc;font-size:11px;">
+          <div>${s.name}</div>
+          <div style="font-weight:normal;color:#64748b;font-size:10px;">${s.subject_type === "activity" ? t("กิจกรรม") : `${s.credit_hours} ${t("นก.")}`}</div>
+        </th>
+      `).join("");
+
+      const rowsHTML = studentRows.map((st, idx) => {
+        const scoresCellsHTML = selectedSubjects.map(s => {
+          const sc = st.subjectScores[s.id];
+          if (!sc || sc.total === null) {
+            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;color:#94a3b8;font-size:11px;">—</td>`;
+          }
+          if (sc.isActivity) {
+            const badgeBg = sc.passed ? "#dcfce7" : "#ffe4e6";
+            const badgeFg = sc.passed ? "#166534" : "#991b1b";
+            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;"><span style="background:${badgeBg};color:${badgeFg};padding:2px 6px;border-radius:4px;font-weight:bold;">${sc.gradeStr}</span></td>`;
+          }
+          return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;">
+            <div style="font-weight:bold;">${sc.total}</div>
+            <div style="font-size:10px;color:#475569;">${t("เกรด")} ${sc.gradeStr}</div>
+          </td>`;
+        }).join("");
+
+        return `
+          <tr style="background:${idx % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;font-weight:bold;">${st.student_number || idx + 1}</td>
+            <td style="padding:6px;border:1px solid #e2e8f0;font-size:11px;font-family:monospace;color:#4f46e5;font-weight:bold;text-align:${alignLeftOrRight};">${st.student_id}</td>
+            <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:12px;font-weight:600;text-align:${alignLeftOrRight};">${st.name}</td>
+            ${scoresCellsHTML}
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:bold;">${st.totalMainScore}</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:bold;color:#2563eb;">${st.percentage.toFixed(1)}%</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:extrabold;color:#059669;">${st.gpa.toFixed(2)}</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:bold;">${st.rank}</td>
+          </tr>
+        `;
+      }).join("");
+
+      win.document.write(`
+        <!DOCTYPE html>
+        <html dir="${langDir}">
+        <head>
+          <title>${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} - ${t("ชั้น")} ${classroom.name}</title>
+          <meta charset="utf-8" />
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap');
+            body { font-family: 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Sarabun', 'Inter', sans-serif; margin: 20px; color: #1e293b; background: #fff; direction: ${langDir}; text-align: ${alignLeftOrRight}; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+            .header h1 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
+            .header h2 { margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #475569; }
+            .meta { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 12px; font-weight: 500; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th { background: #f1f5f9; color: #1e293b; font-weight: 700; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding: 0 40px; page-break-inside: avoid; }
+            .sig-box { text-align: center; width: 220px; }
+            .sig-line { border-bottom: 1px dotted #94a3b8; margin-top: 40px; margin-bottom: 6px; }
+            .print-btn { position: fixed; top: 16px; ${exportLanguage === "ms-jawi" ? "left: 16px;" : "right: 16px;"} padding: 10px 20px; background: #4f46e5; color: #fff; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); font-size: 13px; z-index: 100; }
+            @media print {
+              .print-btn { display: none; }
+              body { margin: 0; }
+              @page { size: A4 landscape; margin: 10mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <button class="print-btn" onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
+          <div class="header">
+            <h1>${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")}</h1>
+            <h2>${t("ชั้นเรียน")} ${classroom.name} — ${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}</h2>
+          </div>
+          <div class="meta">
+            <span>${t("จำนวนนักเรียนทั้งหมด:")} <b>${classStudents.length} ${t("คน")}</b> | ${t("จำนวนวิชาที่ส่งออก:")} <b>${selectedSubjects.length} ${t("วิชา")}</b></span>
+            <span>${t("วันที่ออกรายงาน:")} ${dateStr}</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:40px;font-size:11px;">${t("ลำดับ")}</th>
+                <th style="padding:8px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;width:90px;font-size:11px;">${t("รหัสประจำตัว")}</th>
+                <th style="padding:8px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;font-size:11px;">${t("ชื่อ - นามสกุล")}</th>
+                ${subjectsHeaderHTML}
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:70px;font-size:11px;">${t("รวมคะแนน")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:65px;font-size:11px;">${t("เฉลี่ย %")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:11px;">${t("GPA")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:11px;">${t("อันดับ")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHTML}
+            </tbody>
+          </table>
+
+          <div class="signatures">
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+    } else {
+      const targetStudents = exportStudentId === "all"
+        ? studentRows
+        : studentRows.filter(s => s.student_id === exportStudentId);
+
+      if (targetStudents.length === 0) {
+        Swal.fire("ข้อผิดพลาด", "ไม่พบนายชื่อนักเรียนที่เลือก", "warning");
+        return;
+      }
+
+      const reportCardsHTML = targetStudents.map((st, sIdx) => {
+        const subjectRowsHTML = selectedSubjects.map((sub, idx) => {
+          const sc = st.subjectScores[sub.id];
+          const midText = sc && sc.midterm !== null ? sc.midterm : "—";
+          const finText = sc && sc.final !== null ? sc.final : "—";
+          const totalText = sc && sc.total !== null ? sc.total : "—";
+          const gradeText = sc ? sc.gradeStr : "—";
+
+          return `
+            <tr>
+              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${idx + 1}</td>
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;font-weight:600;">${sub.name}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${sub.subject_type === "activity" ? `<span style='color:#7c3aed;font-weight:bold;'>${t("กิจกรรม")}</span>` : t("วิชาหลัก")}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${sub.subject_type === "activity" ? "-" : sub.credit_hours}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${midText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${finText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;font-weight:bold;">${totalText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;font-weight:extrabold;color:${sc?.isActivity ? (sc.passed ? '#15803d' : '#b91c1c') : '#4f46e5'};">${gradeText}</td>
+            </tr>
+          `;
+        }).join("");
+
+        return `
+          <div class="report-card ${sIdx < targetStudents.length - 1 ? 'page-break' : ''}">
+            <div class="header">
+              <h1 style="margin:0;font-size:22px;font-weight:800;color:#0f172a;">${t("ใบรายงานผลการเรียนรายบุคคล")}</h1>
+              <h2 style="margin:4px 0 0;font-size:15px;font-weight:600;color:#475569;">${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}</h2>
+            </div>
+
+            <div class="student-info-grid" style="text-align:${alignLeftOrRight};">
+              <div class="info-item"><span>${t("ชื่อ - นามสกุล")}:</span> <b>${st.name}</b></div>
+              <div class="info-item"><span>${t("รหัสประจำตัว")}:</span> <b style="font-family:monospace;color:#4f46e5;">${st.student_id}</b></div>
+              <div class="info-item"><span>${t("ชั้นเรียน")}:</span> <b>${t("ชั้น")} ${classroom.name}</b></div>
+              <div class="info-item"><span>${t("เลขที่")}:</span> <b>${st.student_number || "-"}</b></div>
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+              <thead>
+                <tr style="background:#f1f5f9;">
+                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:40px;font-size:12px;">${t("ลำดับ")}</th>
+                  <th style="padding:10px 12px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;font-size:12px;">${exportLanguage === "th" ? "ชื่อวิชาเรียน" : exportLanguage === "ms-rumi" ? "Nama Subjek" : "نام سوبجيك"}</th>
+                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("ประเภท")}</th>
+                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:70px;font-size:12px;">${t("หน่วยกิต")}</th>
+                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("คะแนนเก็บ")}</th>
+                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("คะแนนสอบ")}</th>
+                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("คะแนนรวม")}</th>
+                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:70px;font-size:12px;">${t("เกรด")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${subjectRowsHTML}
+              </tbody>
+            </table>
+
+            <div class="summary-box">
+              <div class="sum-card">
+                <div class="sum-label">${t("คะแนนรวมวิชาหลัก")}</div>
+                <div class="sum-val">${st.totalMainScore} / ${st.maxPossibleMain}</div>
+              </div>
+              <div class="sum-card">
+                <div class="sum-label">${t("คิดเป็นร้อยละ")}</div>
+                <div class="sum-val" style="color:#2563eb;">${st.percentage.toFixed(1)}%</div>
+              </div>
+              <div class="sum-card">
+                <div class="sum-label">${t("เกรดเฉลี่ย (GPA)")}</div>
+                <div class="sum-val" style="color:#059669;">${st.gpa.toFixed(2)}</div>
+              </div>
+              <div class="sum-card">
+                <div class="sum-label">${t("อันดับในห้องเรียน")}</div>
+                <div class="sum-val" style="color:#7c3aed;">${t("อันดับที่")} ${st.rank} / ${classStudents.length}</div>
+              </div>
+            </div>
+
+            <div class="signatures">
+              <div class="sig-box">
+                <div class="sig-line"></div>
+                <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+                <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
+              </div>
+              <div class="sig-box">
+                <div class="sig-line"></div>
+                <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+                <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      win.document.write(`
+        <!DOCTYPE html>
+        <html dir="${langDir}">
+        <head>
+          <title>${t("ใบรายงานผลการเรียนรายบุคคล")} - ${t("ชั้น")} ${classroom.name}</title>
+          <meta charset="utf-8" />
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap');
+            body { font-family: 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Sarabun', 'Inter', sans-serif; margin: 20px; color: #1e293b; background: #fff; direction: ${langDir}; text-align: ${alignLeftOrRight}; }
+            .report-card { padding: 10px 0; margin-bottom: 20px; page-break-inside: avoid; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+            .student-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; font-size: 13px; }
+            .summary-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
+            .sum-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center; }
+            .sum-label { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+            .sum-val { font-size: 16px; font-weight: 800; color: #0f172a; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding: 0 40px; page-break-inside: avoid; }
+            .sig-box { text-align: center; width: 220px; }
+            .sig-line { border-bottom: 1px dotted #94a3b8; margin-top: 40px; margin-bottom: 6px; }
+            .print-btn { position: fixed; top: 16px; ${exportLanguage === "ms-jawi" ? "left: 16px;" : "right: 16px;"} padding: 10px 20px; background: #4f46e5; color: #fff; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); font-size: 13px; z-index: 100; }
+            @media print {
+              .print-btn { display: none; }
+              body { margin: 0; }
+              .page-break { page-break-after: always; break-after: page; }
+              @page { size: A4 portrait; margin: 12mm; }
+            }
+          </style>
+        </head>
+        <body>
+          <button class="print-btn" onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
+          ${reportCardsHTML}
+        </body>
+        </html>
+      `);
+    }
+
+    win.document.close();
+    setIsExportScoreModalOpen(false);
   };
   useEffect(() => {
     if (!token || !selectedSubjectSettingId || scheduleEntries.length === 0 || subjectsList.length === 0) return;
@@ -2664,6 +3171,19 @@ function changeFontSize(dir) {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {u.role === "student" && (
+                            <button
+                              onClick={() => {
+                                const studentObj = students.find(s => s.student_id === u.student_id);
+                                const cid = studentObj?.classroom_id || "";
+                                handleOpenExportScoreModal(cid, u.student_id || "all", "individual");
+                              }}
+                              className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-2.5 py-1.5 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:bg-teal-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer flex items-center gap-1"
+                              title="พิมพ์ใบรายงานผลการเรียนรายบุคคล"
+                            >
+                              📄 ใบรายงาน
+                            </button>
+                          )}
                           <button onClick={() => handleEditUser(u)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer">
                             แก้ไข
                           </button>
@@ -2791,6 +3311,13 @@ function changeFontSize(dir) {
                     นำเข้า (Excel)
                   </button>
                   <button
+                    onClick={() => handleOpenExportScoreModal()}
+                    className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    ส่งออกคะแนนชั้นเรียน
+                  </button>
+                  <button
                     onClick={handleOpenCopyModal}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
                   >
@@ -2860,6 +3387,12 @@ function changeFontSize(dir) {
                         </div>
                         <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30 dark:border-indigo-500/25 flex-wrap">
                           <button
+                            onClick={() => handleOpenExportScoreModal(c.id)}
+                            className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:bg-teal-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer flex items-center gap-1"
+                          >
+                            📊 ส่งออกคะแนน
+                          </button>
+                          <button
                             onClick={() => handleOpenAssignModal(c)}
                             className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                           >
@@ -2885,10 +3418,16 @@ function changeFontSize(dir) {
 
                 {/* Assign Students Modal */}
                 {isAssignModalOpen && targetClassroom && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
-                    <div className="bg-card rounded-[2rem] shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col border border-border animate-slide-up overflow-hidden">
+                  <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4 animate-fade-in overflow-y-auto"
+                    onClick={() => setIsAssignModalOpen(false)}
+                  >
+                    <div
+                      className="bg-card rounded-3xl shadow-2xl w-full max-w-xl max-h-[85vh] sm:max-h-[90vh] my-auto flex flex-col border border-border animate-slide-up overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {/* Header */}
-                      <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/50">
+                      <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-4 border-b border-border bg-card">
                         <div>
                           <h3 className="text-xl font-extrabold text-foreground">เพิ่มนักเรียนเข้าชั้นเรียน</h3>
                           <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">ชั้น {targetClassroom.name}</p>
@@ -3016,9 +3555,15 @@ function changeFontSize(dir) {
 
                 {/* Copy Classrooms Modal */}
                 {isCopyModalOpen && (
-                  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-fade-in">
-                    <div className="bg-card rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-border animate-slide-up overflow-hidden">
-                      <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/50">
+                  <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4 animate-fade-in overflow-y-auto"
+                    onClick={() => setIsCopyModalOpen(false)}
+                  >
+                    <div
+                      className="bg-card rounded-3xl shadow-2xl w-full max-w-4xl max-h-[85vh] sm:max-h-[90vh] my-auto flex flex-col border border-border animate-slide-up overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-4 border-b border-border bg-card">
                         <div>
                           <h3 className="text-xl font-extrabold text-foreground">คัดลอกชั้นเรียนและเลื่อนชั้น</h3>
                           <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">ดึงข้อมูลชั้นเรียนและนักเรียนจากเทอมอื่นมายังเทอมเป้าหมาย</p>
@@ -3177,7 +3722,7 @@ function changeFontSize(dir) {
                         )}
                       </div>
 
-                      <div className="px-6 py-5 border-t border-border bg-muted/50 flex justify-end gap-3">
+                      <div className="shrink-0 px-5 sm:px-6 py-4 border-t border-border bg-card flex justify-end gap-3 rounded-b-3xl">
                         <button onClick={() => setIsCopyModalOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground bg-card border border-border hover:bg-muted transition-colors shadow-sm cursor-pointer">
                           ยกเลิก
                         </button>
@@ -4739,15 +5284,15 @@ function changeFontSize(dir) {
       {/* Modern React Modal for Adding/Editing Users */}
       {isUserModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md transition-opacity duration-300 animate-fade-in-up"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md transition-opacity duration-300 animate-fade-in-up overflow-y-auto"
           onClick={() => setIsUserModalOpen(false)}
         >
           <div
-            className="bg-card rounded-3xl border border-border/60 shadow-2xl glass-strong w-full max-w-md overflow-hidden transform transition-all duration-300 scale-100 flex flex-col"
+            className="bg-card rounded-3xl border border-border shadow-2xl glass-strong w-full max-w-md max-h-[85vh] sm:max-h-[90vh] my-auto overflow-hidden transform transition-all duration-300 scale-100 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-border">
+            <div className="shrink-0 relative px-5 sm:px-6 py-4 flex items-center gap-4 border-b border-border bg-card">
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br ${modalMode === "add" ? "from-indigo-500 to-violet-600" : "from-amber-500 to-orange-600"
                 }`}>
                 {modalMode === "add" ? (
@@ -4779,7 +5324,7 @@ function changeFontSize(dir) {
             </div>
 
             {/* Modal Body */}
-            <div className="px-6 py-5 space-y-4 overflow-y-auto max-h-[60vh]">
+            <div className="px-5 sm:px-6 py-5 space-y-4 overflow-y-auto flex-1">
               {validationError && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
                   <svg className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -5006,7 +5551,7 @@ function changeFontSize(dir) {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-2.5 rounded-b-3xl">
+            <div className="shrink-0 px-5 sm:px-6 py-3.5 bg-card border-t border-border flex items-center justify-end gap-2.5 rounded-b-3xl">
               <button
                 type="button"
                 onClick={() => setIsUserModalOpen(false)}
@@ -5030,15 +5575,15 @@ function changeFontSize(dir) {
       {/* Student Detail Modal */}
       {studentDetailModal.open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in-up"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in-up overflow-y-auto"
           onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
         >
           <div
-            className="bg-card rounded-3xl border border-border/60 shadow-2xl glass-strong w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            className="bg-card rounded-3xl border border-border shadow-2xl glass-strong w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[90vh] my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="relative px-6 pt-6 pb-4 flex items-center gap-4 border-b border-border">
+            <div className="shrink-0 relative px-5 sm:px-6 py-4 flex items-center gap-4 border-b border-border bg-card">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-md text-white bg-gradient-to-br from-amber-500 to-orange-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -5212,7 +5757,7 @@ function changeFontSize(dir) {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 bg-muted border-t border-border flex justify-end rounded-b-3xl">
+            <div className="shrink-0 px-5 sm:px-6 py-3.5 bg-card border-t border-border flex justify-end rounded-b-3xl">
               <button
                 onClick={() => setStudentDetailModal(prev => ({ ...prev, open: false }))}
                 className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground hover:text-foreground bg-muted hover:bg-border transition-all cursor-pointer border-0"
@@ -5225,10 +5770,16 @@ function changeFontSize(dir) {
       )}
 
       {isSubjectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in">
-          <div className="bg-card rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-slide-up-fade">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in overflow-y-auto"
+          onClick={() => setIsSubjectModalOpen(false)}
+        >
+          <div
+            className="bg-card rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] sm:max-h-[90vh] my-auto overflow-hidden transform transition-all animate-slide-up-fade flex flex-col border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-border bg-muted/50 flex items-center justify-between relative">
+            <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-border bg-card flex items-center justify-between relative">
               <div>
                 <h3 className="text-xl font-extrabold text-foreground">
                   {subjectModalMode === "add" ? "เพิ่มวิชาเรียนใหม่" : "แก้ไขวิชาเรียน"}
@@ -5251,7 +5802,7 @@ function changeFontSize(dir) {
             </div>
 
             {/* Modal Body */}
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-5 sm:px-6 py-5 space-y-4 overflow-y-auto flex-1">
               {validationError && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold">
                   {validationError}
@@ -5470,7 +6021,7 @@ function changeFontSize(dir) {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-2.5 rounded-b-3xl">
+            <div className="shrink-0 px-5 sm:px-6 py-3.5 bg-card border-t border-border flex items-center justify-end gap-2.5 rounded-b-3xl">
               <button
                 type="button"
                 onClick={() => setIsSubjectModalOpen(false)}
@@ -5484,6 +6035,262 @@ function changeFontSize(dir) {
                 className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-100 hover:shadow-indigo-200 text-sm cursor-pointer border-0"
               >
                 บันทึก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Export Classroom Scores Modal */}
+      {isExportScoreModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in overflow-y-auto"
+          onClick={() => setIsExportScoreModalOpen(false)}
+        >
+          <div
+            className="bg-card rounded-3xl shadow-2xl w-full max-w-xl max-h-[85vh] sm:max-h-[90vh] my-auto flex flex-col border border-border overflow-hidden transform transition-all animate-slide-up-fade"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-border bg-card flex items-center justify-between relative">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-md">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground leading-tight">ส่งออกคะแนนตามชั้นเรียน</h3>
+                  <p className="text-xs text-muted-foreground font-medium mt-0.5">จัดลำดับวิชาและเลือกตัวเลือกก่อนพิมพ์รายงาน</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsExportScoreModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground p-1.5 hover:bg-muted rounded-full transition-all cursor-pointer border-0 bg-transparent"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Export Mode Switcher */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-muted/60 rounded-2xl border border-border/80">
+                <button
+                  type="button"
+                  onClick={() => setExportMode("classroom")}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border-0 cursor-pointer flex items-center justify-center gap-1.5 ${exportMode === "classroom" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16M4 21h16M9 7h1m4 0h1m-6 4h1m4 0h1m-5 9v-4a1 1 0 011-1h1a1 1 0 011 1v4" /></svg>
+                  สรุปคะแนนชั้นเรียน
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExportMode("individual")}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border-0 cursor-pointer flex items-center justify-center gap-1.5 ${exportMode === "individual" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  รายงานผลการเรียนรายบุคคล
+                </button>
+              </div>
+
+              {/* Language Selector */}
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                  ภาษาของรายงาน (Report Language)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExportLanguage("th")}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${exportLanguage === "th" ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : "bg-card text-muted-foreground border-border hover:border-indigo-300"}`}
+                  >
+                    🇹🇭 ภาษาไทย
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportLanguage("ms-rumi")}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${exportLanguage === "ms-rumi" ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : "bg-card text-muted-foreground border-border hover:border-indigo-300"}`}
+                  >
+                    🇲🇾 Melayu (Rumi)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportLanguage("ms-jawi")}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${exportLanguage === "ms-jawi" ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : "bg-card text-muted-foreground border-border hover:border-indigo-300"}`}
+                  >
+                    🕌 Melayu (جاوي/Jawi)
+                  </button>
+                </div>
+              </div>
+
+              {/* Select Setting & Classroom */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    ปีการศึกษา / เทอม <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={exportSettingId || ""}
+                    onChange={e => setExportSettingId(Number(e.target.value) || null)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
+                  >
+                    {settingsList.map(s => (
+                      <option key={s.id} value={s.id}>ปี {s.academic_year} เทอม {s.term}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    ชั้นเรียน <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={exportClassroomId}
+                    onChange={e => setExportClassroomId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
+                  >
+                    <option value="">-- เลือกชั้นเรียน --</option>
+                    {classrooms
+                      .filter(c => !exportSettingId || c.setting_id === exportSettingId)
+                      .map(c => (
+                        <option key={c.id} value={c.id}>ชั้น {c.name}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Select Student for Individual Mode */}
+              {exportMode === "individual" && (
+                <div className="animate-fade-in">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    เลือกนักเรียน <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={exportStudentId}
+                    onChange={e => setExportStudentId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
+                  >
+                    <option value="all">-- นักเรียนทุกคนในชั้น (พิมพ์แยกใบละคน) --</option>
+                    {students
+                      .filter(s => s.classroom_id === exportClassroomId)
+                      .sort((a, b) => (a.student_number || 999) - (b.student_number || 999))
+                      .map(s => (
+                        <option key={s.id} value={s.student_id}>
+                          {s.student_number ? `เลขที่ ${s.student_number}: ` : ""}{s.name} ({s.student_id})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Include Activity Toggle */}
+              <div className="p-3.5 rounded-2xl border border-border bg-muted/40 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold text-foreground">รวมวิชากิจกรรมในรายงาน</div>
+                  <div className="text-xs text-subtle-foreground">แสดงวิชาประเภทกิจกรรม (เช่น ลูกเสือ, สแกรตช์) ในตารางส่งออก</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeActivitySubjects}
+                    onChange={e => setIncludeActivitySubjects(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+
+              {/* Subject Order Section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    จัดลำดับวิชาเรียน (อยู่หน้า ➔ อยู่หลัง)
+                  </label>
+                  <span className="text-xs text-subtle-foreground font-semibold">
+                    เลือก {exportSelectedSubjectIds.length} / {exportSubjectList.length} วิชา
+                  </span>
+                </div>
+
+                {exportSubjectList.length === 0 ? (
+                  <div className="p-6 text-center text-subtle-foreground text-xs font-semibold border border-dashed border-border rounded-2xl bg-card">
+                    {exportClassroomId ? "ไม่มีวิชาเรียนในชั้นเรียนนี้" : "กรุณาเลือกชั้นเรียนด้านบน"}
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {exportSubjectList.map((subj, index) => {
+                      const isChecked = exportSelectedSubjectIds.includes(subj.id);
+                      return (
+                        <div
+                          key={subj.id}
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${isChecked ? "border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/20 dark:bg-indigo-500/10" : "border-border bg-card opacity-60"}`}
+                        >
+                          <label className="flex items-center gap-2.5 cursor-pointer min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={e => {
+                                if (e.target.checked) setExportSelectedSubjectIds(prev => [...prev, subj.id]);
+                                else setExportSelectedSubjectIds(prev => prev.filter(id => id !== subj.id));
+                              }}
+                              className="w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border"
+                            />
+                            <span className="font-bold text-foreground text-xs truncate">{subj.name}</span>
+                            {subj.subject_type === "activity" ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold shrink-0">กิจกรรม</span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-bold shrink-0">วิชาหลัก ({subj.credit_hours} นก.)</span>
+                            )}
+                          </label>
+
+                          <div className="flex items-center gap-1 shrink-0 ml-2">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => moveExportSubjectUp(index)}
+                              className="px-2 py-1 text-xs font-bold rounded-lg bg-card border border-border hover:bg-muted disabled:opacity-30 cursor-pointer transition-colors"
+                              title="ย้ายขึ้น (ให้อยู่หน้า)"
+                            >
+                              ⬆️ ขึ้น
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === exportSubjectList.length - 1}
+                              onClick={() => moveExportSubjectDown(index)}
+                              className="px-2 py-1 text-xs font-bold rounded-lg bg-card border border-border hover:bg-muted disabled:opacity-30 cursor-pointer transition-colors"
+                              title="ย้ายลง (ให้อยู่หลัง)"
+                            >
+                              ⬇️ ลง
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="shrink-0 px-5 sm:px-6 py-3.5 bg-card border-t border-border flex items-center justify-end gap-2.5 rounded-b-3xl">
+              <button
+                type="button"
+                onClick={() => setIsExportScoreModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground bg-muted hover:bg-border transition-all cursor-pointer border-0"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteClassroomScoreExport}
+                disabled={!exportClassroomId || exportSelectedSubjectIds.length === 0}
+                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md text-sm cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                ส่งออกคะแนน / พิมพ์รายงาน
               </button>
             </div>
           </div>
