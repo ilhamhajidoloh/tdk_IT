@@ -80,6 +80,10 @@ export default function LoginPage() {
   const [studentPassword, setStudentPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkProvider, setLinkProvider] = useState("");
+  const [linkSig, setLinkSig] = useState("");
+
   useEffect(() => {
     setShowPassword(false);
   }, [activeTab]);
@@ -110,6 +114,17 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const error = params.get("error");
     const google = params.get("google");
+    const emailParam = params.get("linkEmail");
+    const providerParam = params.get("provider");
+    const sigParam = params.get("sig");
+
+    if (emailParam && providerParam && sigParam) {
+      setLinkEmail(emailParam);
+      setLinkProvider(providerParam);
+      setLinkSig(sigParam);
+      window.history.replaceState({}, "", "/");
+      return;
+    }
 
     if (error) {
       Swal.fire({ icon: "error", title: "เข้าสู่ระบบไม่สำเร็จ", text: error });
@@ -138,6 +153,11 @@ export default function LoginPage() {
       window.history.replaceState({}, "", "/");
       redirectAfterLogin();
     }
+
+    if (params.get("facebook") === "1") {
+      window.history.replaceState({}, "", "/");
+      redirectAfterLogin();
+    }
   }, [router]);
 
   const handleGoogleLogin = () => {
@@ -146,6 +166,10 @@ export default function LoginPage() {
 
   const handleLineLogin = () => {
     signIn("line", { callbackUrl: "/?line=1" });
+  };
+
+  const handleFacebookLogin = () => {
+    signIn("facebook", { callbackUrl: "/?facebook=1" });
   };
 
   useEffect(() => {
@@ -176,6 +200,35 @@ export default function LoginPage() {
     }
 
     try {
+      if (linkEmail) {
+        Swal.fire({
+          title: "กำลังเชื่อมต่อบัญชี...",
+          text: "กรุณารอสักครู่",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        const linkRes = await fetch("/api/auth/link-account", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: linkEmail,
+            provider: linkProvider,
+            sig: linkSig,
+            username,
+            role: activeTab,
+            password,
+          }),
+        });
+
+        const linkData = await linkRes.json();
+        if (!linkRes.ok) {
+          throw new Error(linkData.error || "เกิดข้อผิดพลาดในการเชื่อมโยงบัญชี");
+        }
+      }
+
       const result = await signIn("credentials", {
         username,
         password,
@@ -190,14 +243,14 @@ export default function LoginPage() {
       if (!res.ok) throw new Error("User not found");
       const user = await res.json();
 
-      Swal.fire({ icon: "success", title: "เข้าสู่ระบบสำเร็จ", timer: 1000, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: linkEmail ? "เชื่อมต่อบัญชีและเข้าสู่ระบบสำเร็จ" : "เข้าสู่ระบบสำเร็จ", timer: 1000, showConfirmButton: false });
 
       if (user.role === "admin") router.push("/admin");
       else if (user.role === "teacher") router.push("/teacher");
       else router.push("/student");
 
     } catch (err: any) {
-      Swal.fire({ icon: "error", title: "เข้าสู่ระบบไม่สำเร็จ", text: err.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+      Swal.fire({ icon: "error", title: linkEmail ? "เชื่อมต่อบัญชีไม่สำเร็จ" : "เข้าสู่ระบบไม่สำเร็จ", text: err.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
     }
   };
 
@@ -276,14 +329,40 @@ export default function LoginPage() {
           </div>
 
           {/* Heading */}
-          <div className="mb-7">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              ยินดีต้อนรับ<span className="brand-text"> กลับมา</span>
-            </h1>
-            <p className="mt-1.5 text-muted-foreground text-sm">
-              เลือกบทบาทของคุณและเข้าสู่ระบบเพื่อดำเนินการต่อ
-            </p>
-          </div>
+          {linkEmail ? (
+            <div className="mb-6 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-sm flex flex-col gap-2 animate-fade-in-down">
+              <div className="flex items-center gap-2 font-bold text-base">
+                <svg className="w-5 h-5 shrink-0 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>โหมดเชื่อมโยงบัญชี</span>
+              </div>
+              <p>
+                ไม่พบอีเมล <strong className="underline decoration-yellow-500/50">{linkEmail}</strong> ({linkProvider}) ในระบบ 
+                เพื่อความปลอดภัย กรุณาเลือกบัญชีของคุณด้านล่างและป้อนรหัสผ่านเพื่อทำการเชื่อมโยง
+              </p>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setLinkEmail("");
+                  setLinkProvider("");
+                  setLinkSig("");
+                }} 
+                className="mt-2 self-start text-xs font-semibold px-3 py-1.5 rounded-lg border border-yellow-500/30 hover:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 transition-colors"
+              >
+                ยกเลิกการเชื่อมโยง
+              </button>
+            </div>
+          ) : (
+            <div className="mb-7">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                ยินดีต้อนรับ<span className="brand-text"> กลับมา</span>
+              </h1>
+              <p className="mt-1.5 text-muted-foreground text-sm">
+                เลือกบทบาทของคุณและเข้าสู่ระบบเพื่อดำเนินการต่อ
+              </p>
+            </div>
+          )}
 
           {/* Segmented tabs */}
           <div className="ui-segment mb-6">
@@ -394,38 +473,53 @@ export default function LoginPage() {
                 <svg className="w-5 h-5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
-                เข้าสู่ระบบ
+                {linkEmail ? "ผูกบัญชีและเข้าสู่ระบบ" : "เข้าสู่ระบบ"}
               </button>
             </form>
 
-            <div className="ui-divider my-6 text-xs font-semibold uppercase tracking-wider">หรือ</div>
+            {!linkEmail && (
+              <>
+                <div className="ui-divider my-6 text-xs font-semibold uppercase tracking-wider">หรือ</div>
 
-            <div className="flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                className="ui-btn ui-btn-outline w-full py-3 group"
-              >
-                <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                เข้าสู่ระบบด้วย Google
-              </button>
-              <button
-                type="button"
-                onClick={handleLineLogin}
-                className="ui-btn w-full py-3 text-white group"
-                style={{ background: "#06C755" }}
-              >
-                <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="white">
-                  <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.070 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
-                </svg>
-                เข้าสู่ระบบด้วย LINE
-              </button>
-            </div>
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    className="ui-btn ui-btn-outline w-full py-3 group"
+                  >
+                    <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    เข้าสู่ระบบด้วย Google
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLineLogin}
+                    className="ui-btn w-full py-3 text-white group"
+                    style={{ background: "#06C755" }}
+                  >
+                    <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="white">
+                      <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.070 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+                    </svg>
+                    เข้าสู่ระบบด้วย LINE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFacebookLogin}
+                    className="ui-btn w-full py-3 text-white group"
+                    style={{ background: "#1877F2" }}
+                  >
+                    <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="white">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    เข้าสู่ระบบด้วย Facebook
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           <p className="lg:hidden text-center text-xs text-subtle-foreground mt-6">

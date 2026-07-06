@@ -10,19 +10,18 @@ export async function GET(req: NextRequest) {
     }
 
     const state = randomBytes(16).toString("hex");
-    const redirectUri = new URL("/api/link-google/callback", req.url).toString();
+    const redirectUri = new URL("/api/link-facebook/callback", req.url).toString();
 
     const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID || "",
+      client_id: process.env.FACEBOOK_CLIENT_ID || "",
       redirect_uri: redirectUri,
       response_type: "code",
-      scope: "openid email",
-      prompt: "select_account",
+      scope: "email",
       state,
     });
 
-    const res = NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
-    res.cookies.set("link_google_state", state, {
+    const res = NextResponse.redirect(`https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`);
+    res.cookies.set("link_facebook_state", state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -31,7 +30,7 @@ export async function GET(req: NextRequest) {
     });
     return res;
   } catch (error) {
-    console.error("Google link start error:", error);
+    console.error("Facebook link start error:", error);
     return NextResponse.redirect(new URL("/", req.url));
   }
 }
