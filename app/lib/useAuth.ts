@@ -1,5 +1,4 @@
 import { useSession, signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
 
 export interface DBUser {
   id: string;
@@ -12,36 +11,25 @@ export interface DBUser {
 }
 
 export function useAuth() {
-  const { data: session, status } = useSession();
-  const [user, setUser] = useState<DBUser | null>(null);
-  const [isFetching, setIsFetching] = useState(true);
-  
-  const loading = status === "loading" || isFetching;
+  const { data: session, status, update } = useSession();
 
-  useEffect(() => {
-    if (status === "loading") return;
+  const loading = status === "loading";
 
-    if (session?.user) {
-      // Fetch full details from /api/me just like before to ensure compatibility
-      fetch("/api/me")
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          setUser(data);
-          setIsFetching(false);
-        })
-        .catch(() => {
-          setUser(null);
-          setIsFetching(false);
-        });
-    } else {
-      setUser(null);
-      setIsFetching(false);
-    }
-  }, [session, status]);
+  const user: DBUser | null = session?.user
+    ? {
+        id: (session.user as any).id,
+        username: session.user.name || "",
+        role: (session.user as any).role,
+        student_id: (session.user as any).student_id,
+        homeroom_classroom_id: (session.user as any).homeroom_classroom_id,
+        subjects: (session.user as any).subjects,
+        email: (session.user as any).email,
+      }
+    : null;
 
   const logout = async () => {
     await signOut({ redirect: true, callbackUrl: "/" });
   };
 
-  return { user, token: "next-auth-cookie", loading, logout };
+  return { user, token: "next-auth-cookie", loading, logout, update };
 }

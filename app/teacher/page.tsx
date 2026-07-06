@@ -37,7 +37,7 @@ export default function TeacherPortal() {
   const [scheduleDaysConfig, setScheduleDaysConfig] = useState<number[]>([1, 2, 3, 4, 5]);
   const router = useRouter();
 
-  const { user: teacherUser, loading, logout, token } = useAuth();
+  const { user: teacherUser, loading, logout, token, update } = useAuth();
   const [homeroomClass, setHomeroomClass] = useState<DBClassroom | null>(null);
 
   const [rankingsData, setRankingsData] = useState<{
@@ -82,12 +82,14 @@ export default function TeacherPortal() {
 
     if (linked) {
       window.history.replaceState({}, "", "/teacher");
-      Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+      update().then(() => {
+        Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+      });
     } else if (linkError) {
       window.history.replaceState({}, "", "/teacher");
       Swal.fire("ข้อผิดพลาด", linkError, "error");
     }
-  }, []);
+  }, [update]);
 
   const loadGrades = async (authToken: string) => {
     const res = await fetch("/api/grades", { headers: { Authorization: `Bearer ${authToken}` } });

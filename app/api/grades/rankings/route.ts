@@ -28,22 +28,23 @@ export async function GET(req: NextRequest) {
 }
 
 async function handleSingleTerm(settingId: string, termKey: string, defaultMidMax: number, defaultFinMax: number) {
-  const subjectsRes = await pool.query(
-    `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours
-     FROM subjects WHERE setting_id = $1`,
-    [settingId]
-  );
+  const [subjectsRes, studentsRes] = await Promise.all([
+    pool.query(
+      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours
+       FROM subjects WHERE setting_id = $1`,
+      [settingId]
+    ),
+    pool.query(
+      `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, c.name AS classroom_name
+       FROM students st
+       JOIN classroom_students cs ON cs.student_id = st.id
+       JOIN classrooms c ON c.id = cs.classroom_id
+       WHERE cs.setting_id = $1
+       ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
+      [settingId]
+    ),
+  ]);
   const subjects = subjectsRes.rows;
-
-  const studentsRes = await pool.query(
-    `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, c.name AS classroom_name
-     FROM students st
-     JOIN classroom_students cs ON cs.student_id = st.id
-     JOIN classrooms c ON c.id = cs.classroom_id
-     WHERE cs.setting_id = $1
-     ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
-    [settingId]
-  );
 
   const studentIds = studentsRes.rows.map((s: any) => s.student_id);
   if (studentIds.length === 0) {
@@ -86,21 +87,22 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
   const settingIds = bothSettingsRes.rows.map((s: any) => s.id);
   const termKeys = bothSettingsRes.rows.map((s: any) => `${s.term}/${academicYear}`);
 
-  const allSubjectsRes = await pool.query(
-    `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, setting_id
-     FROM subjects WHERE setting_id = ANY($1)`,
-    [settingIds]
-  );
-
-  const enrollmentsRes = await pool.query(
-    `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, cs.setting_id, c.name AS classroom_name
-     FROM students st
-     JOIN classroom_students cs ON cs.student_id = st.id
-     JOIN classrooms c ON c.id = cs.classroom_id
-     WHERE cs.setting_id = ANY($1)
-     ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
-    [settingIds]
-  );
+  const [allSubjectsRes, enrollmentsRes] = await Promise.all([
+    pool.query(
+      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, setting_id
+       FROM subjects WHERE setting_id = ANY($1)`,
+      [settingIds]
+    ),
+    pool.query(
+      `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, cs.setting_id, c.name AS classroom_name
+       FROM students st
+       JOIN classroom_students cs ON cs.student_id = st.id
+       JOIN classrooms c ON c.id = cs.classroom_id
+       WHERE cs.setting_id = ANY($1)
+       ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
+      [settingIds]
+    ),
+  ]);
 
   // A student may have changed classrooms between the two terms; keep exactly
   // one row per student for the combined ranking, preferring the later term's

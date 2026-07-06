@@ -39,7 +39,7 @@ export default function StudentPortal() {
   const [finalMax, setFinalMax] = useState(50);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const router = useRouter();
-  const { user, loading, logout, token } = useAuth();
+  const { user, loading, logout, token, update } = useAuth();
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -51,12 +51,14 @@ export default function StudentPortal() {
 
     if (linked) {
       window.history.replaceState({}, "", "/student");
-      Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+      update().then(() => {
+        Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+      });
     } else if (linkError) {
       window.history.replaceState({}, "", "/student");
       Swal.fire("ข้อผิดพลาด", linkError, "error");
     }
-  }, []);
+  }, [update]);
 
   useEffect(() => {
     if (loading) return;

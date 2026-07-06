@@ -20,7 +20,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const result = await pool.query(
-            "SELECT id, username, password, role FROM users WHERE username = $1 OR student_id = $1",
+            "SELECT id, username, password, role, student_id, homeroom_classroom_id, subjects, email FROM users WHERE username = $1 OR student_id = $1",
             [credentials.username]
           );
 
@@ -40,6 +40,10 @@ export const authOptions: NextAuthOptions = {
             id: user.id.toString(),
             name: user.username,
             role: user.role,
+            student_id: user.student_id,
+            homeroom_classroom_id: user.homeroom_classroom_id,
+            subjects: user.subjects,
+            email: user.email,
           };
           
         } catch (error: any) {
@@ -81,30 +85,45 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user, account }) {
-      if (account?.provider === "google") {
+    async jwt({ token, user, account, trigger }) {
+      if (account?.provider === "google" || account?.provider === "line") {
         const result = await pool.query(
-          "SELECT id, username, role FROM users WHERE LOWER(email) = LOWER($1)",
+          "SELECT id, username, role, student_id, homeroom_classroom_id, subjects, email FROM users WHERE LOWER(email) = LOWER($1)",
           [token.email]
         );
         if (result.rows[0]) {
-          token.id = result.rows[0].id.toString();
-          token.role = result.rows[0].role;
-          token.name = result.rows[0].username;
-        }
-      } else if (account?.provider === "line") {
-        const result = await pool.query(
-          "SELECT id, username, role FROM users WHERE LOWER(email) = LOWER($1)",
-          [token.email]
-        );
-        if (result.rows[0]) {
-          token.id = result.rows[0].id.toString();
-          token.role = result.rows[0].role;
-          token.name = result.rows[0].username;
+          const u = result.rows[0];
+          token.id = u.id.toString();
+          token.role = u.role;
+          token.name = u.username;
+          token.student_id = u.student_id;
+          token.homeroom_classroom_id = u.homeroom_classroom_id;
+          token.subjects = u.subjects;
+          token.email = u.email;
         }
       } else if (user) {
         token.role = (user as any).role;
         token.id = user.id;
+        token.student_id = (user as any).student_id;
+        token.homeroom_classroom_id = (user as any).homeroom_classroom_id;
+        token.subjects = (user as any).subjects;
+        token.email = (user as any).email;
+      } else if (trigger === "update" && token.id) {
+        // เรียกผ่าน session.update() เมื่อข้อมูลผู้ใช้ในฐานข้อมูลเปลี่ยน (เช่น เชื่อมอีเมล Google)
+        // เพื่อดึงข้อมูลล่าสุดมาใส่ใน token โดยไม่ต้องให้ผู้ใช้ล็อกอินใหม่
+        const result = await pool.query(
+          "SELECT username, role, student_id, homeroom_classroom_id, subjects, email FROM users WHERE id = $1",
+          [token.id]
+        );
+        if (result.rows[0]) {
+          const u = result.rows[0];
+          token.name = u.username;
+          token.role = u.role;
+          token.student_id = u.student_id;
+          token.homeroom_classroom_id = u.homeroom_classroom_id;
+          token.subjects = u.subjects;
+          token.email = u.email;
+        }
       }
       return token;
     },
@@ -112,6 +131,10 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
+        (session.user as any).student_id = token.student_id;
+        (session.user as any).homeroom_classroom_id = token.homeroom_classroom_id;
+        (session.user as any).subjects = token.subjects;
+        (session.user as any).email = token.email ?? session.user.email;
       }
       return session;
     }

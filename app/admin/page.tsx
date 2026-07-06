@@ -160,7 +160,7 @@ export default function AdminPortal() {
   const [isGradingActive, setIsGradingActive] = useState(true);
   const [settingsList, setSettingsList] = useState<any[]>([]);
   const router = useRouter();
-  const { user: adminUser, loading, logout, token } = useAuth();
+  const { user: adminUser, loading, logout, token, update } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Modal State
@@ -292,12 +292,14 @@ export default function AdminPortal() {
 
     if (linked) {
       window.history.replaceState({}, "", "/admin");
-      Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+      update().then(() => {
+        Swal.fire("สำเร็จ!", `เชื่อมต่ออีเมล Google สำเร็จ: ${linked}`, "success");
+      });
     } else if (linkError) {
       window.history.replaceState({}, "", "/admin");
       Swal.fire("ข้อผิดพลาด", linkError, "error");
     }
-  }, []);
+  }, [update]);
 
   useEffect(() => {
     if (loading) return;
