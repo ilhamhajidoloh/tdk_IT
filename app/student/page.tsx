@@ -3,55 +3,25 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
 import ChatWidget from "../components/ChatWidget";
-import ThemeToggle from "../components/ThemeToggle";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
-
-interface DBStudent { id: string; name: string; student_id: string; classroom_id: string; }
-interface DBGrade { id: string; student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term: string; }
-interface DBClassroom { id: string; name: string; }
-interface DBSubject { id: string; name: string; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; }
-interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; is_break?: boolean; }
-interface ScheduleEntry {
-  id: string; classroom_id: string; classroom_name: string;
-  subject_id: string; subject_name: string; teacher_id: string | null; teacher_name: string | null;
-  teacher_names?: string[];
-  day_of_week: number | string; period_id: string; period_no: number | string; start_time: string; end_time: string; label?: string | null;
-}
-
-const ALL_DAYS = [
-  { value: 1, label: "จันทร์", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30", gradient: "from-amber-400 to-yellow-300" },
-  { value: 2, label: "อังคาร", color: "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/30", gradient: "from-pink-400 to-rose-300" },
-  { value: 3, label: "พุธ", color: "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", gradient: "from-emerald-400 to-green-300" },
-  { value: 4, label: "พฤหัสบดี", color: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30", gradient: "from-orange-400 to-amber-300" },
-  { value: 5, label: "ศุกร์", color: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", gradient: "from-blue-400 to-sky-300" },
-  { value: 6, label: "เสาร์", color: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30", gradient: "from-purple-400 to-violet-300" },
-  { value: 0, label: "อาทิตย์", color: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", gradient: "from-red-400 to-rose-300" },
-];
-
-type Tab = "overview" | "grades" | "schedule";
-
-const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "overview", label: "ข้อมูลของฉัน", icon: "M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
-  { key: "grades", label: "ผลการเรียน", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
-  { key: "schedule", label: "ตารางเรียน", icon: "M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
-];
-
-function LoadingScreen({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-5 relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 grid-backdrop opacity-60" />
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full border-4 border-border" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-      </div>
-      <div className="text-center relative z-10">
-        <p className="text-foreground font-bold text-lg">{title}</p>
-        {subtitle && <p className="text-muted-foreground text-sm mt-1.5">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
+import {
+  type DBStudent,
+  type DBGrade,
+  type DBClassroom,
+  type DBSubject,
+  type SchedulePeriod,
+  type ScheduleEntry,
+  type Tab,
+  type CombinedActivityResult,
+  ALL_DAYS,
+} from "./components/types";
+import LoadingScreen from "./components/LoadingScreen";
+import Header from "./components/Header";
+import TabNav from "./components/TabNav";
+import OverviewTab from "./components/tabs/OverviewTab";
+import GradesTab from "./components/tabs/GradesTab";
+import ScheduleTab from "./components/tabs/ScheduleTab";
 
 export default function StudentPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -140,6 +110,13 @@ export default function StudentPortal() {
     subjectsList.some(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId)
   );
 
+  const handleChangeSetting = (s: any) => {
+    setActiveSettingId(s.id);
+    setMidtermMax(s.midterm_max_score ?? 50);
+    setFinalMax(s.final_max_score ?? 50);
+    setScheduleDaysConfig(Array.isArray(s.schedule_days) ? s.schedule_days : [1, 2, 3, 4, 5]);
+  };
+
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logout();
@@ -197,17 +174,6 @@ export default function StudentPortal() {
     return { value: (totalPoints / totalCredits).toFixed(2), credits: totalCredits };
   };
 
-  const getGradeInfo = (percent: number) => {
-    if (percent >= 80) return { letter: "A", point: "4.0", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" };
-    if (percent >= 75) return { letter: "B+", point: "3.5", color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", bar: "bg-green-500" };
-    if (percent >= 70) return { letter: "B", point: "3.0", color: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:border-teal-500/30", bar: "bg-teal-500" };
-    if (percent >= 65) return { letter: "C+", point: "2.5", color: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/30", bar: "bg-sky-500" };
-    if (percent >= 60) return { letter: "C", point: "2.0", color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", bar: "bg-blue-500" };
-    if (percent >= 55) return { letter: "D+", point: "1.5", color: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/30", bar: "bg-yellow-500" };
-    if (percent >= 50) return { letter: "D", point: "1.0", color: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30", bar: "bg-orange-500" };
-    return { letter: "F", point: "0.0", color: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", bar: "bg-red-500" };
-  };
-
   const scoredActivitySubjects = subjectsList.filter(s =>
     s.subject_type === "activity" &&
     s.setting_id === activeSettingId &&
@@ -215,7 +181,7 @@ export default function StudentPortal() {
   );
   const useCombinedActivity = scoredActivitySubjects.length >= 2;
 
-  const getCombinedActivityResult = () => {
+  const getCombinedActivityResult = (): CombinedActivityResult | null => {
     if (!useCombinedActivity) return null;
     let totalScore = 0;
     let totalMax = 0;
@@ -313,545 +279,69 @@ export default function StudentPortal() {
     <div className="min-h-screen flex flex-col relative bg-background text-foreground">
       <div className="pointer-events-none fixed inset-0 grid-backdrop opacity-50 -z-10" />
 
-      {/* ── HEADER ── */}
-      <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-xl">
-        <div className="max-w-screen-lg mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 ring-1 ring-border shadow-sm">
-              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-foreground text-sm leading-tight truncate">{currentStudent.name}</div>
-              <div className="text-xs text-muted-foreground font-medium">รหัส {currentStudent.student_id} · ห้อง {classroom?.name || "—"}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggle className="!h-9 !w-9" />
-            <button
-              onClick={handleConnectGoogle}
-              title={user?.email ? `เชื่อมต่ออีเมล: ${user.email}` : "เชื่อมต่ออีเมล Google"}
-              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors border ${user?.email ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10" : "text-muted-foreground border-border bg-card hover:text-foreground hover:bg-muted"}`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </button>
-            <button
-              onClick={handleChangePassword}
-              title="เปลี่ยนรหัสผ่าน"
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 px-3 py-2 rounded-xl transition-colors border border-rose-100 dark:border-rose-500/30"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span className="hidden sm:inline">ออกจากระบบ</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header
+        studentName={currentStudent.name}
+        studentCode={currentStudent.student_id}
+        classroomName={classroom?.name || ""}
+        userEmail={user?.email}
+        onConnectGoogle={handleConnectGoogle}
+        onChangePassword={handleChangePassword}
+        onLogout={handleLogout}
+      />
 
-      {/* ── TAB NAV ── */}
-      <div className="sticky top-16 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="max-w-screen-lg mx-auto px-4 sm:px-6 py-3">
-          <div className="ui-segment inline-flex">
-            {NAV_TABS.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                data-active={activeTab === tab.key}
-                className="ui-segment-item px-4 !flex-none"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={tab.icon} />
-                </svg>
-                {tab.label}
-                {tab.key === "grades" && filteredGrades.length > 0 && (
-                  <span className="ml-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                    {filteredGrades.length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      <TabNav activeTab={activeTab} setActiveTab={setActiveTab} gradesCount={filteredGrades.length} />
 
       {/* ── MAIN ── */}
       <main className="flex-1 max-w-screen-lg mx-auto w-full px-4 sm:px-6 py-8">
-
-        {/* ─── TAB 1: OVERVIEW ─── */}
         {activeTab === "overview" && (
-          <div className="space-y-6 animate-fade-in-up">
-
-            {/* Profile Hero Card */}
-            <div className="aurora-panel relative rounded-2xl p-7 text-white overflow-hidden shadow-lg">
-              <div className="relative z-10 flex items-center gap-5">
-                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/15 border border-white/40 flex items-center justify-center shrink-0 backdrop-blur-sm">
-                  <span className="text-3xl sm:text-4xl font-extrabold drop-shadow-sm">{currentStudent.name.charAt(0)}</span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-xl sm:text-2xl font-extrabold leading-tight truncate drop-shadow-sm">{currentStudent.name}</h2>
-                  <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                    <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/20">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>
-                      {currentStudent.student_id}
-                    </span>
-                    <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/20">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                      ห้อง {classroom?.name || "—"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Term Selector */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h3 className="font-bold text-foreground text-sm">สรุปผลการเรียน</h3>
-              <select
-                className="ui-input !w-auto py-2 text-sm font-semibold text-primary"
-                value={activeSettingId || ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const s = settingsList.find((x: any) => String(x.id) === val);
-                  if (s) {
-                    setActiveSettingId(s.id);
-                    setMidtermMax(s.midterm_max_score ?? 50);
-                    setFinalMax(s.final_max_score ?? 50);
-                    setScheduleDaysConfig(Array.isArray(s.schedule_days) ? s.schedule_days : [1, 2, 3, 4, 5]);
-                  }
-                }}
-              >
-                {settingsList.map(s => (
-                  <option key={s.id} value={s.id}>
-                    ปี {s.academic_year} เทอม {s.term}{s.is_active ? " · ปัจจุบัน" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-4 stagger-children">
-              {/* GPA */}
-              <div className="col-span-3 sm:col-span-1 ui-card-interactive p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
-                <div className={`w-22 h-22 rounded-full border-4 ${gpaRingColor} flex items-center justify-center mb-3 relative bg-muted`}>
-                  <span className={`relative text-2xl font-extrabold ${gpaColor}`}>{gpaData.value}</span>
-                </div>
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">เกรดเฉลี่ย (GPA)</div>
-                <div className="text-[11px] text-subtle-foreground mt-0.5">{gpaData.credits} หน่วยกิต</div>
-              </div>
-
-              {/* Right stats */}
-              <div className="col-span-3 sm:col-span-2 grid grid-cols-2 gap-4">
-                <div className="ui-card-interactive p-5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-400 to-indigo-500" />
-                  <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                  </div>
-                  <div className="text-3xl font-extrabold text-violet-600 dark:text-violet-400 mb-1">{filteredGrades.length}</div>
-                  <div className="text-xs font-semibold text-muted-foreground">วิชาที่มีคะแนน</div>
-                  <div className="text-[11px] text-subtle-foreground">เทอมนี้</div>
-                </div>
-                <div className="ui-card-interactive p-5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-400 to-rose-500" />
-                  <div className="w-9 h-9 rounded-xl bg-pink-100 dark:bg-pink-500/15 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-pink-600 dark:text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-                  </div>
-                  <div className="text-3xl font-extrabold text-pink-500 dark:text-pink-400 mb-1">
-                    {filteredGrades.filter(g => {
-                      const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                      const mMax = Number(sub?.midterm_max_score) || midtermMax;
-                      const fMax = Number(sub?.final_max_score) || finalMax;
-                      const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
-                      return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 80;
-                    }).length}
-                  </div>
-                  <div className="text-xs font-semibold text-muted-foreground">เกรด A</div>
-                  <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 80%</div>
-                </div>
-                <div className="ui-card-interactive p-5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500" />
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  </div>
-                  <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mb-1">
-                    {filteredGrades.filter(g => {
-                      const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                      const mMax = Number(sub?.midterm_max_score) || midtermMax;
-                      const fMax = Number(sub?.final_max_score) || finalMax;
-                      const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
-                      return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 50;
-                    }).length}
-                  </div>
-                  <div className="text-xs font-semibold text-muted-foreground">ผ่านทั้งหมด</div>
-                  <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 50%</div>
-                </div>
-                <div className="ui-card-interactive p-5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-red-500" />
-                  <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center mb-2">
-                    <svg className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  </div>
-                  <div className="text-3xl font-extrabold text-rose-500 dark:text-rose-400 mb-1">
-                    {filteredGrades.filter(g => {
-                      const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                      const mMax = Number(sub?.midterm_max_score) || midtermMax;
-                      const fMax = Number(sub?.final_max_score) || finalMax;
-                      const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
-                      return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 < 50;
-                    }).length}
-                  </div>
-                  <div className="text-xs font-semibold text-muted-foreground">ต้องปรับปรุง</div>
-                  <div className="text-[11px] text-subtle-foreground">คะแนน &lt; 50%</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Today's schedule quick view */}
-            {myScheduleToday.length > 0 && (
-              <div className="ui-card overflow-hidden animate-fade-in-up">
-                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-                    <span className="font-bold text-foreground text-sm">คาบเรียนวันนี้</span>
-                  </div>
-                  <button onClick={() => setActiveTab("schedule")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
-                </div>
-                <div className="divide-y divide-border stagger-children">
-                  {myScheduleToday.sort((a, b) => Number(a.period_no) - Number(b.period_no)).map(e => {
-                    return (
-                      <div key={e.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
-                        <div className="text-center shrink-0 w-10">
-                          <div className="text-[11px] font-bold text-muted-foreground">คาบ {e.period_no}</div>
-                          <div className="text-[10px] text-subtle-foreground">{e.start_time}</div>
-                        </div>
-                        <div className="w-px h-8 bg-border" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-foreground truncate">{e.subject_name}</div>
-                          {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-xs text-muted-foreground">อ.{t}</div> : null; })()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Quick Grades Preview */}
-            {filteredGrades.length > 0 && (
-              <div className="ui-card overflow-hidden animate-fade-in-up">
-                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                  <span className="font-bold text-foreground text-sm">คะแนนล่าสุด</span>
-                  <button onClick={() => setActiveTab("grades")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
-                </div>
-                <div className="divide-y divide-border stagger-children">
-                  {filteredGrades.slice(0, 4).map(grade => {
-                    const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                    const mMax = Number(subject?.midterm_max_score) || midtermMax;
-                    const fMax = Number(subject?.final_max_score) || finalMax;
-                    const totalScore = (grade.midterm_score ?? 0) + (grade.final_score ?? 0);
-                    const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
-                    const isActivity = subject?.subject_type === "activity";
-                    const info = isActivity
-                      ? (percent >= 50 ? { letter: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" })
-                      : getGradeInfo(percent);
-                    return (
-                      <div key={grade.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
-                        <span className={`w-10 text-center py-1.5 rounded-xl border text-xs font-extrabold shrink-0 ${info.color}`}>{info.letter}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm text-foreground truncate">{grade.subject}</div>
-                          <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-500 ${info.bar}`} style={{ width: `${Math.min(100, percent)}%` }} />
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="font-bold text-sm text-foreground">{totalScore}</div>
-                          <div className="text-[11px] text-subtle-foreground">/{mMax + fMax}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <OverviewTab
+            studentName={currentStudent.name}
+            studentCode={currentStudent.student_id}
+            classroomName={classroom?.name || ""}
+            settingsList={settingsList}
+            activeSettingId={activeSettingId}
+            onChangeSetting={handleChangeSetting}
+            gpaValue={gpaData.value}
+            gpaCredits={gpaData.credits}
+            gpaColor={gpaColor}
+            gpaRingColor={gpaRingColor}
+            filteredGrades={filteredGrades}
+            subjectsList={subjectsList}
+            midtermMax={midtermMax}
+            finalMax={finalMax}
+            myScheduleToday={myScheduleToday}
+            setActiveTab={setActiveTab}
+          />
         )}
 
-        {/* ─── TAB 2: GRADES ─── */}
         {activeTab === "grades" && (
-          <div className="space-y-5 animate-fade-in-up">
-            {/* Term selector */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h3 className="font-bold text-foreground">ผลการเรียน</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">เทอม {activeTermStr}</p>
-              </div>
-              <select
-                className="ui-input !w-auto py-2 text-sm font-semibold text-primary"
-                value={activeSettingId || ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const s = settingsList.find((x: any) => String(x.id) === val);
-                  if (s) { setActiveSettingId(s.id); setMidtermMax(s.midterm_max_score ?? 50); setFinalMax(s.final_max_score ?? 50); setScheduleDaysConfig(Array.isArray(s.schedule_days) ? s.schedule_days : [1, 2, 3, 4, 5]); }
-                }}
-              >
-                {settingsList.map(s => (
-                  <option key={s.id} value={s.id}>ปี {s.academic_year} เทอม {s.term}{s.is_active ? " · ปัจจุบัน" : ""}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* GPA Summary bar */}
-            {filteredGrades.length > 0 && (
-              <div className="ui-card px-6 py-5 flex items-center gap-5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
-                <div className={`text-3xl font-extrabold ${gpaColor}`}>{gpaData.value}</div>
-                <div className="flex-1">
-                  <div className="text-xs font-bold text-muted-foreground mb-1.5">เกรดเฉลี่ยสะสม (GPA) · {gpaData.credits} หน่วยกิต</div>
-                  <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500" style={{ width: `${(gpaNum / 4) * 100}%` }} />
-                  </div>
-                </div>
-                <div className="text-xs font-bold text-subtle-foreground">/ 4.00</div>
-              </div>
-            )}
-
-            {filteredGrades.length === 0 ? (
-              <div className="ui-card p-14 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-primary-soft rounded-2xl flex items-center justify-center" style={{ background: "var(--primary-soft)" }}>
-                  <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
-                <h3 className="font-bold text-foreground mb-1 text-base">ยังไม่มีผลการเรียน</h3>
-                <p className="text-sm text-muted-foreground">กรุณารอคุณครูบันทึกคะแนนในเทอมนี้</p>
-              </div>
-            ) : (
-              <div className="space-y-3 stagger-children">
-                {useCombinedActivity && (() => {
-                  const combined = getCombinedActivityResult();
-                  if (!combined) return null;
-                  return (
-                    <div className={`rounded-2xl border p-5 flex items-center gap-4 ${combined.pass ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30" : "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30"}`}>
-                      <div className={`w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0 ${combined.color}`}>
-                        <span className="text-base font-extrabold leading-tight">{combined.label}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-foreground text-sm">ผลกิจกรรมรวม</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          คะแนน {combined.totalScore}/{combined.totalMax} · {Math.round(combined.percent)}%
-                        </div>
-                        <div className="h-2 rounded-full bg-card mt-2 overflow-hidden border border-border">
-                          <div className={`h-full rounded-full transition-all duration-500 ${combined.bar}`} style={{ width: `${Math.min(100, combined.percent)}%` }} />
-                        </div>
-                        <div className="text-[10px] text-subtle-foreground mt-1">
-                          รวมจาก: {scoredActivitySubjects.map(s => s.name).join(", ")}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-                {filteredGrades.map(grade => {
-                  const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                  const mMax = Number(subject?.midterm_max_score) || midtermMax;
-                  const fMax = Number(subject?.final_max_score) || finalMax;
-                  const totalScore = (grade.midterm_score ?? 0) + (grade.final_score ?? 0);
-                  const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
-                  const isActivity = subject?.subject_type === "activity";
-                  const isCombined = isActivity && subject?.score_display_mode === "combined";
-                  const combinedActResult = isActivity && useCombinedActivity ? getCombinedActivityResult() : null;
-                  const info = isActivity
-                    ? (combinedActResult
-                        ? { letter: combinedActResult.label, point: combinedActResult.label, color: combinedActResult.color, bar: combinedActResult.bar }
-                        : (percent >= 50 ? { letter: "ผ่าน", point: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", point: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" }))
-                    : getGradeInfo(percent);
-
-                  return (
-                    <div key={grade.id} className="ui-card overflow-hidden relative">
-                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${isActivity ? "bg-gradient-to-b from-amber-400 to-orange-400" : "bg-gradient-to-b from-violet-400 to-fuchsia-400"}`} />
-                      <div className="p-5 pl-6 flex items-center gap-4">
-                        {/* Grade Badge */}
-                        <div className={`w-14 h-14 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0 ${info.color}`}>
-                          <span className="text-lg font-extrabold leading-tight">{info.letter}</span>
-                          {!isActivity && <span className="text-[10px] font-semibold opacity-70">{info.point}</span>}
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                            <span className="font-bold text-foreground text-sm truncate">{grade.subject}</span>
-                            {isActivity ? (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30">กิจกรรม</span>
-                            ) : (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/30">
-                                {Number(subject?.credit_hours) || 1} หน่วยกิต
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Score bar */}
-                          <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
-                            <div className={`h-full rounded-full transition-all duration-500 ${info.bar}`} style={{ width: `${Math.min(100, percent)}%` }} />
-                          </div>
-
-                          {/* Score breakdown */}
-                          <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
-                            {isCombined ? (
-                              <span>รวม {totalScore}/{mMax + fMax}</span>
-                            ) : (
-                              <>
-                                <span>เก็บ {grade.midterm_score ?? 0}/{mMax}</span>
-                                <span className="text-subtle-foreground">·</span>
-                                <span>สอบ {grade.final_score ?? 0}/{fMax}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Total score */}
-                        <div className="text-right shrink-0">
-                          <div className="text-2xl font-extrabold text-foreground">{totalScore}</div>
-                          <div className="text-xs text-subtle-foreground font-medium">/{mMax + fMax}</div>
-                          <div className={`text-[11px] font-bold mt-0.5 ${info.color.split(" ")[1]}`}>{Math.round(percent)}%</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <GradesTab
+            activeTermStr={activeTermStr}
+            settingsList={settingsList}
+            activeSettingId={activeSettingId}
+            onChangeSetting={handleChangeSetting}
+            filteredGrades={filteredGrades}
+            gpaValue={gpaData.value}
+            gpaCredits={gpaData.credits}
+            gpaNum={gpaNum}
+            gpaColor={gpaColor}
+            useCombinedActivity={useCombinedActivity}
+            getCombinedActivityResult={getCombinedActivityResult}
+            scoredActivitySubjects={scoredActivitySubjects}
+            subjectsList={subjectsList}
+            midtermMax={midtermMax}
+            finalMax={finalMax}
+          />
         )}
 
-        {/* ─── TAB 3: SCHEDULE ─── */}
         {activeTab === "schedule" && (
-          <div className="space-y-5 animate-fade-in-up">
-            {schedulePeriods.length === 0 ? (
-              <div className="ui-card p-14 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: "var(--primary-soft)" }}>
-                  <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="font-bold text-foreground mb-1 text-base">ยังไม่มีตารางเรียน</h3>
-                <p className="text-sm text-muted-foreground">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
-              </div>
-            ) : (
-              <>
-                {/* Export button */}
-                <div className="flex justify-end">
-                  <button onClick={handleExportStudentSchedule} className="ui-btn ui-btn-primary">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    พิมพ์ตารางเรียน
-                  </button>
-                </div>
-                {/* Day-by-day Card View */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 stagger-children">
-                  {ACTIVE_DAYS.map(day => {
-                    const dayEntries = scheduleEntries.filter(e => e.classroom_id === currentStudent.classroom_id && Number(e.day_of_week) === day.value);
-                    if (dayEntries.length === 0) return null;
-                    const isToday = new Date().getDay() === day.value;
-                    return (
-                      <div key={day.value} className={`ui-card overflow-hidden ${isToday ? "ring-2 ring-primary/40" : ""}`}>
-                        {/* Gradient day header */}
-                        <div className={`px-5 py-3.5 flex items-center gap-2 bg-gradient-to-r ${day.gradient} text-white border-b border-white/20`}>
-                          <span className="font-extrabold text-sm drop-shadow-sm">วัน{day.label}</span>
-                          {isToday && (
-                            <span className="ml-1 text-[10px] font-bold bg-white/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20">วันนี้</span>
-                          )}
-                          <span className="ml-auto text-xs font-semibold opacity-90">{dayEntries.length} คาบ</span>
-                        </div>
-                        <div className="divide-y divide-border">
-                          {dayEntries.sort((a, b) => Number(a.period_no) - Number(b.period_no)).map(e => {
-                            const period = schedulePeriods.find(p => p.id === e.period_id);
-                            return (
-                              <div key={e.id} className="px-5 py-3.5 flex items-center gap-3 hover:bg-muted transition-colors">
-                                <div className="shrink-0 text-center w-10">
-                                  <div className="text-xs font-extrabold text-muted-foreground">คาบ {e.period_no}</div>
-                                  <div className="text-[10px] text-subtle-foreground">{e.start_time}</div>
-                                </div>
-                                <div className="w-px h-8 bg-border" />
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-bold text-foreground text-sm truncate">{e.subject_name}</div>
-                                  {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-[11px] text-muted-foreground mt-0.5">อ.{t}</div> : null; })()}
-                                </div>
-                                {period?.label && (
-                                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30 px-2 py-0.5 rounded-full shrink-0">{period.label}</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Full grid table */}
-                <div className="ui-card overflow-hidden hidden md:block">
-                  <div className="px-6 py-4 border-b border-border">
-                    <h3 className="font-bold text-foreground text-sm">ตารางเรียนแบบตาราง</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-muted border-b border-border text-muted-foreground">
-                          <th className="px-3 py-3.5 text-left font-semibold sticky left-0 bg-muted z-10 min-w-[72px]">คาบ</th>
-                          {ACTIVE_DAYS.map(d => (
-                            <th key={d.value} className="px-2 py-3.5 text-center font-semibold min-w-[90px]">
-                              <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${d.color}`}>{d.label}</span>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {schedulePeriods.map(p => (
-                          <tr key={p.id} className="hover:bg-muted/60 transition-colors">
-                            <td className="px-3 py-2.5 sticky left-0 bg-card font-semibold text-foreground whitespace-nowrap z-10">
-                              <div>คาบ {p.period_no}</div>
-                              <div className="text-[10px] text-subtle-foreground font-normal">{p.start_time}–{p.end_time}</div>
-                              {p.label && <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{p.label}</div>}
-                            </td>
-                            {p.is_break ? (
-                              <td colSpan={ACTIVE_DAYS.length} className="px-2 py-2.5 align-middle text-center bg-muted border border-border">
-                                <div className="font-bold text-subtle-foreground tracking-widest">{p.label || "พักเบรก"}</div>
-                              </td>
-                            ) : (
-                              ACTIVE_DAYS.map(d => {
-                                const entry = scheduleEntries.find(e => e.classroom_id === currentStudent.classroom_id && Number(e.day_of_week) === d.value && e.period_id === p.id);
-                                return (
-                                  <td key={d.value} className="px-2 py-2 text-center align-top">
-                                    {entry ? (
-                                      <div className="bg-violet-50 text-violet-700 border border-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30 rounded-xl px-2 py-2 text-[11px] font-semibold">
-                                        <div className="truncate">{entry.subject_name}</div>
-                                        {(() => { const t = entry.teacher_name || (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null); return t ? <div className="text-violet-400 font-normal text-[10px] truncate">อ.{t}</div> : null; })()}
-                                      </div>
-                                    ) : (
-                                      <span className="text-border">–</span>
-                                    )}
-                                  </td>
-                                );
-                              })
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          <ScheduleTab
+            schedulePeriods={schedulePeriods}
+            scheduleEntries={scheduleEntries}
+            classroomId={currentStudent.classroom_id}
+            activeDays={ACTIVE_DAYS}
+            onExport={handleExportStudentSchedule}
+          />
         )}
       </main>
       {user && <ChatWidget userId={user.id} userRole="student" />}

@@ -62,20 +62,18 @@ export async function POST(req: NextRequest) {
       if ((studentId || studentName) && classroomName) {
         const classId = classroomMap.get(classroomName);
         if (classId) {
-          if (studentId) {
-            const updateRes = await client.query(
-              "UPDATE students SET classroom_id = $1 WHERE student_id = $2",
-              [classId, studentId]
+          const studentRes = studentId
+            ? await client.query("SELECT id FROM students WHERE student_id = $1", [studentId])
+            : await client.query("SELECT id FROM students WHERE name = $1", [studentName]);
+
+          for (const row of studentRes.rows) {
+            await client.query(
+              `INSERT INTO classroom_students (student_id, classroom_id, setting_id)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (student_id, setting_id) DO UPDATE SET classroom_id = excluded.classroom_id`,
+              [row.id, classId, setting_id]
             );
-            const rowCount = updateRes.rowCount ?? 0;
-            if (rowCount > 0) updatedCount += rowCount;
-          } else if (studentName) {
-            const updateRes = await client.query(
-              "UPDATE students SET classroom_id = $1 WHERE name = $2",
-              [classId, studentName]
-            );
-            const rowCount = updateRes.rowCount ?? 0;
-            if (rowCount > 0) updatedCount += rowCount;
+            updatedCount++;
           }
         }
       }

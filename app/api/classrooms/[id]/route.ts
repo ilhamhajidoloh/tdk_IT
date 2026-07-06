@@ -36,7 +36,7 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const studentCheck = await pool.query("SELECT 1 FROM students WHERE classroom_id = $1 LIMIT 1", [id]);
+  const studentCheck = await pool.query("SELECT 1 FROM classroom_students WHERE classroom_id = $1 LIMIT 1", [id]);
   if (studentCheck.rows.length > 0) {
     return NextResponse.json({ error: "ไม่สามารถลบห้องเรียนที่มีนักเรียนอยู่ได้ กรุณาย้ายนักเรียนออกก่อน" }, { status: 400 });
   }

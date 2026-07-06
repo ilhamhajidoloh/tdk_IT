@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
       const hr = await pool.query(
         `SELECT u.id FROM users u
          JOIN students s ON s.student_id = u.student_id
-         WHERE s.classroom_id = $1 AND u.role = 'student'`,
+         JOIN classroom_students cs ON cs.student_id = s.id
+         WHERE cs.classroom_id = $1 AND u.role = 'student'`,
         [homeroomId]
       );
       homeroomStudentIds = hr.rows.map((r: any) => r.id.toString());
@@ -62,7 +63,8 @@ export async function GET(req: NextRequest) {
       const ss = await pool.query(
         `SELECT u.id FROM users u
          JOIN students s ON s.student_id = u.student_id
-         WHERE s.classroom_id = ANY($1) AND u.role = 'student'`,
+         JOIN classroom_students cs ON cs.student_id = s.id
+         WHERE cs.classroom_id = ANY($1) AND u.role = 'student'`,
         [classroomIds]
       );
       subjectStudentIds = ss.rows.map((r: any) => r.id.toString());
@@ -79,12 +81,14 @@ export async function GET(req: NextRequest) {
     if (allStudentIds.length > 0) {
       const st = await pool.query(
         `SELECT u.id, u.username, u.role, u.student_id, u.email,
-                s.name as student_name, s.classroom_id, c.name as classroom_name
+                s.name as student_name, cs.classroom_id, c.name as classroom_name
          FROM users u
          LEFT JOIN students s ON s.student_id = u.student_id
-         LEFT JOIN classrooms c ON c.id = s.classroom_id
+         LEFT JOIN classroom_students cs ON cs.student_id = s.id
+           AND cs.setting_id = (SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1)
+         LEFT JOIN classrooms c ON c.id = cs.classroom_id
          WHERE u.id = ANY($1)
-         ORDER BY c.name, s.student_number, u.username`,
+         ORDER BY c.name, cs.student_number, u.username`,
         [allStudentIds]
       );
       students = st.rows;
@@ -110,7 +114,11 @@ export async function GET(req: NextRequest) {
     if (!student) return NextResponse.json([]);
 
     const studentInfo = await pool.query(
-      `SELECT classroom_id FROM students WHERE student_id = $1`,
+      `SELECT cs.classroom_id
+       FROM students s
+       LEFT JOIN classroom_students cs ON cs.student_id = s.id
+         AND cs.setting_id = (SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1)
+       WHERE s.student_id = $1`,
       [student.student_id]
     );
     const classroomId = studentInfo.rows[0]?.classroom_id;

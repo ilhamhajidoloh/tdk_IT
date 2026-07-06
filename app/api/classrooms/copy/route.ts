@@ -27,12 +27,25 @@ export async function POST(req: NextRequest) {
       );
       const newClassroomId = insertResult.rows[0].id;
 
-      // Move students
+      // Enroll students into the new term's classroom, without touching their
+      // enrollment in the old term's classroom (classroom_students is per-setting).
       if (c.move_students) {
-        await client.query(
-          "UPDATE students SET classroom_id = $1 WHERE classroom_id = $2",
-          [newClassroomId, c.old_classroom_id]
+        const roster = await client.query(
+          `SELECT DISTINCT s.id as student_id, COALESCE(cs.student_number, s.student_number) as student_number
+           FROM students s
+           LEFT JOIN classroom_students cs ON cs.student_id = s.id AND cs.classroom_id = $1
+           WHERE cs.classroom_id = $1 OR s.classroom_id = $1`,
+          [c.old_classroom_id]
         );
+        for (const r of roster.rows) {
+          await client.query(
+            `INSERT INTO classroom_students (student_id, classroom_id, setting_id, student_number)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (student_id, setting_id)
+             DO UPDATE SET classroom_id = excluded.classroom_id, student_number = excluded.student_number`,
+            [r.student_id, newClassroomId, target_setting_id, r.student_number]
+          );
+        }
       }
     }
 

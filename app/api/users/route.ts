@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       if (checkRes.rows.length === 0) {
         const studentName = finalName || finalUsername;
         await pool.query(
-          "INSERT INTO students (name, student_id, classroom_id) VALUES ($1, $2, null)",
+          "INSERT INTO students (name, student_id) VALUES ($1, $2)",
           [studentName, finalStudentId]
         );
       }

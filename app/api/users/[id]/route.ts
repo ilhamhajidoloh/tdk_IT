@@ -73,7 +73,7 @@ export async function PUT(
         const checkRes = await pool.query("SELECT id FROM students WHERE student_id = $1", [student_id]);
         if (checkRes.rows.length === 0) {
           await pool.query(
-            "INSERT INTO students (name, student_id, classroom_id) VALUES ($1, $2, null)",
+            "INSERT INTO students (name, student_id) VALUES ($1, $2)",
             [username.trim(), student_id.trim()]
           );
         }

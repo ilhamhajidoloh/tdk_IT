@@ -36,11 +36,12 @@ async function handleSingleTerm(settingId: string, termKey: string, defaultMidMa
   const subjects = subjectsRes.rows;
 
   const studentsRes = await pool.query(
-    `SELECT st.id, st.name, st.student_id, st.student_number, st.classroom_id, c.name AS classroom_name
+    `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, c.name AS classroom_name
      FROM students st
-     JOIN classrooms c ON c.id = st.classroom_id
-     WHERE c.setting_id = $1
-     ORDER BY c.name, st.student_number NULLS LAST, st.name`,
+     JOIN classroom_students cs ON cs.student_id = st.id
+     JOIN classrooms c ON c.id = cs.classroom_id
+     WHERE cs.setting_id = $1
+     ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
     [settingId]
   );
 
@@ -91,16 +92,30 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
     [settingIds]
   );
 
-  const studentsRes = await pool.query(
-    `SELECT DISTINCT st.id, st.name, st.student_id, st.student_number, st.classroom_id, c.name AS classroom_name
+  const enrollmentsRes = await pool.query(
+    `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, cs.setting_id, c.name AS classroom_name
      FROM students st
-     JOIN classrooms c ON c.id = st.classroom_id
-     WHERE c.setting_id = ANY($1)
-     ORDER BY c.name, st.student_number NULLS LAST, st.name`,
+     JOIN classroom_students cs ON cs.student_id = st.id
+     JOIN classrooms c ON c.id = cs.classroom_id
+     WHERE cs.setting_id = ANY($1)
+     ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
     [settingIds]
   );
 
-  const studentIds = studentsRes.rows.map((s: any) => s.student_id);
+  // A student may have changed classrooms between the two terms; keep exactly
+  // one row per student for the combined ranking, preferring the later term's
+  // classroom for display.
+  const latestSettingId = settingIds[settingIds.length - 1];
+  const studentRowMap = new Map<string, any>();
+  for (const row of enrollmentsRes.rows) {
+    const existing = studentRowMap.get(row.student_id);
+    if (!existing || row.setting_id === latestSettingId) {
+      studentRowMap.set(row.student_id, row);
+    }
+  }
+  const students = Array.from(studentRowMap.values());
+
+  const studentIds = students.map((s: any) => s.student_id);
   if (studentIds.length === 0) {
     return NextResponse.json([]);
   }
@@ -167,7 +182,7 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
   const combinedDefaultMidMax = Number(defaultMidMax) * 2;
   const combinedDefaultFinMax = Number(defaultFinMax) * 2;
 
-  const studentScores = calcStudentScores(studentsRes.rows, gradeMap, combinedSubjectMap, combinedDefaultMidMax, combinedDefaultFinMax);
+  const studentScores = calcStudentScores(students, gradeMap, combinedSubjectMap, combinedDefaultMidMax, combinedDefaultFinMax);
   const result = assignRanks(studentScores);
   return NextResponse.json(result);
 }

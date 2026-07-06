@@ -18,13 +18,14 @@ export async function GET(req: NextRequest) {
       st.id,
       st.name AS student_name,
       st.student_id,
-      st.student_number,
+      cs.student_number,
       g.midterm_score,
       g.final_score
-    FROM students st
+    FROM classroom_students cs
+    JOIN students st ON st.id = cs.student_id
     LEFT JOIN grades g ON g.student_id = st.student_id AND g.subject = $1 AND g.term = $3
-    WHERE st.classroom_id = $2
-    ORDER BY st.student_number ASC NULLS LAST, st.name ASC
+    WHERE cs.classroom_id = $2
+    ORDER BY cs.student_number ASC NULLS LAST, st.name ASC
   `, [subjectName, classroomId, term]);
 
   return NextResponse.json(result.rows.map(row => ({

@@ -36,8 +36,8 @@ export async function GET(req: NextRequest) {
 
   const studentIds = await pool.query(
     `SELECT DISTINCT st.student_id FROM students st
-     JOIN classrooms c ON c.id = st.classroom_id
-     WHERE c.setting_id = ANY($1)`,
+     JOIN classroom_students cs ON cs.student_id = st.id
+     WHERE cs.setting_id = ANY($1)`,
     [settingIds]
   );
 
