@@ -2,8 +2,6 @@ import { type SchedulePeriod, type ScheduleEntry, type SystemSetting, type DBSub
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
 
-const ACTIVE_DAYS = ALL_DAYS.filter((d) => d.value >= 1 && d.value <= 5);
-
 interface ScheduleTabProps {
   settingsList: SystemSetting[];
   selectedSubjectSettingId: number | null;
@@ -62,6 +60,12 @@ export default function ScheduleTab({
   handleScheduleTeacherChange,
   users,
 }: ScheduleTabProps) {
+  const activeSettingObj = settingsList.find(s => s.id === selectedSubjectSettingId);
+  const activeDaysConfig = Array.isArray(activeSettingObj?.schedule_days)
+    ? activeSettingObj.schedule_days
+    : [1, 2, 3, 4, 5];
+  const ACTIVE_DAYS = ALL_DAYS.filter(d => activeDaysConfig.includes(d.value));
+
   return (
     <div className="p-8 animate-fade-in-up">
       <SectionHeader
