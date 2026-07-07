@@ -309,6 +309,8 @@ export default function AdminPortal() {
     const subjs = subjectsList.filter(s => {
       const isForClass = s.classroom_ids?.includes(exportClassroomId);
       if (!isForClass) return false;
+      const hasScores = (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0;
+      if (!hasScores) return false;
       if (!includeActivitySubjects && s.subject_type === "activity") return false;
       return true;
     });
