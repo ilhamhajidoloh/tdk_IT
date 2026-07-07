@@ -55,18 +55,25 @@ export default function StudentScoresTab({
     .filter(s => s.classroom_id === scoresClassroomId)
     .sort((a, b) => (a.student_number ?? 9999) - (b.student_number ?? 9999) || a.name.localeCompare(b.name, "th"));
 
-  const classroomSubjects = scoresSubjects
+  const classroomSubjectsAll = scoresSubjects
     .filter(su => su.classroom_ids?.includes(scoresClassroomId))
-    .filter(su => classroomStudents.some(s => findGrade(s.student_id, su.name)))
     .sort((a, b) => a.name.localeCompare(b.name, "th"));
+  const classroomSubjectsGraded = classroomSubjectsAll.filter(su =>
+    classroomStudents.some(s => findGrade(s.student_id, su.name))
+  );
+  // ถ้ายังไม่มีวิชาไหนถูกเก็บคะแนนเลย ให้แสดงวิชาทั้งหมดไปก่อน (จะได้เห็นว่ามีวิชาอะไรบ้าง)
+  const classroomSubjects = classroomSubjectsGraded.length > 0 ? classroomSubjectsGraded : classroomSubjectsAll;
 
   const selectedStudent = scoresStudents.find(s => s.student_id === scoresSelectedStudentId);
-  const studentSubjects = selectedStudent
+  const studentSubjectsAll = selectedStudent
     ? scoresSubjects
         .filter(su => !selectedStudent.classroom_id || su.classroom_ids?.includes(selectedStudent.classroom_id))
-        .filter(su => findGrade(selectedStudent.student_id, su.name))
         .sort((a, b) => a.name.localeCompare(b.name, "th"))
     : [];
+  const studentSubjectsGraded = selectedStudent
+    ? studentSubjectsAll.filter(su => findGrade(selectedStudent.student_id, su.name))
+    : [];
+  const studentSubjects = studentSubjectsGraded.length > 0 ? studentSubjectsGraded : studentSubjectsAll;
 
   return (
     <div className="p-8 animate-fade-in-up">
@@ -151,7 +158,7 @@ export default function StudentScoresTab({
           ) : scoresViewMode === "classroom" ? (
             classroomStudents.length === 0 || classroomSubjects.length === 0 ? (
               <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                {classroomStudents.length === 0 ? "ไม่มีนักเรียนในห้องนี้" : "ยังไม่มีวิชาที่มีการเก็บคะแนนในห้องนี้"}
+                {classroomStudents.length === 0 ? "ไม่มีนักเรียนในห้องนี้" : "ยังไม่มีวิชาที่กำหนดให้ห้องนี้"}
               </div>
             ) : (
               <div className="card-modern overflow-hidden">
@@ -249,7 +256,7 @@ export default function StudentScoresTab({
                 </div>
               ) : studentSubjects.length === 0 ? (
                 <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                  ยังไม่มีวิชาที่มีการเก็บคะแนนสำหรับนักเรียนคนนี้
+                  ไม่มีรายวิชาสำหรับนักเรียนคนนี้
                 </div>
               ) : (
                 (() => {
