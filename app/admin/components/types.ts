@@ -41,6 +41,15 @@ export interface DBSubject {
   score_display_mode?: "separate" | "combined";
 }
 
+export interface DBGrade {
+  id: string;
+  student_id: string;
+  subject: string;
+  midterm_score: number | null;
+  final_score: number | null;
+  term: string;
+}
+
 export interface SchedulePeriod {
   id: string;
   setting_id: number | string;
@@ -77,7 +86,9 @@ export type Tab =
   | "subjects"
   | "schedule"
   | "grade-status"
-  | "rankings";
+  | "student-scores"
+  | "rankings"
+  | "yearly-average";
 
 export interface RankingRow {
   student_id: string;

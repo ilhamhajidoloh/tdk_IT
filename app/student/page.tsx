@@ -21,6 +21,7 @@ import Header from "./components/Header";
 import TabNav from "./components/TabNav";
 import OverviewTab from "./components/tabs/OverviewTab";
 import GradesTab from "./components/tabs/GradesTab";
+import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import ScheduleTab from "./components/tabs/ScheduleTab";
 
 export default function StudentPortal() {
@@ -297,6 +298,65 @@ export default function StudentPortal() {
     return { value: (totalPoints / totalCredits).toFixed(2), credits: totalCredits };
   };
 
+  const calculateCombinedYearGPA = () => {
+    if (!activeSetting) return null;
+    const yearSettings = settingsList.filter(s => s.academic_year === activeSetting.academic_year);
+    if (yearSettings.length < 2) return null;
+
+    const bySubject = new Map<string, { name: string; total: number; max: number; credits: number }>();
+    const termsWithGrades = new Set<string>();
+
+    yearSettings.forEach(setting => {
+      const termKey = `${setting.term}/${setting.academic_year}`;
+      studentGrades.forEach(g => {
+        if (g.term !== termKey) return;
+        const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === setting.id);
+        if (!subject || subject.subject_type === "activity") return;
+        termsWithGrades.add(termKey);
+        const mMax = Number(subject.midterm_max_score) || Number(setting.midterm_max_score) || 50;
+        const fMax = Number(subject.final_max_score) || Number(setting.final_max_score) || 50;
+        const credits = Number(subject.credit_hours) || 1;
+        const key = subject.name.trim().toLowerCase();
+        const entry = bySubject.get(key) || { name: subject.name.trim(), total: 0, max: 0, credits };
+        entry.total += (g.midterm_score ?? 0) + (g.final_score ?? 0);
+        entry.max += mMax + fMax;
+        entry.credits = credits;
+        bySubject.set(key, entry);
+      });
+    });
+
+    if (termsWithGrades.size < yearSettings.length) return null;
+
+    let totalPoints = 0, totalCredits = 0, totalScore = 0, totalMax = 0;
+    const subjects: { name: string; totalScore: number; totalMax: number; percent: number; credits: number; point: number }[] = [];
+    bySubject.forEach(e => {
+      totalScore += e.total; totalMax += e.max;
+      const pct = e.max > 0 ? (e.total / e.max) * 100 : 0;
+      let point = 0;
+      if (pct >= 80) point = 4;
+      else if (pct >= 75) point = 3.5;
+      else if (pct >= 70) point = 3;
+      else if (pct >= 65) point = 2.5;
+      else if (pct >= 60) point = 2;
+      else if (pct >= 55) point = 1.5;
+      else if (pct >= 50) point = 1;
+      totalPoints += point * e.credits;
+      totalCredits += e.credits;
+      subjects.push({ name: e.name, totalScore: e.total, totalMax: e.max, percent: pct, credits: e.credits, point });
+    });
+
+    if (totalCredits === 0) return null;
+    subjects.sort((a, b) => a.name.localeCompare(b.name, "th"));
+    return {
+      value: (totalPoints / totalCredits).toFixed(2),
+      credits: totalCredits,
+      percentage: totalMax > 0 ? Math.round((totalScore / totalMax) * 1000) / 10 : 0,
+      academicYear: activeSetting.academic_year,
+      termCount: yearSettings.length,
+      subjects,
+    };
+  };
+
   const scoredActivitySubjects = subjectsList.filter(s =>
     s.subject_type === "activity" &&
     s.setting_id === activeSettingId &&
@@ -335,6 +395,7 @@ export default function StudentPortal() {
 
   const gpaData = calculateGPA();
   const gpaNum = parseFloat(gpaData.value);
+  const combinedGpaData = calculateCombinedYearGPA();
   const classroom = classrooms.find(c => c.id === currentStudent.classroom_id);
   const myScheduleToday = (() => {
     const today = new Date().getDay();
@@ -455,6 +516,10 @@ export default function StudentPortal() {
             midtermMax={midtermMax}
             finalMax={finalMax}
           />
+        )}
+
+        {activeTab === "yearly-average" && (
+          <YearlyAverageTab combinedGpaData={combinedGpaData} />
         )}
 
         {activeTab === "schedule" && (

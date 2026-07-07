@@ -23,6 +23,7 @@ import TabNav from "./components/TabNav";
 import EnterGradesTab from "./components/tabs/EnterGradesTab";
 import StatusTab from "./components/tabs/StatusTab";
 import HomeroomTab from "./components/tabs/HomeroomTab";
+import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import ScheduleTab from "./components/tabs/ScheduleTab";
 
 export default function TeacherPortal() {
@@ -47,10 +48,11 @@ export default function TeacherPortal() {
     school_rank: number; classroom_rank: number; school_total: number; classroom_total: number;
   }[]>([]);
   const [rankingsLoaded, setRankingsLoaded] = useState(false);
-  const [rankingMode, setRankingMode] = useState<"single" | "combined">("single");
   const [combinedAvailable, setCombinedAvailable] = useState(false);
   const [otherTermSettings, setOtherTermSettings] = useState<{ id: number; term: string; academic_year: string }[]>([]);
   const [rankingTermSettingId, setRankingTermSettingId] = useState<number | null>(null);
+  const [rankingsCombinedData, setRankingsCombinedData] = useState<typeof rankingsData>([]);
+  const [rankingsCombinedLoaded, setRankingsCombinedLoaded] = useState(false);
 
   const [isGradingActive, setIsGradingActive] = useState(true);
   const [settingsStartDate, setSettingsStartDate] = useState("");
@@ -171,20 +173,31 @@ export default function TeacherPortal() {
         if (Array.isArray(data.settings)) setOtherTermSettings(data.settings);
       })
       .catch(console.error);
-    setRankingMode("single");
     setRankingTermSettingId(null);
   }, [token, activeSettingId]);
 
   useEffect(() => {
     if (!token || !activeSettingId) return;
-    const sid = rankingMode === "combined" ? activeSettingId : (rankingTermSettingId || activeSettingId);
-    const modeParam = rankingMode === "combined" ? "&mode=combined" : "";
+    const sid = rankingTermSettingId || activeSettingId;
     setRankingsLoaded(false);
-    fetch(`/api/grades/rankings?settingId=${sid}${modeParam}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/grades/rankings?settingId=${sid}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } })
       .catch(console.error);
-  }, [token, activeSettingId, rankingMode, rankingTermSettingId]);
+  }, [token, activeSettingId, rankingTermSettingId]);
+
+  useEffect(() => {
+    if (!token || !activeSettingId || !combinedAvailable) {
+      setRankingsCombinedData([]);
+      setRankingsCombinedLoaded(false);
+      return;
+    }
+    setRankingsCombinedLoaded(false);
+    fetch(`/api/grades/rankings?settingId=${activeSettingId}&mode=combined`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) { setRankingsCombinedData(data); setRankingsCombinedLoaded(true); } })
+      .catch(console.error);
+  }, [token, activeSettingId, combinedAvailable]);
 
   useEffect(() => {
     if (!enterClassroom) return;
@@ -737,14 +750,20 @@ export default function TeacherPortal() {
             grades={grades}
             calculateGPAForStudent={calculateGPAForStudent}
             otherTermSettings={otherTermSettings}
-            rankingMode={rankingMode}
-            setRankingMode={setRankingMode}
             rankingTermSettingId={rankingTermSettingId}
             setRankingTermSettingId={setRankingTermSettingId}
             activeSettingId={activeSettingId}
-            combinedAvailable={combinedAvailable}
             rankingsLoaded={rankingsLoaded}
             rankingsData={rankingsData}
+          />
+        )}
+
+        {activeTab === "yearly-average" && (
+          <YearlyAverageTab
+            homeroomClass={homeroomClass}
+            combinedAvailable={combinedAvailable}
+            rankingsCombinedLoaded={rankingsCombinedLoaded}
+            rankingsCombinedData={rankingsCombinedData}
           />
         )}
 

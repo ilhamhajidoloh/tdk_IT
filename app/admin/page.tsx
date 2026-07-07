@@ -14,6 +14,7 @@ import {
   DBUser,
   DBStudent,
   DBSubject,
+  DBGrade,
   SchedulePeriod,
   ScheduleEntry,
   Tab,
@@ -34,7 +35,9 @@ import ClassroomsTab from "./components/tabs/ClassroomsTab";
 import UsersTab from "./components/tabs/UsersTab";
 import ScheduleTab from "./components/tabs/ScheduleTab";
 import GradeStatusTab from "./components/tabs/GradeStatusTab";
+import StudentScoresTab from "./components/tabs/StudentScoresTab";
 import RankingsTab from "./components/tabs/RankingsTab";
+import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import SettingsTab from "./components/tabs/SettingsTab";
 import DashboardTab from "./components/tabs/DashboardTab";
 
@@ -46,7 +49,9 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "subjects", label: "จัดการวิชาเรียน", sub: "Subjects", icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
   { key: "schedule", label: "ตารางเรียน", sub: "Schedule", icon: "M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
   { key: "grade-status", label: "สถานะคะแนน", sub: "Grade Status", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" },
+  { key: "student-scores", label: "ดูคะแนนนักเรียน", sub: "Student Scores", icon: "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" },
   { key: "rankings", label: "อันดับผลการเรียน", sub: "Rankings", icon: "M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" },
+  { key: "yearly-average", label: "เฉลี่ยรวมทั้งปี", sub: "Yearly Average", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
   { key: "settings", label: "ตั้งค่าระบบ", sub: "Settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" },
 ];
 
@@ -223,6 +228,25 @@ export default function AdminPortal() {
   const [rankingsLoading, setRankingsLoading] = useState(false);
   const [rankingsClassroomFilter, setRankingsClassroomFilter] = useState<string>("all");
 
+  // Student Scores State
+  const [scoresSettingId, setScoresSettingId] = useState<number | null>(null);
+  const [scoresLoading, setScoresLoading] = useState(false);
+  const [scoresStudents, setScoresStudents] = useState<DBStudent[]>([]);
+  const [scoresSubjects, setScoresSubjects] = useState<DBSubject[]>([]);
+  const [scoresGrades, setScoresGrades] = useState<DBGrade[]>([]);
+  const [scoresClassrooms, setScoresClassrooms] = useState<{ id: string; name: string }[]>([]);
+  const [scoresViewMode, setScoresViewMode] = useState<"classroom" | "individual">("classroom");
+  const [scoresClassroomId, setScoresClassroomId] = useState<string>("");
+  const [scoresSelectedStudentId, setScoresSelectedStudentId] = useState<string>("");
+
+  // Yearly Average State
+  const [yearlyAvgData, setYearlyAvgData] = useState<RankingRow[]>([]);
+  const [yearlyAvgSettingId, setYearlyAvgSettingId] = useState<number | null>(null);
+  const [yearlyAvgLoading, setYearlyAvgLoading] = useState(false);
+  const [yearlyAvgAvailable, setYearlyAvgAvailable] = useState(false);
+  const [yearlyAvgReason, setYearlyAvgReason] = useState("");
+  const [yearlyAvgClassroomFilter, setYearlyAvgClassroomFilter] = useState<string>("all");
+
   // Grade Status State
   const [gradeStatusData, setGradeStatusData] = useState<GradeStatusRow[]>([]);
   const [gradeStatusSettingId, setGradeStatusSettingId] = useState<number | null>(null);
@@ -385,6 +409,64 @@ export default function AdminPortal() {
     setRankingsSettingId(settingId);
     setRankingsClassroomFilter("all");
     if (token) loadRankings(settingId, token);
+  };
+
+  const loadStudentScores = async (settingId: number, authToken: string) => {
+    setScoresLoading(true);
+    try {
+      const setting = settingsList.find(s => s.id === settingId);
+      const termKey = setting ? `${setting.term}/${setting.academic_year}` : "";
+      const [studentsRes, subjectsRes, classroomsRes, gradesRes] = await Promise.all([
+        fetch(`/api/students?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/subjects?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/classrooms?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        termKey
+          ? fetch(`/api/grades?term=${encodeURIComponent(termKey)}`, { headers: { Authorization: `Bearer ${authToken}` } })
+          : Promise.resolve(null),
+      ]);
+      setScoresStudents(studentsRes.ok ? await studentsRes.json() : []);
+      setScoresSubjects(subjectsRes.ok ? await subjectsRes.json() : []);
+      setScoresClassrooms(classroomsRes.ok ? await classroomsRes.json() : []);
+      setScoresGrades(gradesRes && gradesRes.ok ? await gradesRes.json() : []);
+    } finally {
+      setScoresLoading(false);
+    }
+  };
+
+  const handleSelectScoresSetting = (settingId: number) => {
+    setScoresSettingId(settingId);
+    setScoresClassroomId("");
+    setScoresSelectedStudentId("");
+    if (token) loadStudentScores(settingId, token);
+  };
+
+  const loadYearlyAverage = async (settingId: number, authToken: string) => {
+    setYearlyAvgLoading(true);
+    try {
+      const checkRes = await fetch(`/api/grades/rankings/check-combined?settingId=${settingId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const checkData = await checkRes.json();
+      const available = checkData.combined_available === true;
+      setYearlyAvgAvailable(available);
+      setYearlyAvgReason(checkData.reason || "");
+      if (available) {
+        const res = await fetch(`/api/grades/rankings?settingId=${settingId}&mode=combined`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        setYearlyAvgData(res.ok ? await res.json() : []);
+      } else {
+        setYearlyAvgData([]);
+      }
+    } finally {
+      setYearlyAvgLoading(false);
+    }
+  };
+
+  const handleSelectYearlyAvgSetting = (settingId: number) => {
+    setYearlyAvgSettingId(settingId);
+    setYearlyAvgClassroomFilter("all");
+    if (token) loadYearlyAverage(settingId, token);
   };
 
   const loadGradeStatus = async (settingId: number, authToken: string) => {
@@ -3104,6 +3186,22 @@ function changeFontSize(dir) {
               />
             )}
 
+            {activeTab === "yearly-average" && (
+              <YearlyAverageTab
+                settingsList={settingsList}
+                yearlyAvgSettingId={yearlyAvgSettingId}
+                handleSelectYearlyAvgSetting={handleSelectYearlyAvgSetting}
+                yearlyAvgLoading={yearlyAvgLoading}
+                yearlyAvgAvailable={yearlyAvgAvailable}
+                yearlyAvgReason={yearlyAvgReason}
+                yearlyAvgData={yearlyAvgData}
+                yearlyAvgClassroomFilter={yearlyAvgClassroomFilter}
+                setYearlyAvgClassroomFilter={setYearlyAvgClassroomFilter}
+                token={token}
+                loadYearlyAverage={loadYearlyAverage}
+              />
+            )}
+
             {activeTab === "grade-status" && (
               <GradeStatusTab
                 settingsList={settingsList}
@@ -3118,6 +3216,25 @@ function changeFontSize(dir) {
                 openStudentDetail={openStudentDetail}
                 token={token}
                 loadGradeStatus={loadGradeStatus}
+              />
+            )}
+
+            {activeTab === "student-scores" && (
+              <StudentScoresTab
+                settingsList={settingsList}
+                scoresSettingId={scoresSettingId}
+                handleSelectScoresSetting={handleSelectScoresSetting}
+                scoresLoading={scoresLoading}
+                scoresStudents={scoresStudents}
+                scoresSubjects={scoresSubjects}
+                scoresGrades={scoresGrades}
+                scoresClassrooms={scoresClassrooms}
+                scoresViewMode={scoresViewMode}
+                setScoresViewMode={setScoresViewMode}
+                scoresClassroomId={scoresClassroomId}
+                setScoresClassroomId={setScoresClassroomId}
+                scoresSelectedStudentId={scoresSelectedStudentId}
+                setScoresSelectedStudentId={setScoresSelectedStudentId}
               />
             )}
 
