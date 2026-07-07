@@ -15,6 +15,8 @@ interface ExportScoreModalProps {
   setExportStudentId: (id: string) => void;
   includeActivitySubjects: boolean;
   setIncludeActivitySubjects: (include: boolean) => void;
+  exportSumActivityScores: boolean;
+  setExportSumActivityScores: (sum: boolean) => void;
   exportSubjectList: DBSubject[];
   exportSelectedSubjectIds: string[];
   setExportSelectedSubjectIds: React.Dispatch<React.SetStateAction<string[]>>;
@@ -41,6 +43,8 @@ export default function ExportScoreModal({
   setExportStudentId,
   includeActivitySubjects,
   setIncludeActivitySubjects,
+  exportSumActivityScores,
+  setExportSumActivityScores,
   exportSubjectList,
   exportSelectedSubjectIds,
   setExportSelectedSubjectIds,
@@ -256,6 +260,26 @@ export default function ExportScoreModal({
                 type="checkbox"
                 checked={includeActivitySubjects}
                 onChange={(e) => setIncludeActivitySubjects(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
+          {/* Sum Activity Scores Toggle */}
+          <div className={`p-3.5 rounded-2xl border border-border flex items-center justify-between transition-all ${includeActivitySubjects ? 'bg-muted/40' : 'bg-muted/10 opacity-60'}`}>
+            <div>
+              <div className="text-sm font-bold text-foreground">รวมคะแนนวิชากิจกรรมในผลรวม</div>
+              <div className="text-xs text-subtle-foreground">
+                บวกคะแนนของวิชากิจกรรมเข้ากับคะแนนรวม เปอร์เซ็นต์เฉลี่ย และผลการเรียนรวม
+              </div>
+            </div>
+            <label className={`relative inline-flex items-center ${!includeActivitySubjects ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={exportSumActivityScores}
+                disabled={!includeActivitySubjects}
+                onChange={(e) => setExportSumActivityScores(e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>

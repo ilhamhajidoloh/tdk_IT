@@ -103,6 +103,11 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "ผ่าน": { th: "ผ่าน", rumi: "Lulus", jawi: "لولوس" },
     "ไม่ผ่าน": { th: "ไม่ผ่าน", rumi: "Gagal", jawi: "ڬاڬل" },
     "คะแนนรวมวิชาหลัก": { th: "คะแนนรวมวิชาหลัก", rumi: "Jumlah Markah Teras", jawi: "جومله مركه ت رس" },
+    "คะแนนรวมทั้งหมด": {
+      th: "คะแนนรวมทั้งหมด",
+      rumi: "Jumlah Keseluruhan",
+      jawi: "جومله كسولوروهن"
+    },
     "คิดเป็นร้อยละ": { th: "คิดเป็นร้อยละ", rumi: "Peratusan", jawi: "ڤراتوسن" },
     "ครูประจำชั้น": { th: "ครูประจำชั้น", rumi: "Guru Kelas", jawi: "ڬورو كلس" },
     "หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ": {
@@ -285,8 +290,15 @@ export default function AdminPortal() {
   const [exportClassroomId, setExportClassroomId] = useState<string>("");
   const [exportStudentId, setExportStudentId] = useState<string>("all");
   const [includeActivitySubjects, setIncludeActivitySubjects] = useState<boolean>(false);
+  const [exportSumActivityScores, setExportSumActivityScores] = useState<boolean>(false);
   const [exportSubjectList, setExportSubjectList] = useState<DBSubject[]>([]);
   const [exportSelectedSubjectIds, setExportSelectedSubjectIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!includeActivitySubjects) {
+      setExportSumActivityScores(false);
+    }
+  }, [includeActivitySubjects]);
 
   useEffect(() => {
     if (!exportSettingId || !exportClassroomId) {
@@ -2544,6 +2556,10 @@ function changeFontSize(dir) {
               isActivity: true,
               passed
             };
+            if (exportSumActivityScores) {
+              totalMainScore += total;
+              maxPossibleMain += subMax;
+            }
           } else {
             const pct = subMax > 0 ? (total / subMax) * 100 : 0;
             let point = 0;
@@ -2781,7 +2797,7 @@ function changeFontSize(dir) {
 
             <div class="summary-box">
               <div class="sum-card">
-                <div class="sum-label">${t("คะแนนรวมวิชาหลัก")}</div>
+                <div class="sum-label">${exportSumActivityScores ? t("คะแนนรวมทั้งหมด") : t("คะแนนรวมวิชาหลัก")}</div>
                 <div class="sum-val">${st.totalMainScore} / ${st.maxPossibleMain}</div>
               </div>
               <div class="sum-card">
@@ -3346,6 +3362,8 @@ function changeFontSize(dir) {
         setExportStudentId={setExportStudentId}
         includeActivitySubjects={includeActivitySubjects}
         setIncludeActivitySubjects={setIncludeActivitySubjects}
+        exportSumActivityScores={exportSumActivityScores}
+        setExportSumActivityScores={setExportSumActivityScores}
         exportSubjectList={exportSubjectList}
         exportSelectedSubjectIds={exportSelectedSubjectIds}
         setExportSelectedSubjectIds={setExportSelectedSubjectIds}

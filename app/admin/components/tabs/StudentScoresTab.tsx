@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { type SystemSetting, type DBStudent, type DBSubject, type DBGrade } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
@@ -46,6 +47,15 @@ export default function StudentScoresTab({
   scoresSelectedStudentId,
   setScoresSelectedStudentId,
 }: StudentScoresTabProps) {
+  const [showActivitySubjects, setShowActivitySubjects] = useState<boolean>(false);
+  const [includeActivityInSum, setIncludeActivityInSum] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!showActivitySubjects) {
+      setIncludeActivityInSum(false);
+    }
+  }, [showActivitySubjects]);
+
   const findGrade = (studentCode: string, subjectName: string) =>
     scoresGrades.find(
       g => g.student_id === studentCode && g.subject?.trim().toLowerCase() === subjectName.trim().toLowerCase()
@@ -59,7 +69,11 @@ export default function StudentScoresTab({
     su => (Number(su.midterm_max_score) || 0) + (Number(su.final_max_score) || 0) > 0
   );
 
-  const classroomSubjectsAll = gradedScoresSubjects
+  const displaySubjects = gradedScoresSubjects.filter(
+    su => showActivitySubjects || su.subject_type !== "activity"
+  );
+
+  const classroomSubjectsAll = displaySubjects
     .filter(su => su.classroom_ids?.includes(scoresClassroomId))
     .sort((a, b) => a.name.localeCompare(b.name, "th"));
   const classroomSubjectsGraded = classroomSubjectsAll.filter(su =>
@@ -70,7 +84,7 @@ export default function StudentScoresTab({
 
   const selectedStudent = scoresStudents.find(s => s.student_id === scoresSelectedStudentId);
   const studentSubjectsAll = selectedStudent
-    ? gradedScoresSubjects
+    ? displaySubjects
         .filter(su => !selectedStudent.classroom_id || su.classroom_ids?.includes(selectedStudent.classroom_id))
         .sort((a, b) => a.name.localeCompare(b.name, "th"))
     : [];
@@ -105,29 +119,62 @@ export default function StudentScoresTab({
         </div>
       ) : (
         <div>
-          {/* Mode Toggle */}
-          <div className="mb-6 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-subtle-foreground uppercase tracking-wider">มุมมอง:</span>
-            <button
-              onClick={() => setScoresViewMode("classroom")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                scoresViewMode === "classroom"
-                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md"
-                  : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
-              }`}
-            >
-              รายห้องเรียน
-            </button>
-            <button
-              onClick={() => setScoresViewMode("individual")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                scoresViewMode === "individual"
-                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md"
-                  : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
-              }`}
-            >
-              รายบุคคล
-            </button>
+          {/* Mode Toggle & Activity Sum Toggle */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-subtle-foreground uppercase tracking-wider">มุมมอง:</span>
+              <button
+                onClick={() => setScoresViewMode("classroom")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  scoresViewMode === "classroom"
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md"
+                    : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
+                }`}
+              >
+                รายห้องเรียน
+              </button>
+              <button
+                onClick={() => setScoresViewMode("individual")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  scoresViewMode === "individual"
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md"
+                    : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
+                }`}
+              >
+                รายบุคคล
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 p-2 bg-card rounded-xl border border-border shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-foreground">แสดงวิชากิจกรรม:</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showActivitySubjects}
+                    onChange={(e) => setShowActivitySubjects(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+
+              <div className="h-4 w-[1px] bg-border hidden sm:block" />
+
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold transition-all ${showActivitySubjects ? 'text-foreground' : 'text-muted-foreground'}`}>รวมคะแนนวิชากิจกรรมในผลรวม:</span>
+                <label className={`relative inline-flex items-center ${!showActivitySubjects ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <input
+                    type="checkbox"
+                    checked={includeActivityInSum}
+                    disabled={!showActivitySubjects}
+                    onChange={(e) => setIncludeActivityInSum(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+            </div>
           </div>
 
           {/* Classroom Picker (both modes need one) */}
@@ -185,7 +232,7 @@ export default function StudentScoresTab({
                       {classroomStudents.map((s, idx) => {
                         let totalScore = 0, totalMax = 0;
                         classroomSubjects.forEach(su => {
-                          if (su.subject_type === "activity") return;
+                          if (su.subject_type === "activity" && !includeActivityInSum) return;
                           const g = findGrade(s.student_id, su.name);
                           totalScore += (g?.midterm_score ?? 0) + (g?.final_score ?? 0);
                           totalMax += (Number(su.midterm_max_score) || 50) + (Number(su.final_max_score) || 50);
@@ -274,7 +321,7 @@ export default function StudentScoresTab({
                     const sum = mid + fin;
                     const max = mMax + fMax;
                     const pct = max > 0 ? (sum / max) * 100 : 0;
-                    if (su.subject_type !== "activity") {
+                    if (su.subject_type !== "activity" || includeActivityInSum) {
                       totalScore += sum;
                       totalMax += max;
                     }
