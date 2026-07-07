@@ -571,6 +571,9 @@ export default function AdminPortal() {
       // โหลด rankings
       setRankingsSettingId(activeSetting.id);
       loadRankings(activeSetting.id, authToken);
+      // โหลด yearly average
+      setYearlyAvgSettingId(activeSetting.id);
+      loadYearlyAverage(activeSetting.id, authToken);
     } else {
       setIsGradingActive(false);
     }

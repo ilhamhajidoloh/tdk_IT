@@ -52,11 +52,71 @@ export default function YearlyAverageTab({
         </button>
       </SectionHeader>
 
-      <TermSelector
-        settingsList={settingsList}
-        selectedId={yearlyAvgSettingId}
-        onSelect={handleSelectYearlyAvgSetting}
-      />
+      {/* Year Selector */}
+      {(() => {
+        if (settingsList.length === 0) {
+          return (
+            <div className="mb-6 px-5 py-4 rounded-2xl border border-dashed border-border bg-muted text-sm text-subtle-foreground">
+              ยังไม่มีปีการศึกษาในระบบ กรุณาเพิ่มที่แท็บ ตั้งค่าระบบ
+            </div>
+          );
+        }
+
+        // Group settings by academic year
+        const yearsMap = new Map<string, typeof settingsList[0]>();
+        settingsList.forEach(s => {
+          const existing = yearsMap.get(s.academic_year);
+          if (!existing) {
+            yearsMap.set(s.academic_year, s);
+          } else {
+            // Prefer active term, then higher term number
+            if (s.is_active || (!existing.is_active && Number(s.term) > Number(existing.term))) {
+              yearsMap.set(s.academic_year, s);
+            }
+          }
+        });
+
+        const uniqueYears = Array.from(yearsMap.values()).sort((a, b) => b.academic_year.localeCompare(a.academic_year));
+        const selectedSetting = settingsList.find(s => s.id === yearlyAvgSettingId);
+        const selectedYear = selectedSetting?.academic_year || null;
+
+        return (
+          <div className="mb-6 p-3.5 rounded-2xl border border-border/80 bg-muted">
+            <div className="text-xs font-bold text-subtle-foreground uppercase tracking-wider mb-2.5 px-1">
+              เลือกปีการศึกษา
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {uniqueYears.map((y) => {
+                const isSelected = selectedYear === y.academic_year;
+                return (
+                  <button
+                    key={y.id}
+                    onClick={() => handleSelectYearlyAvgSetting(y.id)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
+                      isSelected
+                        ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-purple-600 shadow-lg shadow-purple-200/50"
+                        : "bg-card text-muted-foreground border-border hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/20 hover:shadow-sm"
+                    }`}
+                  >
+                    ปีการศึกษา {y.academic_year}
+                    {y.is_active && (
+                      <span
+                        className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${
+                          isSelected
+                            ? "bg-card/20 text-white"
+                            : "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                        }`}
+                      >
+                        Active
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {!yearlyAvgSettingId ? (
         <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
