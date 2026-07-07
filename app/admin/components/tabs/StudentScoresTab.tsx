@@ -55,7 +55,11 @@ export default function StudentScoresTab({
     .filter(s => s.classroom_id === scoresClassroomId)
     .sort((a, b) => (a.student_number ?? 9999) - (b.student_number ?? 9999) || a.name.localeCompare(b.name, "th"));
 
-  const classroomSubjectsAll = scoresSubjects
+  const gradedScoresSubjects = scoresSubjects.filter(
+    su => (Number(su.midterm_max_score) || 0) + (Number(su.final_max_score) || 0) > 0
+  );
+
+  const classroomSubjectsAll = gradedScoresSubjects
     .filter(su => su.classroom_ids?.includes(scoresClassroomId))
     .sort((a, b) => a.name.localeCompare(b.name, "th"));
   const classroomSubjectsGraded = classroomSubjectsAll.filter(su =>
@@ -66,7 +70,7 @@ export default function StudentScoresTab({
 
   const selectedStudent = scoresStudents.find(s => s.student_id === scoresSelectedStudentId);
   const studentSubjectsAll = selectedStudent
-    ? scoresSubjects
+    ? gradedScoresSubjects
         .filter(su => !selectedStudent.classroom_id || su.classroom_ids?.includes(selectedStudent.classroom_id))
         .sort((a, b) => a.name.localeCompare(b.name, "th"))
     : [];
