@@ -57,12 +57,14 @@ export default function StudentScoresTab({
 
   const classroomSubjects = scoresSubjects
     .filter(su => su.classroom_ids?.includes(scoresClassroomId))
+    .filter(su => classroomStudents.some(s => findGrade(s.student_id, su.name)))
     .sort((a, b) => a.name.localeCompare(b.name, "th"));
 
   const selectedStudent = scoresStudents.find(s => s.student_id === scoresSelectedStudentId);
   const studentSubjects = selectedStudent
     ? scoresSubjects
         .filter(su => !selectedStudent.classroom_id || su.classroom_ids?.includes(selectedStudent.classroom_id))
+        .filter(su => findGrade(selectedStudent.student_id, su.name))
         .sort((a, b) => a.name.localeCompare(b.name, "th"))
     : [];
 
@@ -147,9 +149,13 @@ export default function StudentScoresTab({
               กรุณาเลือกห้องเรียนก่อน
             </div>
           ) : scoresViewMode === "classroom" ? (
-            classroomStudents.length === 0 || classroomSubjects.length === 0 ? (
+            classroomStudents.length === 0 ? (
               <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                ไม่มีนักเรียนหรือรายวิชาในห้องนี้
+                ไม่มีนักเรียนในห้องนี้
+              </div>
+            ) : classroomSubjects.length === 0 ? (
+              <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
+                ยังไม่มีวิชาที่บันทึกคะแนนไว้ในห้องนี้
               </div>
             ) : (
               <div className="card-modern overflow-hidden">
@@ -247,7 +253,7 @@ export default function StudentScoresTab({
                 </div>
               ) : studentSubjects.length === 0 ? (
                 <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                  ไม่มีรายวิชาสำหรับนักเรียนคนนี้
+                  ยังไม่มีคะแนนที่บันทึกไว้สำหรับนักเรียนคนนี้
                 </div>
               ) : (
                 (() => {
