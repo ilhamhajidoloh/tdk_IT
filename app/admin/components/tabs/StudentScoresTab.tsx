@@ -149,13 +149,9 @@ export default function StudentScoresTab({
               กรุณาเลือกห้องเรียนก่อน
             </div>
           ) : scoresViewMode === "classroom" ? (
-            classroomStudents.length === 0 ? (
+            classroomStudents.length === 0 || classroomSubjects.length === 0 ? (
               <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                ไม่มีนักเรียนในห้องนี้
-              </div>
-            ) : classroomSubjects.length === 0 ? (
-              <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                ยังไม่มีวิชาที่บันทึกคะแนนไว้ในห้องนี้
+                {classroomStudents.length === 0 ? "ไม่มีนักเรียนในห้องนี้" : "ยังไม่มีวิชาที่มีการเก็บคะแนนในห้องนี้"}
               </div>
             ) : (
               <div className="card-modern overflow-hidden">
@@ -253,7 +249,7 @@ export default function StudentScoresTab({
                 </div>
               ) : studentSubjects.length === 0 ? (
                 <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                  ยังไม่มีคะแนนที่บันทึกไว้สำหรับนักเรียนคนนี้
+                  ยังไม่มีวิชาที่มีการเก็บคะแนนสำหรับนักเรียนคนนี้
                 </div>
               ) : (
                 (() => {
