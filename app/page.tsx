@@ -73,14 +73,16 @@ function SectionCard({
   title,
   subtitle,
   children,
+  className = "",
 }: {
   icon: string;
   title: string;
   subtitle: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="ui-card p-6 animate-fade-in-up">
+    <section className={`ui-card p-6 animate-fade-in-up ${className}`}>
       <div className="flex items-start gap-3.5 mb-5">
         <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-primary-soft text-primary shadow-sm">
           <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -225,12 +227,19 @@ export default function HomePage() {
               <SectionCard
                 icon="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                 title="ครูเวรประจำสัปดาห์นี้"
+                className="border-2 border-indigo-500/70 shadow-lg shadow-indigo-500/5 relative overflow-hidden bg-gradient-to-b from-indigo-50/10 to-transparent dark:from-indigo-950/10 dark:to-transparent"
                 subtitle={
                   data?.teacherDuty.current
                     ? formatThaiDateRange(data.teacherDuty.current.weekStart, data.teacherDuty.current.weekEnd)
                     : "ยังไม่ได้ตั้งค่ากลุ่มเวรครู"
                 }
               >
+                {/* Absolute status tag */}
+                <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  สัปดาห์นี้
+                </div>
+
                 {data?.teacherDuty.current ? (
                   <>
                     {data.teacherDuty.current.allDaysClosed && (
@@ -251,12 +260,22 @@ export default function HomePage() {
               <SectionCard
                 icon="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
                 title="แม่ครัวประจำสัปดาห์"
+                className="border-2 border-emerald-500/70 shadow-lg shadow-emerald-500/5 relative overflow-hidden bg-gradient-to-b from-emerald-50/10 to-transparent dark:from-emerald-950/10 dark:to-transparent"
                 subtitle={
                   data?.cookDuty
-                    ? `${formatThaiDateRange(data.cookDuty.weekStart, data.cookDuty.weekEnd)} · หมุนกลุ่มทุกวันเปิดเรียน`
+                    ? `${formatThaiDateRange(
+                        data.cookDuty.thisWeek[0]?.date ?? data.cookDuty.weekStart,
+                        data.cookDuty.thisWeek[data.cookDuty.thisWeek.length - 1]?.date ?? data.cookDuty.weekEnd
+                      )} · หมุนกลุ่มทุกวันเปิดเรียน`
                     : "ยังไม่ได้ตั้งค่ากลุ่มแม่ครัว"
                 }
               >
+                {/* Absolute status tag */}
+                <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  สัปดาห์นี้
+                </div>
+
                 {!data || data.cookDuty.thisWeek.length === 0 ? (
                   <EmptyNote text="ยังไม่มีกลุ่มแม่ครัว" />
                 ) : (
@@ -303,16 +322,29 @@ export default function HomePage() {
                 {!data || data.teacherDuty.forecast.length === 0 ? (
                   <EmptyNote text="ไม่มีข้อมูลคาดการณ์" />
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {data.teacherDuty.forecast.map((f) => (
                       <li
                         key={`${f.id}-${f.weekStart}`}
-                        className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-border bg-muted/40"
+                        className="p-3.5 rounded-xl border border-border bg-muted/40 space-y-2 text-left"
                       >
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          {formatThaiDateRange(f.weekStart, f.weekEnd)}
-                        </span>
-                        <span className="text-sm font-bold text-foreground">{f.name}</span>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {formatThaiDateRange(f.weekStart, f.weekEnd)}
+                          </span>
+                          <span className="text-xs font-bold text-primary bg-primary-soft px-2 py-0.5 rounded-full">{f.name}</span>
+                        </div>
+                        {f.allDaysClosed ? (
+                          <div className="text-[10px] text-red-500 font-bold bg-red-50 dark:bg-red-500/10 px-2 py-0.5 rounded border border-red-200 dark:border-red-500/20 inline-block">🏖 ปิดเรียนทั้งสัปดาห์</div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {f.members.map((m) => (
+                              <span key={m.id} className="px-2 py-0.5 rounded-md text-[10px] bg-accent text-accent-foreground font-semibold border border-border/30">
+                                {m.username}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -327,16 +359,25 @@ export default function HomePage() {
                 {!data || data.cookDuty.forecast.length === 0 ? (
                   <EmptyNote text="ไม่มีข้อมูลคาดการณ์" />
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {data.cookDuty.forecast.map((f) => (
                       <li
                         key={`${f.id}-${f.date}`}
-                        className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-border bg-muted/40"
+                        className="p-3.5 rounded-xl border border-border bg-muted/40 space-y-2 text-left"
                       >
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          วัน{thaiWeekdayShort(f.date)} {formatThaiDate(f.date)}
-                        </span>
-                        <span className="text-sm font-bold text-foreground">{f.name}</span>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            วัน{thaiWeekdayShort(f.date)} {formatThaiDate(f.date)}
+                          </span>
+                          <span className="text-xs font-bold text-primary bg-primary-soft px-2 py-0.5 rounded-full">{f.name}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {f.members.map((m) => (
+                            <span key={m.id} className="px-2 py-0.5 rounded-md text-[10px] bg-accent text-accent-foreground font-semibold border border-border/30">
+                              {m.name}
+                            </span>
+                          ))}
+                        </div>
                       </li>
                     ))}
                   </ul>
