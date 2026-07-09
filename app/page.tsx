@@ -156,6 +156,75 @@ function SpotlightCard({
   );
 }
 
+type ForecastModalState =
+  | { type: "teacher"; entry: TeacherDutyGroup }
+  | { type: "cook"; entry: CookDayEntry }
+  | null;
+
+/* Detail modal for a forecast entry — shows the member names the compact list omits */
+function ForecastDetailModal({ state, onClose }: { state: ForecastModalState; onClose: () => void }) {
+  if (!state) return null;
+
+  const isTeacher = state.type === "teacher";
+  const title = isTeacher
+    ? `กลุ่มเวรครู ${state.entry.name}`
+    : `แม่ครัวประจำวัน${thaiWeekdayShort(state.entry.date)}`;
+  const subtitle = isTeacher
+    ? formatThaiDateRange(state.entry.weekStart, state.entry.weekEnd)
+    : formatThaiDate(state.entry.date);
+  const names = isTeacher
+    ? state.entry.members.map((m) => m.username)
+    : state.entry.members.map((m) => m.name);
+  const tone = isTeacher ? "indigo" : "emerald";
+  const gradient = isTeacher
+    ? "bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600"
+    : "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in-up overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card rounded-3xl border border-border shadow-2xl glass-strong w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`shrink-0 relative px-6 py-5 text-white ${gradient}`}>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-1.5 hover:bg-white/15 rounded-full transition-all cursor-pointer border-0 bg-transparent"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <h3 className="text-lg font-extrabold tracking-tight pr-8">{title}</h3>
+          <p className="text-xs text-white/80 mt-0.5 font-semibold">{subtitle}</p>
+        </div>
+
+        <div className="px-6 py-5 overflow-y-auto flex-1">
+          {isTeacher && (state.entry as TeacherDutyGroup).allDaysClosed && (
+            <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-xs text-red-700 dark:text-red-300 font-semibold">
+              🏖 สัปดาห์นี้ปิดเรียนทั้งสัปดาห์
+            </div>
+          )}
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">รายชื่อ</p>
+          <MemberList names={names} tone={tone} />
+        </div>
+
+        <div className="shrink-0 px-6 py-3.5 bg-card border-t border-border flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground bg-muted hover:bg-border transition-all cursor-pointer border-0"
+          >
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* Compact, muted card for forecast — deliberately lower visual weight than SpotlightCard */
 function ForecastCard({
   icon,
@@ -189,6 +258,7 @@ function ForecastCard({
 export default function HomePage() {
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [forecastModal, setForecastModal] = useState<ForecastModalState>(null);
 
   useEffect(() => {
     fetch("/api/public/home")
@@ -408,7 +478,8 @@ export default function HomePage() {
                       {data.teacherDuty.forecast.map((f) => (
                         <li
                           key={`${f.id}-${f.weekStart}`}
-                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-card/60 border border-border/60 text-xs"
+                          onClick={() => setForecastModal({ type: "teacher", entry: f })}
+                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-card/60 border border-border/60 text-xs cursor-pointer hover:border-indigo-400/60 hover:bg-indigo-500/5 transition-colors"
                         >
                           <span className="font-medium text-subtle-foreground">{formatThaiDateRange(f.weekStart, f.weekEnd)}</span>
                           {f.allDaysClosed ? (
@@ -434,7 +505,8 @@ export default function HomePage() {
                       {data.cookDuty.forecast.map((f) => (
                         <li
                           key={`${f.id}-${f.date}`}
-                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-card/60 border border-border/60 text-xs"
+                          onClick={() => setForecastModal({ type: "cook", entry: f })}
+                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-card/60 border border-border/60 text-xs cursor-pointer hover:border-emerald-400/60 hover:bg-emerald-500/5 transition-colors"
                         >
                           <span className="font-medium text-subtle-foreground">
                             วัน{thaiWeekdayShort(f.date)} {formatThaiDate(f.date)}
@@ -456,6 +528,7 @@ export default function HomePage() {
       </main>
 
       <GuestChatWidget />
+      <ForecastDetailModal state={forecastModal} onClose={() => setForecastModal(null)} />
     </div>
   );
 }
