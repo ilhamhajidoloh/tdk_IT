@@ -10,6 +10,8 @@ function formatRow(row: Record<string, unknown>) {
     cook_anchor_date: row.cook_anchor_date instanceof Date
       ? row.cook_anchor_date.toISOString().split("T")[0]
       : row.cook_anchor_date,
+    teacher_anchor_offset: Number(row.teacher_anchor_offset ?? 0),
+    cook_anchor_offset: Number(row.cook_anchor_offset ?? 0),
   };
 }
 
@@ -17,7 +19,7 @@ export async function GET(req: NextRequest) {
   if (!await verifyAdmin(req)) {
     return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
-  const result = await pool.query("SELECT teacher_anchor_date, cook_anchor_date FROM duty_settings WHERE id = 1");
+  const result = await pool.query("SELECT teacher_anchor_date, cook_anchor_date, teacher_anchor_offset, cook_anchor_offset FROM duty_settings WHERE id = 1");
   return NextResponse.json(formatRow(result.rows[0]));
 }
 
@@ -25,13 +27,15 @@ export async function PUT(req: NextRequest) {
   if (!await verifyAdmin(req)) {
     return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
-  const { teacher_anchor_date, cook_anchor_date } = await req.json();
+  const { teacher_anchor_date, cook_anchor_date, teacher_anchor_offset, cook_anchor_offset } = await req.json();
   if (!teacher_anchor_date || !cook_anchor_date) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
   const result = await pool.query(
-    `UPDATE duty_settings SET teacher_anchor_date = $1, cook_anchor_date = $2 WHERE id = 1 RETURNING *`,
-    [teacher_anchor_date, cook_anchor_date]
+    `UPDATE duty_settings 
+     SET teacher_anchor_date = $1, cook_anchor_date = $2, teacher_anchor_offset = $3, cook_anchor_offset = $4 
+     WHERE id = 1 RETURNING *`,
+    [teacher_anchor_date, cook_anchor_date, teacher_anchor_offset ?? 0, cook_anchor_offset ?? 0]
   );
   return NextResponse.json(formatRow(result.rows[0]));
 }

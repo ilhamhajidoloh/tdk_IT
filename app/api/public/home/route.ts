@@ -48,7 +48,7 @@ export async function GET() {
         GROUP BY g.id
         ORDER BY g.order_no ASC
       `),
-      pool.query("SELECT teacher_anchor_date, cook_anchor_date FROM duty_settings WHERE id = 1"),
+      pool.query("SELECT teacher_anchor_date, cook_anchor_date, teacher_anchor_offset, cook_anchor_offset FROM duty_settings WHERE id = 1"),
       pool.query(`
         SELECT schedule_days FROM system_settings
         WHERE end_date >= CURRENT_DATE
@@ -60,13 +60,20 @@ export async function GET() {
       ),
     ]);
 
-  const dutySettings = dutySettingsRes.rows[0] ?? { teacher_anchor_date: today, cook_anchor_date: today };
+  const dutySettings = dutySettingsRes.rows[0] ?? { 
+    teacher_anchor_date: today, 
+    cook_anchor_date: today,
+    teacher_anchor_offset: 0,
+    cook_anchor_offset: 0
+  };
   const teacherAnchor = dutySettings.teacher_anchor_date instanceof Date
     ? dutySettings.teacher_anchor_date.toISOString().split("T")[0]
     : dutySettings.teacher_anchor_date;
   const cookAnchor = dutySettings.cook_anchor_date instanceof Date
     ? dutySettings.cook_anchor_date.toISOString().split("T")[0]
     : dutySettings.cook_anchor_date;
+  const teacherOffset = Number(dutySettings.teacher_anchor_offset ?? 0);
+  const cookOffset = Number(dutySettings.cook_anchor_offset ?? 0);
 
   const rawScheduleDays = scheduleDaysRes.rows[0]?.schedule_days;
   const scheduleDays: number[] = Array.isArray(rawScheduleDays) ? rawScheduleDays : [1, 2, 3, 4, 5];
@@ -89,7 +96,8 @@ export async function GET() {
     TEACHER_FORECAST_WEEKS,
     today,
     scheduleDays,
-    holidayDates
+    holidayDates,
+    teacherOffset
   );
   const teacherCurrent = teacherForecast[0]
     ? {
@@ -109,7 +117,8 @@ export async function GET() {
     scheduleDays,
     weekStart,
     scheduleDays.length + COOK_FORECAST_DAYS + 3,
-    holidayDates
+    holidayDates,
+    cookOffset
   );
   const cookThisWeek = cookEntries.filter((e) => e.date <= weekEnd);
   const cookToday = cookEntries.find((e) => e.date === today) ?? null;

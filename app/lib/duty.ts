@@ -144,7 +144,8 @@ export function buildTeacherForecast<T>(
   weeksAhead: number,
   fromDate: string,
   scheduleDays: number[],
-  holidayDates: string[] = []
+  holidayDates: string[] = [],
+  startingOffset: number = 0
 ): WeeklyForecastEntry<T>[] {
   if (orderedItems.length === 0) return [];
 
@@ -164,7 +165,7 @@ export function buildTeacherForecast<T>(
   }
 
   const results: WeeklyForecastEntry<T>[] = [];
-  let rotationSlot = activeSlots;
+  let rotationSlot = activeSlots + startingOffset;
 
   for (let i = 0; i < weeksAhead; i++) {
     const windowStart = addDays(currentWindowStart, i * 7);
@@ -216,7 +217,8 @@ export function buildCookSchedule<T>(
   scheduleDays: number[],
   fromDate: string,
   count: number,
-  holidayDates: string[] = []
+  holidayDates: string[] = [],
+  startingOffset: number = 0
 ): DailyRotationEntry<T>[] {
   if (orderedItems.length === 0 || scheduleDays.length === 0 || count <= 0) return [];
 
@@ -283,7 +285,7 @@ export function buildCookSchedule<T>(
         // If this specific day is not a holiday, calculate the group and add to results
         if (!holidayDates.includes(cur)) {
           const offset = getWeekOffset(weekNum);
-          const index = (offset + position) % orderedItems.length;
+          const index = (offset + position + startingOffset) % orderedItems.length;
           results.push({ date: cur, index, item: orderedItems[index] });
         }
       }

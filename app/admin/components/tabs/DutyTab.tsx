@@ -44,6 +44,8 @@ interface CookGroup {
 interface DutySettingsData {
   teacher_anchor_date: string;
   cook_anchor_date: string;
+  teacher_anchor_offset?: number;
+  cook_anchor_offset?: number;
 }
 
 interface HolidayItem {
@@ -97,6 +99,10 @@ export default function DutyTab({ token }: DutyTabProps) {
   const [cookGroups, setCookGroups] = useState<CookGroup[]>([]);
   const [dutySettings, setDutySettings] = useState<DutySettingsData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // States for bulk deleting cooks
+  const [isMultiDeleteMode, setIsMultiDeleteMode] = useState(false);
+  const [selectedCookIds, setSelectedCookIds] = useState<Set<string>>(new Set());
 
   const authHeaders = (): HeadersInit => ({
     "Content-Type": "application/json",
@@ -402,54 +408,145 @@ export default function DutyTab({ token }: DutyTabProps) {
     if (res.ok) loadAll();
   };
 
-  // ---------- Import Cooks from file ----------
+  // ---------- Bulk delete handlers ----------
+  const handleBulkDeleteCooks = async () => {
+    if (selectedCookIds.size === 0) return;
+    const confirm = await Swal.fire({
+      title: `ลบแม่ครัว ${selectedCookIds.size} คน?`,
+      text: "รายชื่อที่เลือกจะถูกลบออกจากระบบและกลุ่มเวรทั้งหมดอย่างถาวร",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ลบทั้งหมด",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#ef4444",
+      customClass: swalPopupClasses,
+      buttonsStyling: false,
+    });
+    if (!confirm.isConfirmed) return;
+
+    Swal.fire({
+      title: "กำลังลบข้อมูล...",
+      text: "โปรดรอสักครู่ ระบบกำลังลบรายชื่อแม่ครัวที่เลือก",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    try {
+      const idsToDelete = Array.from(selectedCookIds);
+      for (const id of idsToDelete) {
+        await fetch(`/api/cooks/${id}`, { method: "DELETE", headers: authHeaders() });
+      }
+      Swal.fire({
+        icon: "success",
+        title: "ลบรายชื่อสำเร็จ",
+        timer: 1200,
+        showConfirmButton: false
+      });
+      setSelectedCookIds(new Set());
+      setIsMultiDeleteMode(false);
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถลบข้อมูลได้ทั้งหมด", "error");
+      loadAll();
+    }
+  };
+
+  const toggleSelectCook = (id: string) => {
+    const next = new Set(selectedCookIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedCookIds(next);
+  };
+
+  const toggleSelectAllCooks = () => {
+    if (selectedCookIds.size === cooks.length) {
+      setSelectedCookIds(new Set());
+    } else {
+      setSelectedCookIds(new Set(cooks.map(c => c.id)));
+    }
+  };
+
+  // ---------- Import Cooks from file with Groups ----------
   const importFileRef = useRef<HTMLInputElement>(null);
+
+  interface ImportRow {
+    name: string;
+    groupName?: string;
+  }
 
   const handleImportCooks = async (file: File) => {
     const text = await file.text();
-    let names: string[] = [];
+    let rows: ImportRow[] = [];
+
+    const parseLine = (line: string, isCsv: boolean): ImportRow | null => {
+      const parts = isCsv
+        ? line.split(",").map(c => c.replace(/^"|"$/g, "").trim())
+        : line.split(",").map(p => p.trim());
+      
+      const name = parts[0];
+      if (!name) return null;
+      
+      const groupName = parts[1] || undefined;
+      return { name, groupName };
+    };
 
     if (file.name.endsWith(".csv")) {
-      // รองรับ CSV: เอาคอลัมน์แรกของแต่ละแถว (ข้ามหัวตาราง ถ้าดูเหมือน header)
       const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-      // ถ้าบรรทัดแรกไม่มีตัวเลขและเป็น header ให้ข้ามไป
-      const firstCols = lines.map((l) => l.split(",")[0].replace(/^"|"$/g, "").trim());
-      // ตรวจว่า row แรกเหมือน header (ไม่ได้เป็นชื่อคน) - ถ้าบรรทัดแรกเหมือนกับคำว่า "ชื่อ" หรือ "name" ให้ข้าม
-      const headerKeywords = ["ชื่อ", "name", "ชื่อ-นามสกุล", "fullname", "full_name"];
-      const startIdx = headerKeywords.some((k) =>
-        firstCols[0]?.toLowerCase().includes(k.toLowerCase())
-      ) ? 1 : 0;
-      names = firstCols.slice(startIdx).filter(Boolean);
+      let startIdx = 0;
+      if (lines.length > 0) {
+        const firstRowParts = lines[0].split(",").map(c => c.replace(/^"|"$/g, "").trim().toLowerCase());
+        const headerKeywords = ["ชื่อ", "name", "ชื่อ-นามสกุล", "fullname", "full_name"];
+        if (headerKeywords.some(k => firstRowParts[0]?.includes(k))) {
+          startIdx = 1;
+        }
+      }
+      for (let i = startIdx; i < lines.length; i++) {
+        const parsed = parseLine(lines[i], true);
+        if (parsed) rows.push(parsed);
+      }
     } else {
-      // .txt: ชื่อแต่ละบรรทัด
-      names = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        const parsed = parseLine(line, false);
+        if (parsed) rows.push(parsed);
+      }
     }
 
-    if (names.length === 0) {
+    if (rows.length === 0) {
       Swal.fire("ไม่พบข้อมูล", "ไม่พบรายชื่อในไฟล์ที่เลือก", "warning");
       return;
     }
 
-    // กรองชื่อที่มีอยู่แล้วออก
     const existingNames = new Set(cooks.map((c) => c.name.trim()));
-    const newNames = names.filter((n) => !existingNames.has(n));
-    const dupNames = names.filter((n) => existingNames.has(n));
+    const newRows = rows.filter((r) => !existingNames.has(r.name));
+    const dupRows = rows.filter((r) => existingNames.has(r.name));
 
     const previewHtml = `
       <div class="text-left space-y-3 mt-2">
         <div>
-          <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">จะเพิ่ม (${newNames.length} คน)</p>
-          <div class="max-h-40 overflow-y-auto border border-border rounded-xl p-2.5 space-y-1 bg-card">
-            ${newNames.length === 0
+          <p class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">รายชื่อที่จะเพิ่ม (${newRows.length} คน)</p>
+          <div class="max-h-40 overflow-y-auto border border-border rounded-xl p-2.5 space-y-1.5 bg-card">
+            ${newRows.length === 0
               ? '<p class="text-xs text-subtle-foreground">ไม่มีรายชื่อใหม่</p>'
-              : newNames.map((n) => `<div class="flex items-center gap-1.5 text-sm"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block"></span>${n}</div>`).join("")}
+              : newRows.map((r) => `
+                <div class="flex items-center justify-between text-sm">
+                  <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block"></span>${r.name}</span>
+                  ${r.groupName ? `<span class="text-[10px] bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-500/30">กลุ่ม: ${r.groupName}</span>` : ""}
+                </div>
+              `).join("")}
           </div>
         </div>
-        ${dupNames.length > 0 ? `
+        ${dupRows.length > 0 ? `
         <div>
-          <p class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1.5">ข้ามเพราะมีอยู่แล้ว (${dupNames.length} คน)</p>
+          <p class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1.5">ข้ามเพราะมีอยู่แล้ว (${dupRows.length} คน)</p>
           <div class="max-h-24 overflow-y-auto border border-amber-200 dark:border-amber-500/30 rounded-xl p-2.5 space-y-1 bg-amber-50 dark:bg-amber-500/10">
-            ${dupNames.map((n) => `<div class="text-xs text-amber-700 dark:text-amber-400">${n}</div>`).join("")}
+            ${dupRows.map((r) => `<div class="text-xs text-amber-700 dark:text-amber-400">${r.name}</div>`).join("")}
           </div>
         </div>` : ""}
       </div>
@@ -458,34 +555,132 @@ export default function DutyTab({ token }: DutyTabProps) {
     const { isConfirmed } = await Swal.fire({
       title: `นำเข้าจากไฟล์`,
       html: previewHtml,
-      icon: newNames.length === 0 ? "info" : "question",
+      icon: newRows.length === 0 ? "info" : "question",
       showCancelButton: true,
-      confirmButtonText: newNames.length === 0 ? "ตกลง" : `เพิ่ม ${newNames.length} คน`,
+      confirmButtonText: newRows.length === 0 ? "ตกลง" : `เพิ่ม ${newRows.length} คน`,
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: swalPopupClasses,
     });
 
-    if (!isConfirmed || newNames.length === 0) return;
-
-    // ส่ง API ทีละคน (batch)
-    let successCount = 0;
-    for (const name of newNames) {
-      const res = await fetch("/api/cooks", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ name }),
-      });
-      if (res.ok) successCount++;
-    }
+    if (!isConfirmed || newRows.length === 0) return;
 
     Swal.fire({
-      icon: successCount > 0 ? "success" : "error",
-      title: successCount > 0 ? `เพิ่มสำเร็จ ${successCount} คน` : "เกิดข้อผิดพลาด",
-      timer: 1800,
-      showConfirmButton: false,
+      title: "กำลังนำเข้าข้อมูล...",
+      text: "โปรดรอสักครู่ ระบบกำลังบันทึกรายชื่อแม่ครัวและจัดกลุ่มเวร",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
     });
-    loadAll();
+
+    try {
+      const cookNameToIdMap: Record<string, string> = {};
+      cooks.forEach(c => {
+        cookNameToIdMap[c.name.trim()] = c.id;
+      });
+
+      for (const row of newRows) {
+        const res = await fetch("/api/cooks", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ name: row.name }),
+        });
+        if (res.ok) {
+          const newCook = await res.json();
+          cookNameToIdMap[row.name] = newCook.id;
+        }
+      }
+
+      const cooksByGroupName: Record<string, string[]> = {};
+      newRows.forEach(r => {
+        if (r.groupName) {
+          const id = cookNameToIdMap[r.name];
+          if (id) {
+            if (!cooksByGroupName[r.groupName]) {
+              cooksByGroupName[r.groupName] = [];
+            }
+            cooksByGroupName[r.groupName].push(id);
+          }
+        }
+      });
+
+      const groupNamesToProcess = Object.keys(cooksByGroupName);
+      for (const gName of groupNamesToProcess) {
+        const newCookIdsForGroup = cooksByGroupName[gName];
+        const existingGroup = cookGroups.find(g => g.name.trim().toLowerCase() === gName.trim().toLowerCase());
+        
+        if (existingGroup) {
+          const existingMemberIds = existingGroup.members.map(m => m.id);
+          const mergedCookIds = Array.from(new Set([...existingMemberIds, ...newCookIdsForGroup]));
+          
+          await fetch(`/api/cook-duty-groups/${existingGroup.id}`, {
+            method: "PUT",
+            headers: authHeaders(),
+            body: JSON.stringify({
+              name: existingGroup.name,
+              order_no: existingGroup.order_no,
+              cook_ids: mergedCookIds
+            })
+          });
+        } else {
+          const nextOrder = cookGroups.length;
+          await fetch("/api/cook-duty-groups", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({
+              name: gName,
+              order_no: nextOrder,
+              cook_ids: newCookIdsForGroup
+            })
+          });
+        }
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "นำเข้าสำเร็จ",
+        text: `นำเข้าและจัดกลุ่มเรียบร้อยแล้ว`,
+        timer: 1800,
+        showConfirmButton: false,
+      });
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถนำเข้าข้อมูลได้สมบูรณ์ในบางส่วน", "error");
+      loadAll();
+    }
+  };
+
+  const downloadTemplate = (type: "name" | "name-group", format: "txt" | "csv") => {
+    let content = "";
+    let filename = "";
+    if (type === "name") {
+      if (format === "txt") {
+        content = "แม่ครัว คนที่หนึ่ง\nแม่ครัว คนที่สอง\nแม่ครัว คนที่สาม\n";
+        filename = "template_cook_names.txt";
+      } else {
+        content = "ชื่อ-นามสกุล\nแม่ครัว คนที่หนึ่ง\nแม่ครัว คนที่สอง\nแม่ครัว คนที่สาม\n";
+        filename = "template_cook_names.csv";
+      }
+    } else {
+      if (format === "txt") {
+        content = "แม่ครัว คนที่หนึ่ง, กลุ่ม 1\nแม่ครัว คนที่สอง, กลุ่ม 1\nแม่ครัว คนที่สาม, กลุ่ม 2\n";
+        filename = "template_cook_names_and_groups.txt";
+      } else {
+        content = "ชื่อ-นามสกุล,กลุ่ม\nแม่ครัว คนที่หนึ่ง,กลุ่ม 1\nแม่ครัว คนที่สอง,กลุ่ม 1\nแม่ครัว คนที่สาม,กลุ่ม 2\n";
+        filename = "template_cook_names_and_groups.csv";
+      }
+    }
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // ---------- Cook duty groups ----------
@@ -573,19 +768,73 @@ export default function DutyTab({ token }: DutyTabProps) {
     if (res.ok) loadAll();
   };
 
+  // ---------- Open Template Modal ----------
+  const openTemplateModal = () => {
+    Swal.fire({
+      title: "ดาวน์โหลดเทมเพลตนำเข้า",
+      html: `
+        <div class="space-y-4 text-left mt-4 text-sm">
+          <p class="font-bold text-muted-foreground mb-1.5 text-xs uppercase tracking-wider">📋 แบบที่ 1: เฉพาะรายชื่อ</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-tmpl-name-txt" class="w-full bg-card hover:bg-muted py-2.5 px-3 text-xs text-foreground font-bold rounded-xl transition-all cursor-pointer border border-border">📄 ข้อความ (.txt)</button>
+            <button id="btn-tmpl-name-csv" class="w-full bg-card hover:bg-muted py-2.5 px-3 text-xs text-foreground font-bold rounded-xl transition-all cursor-pointer border border-border">📊 ตาราง (.csv)</button>
+          </div>
+          <p class="font-bold text-muted-foreground mb-1.5 text-xs uppercase tracking-wider pt-3 border-t border-border mt-3">👥 แบบที่ 2: รายชื่อพร้อมจัดกลุ่ม (ชื่อ, กลุ่ม)</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btn-tmpl-group-txt" class="w-full bg-card hover:bg-muted py-2.5 px-3 text-xs text-foreground font-bold rounded-xl transition-all cursor-pointer border border-border">📄 ข้อความ (.txt)</button>
+            <button id="btn-tmpl-group-csv" class="w-full bg-card hover:bg-muted py-2.5 px-3 text-xs text-foreground font-bold rounded-xl transition-all cursor-pointer border border-border">📊 ตาราง (.csv)</button>
+          </div>
+        </div>
+      `,
+      showConfirmButton: false,
+      showCancelButton: true,
+      cancelButtonText: "ปิด",
+      customClass: swalPopupClasses,
+      didOpen: () => {
+        document.getElementById("btn-tmpl-name-txt")?.addEventListener("click", () => {
+          downloadTemplate("name", "txt");
+          Swal.close();
+        });
+        document.getElementById("btn-tmpl-name-csv")?.addEventListener("click", () => {
+          downloadTemplate("name", "csv");
+          Swal.close();
+        });
+        document.getElementById("btn-tmpl-group-txt")?.addEventListener("click", () => {
+          downloadTemplate("name-group", "txt");
+          Swal.close();
+        });
+        document.getElementById("btn-tmpl-group-csv")?.addEventListener("click", () => {
+          downloadTemplate("name-group", "csv");
+          Swal.close();
+        });
+      }
+    });
+  };
+
   // ---------- Duty rotation settings ----------
   const openDutySettingsForm = async () => {
     const { value } = await Swal.fire({
       title: "ตั้งค่าจุดเริ่มต้นการหมุนเวร",
       html: `
         <div class="space-y-4 text-left mt-4">
+          <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 text-xs text-indigo-700 dark:text-indigo-300 font-semibold mb-2">
+            📌 สามารถกำหนดได้ว่า ณ วันที่ตั้งต้น (Anchor Date) ให้ระบบเริ่มรันเวรด้วยกลุ่มลำดับที่เท่าใด (เช่น สำหรับสัปดาห์แรกของการเปิดใช้เว็บ)
+          </div>
           <div>
-            <label class="${labelClass}">วันเริ่มต้นของกลุ่มเวรครูลำดับที่ 0</label>
+            <label class="${labelClass}">วันเริ่มต้นของกลุ่มเวรครู</label>
             <input id="swal-teacher-anchor" type="date" class="${inputClass}" value="${dutySettings?.teacher_anchor_date ?? ""}">
           </div>
           <div>
-            <label class="${labelClass}">วันเริ่มต้นของกลุ่มเวรแม่ครัวลำดับที่ 0</label>
+            <label class="${labelClass}">กลุ่มเวรครูเริ่มต้น (ระบุลำดับ เช่น 3)</label>
+            <input id="swal-teacher-offset" type="number" min="0" class="${inputClass}" value="${dutySettings?.teacher_anchor_offset ?? 0}">
+          </div>
+          <div class="border-t border-border pt-3">
+            <label class="${labelClass}">วันเริ่มต้นของกลุ่มเวรแม่ครัว</label>
             <input id="swal-cook-anchor" type="date" class="${inputClass}" value="${dutySettings?.cook_anchor_date ?? ""}">
+          </div>
+          <div>
+            <label class="${labelClass}">กลุ่มเวรแม่ครัวเริ่มต้น (ระบุลำดับ เช่น 7)</label>
+            <input id="swal-cook-offset" type="number" min="0" class="${inputClass}" value="${dutySettings?.cook_anchor_offset ?? 0}">
           </div>
         </div>
       `,
@@ -597,12 +846,14 @@ export default function DutyTab({ token }: DutyTabProps) {
       customClass: swalPopupClasses,
       preConfirm: () => {
         const teacherAnchor = (document.getElementById("swal-teacher-anchor") as HTMLInputElement).value;
+        const teacherOffset = Number((document.getElementById("swal-teacher-offset") as HTMLInputElement).value || 0);
         const cookAnchor = (document.getElementById("swal-cook-anchor") as HTMLInputElement).value;
+        const cookOffset = Number((document.getElementById("swal-cook-offset") as HTMLInputElement).value || 0);
         if (!teacherAnchor || !cookAnchor) {
           Swal.showValidationMessage("กรุณาเลือกวันที่ให้ครบถ้วน");
           return null;
         }
-        return { teacherAnchor, cookAnchor };
+        return { teacherAnchor, teacherOffset, cookAnchor, cookOffset };
       },
     });
 
@@ -610,7 +861,12 @@ export default function DutyTab({ token }: DutyTabProps) {
     const res = await fetch("/api/duty-settings", {
       method: "PUT",
       headers: authHeaders(),
-      body: JSON.stringify({ teacher_anchor_date: value.teacherAnchor, cook_anchor_date: value.cookAnchor }),
+      body: JSON.stringify({ 
+        teacher_anchor_date: value.teacherAnchor, 
+        teacher_anchor_offset: value.teacherOffset,
+        cook_anchor_date: value.cookAnchor,
+        cook_anchor_offset: value.cookOffset
+      }),
     });
     if (res.ok) {
       Swal.fire({ icon: "success", title: "บันทึกสำเร็จ", timer: 1200, showConfirmButton: false });
@@ -856,46 +1112,132 @@ export default function DutyTab({ token }: DutyTabProps) {
                 }}
               />
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-foreground">รายชื่อแม่ครัว</h3>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => importFileRef.current?.click()}
-                      className="bg-card border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
-                      title="นำเข้ารายชื่อจากไฟล์ .txt หรือ .csv (ชื่อแต่ละบรรทัด)"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                      นำเข้าจากไฟล์
-                    </button>
-                    <button
-                      onClick={() => openCookForm()}
-                      className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      เพิ่มแม่ครัว
-                    </button>
+                <div className="flex flex-col gap-4 mb-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-bold text-foreground">รายชื่อแม่ครัว</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Templates Downloader Button calling openTemplateModal */}
+                      <button
+                        onClick={openTemplateModal}
+                        className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-1.5 cursor-pointer text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        ดาวน์โหลดเทมเพลต
+                      </button>
+
+                      <button
+                        onClick={() => importFileRef.current?.click()}
+                        className="bg-card border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/20 px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
+                        title="นำเข้ารายชื่อจากไฟล์ .txt หรือ .csv (ชื่อแต่ละบรรทัด)"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        นำเข้าจากไฟล์
+                      </button>
+
+                      {cooks.length > 0 && (
+                        <button
+                          onClick={() => {
+                            setIsMultiDeleteMode(!isMultiDeleteMode);
+                            setSelectedCookIds(new Set());
+                          }}
+                          className={`px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm border ${
+                            isMultiDeleteMode 
+                              ? "bg-amber-50 dark:bg-amber-500/10 border-amber-300 text-amber-700 dark:text-amber-300 hover:bg-amber-100"
+                              : "bg-card border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/15"
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          {isMultiDeleteMode ? "ยกเลิกการเลือก" : "ลบทีละหลายคน"}
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => openCookForm()}
+                        className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        เพิ่มแม่ครัว
+                      </button>
+                    </div>
                   </div>
+
+                  {isMultiDeleteMode && (
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 animate-fade-in-up">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={toggleSelectAllCooks}
+                          className="bg-card hover:bg-muted text-foreground border border-border text-xs px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer"
+                        >
+                          {selectedCookIds.size === cooks.length ? "ยกเลิกเลือกทั้งหมด" : "เลือกทั้งหมด"}
+                        </button>
+                        <span className="text-xs text-amber-800 dark:text-amber-300 font-bold">
+                          เลือกแล้ว {selectedCookIds.size} จาก {cooks.length} คน
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleBulkDeleteCooks}
+                        disabled={selectedCookIds.size === 0}
+                        className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer border-0 shadow-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        ลบที่เลือก ({selectedCookIds.size})
+                      </button>
+                    </div>
+                  )}
                 </div>
+
                 <p className="text-xs text-muted-foreground mb-3">
-                  รองรับ <code className="bg-muted px-1.5 py-0.5 rounded font-mono">.txt</code> (ชื่อแต่ละบรรทัด) หรือ <code className="bg-muted px-1.5 py-0.5 rounded font-mono">.csv</code> (คอลัมน์แรก)
+                  รองรับ <code className="bg-muted px-1.5 py-0.5 rounded font-mono">.txt</code> หรือ <code className="bg-muted px-1.5 py-0.5 rounded font-mono">.csv</code> (ดูรูปแบบได้ที่ปุ่มดาวน์โหลดเทมเพลต)
                 </p>
+
                 {cooks.length === 0 ? (
                   <div className="text-center py-6 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold text-sm">
                     ยังไม่มีรายชื่อแม่ครัว
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {cooks.map((c) => (
-                      <div key={c.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card text-sm font-semibold">
-                        {c.name}
-                        <button onClick={() => openCookForm(c)} className="text-indigo-500 hover:text-indigo-700 cursor-pointer border-0 bg-transparent">แก้ไข</button>
-                        <button onClick={() => handleDeleteCook(c)} className="text-red-500 hover:text-red-700 cursor-pointer border-0 bg-transparent">ลบ</button>
-                      </div>
-                    ))}
+                    {cooks.map((c) => {
+                      const isSelected = selectedCookIds.has(c.id);
+                      return (
+                        <div 
+                          key={c.id} 
+                          onClick={() => isMultiDeleteMode && toggleSelectCook(c.id)}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-semibold transition-all ${
+                            isMultiDeleteMode 
+                              ? isSelected 
+                                ? "bg-red-50 border-red-300 text-red-700 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30 cursor-pointer shadow-sm"
+                                : "bg-card border-border hover:border-red-200 cursor-pointer"
+                              : "bg-card border-border"
+                          }`}
+                        >
+                          {isMultiDeleteMode && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              readOnly
+                              className="w-3.5 h-3.5 text-red-600 rounded border-border"
+                            />
+                          )}
+                          <span>{c.name}</span>
+                          {!isMultiDeleteMode && (
+                            <>
+                              <button onClick={(e) => { e.stopPropagation(); openCookForm(c); }} className="text-indigo-500 hover:text-indigo-700 cursor-pointer border-0 bg-transparent text-xs font-bold pl-1.5">แก้ไข</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleDeleteCook(c); }} className="text-red-500 hover:text-red-700 cursor-pointer border-0 bg-transparent text-xs font-bold pl-1">ลบ</button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -958,23 +1300,36 @@ export default function DutyTab({ token }: DutyTabProps) {
             <div className="space-y-4 max-w-xl">
               <div className="card-modern p-5">
                 <p className="text-sm text-muted-foreground mb-4">
-                  กำหนดวันที่กลุ่มลำดับที่ 0 เริ่มเป็นเวรของสัปดาห์นั้น ระบบจะหมุนไปกลุ่มถัดไปทุกสัปดาห์โดยอัตโนมัติ
+                  กำหนดวันเริ่มต้นการหมุนเวร และกำหนดกลุ่มเวรตั้งต้นสำหรับการขึ้นระบบ (Anchor Date / Anchor Offset)
                 </p>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="font-bold text-foreground">เวรครู เริ่มนับจาก:</span>{" "}
-                    {dutySettings ? formatThaiDate(dutySettings.teacher_anchor_date) : "-"}
+                <div className="space-y-3 text-sm">
+                  <div className="p-3.5 rounded-xl border border-border bg-muted/30">
+                    <p className="font-bold text-foreground mb-1.5 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
+                      เวรครูประจำสัปดาห์
+                    </p>
+                    <div className="space-y-1 pl-3 text-xs text-muted-foreground font-semibold">
+                      <div>วันตั้งต้น: <span className="text-foreground">{dutySettings ? formatThaiDate(dutySettings.teacher_anchor_date) : "-"}</span></div>
+                      <div>กลุ่มเริ่มต้น ณ วันตั้งต้น: <span className="text-foreground">ลำดับที่ {dutySettings?.teacher_anchor_offset ?? 0}</span></div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-bold text-foreground">เวรแม่ครัว เริ่มนับจาก:</span>{" "}
-                    {dutySettings ? formatThaiDate(dutySettings.cook_anchor_date) : "-"}
+
+                  <div className="p-3.5 rounded-xl border border-border bg-muted/30">
+                    <p className="font-bold text-foreground mb-1.5 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
+                      เวรแม่ครัวประจำวัน
+                    </p>
+                    <div className="space-y-1 pl-3 text-xs text-muted-foreground font-semibold">
+                      <div>วันตั้งต้น: <span className="text-foreground">{dutySettings ? formatThaiDate(dutySettings.cook_anchor_date) : "-"}</span></div>
+                      <div>กลุ่มเริ่มต้น ณ วันตั้งต้น: <span className="text-foreground">ลำดับที่ {dutySettings?.cook_anchor_offset ?? 0}</span></div>
+                    </div>
                   </div>
                 </div>
                 <button
                   onClick={openDutySettingsForm}
                   className="mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all cursor-pointer"
                 >
-                  แก้ไขวันเริ่มต้น
+                  แก้ไขการตั้งค่าเริ่มต้น
                 </button>
               </div>
             </div>
