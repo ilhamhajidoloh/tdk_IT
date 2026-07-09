@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { addDays, buildCookSchedule, buildTeacherForecast, mondayOf, todayStr } from "@/app/lib/duty";
