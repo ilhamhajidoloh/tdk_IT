@@ -33,7 +33,7 @@ export function useAuth() {
   }, [session]);
 
   const logout = async () => {
-    await signOut({ redirect: true, callbackUrl: "/" });
+    await signOut({ redirect: true, callbackUrl: "/login" });
   };
 
   return { user, token: "next-auth-cookie", loading, logout, update };

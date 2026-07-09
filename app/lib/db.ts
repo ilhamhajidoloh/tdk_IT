@@ -1,4 +1,8 @@
-import { Pool } from "pg";
+import { Pool, types } from "pg";
+
+// Parse DATE columns (OID 1082) as raw strings (e.g. "YYYY-MM-DD") instead of
+// JS Date objects to prevent timezone offset shifts when serializing to JSON.
+types.setTypeParser(1082, (val) => val);
 
 const connectionString = process.env.DATABASE_URL;
 const isLocalDb = connectionString?.includes("localhost") || connectionString?.includes("127.0.0.1");

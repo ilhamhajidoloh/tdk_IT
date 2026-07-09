@@ -70,7 +70,7 @@ export default function StudentPortal() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user || user.role !== "student" || !user.student_id) { router.push("/"); return; }
+    if (!user || user.role !== "student" || !user.student_id) { router.push("/login"); return; }
     if (!token) return;
 
     fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } })
@@ -130,7 +130,7 @@ export default function StudentPortal() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logout();
-    router.push("/");
+    router.push("/login");
   };
 
   const handleChangePassword = async () => {

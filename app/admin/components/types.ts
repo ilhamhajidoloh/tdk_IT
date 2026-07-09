@@ -88,7 +88,8 @@ export type Tab =
   | "grade-status"
   | "student-scores"
   | "rankings"
-  | "yearly-average";
+  | "yearly-average"
+  | "duty";
 
 export interface RankingRow {
   student_id: string;

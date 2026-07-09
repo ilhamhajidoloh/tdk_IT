@@ -108,7 +108,7 @@ export default function TeacherPortal() {
   useEffect(() => {
     if (loading) return;
     if (!teacherUser || (teacherUser.role !== "teacher" && teacherUser.role !== "admin")) {
-      router.push("/");
+      router.push("/login");
       return;
     }
     if (!token) return;
@@ -229,7 +229,7 @@ export default function TeacherPortal() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logout();
-    router.push("/");
+    router.push("/login");
   };
 
   const handleChangePassword = async () => {

@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     if (!token?.id) {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/login", req.url));
     }
 
     const state = randomBytes(16).toString("hex");
@@ -31,6 +31,6 @@ export async function GET(req: NextRequest) {
     return res;
   } catch (error) {
     console.error("LINE link start error:", error);
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 }

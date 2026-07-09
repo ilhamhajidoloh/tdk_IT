@@ -75,7 +75,7 @@ export const authOptions: NextAuthOptions = {
     async signIn({ account, profile }) {
       if (account?.provider === "google" || account?.provider === "line" || account?.provider === "facebook") {
         if (!profile?.email) {
-          return `/?error=${encodeURIComponent("บัญชีนี้ไม่มีอีเมล กรุณาผูกอีเมลกับบัญชีก่อน แล้วลองใหม่อีกครั้ง")}`;
+          return `/login?error=${encodeURIComponent("บัญชีนี้ไม่มีอีเมล กรุณาผูกอีเมลกับบัญชีก่อน แล้วลองใหม่อีกครั้ง")}`;
         }
         const email = profile.email.toLowerCase().trim();
         const result = await pool.query("SELECT id FROM users WHERE LOWER(email) = LOWER($1)", [email]);
@@ -83,7 +83,7 @@ export const authOptions: NextAuthOptions = {
           const secret = process.env.NEXTAUTH_SECRET || "fallback-secret";
           const data = `${email}:${account.provider}`;
           const signature = createHmac("sha256", secret).update(data).digest("hex");
-          return `/?linkEmail=${encodeURIComponent(email)}&provider=${account.provider}&sig=${signature}`;
+          return `/login?linkEmail=${encodeURIComponent(email)}&provider=${account.provider}&sig=${signature}`;
         }
       }
       return true;
@@ -142,7 +142,7 @@ export const authOptions: NextAuthOptions = {
     }
   },
   pages: {
-    signIn: '/', 
+    signIn: '/login',
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

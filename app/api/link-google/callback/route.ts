@@ -11,7 +11,7 @@ function dashboardPath(role?: string) {
 export async function GET(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token?.id) {
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   const redirectBase = dashboardPath(token.role as string | undefined);
