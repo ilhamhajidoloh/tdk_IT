@@ -38,13 +38,19 @@ function daysBetween(a: string, b: string): number {
   return Math.round((toUTCDate(b).getTime() - toUTCDate(a).getTime()) / (24 * 3600 * 1000));
 }
 
-/** Today's date in the server's local timezone (not UTC — toISOString would shift the calendar day). */
+/** Today's date in Thailand timezone (UTC+7).
+ *  Always fixed to Asia/Bangkok regardless of server timezone (Vercel runs UTC).
+ */
 export function todayStr(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  // Intl.DateTimeFormat is available in all modern Node/Edge runtimes.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)!.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 /** scheduleDays values follow the app-wide convention: 0=Sun..6=Sat. */
