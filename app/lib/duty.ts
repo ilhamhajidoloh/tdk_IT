@@ -149,8 +149,10 @@ export function buildTeacherForecast<T>(
 ): WeeklyForecastEntry<T>[] {
   if (orderedItems.length === 0) return [];
 
+  const effectiveFrom = fromDate < anchorDate ? anchorDate : fromDate;
+
   // Which calendar window contains fromDate?
-  const currentWindowIndex = Math.floor(daysBetween(anchorDate, fromDate) / 7);
+  const currentWindowIndex = Math.floor(daysBetween(anchorDate, effectiveFrom) / 7);
   const currentWindowStart = addDays(anchorDate, currentWindowIndex * 7);
 
   // Count how many "active" weeks elapsed before the current window,
