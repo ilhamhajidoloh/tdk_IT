@@ -7,14 +7,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
   const { id } = await params;
-  const { date, reason, is_published } = await req.json();
+  const { date, reason, is_published, applies_to } = await req.json();
   if (!date || !reason) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
   try {
     const result = await pool.query(
-      "UPDATE school_holidays SET date = $1, reason = $2, is_published = $3 WHERE id = $4 RETURNING *",
-      [date, reason, is_published ?? true, id]
+      "UPDATE school_holidays SET date = $1, reason = $2, is_published = $3, applies_to = $4 WHERE id = $5 RETURNING *",
+      [date, reason, is_published ?? true, applies_to ?? 'all', id]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

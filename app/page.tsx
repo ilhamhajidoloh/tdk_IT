@@ -17,6 +17,7 @@ interface HolidayItem {
   id: string;
   date: string;
   reason: string;
+  applies_to?: 'all' | 'teachers' | 'cooks';
 }
 
 interface TeacherMember {
@@ -267,6 +268,8 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const mainHolidays = data ? data.holidays.filter((h) => h.applies_to === "all" || !h.applies_to) : [];
+
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <div className="pointer-events-none fixed inset-0 grid-backdrop opacity-60" />
@@ -367,7 +370,7 @@ export default function HomePage() {
                   <div className="space-y-2.5">
                     {data.cookDuty.thisWeek.map((e) => {
                       const isToday = data.cookDuty.today?.date === e.date;
-                      const holidayOnDay = data.holidays.find((h) => h.date === e.date);
+                      const holidayOnDay = data.holidays.find((h) => h.date === e.date && (h.applies_to === "all" || h.applies_to === "cooks"));
                       return (
                         <div
                           key={e.date}
@@ -431,14 +434,16 @@ export default function HomePage() {
               </div>
 
               {/* Upcoming holidays notice */}
-              {data && data.holidays.length > 0 && (
+              {data && mainHolidays.length > 0 && (
                 <div className="mb-4 space-y-1.5">
                   <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">🗓 วันหยุดพิเศษที่กำลังจะมาถึง</p>
-                  {data.holidays.map((h) => (
+                  {mainHolidays.map((h) => (
                     <div key={h.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30">
                       <span className="text-xs font-mono font-bold text-red-600 dark:text-red-400 shrink-0">{h.date}</span>
                       <span className="text-xs text-red-700 dark:text-red-300 font-semibold">{h.reason}</span>
-                      <span className="ml-auto text-[10px] font-bold text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-1.5 py-0.5 rounded-full">หยุดเรียน</span>
+                      <span className="ml-auto text-[10px] font-bold text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-1.5 py-0.5 rounded-full">
+                        หยุดเรียน
+                      </span>
                     </div>
                   ))}
                   {data.news.length > 0 && <div className="border-t border-border mt-3 mb-1" />}
@@ -446,7 +451,7 @@ export default function HomePage() {
               )}
 
               {!data || data.news.length === 0 ? (
-                data?.holidays.length === 0 ? <EmptyNote text="ยังไม่มีข่าวสาร" /> : null
+                mainHolidays.length === 0 ? <EmptyNote text="ยังไม่มีข่าวสาร" /> : null
               ) : (
                 <div className="grid sm:grid-cols-2 gap-3 max-h-[24rem] overflow-y-auto pr-1">
                   {data.news.map((n) => (

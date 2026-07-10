@@ -45,3 +45,6 @@ next-env.d.ts
 
 push-env.ps1
 *.sql
+
+/migrations
+/scripts

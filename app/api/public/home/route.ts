@@ -57,7 +57,7 @@ export async function GET() {
         ORDER BY start_date ASC LIMIT 1
       `),
       pool.query(
-        "SELECT id, date, reason FROM school_holidays WHERE is_published = true AND date >= $1 AND date <= $2 ORDER BY date ASC",
+        "SELECT id, date, reason, applies_to FROM school_holidays WHERE is_published = true AND date >= $1 AND date <= $2 ORDER BY date ASC",
         [addDays(today, -7), holidayWindowEnd]
       ),
     ]);
@@ -81,12 +81,20 @@ export async function GET() {
   const scheduleDays: number[] = Array.isArray(rawScheduleDays) ? rawScheduleDays : [1, 2, 3, 4, 5];
 
   // Normalize holiday dates to YYYY-MM-DD strings
-  const holidays: { id: string; date: string; reason: string }[] = holidaysRes.rows.map((r) => ({
+  const holidays: { id: string; date: string; reason: string; applies_to: string }[] = holidaysRes.rows.map((r) => ({
     id: r.id,
     date: r.date instanceof Date ? r.date.toISOString().split("T")[0] : String(r.date).split("T")[0],
     reason: r.reason,
+    applies_to: r.applies_to || 'all',
   }));
-  const holidayDates: string[] = holidays.map((h) => h.date);
+  
+  const teacherHolidayDates: string[] = holidays
+    .filter((h) => h.applies_to === "all" || h.applies_to === "teachers")
+    .map((h) => h.date);
+    
+  const cookHolidayDates: string[] = holidays
+    .filter((h) => h.applies_to === "all" || h.applies_to === "cooks")
+    .map((h) => h.date);
 
   const teacherGroups: TeacherGroupRow[] = teacherGroupsRes.rows;
   const cookGroups: CookGroupRow[] = cookGroupsRes.rows;
@@ -98,7 +106,7 @@ export async function GET() {
     TEACHER_FORECAST_WEEKS,
     today,
     scheduleDays,
-    holidayDates,
+    teacherHolidayDates,
     teacherOffset
   );
   const teacherCurrent = teacherForecast[0]
@@ -119,12 +127,9 @@ export async function GET() {
     scheduleDays,
     weekStart,
     scheduleDays.length + COOK_FORECAST_DAYS + 3,
-    holidayDates,
+    cookHolidayDates,
     cookOffset
   );
-  const cookThisWeek = cookEntries.filter((e) => e.date <= weekEnd);
-  const cookToday = cookEntries.find((e) => e.date === today) ?? null;
-  const cookForecast = cookEntries.filter((e) => e.date > weekEnd).slice(0, COOK_FORECAST_DAYS);
 
   const serializeCookEntry = (e: (typeof cookEntries)[number]) => ({
     date: e.date,
@@ -132,6 +137,38 @@ export async function GET() {
     name: e.item.name,
     members: e.item.members,
   });
+
+  // Construct cookThisWeek representing all schedule days for this week
+  const cookThisWeek: any[] = [];
+  let curDate = weekStart;
+  while (curDate <= weekEnd) {
+    const dayOfWeek = new Date(Date.UTC(
+      Number(curDate.split("-")[0]),
+      Number(curDate.split("-")[1]) - 1,
+      Number(curDate.split("-")[2])
+    )).getUTCDay();
+
+    if (scheduleDays.includes(dayOfWeek)) {
+      const isHoliday = cookHolidayDates.includes(curDate);
+      if (isHoliday) {
+        cookThisWeek.push({
+          date: curDate,
+          id: "",
+          name: "",
+          members: [],
+        });
+      } else {
+        const entry = cookEntries.find((e) => e.date === curDate);
+        if (entry) {
+          cookThisWeek.push(serializeCookEntry(entry));
+        }
+      }
+    }
+    curDate = addDays(curDate, 1);
+  }
+
+  const cookToday = cookEntries.find((e) => e.date === today) ?? null;
+  const cookForecast = cookEntries.filter((e) => e.date > weekEnd).slice(0, COOK_FORECAST_DAYS);
 
   return NextResponse.json({
     news: newsRes.rows,
@@ -150,7 +187,7 @@ export async function GET() {
     cookDuty: {
       weekStart,
       weekEnd,
-      thisWeek: cookThisWeek.map(serializeCookEntry),
+      thisWeek: cookThisWeek,
       today: cookToday ? serializeCookEntry(cookToday) : null,
       forecast: cookForecast.map(serializeCookEntry),
     },

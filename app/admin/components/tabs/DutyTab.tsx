@@ -54,6 +54,7 @@ interface HolidayItem {
   reason: string;
   is_published: boolean;
   created_at: string;
+  applies_to?: 'all' | 'teachers' | 'cooks';
 }
 
 type DutySubTab = "news" | "teachers" | "cooks" | "settings";
@@ -220,9 +221,17 @@ export default function DutyTab({ token }: DutyTabProps) {
             <label class="${labelClass}">สาเหตุ / รายละเอียด <span class="text-red-500">*</span></label>
             <input id="swal-holiday-reason" class="${inputClass}" value="${existing?.reason ?? ""}" placeholder="เช่น วันหยุดชดเชยวันสงกรานต์">
           </div>
+          <div>
+            <label class="${labelClass}">ขอบเขตวันหยุด <span class="text-red-500">*</span></label>
+            <select id="swal-holiday-applies" class="${inputClass}">
+              <option value="all" ${existing?.applies_to === "all" || !existing?.applies_to ? "selected" : ""}>ทั้งหมด (ครูและแม่ครัว)</option>
+              <option value="teachers" ${existing?.applies_to === "teachers" ? "selected" : ""}>เฉพาะครูเวร</option>
+              <option value="cooks" ${existing?.applies_to === "cooks" ? "selected" : ""}>เฉพาะแม่ครัว</option>
+            </select>
+          </div>
           <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
             <p class="text-xs text-amber-700 dark:text-amber-400 font-semibold">
-              ⚠️ วันหยุดนี้จะถูก <strong>ข้ามการนับเวร</strong> ของทั้งครูและแม่ครัวโดยอัตโนมัติ
+              ⚠️ ระบบจะข้ามการนับเวรตามขอบเขตที่เลือกโดยอัตโนมัติ
             </p>
           </div>
           <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer">
@@ -240,10 +249,11 @@ export default function DutyTab({ token }: DutyTabProps) {
       preConfirm: () => {
         const date = (document.getElementById("swal-holiday-date") as HTMLInputElement).value;
         const reason = (document.getElementById("swal-holiday-reason") as HTMLInputElement).value.trim();
+        const appliesTo = (document.getElementById("swal-holiday-applies") as HTMLSelectElement).value;
         const isPublished = (document.getElementById("swal-holiday-published") as HTMLInputElement).checked;
         if (!date) { Swal.showValidationMessage("กรุณาเลือกวันที่"); return null; }
         if (!reason) { Swal.showValidationMessage("กรุณากรอกสาเหตุ"); return null; }
-        return { date, reason, isPublished };
+        return { date, reason, appliesTo, isPublished };
       },
     });
 
@@ -252,8 +262,14 @@ export default function DutyTab({ token }: DutyTabProps) {
     const res = await fetch(url, {
       method: existing ? "PUT" : "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ date: value.date, reason: value.reason, is_published: value.isPublished }),
+      body: JSON.stringify({ 
+        date: value.date, 
+        reason: value.reason, 
+        is_published: value.isPublished,
+        applies_to: value.appliesTo
+      }),
     });
+
     if (res.ok) {
       Swal.fire({ icon: "success", title: "บันทึกสำเร็จ", timer: 1200, showConfirmButton: false });
       loadAll();
@@ -1019,6 +1035,13 @@ export default function DutyTab({ token }: DutyTabProps) {
                               <span className="ui-chip ui-chip-success" style={{ fontSize: "10px" }}>เผยแพร่</span>
                             ) : (
                               <span className="ui-chip ui-chip-warning" style={{ fontSize: "10px" }}>ซ่อน</span>
+                            )}
+                            {h.applies_to === "teachers" ? (
+                              <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-500/30">เฉพาะครู</span>
+                            ) : h.applies_to === "cooks" ? (
+                              <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-500/30">เฉพาะแม่ครัว</span>
+                            ) : (
+                              <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-lg border border-gray-200 dark:border-gray-700">ครู & แม่ครัว</span>
                             )}
                           </div>
                         </div>
