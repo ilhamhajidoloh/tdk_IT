@@ -89,7 +89,24 @@ export type Tab =
   | "student-scores"
   | "rankings"
   | "yearly-average"
-  | "duty";
+  | "duty"
+  | "evaluations";
+
+export interface EvaluationTopic {
+  id: string;
+  name_th: string;
+  name_rumi?: string | null;
+  name_jawi?: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface EvaluationSummaryRow {
+  student_id: string;
+  category: "character" | "rwt";
+  topic_key: string;
+  rating: number;
+}
 
 export interface RankingRow {
   student_id: string;

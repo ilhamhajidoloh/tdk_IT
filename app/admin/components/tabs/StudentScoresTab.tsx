@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { type SystemSetting, type DBStudent, type DBSubject, type DBGrade } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
+import Swal from "sweetalert2";
 
 interface StudentScoresTabProps {
   settingsList: SystemSetting[];
@@ -18,6 +19,8 @@ interface StudentScoresTabProps {
   setScoresClassroomId: (id: string) => void;
   scoresSelectedStudentId: string;
   setScoresSelectedStudentId: (id: string) => void;
+  token: string | null;
+  onRefreshGrades: () => void;
 }
 
 function gradeInfo(percent: number) {
@@ -46,9 +49,122 @@ export default function StudentScoresTab({
   setScoresClassroomId,
   scoresSelectedStudentId,
   setScoresSelectedStudentId,
+  token,
+  onRefreshGrades,
 }: StudentScoresTabProps) {
   const [showActivitySubjects, setShowActivitySubjects] = useState<boolean>(false);
   const [includeActivityInSum, setIncludeActivityInSum] = useState<boolean>(false);
+
+  // States for Admin inline grading
+  const [isEditing, setIsEditing] = useState(false);
+  const [editScores, setEditScores] = useState<Record<string, { midterm: string; final: string }>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleScoreChange = (val: string, max: number) => {
+    if (val === "") return "";
+    const num = Number(val);
+    if (isNaN(num) || num < 0) return "0";
+    if (num > max) return max.toString();
+    return num.toString();
+  };
+
+  useEffect(() => {
+    setIsEditing(false);
+    setEditScores({});
+  }, [scoresSelectedStudentId, scoresViewMode, scoresSettingId]);
+
+  const handleStartEdit = () => {
+    const initialScores: Record<string, { midterm: string; final: string }> = {};
+    studentSubjects.forEach(su => {
+      const g = findGrade(selectedStudent!.student_id, su.name);
+      initialScores[su.id] = {
+        midterm: g?.midterm_score !== null && g?.midterm_score !== undefined ? g.midterm_score.toString() : "",
+        final: g?.final_score !== null && g?.final_score !== undefined ? g.final_score.toString() : "",
+      };
+    });
+    setEditScores(initialScores);
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!token || !selectedStudent || !scoresSettingId) return;
+    const setting = settingsList.find(s => s.id === scoresSettingId);
+    if (!setting) return;
+    const termKey = `${setting.term}/${setting.academic_year}`;
+
+    setIsSaving(true);
+    try {
+      const toSave: { subjectName: string; midterm: string; final: string }[] = [];
+
+      studentSubjects.forEach(su => {
+        const g = findGrade(selectedStudent.student_id, su.name);
+        const isMidReadOnly = g !== undefined && g.midterm_score !== null;
+        const isFinReadOnly = g !== undefined && g.final_score !== null;
+
+        const draft = editScores[su.id] || { midterm: "", final: "" };
+
+        const prevMid = g?.midterm_score !== null && g?.midterm_score !== undefined ? g.midterm_score.toString() : "";
+        const prevFin = g?.final_score !== null && g?.final_score !== undefined ? g.final_score.toString() : "";
+
+        const midVal = isMidReadOnly ? prevMid : draft.midterm;
+        const finVal = isFinReadOnly ? prevFin : draft.final;
+
+        const hasNewInput = (!isMidReadOnly && draft.midterm !== prevMid) || (!isFinReadOnly && draft.final !== prevFin);
+
+        if (hasNewInput) {
+          toSave.push({
+            subjectName: su.name,
+            midterm: midVal,
+            final: finVal
+          });
+        }
+      });
+
+      if (toSave.length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      const responses = await Promise.all(
+        toSave.map(item =>
+          fetch("/api/grades", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              student_id: selectedStudent.student_id,
+              subject: item.subjectName,
+              midterm_score: item.midterm === "" ? null : Number(item.midterm),
+              final_score: item.final === "" ? null : Number(item.final),
+              term: termKey
+            })
+          })
+        )
+      );
+
+      const failed = responses.some(res => !res.ok);
+      if (failed) {
+        Swal.fire("ข้อผิดพลาด", "บันทึกคะแนนไม่สำเร็จบางรายการ", "error");
+      } else {
+        Swal.fire({
+          title: "บันทึกสำเร็จ!",
+          text: "บันทึกคะแนนส่วนที่ขาดเรียบร้อยแล้ว",
+          icon: "success",
+          timer: 1200,
+          showConfirmButton: false
+        });
+        onRefreshGrades();
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire("ข้อผิดพลาด", "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!showActivitySubjects) {
@@ -331,14 +447,54 @@ export default function StudentScoresTab({
 
                   return (
                     <div className="space-y-5">
-                      <div className="card-modern px-6 py-5 flex items-center gap-5 relative overflow-hidden">
+                      <div className="card-modern px-6 py-5 flex items-center justify-between gap-5 relative overflow-hidden">
                         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
-                        <div className={`text-3xl font-extrabold ${gradeInfo(overallPct).color}`}>{overallPct.toFixed(1)}%</div>
-                        <div className="flex-1">
-                          <div className="font-bold text-foreground">{selectedStudent.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {selectedStudent.student_id} · {totalScore}/{totalMax} คะแนนรวม
+                        <div className="flex items-center gap-5">
+                          <div className={`text-3xl font-extrabold ${gradeInfo(overallPct).color}`}>{overallPct.toFixed(1)}%</div>
+                          <div>
+                            <div className="font-bold text-foreground">{selectedStudent.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {selectedStudent.student_id} · {totalScore}/{totalMax} คะแนนรวม
+                            </div>
                           </div>
+                        </div>
+                        {/* Edit Buttons for Admin */}
+                        <div className="flex items-center gap-2">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer border-0 shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50"
+                              >
+                                {isSaving ? (
+                                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                                บันทึกคะแนน
+                              </button>
+                              <button
+                                onClick={() => setIsEditing(false)}
+                                disabled={isSaving}
+                                className="px-4 py-2 rounded-xl text-xs font-bold bg-muted hover:bg-muted/80 text-foreground cursor-pointer border-0 transition-all"
+                              >
+                                ยกเลิก
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={handleStartEdit}
+                              className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white cursor-pointer border-0 shadow-md transition-all flex items-center gap-1.5"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              แก้ไขคะแนน (ส่วนที่ขาด)
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -347,33 +503,106 @@ export default function StudentScoresTab({
                           <thead className="bg-muted text-muted-foreground text-xs">
                             <tr>
                               <th className="px-4 py-2.5 text-left font-bold">รายวิชา</th>
-                              <th className="px-4 py-2.5 text-center font-bold w-24">เก็บคะแนน</th>
-                              <th className="px-4 py-2.5 text-center font-bold w-24">สอบปลายภาค</th>
+                              <th className="px-4 py-2.5 text-center font-bold w-28">เก็บคะแนน</th>
+                              <th className="px-4 py-2.5 text-center font-bold w-28">สอบปลายภาค</th>
                               <th className="px-4 py-2.5 text-center font-bold w-24">รวม</th>
                               <th className="px-4 py-2.5 text-center font-bold w-20">เกรด</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-border">
-                            {rows.map(({ su, mid, fin, sum, max, pct }) => (
-                              <tr key={su.id} className="hover:bg-muted transition-colors">
-                                <td className="px-4 py-2.5">
-                                  <div className="font-semibold text-foreground text-xs">{su.name}</div>
-                                  {su.subject_type === "activity" && (
-                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30">
-                                      กิจกรรม
+                            {rows.map(({ su, mid, fin, sum, max, pct }) => {
+                              const g = findGrade(selectedStudent.student_id, su.name);
+                              const isMidReadOnly = g !== undefined && g.midterm_score !== null;
+                              const isFinReadOnly = g !== undefined && g.final_score !== null;
+
+                              const mMax = Number(su.midterm_max_score) || 50;
+                              const fMax = Number(su.final_max_score) || 50;
+
+                              const draft = editScores[su.id] || { midterm: "", final: "" };
+                              const draftMid = isMidReadOnly ? (g?.midterm_score ?? 0) : (Number(draft.midterm) || 0);
+                              const draftFin = isFinReadOnly ? (g?.final_score ?? 0) : (Number(draft.final) || 0);
+                              const draftSum = draftMid + draftFin;
+                              const draftPct = max > 0 ? (draftSum / max) * 100 : 0;
+                              const displayPct = isEditing ? draftPct : pct;
+                              const info = gradeInfo(displayPct);
+
+                              return (
+                                <tr key={su.id} className="hover:bg-muted transition-colors">
+                                  <td className="px-4 py-2.5">
+                                    <div className="font-semibold text-foreground text-xs">{su.name}</div>
+                                    {su.subject_type === "activity" && (
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30">
+                                        กิจกรรม
+                                      </span>
+                                    )}
+                                  </td>
+                                  
+                                  {/* Midterm Cell */}
+                                  <td className="px-4 py-2 text-center text-xs">
+                                    {isEditing ? (
+                                      isMidReadOnly ? (
+                                        <span className="font-semibold text-muted-foreground/60 bg-muted/40 px-2.5 py-1 rounded-lg border border-border">{g.midterm_score}/{mMax}</span>
+                                      ) : (
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max={mMax}
+                                          value={draft.midterm}
+                                          onChange={e => setEditScores(prev => ({
+                                            ...prev,
+                                            [su.id]: {
+                                              ...prev[su.id],
+                                              midterm: handleScoreChange(e.target.value, mMax)
+                                            }
+                                          }))}
+                                          placeholder={`0-${mMax}`}
+                                          className="input-modern w-20 text-center px-1.5 py-1 text-xs font-semibold focus:ring-1 focus:ring-indigo-400"
+                                        />
+                                      )
+                                    ) : (
+                                      `${mid}/${mMax}`
+                                    )}
+                                  </td>
+
+                                  {/* Final Cell */}
+                                  <td className="px-4 py-2 text-center text-xs">
+                                    {isEditing ? (
+                                      isFinReadOnly ? (
+                                        <span className="font-semibold text-muted-foreground/60 bg-muted/40 px-2.5 py-1 rounded-lg border border-border">{g.final_score}/{fMax}</span>
+                                      ) : (
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max={fMax}
+                                          value={draft.final}
+                                          onChange={e => setEditScores(prev => ({
+                                            ...prev,
+                                            [su.id]: {
+                                              ...prev[su.id],
+                                              final: handleScoreChange(e.target.value, fMax)
+                                            }
+                                          }))}
+                                          placeholder={`0-${fMax}`}
+                                          className="input-modern w-20 text-center px-1.5 py-1 text-xs font-semibold focus:ring-1 focus:ring-indigo-400"
+                                        />
+                                      )
+                                    ) : (
+                                      `${fin}/${fMax}`
+                                    )}
+                                  </td>
+
+                                  <td className="px-4 py-2.5 text-center text-xs font-bold">
+                                    {isEditing ? `${draftSum}/${max}` : `${sum}/${max}`}
+                                  </td>
+
+                                  <td className="px-4 py-2.5 text-center">
+                                    <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold border ${info.badge}`}>
+                                      {info.letter}
                                     </span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-2.5 text-center text-xs">{mid}/{Number(su.midterm_max_score) || 50}</td>
-                                <td className="px-4 py-2.5 text-center text-xs">{fin}/{Number(su.final_max_score) || 50}</td>
-                                <td className="px-4 py-2.5 text-center text-xs font-bold">{sum}/{max}</td>
-                                <td className="px-4 py-2.5 text-center">
-                                  <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold border ${gradeInfo(pct).badge}`}>
-                                    {gradeInfo(pct).letter}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>

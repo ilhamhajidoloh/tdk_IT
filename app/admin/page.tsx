@@ -21,10 +21,14 @@ import {
   RankingRow,
   GradeStatusRow,
   SystemSetting,
+  EvaluationTopic,
+  EvaluationSummaryRow,
   ALL_DAYS,
   TEACHER_PALETTE,
 } from "./components/types";
+import { RWT_TOPICS, isEvaluationTermOpen, getTopicNameLabel, getRwtTopicLabel, getRatingLabel } from "../lib/evaluation";
 import CopySubjectsModal from "./components/modals/CopySubjectsModal";
+import CopyClassroomsModal from "./components/modals/CopyClassroomsModal";
 import ExportScoreModal from "./components/modals/ExportScoreModal";
 import UserModal from "./components/modals/UserModal";
 import SubjectModal from "./components/modals/SubjectModal";
@@ -41,6 +45,7 @@ import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import SettingsTab from "./components/tabs/SettingsTab";
 import DashboardTab from "./components/tabs/DashboardTab";
 import DutyTab from "./components/tabs/DutyTab";
+import EvaluationsTab from "./components/tabs/EvaluationsTab";
 
 const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "dashboard", label: "แดชบอร์ด", sub: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" },
@@ -53,6 +58,7 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "student-scores", label: "ดูคะแนนนักเรียน", sub: "Student Scores", icon: "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" },
   { key: "rankings", label: "อันดับผลการเรียน", sub: "Rankings", icon: "M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" },
   { key: "yearly-average", label: "เฉลี่ยรวมทั้งปี", sub: "Yearly Average", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { key: "evaluations", label: "ประเมินคุณลักษณะ", sub: "Evaluations", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
   { key: "settings", label: "ตั้งค่าระบบ", sub: "Settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" },
   { key: "duty", label: "หน้าแรก & เวรประจำวัน", sub: "Home & Duty", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2" },
 ];
@@ -117,7 +123,11 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
       rumi: "Guru Penolong Kanan / Pengetua",
       jawi: "ڬورو ڤنولوڠ كنان / ڤڠتوا"
     },
-    "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" }
+    "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" },
+    "คุณลักษณะอันพึงประสงค์": { th: "คุณลักษณะอันพึงประสงค์", rumi: "Sifat-Sifat Yang Diingini", jawi: "سيفت٢ يڠ دايڠيني" },
+    "การอ่าน คิดวิเคราะห์ และเขียน": { th: "การอ่าน คิดวิเคราะห์ และเขียน", rumi: "Membaca, Pemikiran Analitikal dan Menulis", jawi: "ممباچا، ڤميکيرن اناليتيکل دان منوليس" },
+    "หัวข้อ": { th: "หัวข้อ", rumi: "Topik", jawi: "توڤيق" },
+    "ผลการประเมิน": { th: "ผลการประเมิน", rumi: "Keputusan Penilaian", jawi: "کڤوتوسن ڤنيلاين" },
   };
 
   if (lang === "ms-rumi") return dict[key]?.rumi || key;
@@ -246,6 +256,17 @@ export default function AdminPortal() {
   const [scoresClassroomId, setScoresClassroomId] = useState<string>("");
   const [scoresSelectedStudentId, setScoresSelectedStudentId] = useState<string>("");
 
+  // Evaluations State (คุณลักษณะอันพึงประสงค์ / อ่าน คิดวิเคราะห์ เขียน)
+  const [evalTopics, setEvalTopics] = useState<EvaluationTopic[]>([]);
+  const [evalSettingId, setEvalSettingId] = useState<number | null>(null);
+  const [evalClassroomId, setEvalClassroomId] = useState<string>("");
+  const [evalClassrooms, setEvalClassrooms] = useState<{ id: string; name: string }[]>([]);
+  const [evalStudents, setEvalStudents] = useState<DBStudent[]>([]);
+  const [evalSummary, setEvalSummary] = useState<EvaluationSummaryRow[]>([]);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [evalTopicForm, setEvalTopicForm] = useState({ name_th: "", name_rumi: "", name_jawi: "" });
+  const [evalSavingTopic, setEvalSavingTopic] = useState(false);
+
   // Yearly Average State
   const [yearlyAvgData, setYearlyAvgData] = useState<RankingRow[]>([]);
   const [yearlyAvgSettingId, setYearlyAvgSettingId] = useState<number | null>(null);
@@ -296,11 +317,62 @@ export default function AdminPortal() {
   const [exportSubjectList, setExportSubjectList] = useState<DBSubject[]>([]);
   const [exportSelectedSubjectIds, setExportSelectedSubjectIds] = useState<string[]>([]);
 
+  // Export Modal specific states to support changing term settings dynamically inside the modal
+  const [exportStudents, setExportStudents] = useState<DBStudent[]>([]);
+  const [exportSubjects, setExportSubjects] = useState<DBSubject[]>([]);
+  const [exportClassrooms, setExportClassrooms] = useState<{ id: string; name: string; setting_id?: number | null }[]>([]);
+
   useEffect(() => {
     if (!includeActivitySubjects) {
       setExportSumActivityScores(false);
     }
   }, [includeActivitySubjects]);
+
+  // Load classrooms, students, and subjects for the selected term in export modal
+  useEffect(() => {
+    if (!isExportScoreModalOpen || !exportSettingId || !token) {
+      setExportStudents([]);
+      setExportSubjects([]);
+      setExportClassrooms([]);
+      return;
+    }
+
+    fetch(`/api/classrooms?settingId=${exportSettingId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(setExportClassrooms)
+      .catch(err => console.error("Failed to load export classrooms", err));
+
+    fetch(`/api/students?settingId=${exportSettingId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(setExportStudents)
+      .catch(err => console.error("Failed to load export students", err));
+
+    fetch(`/api/subjects?settingId=${exportSettingId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(setExportSubjects)
+      .catch(err => console.error("Failed to load export subjects", err));
+  }, [isExportScoreModalOpen, exportSettingId, token]);
+
+  // Reset export classroom when export classrooms list is loaded/changed for a new term
+  useEffect(() => {
+    if (isExportScoreModalOpen && exportSettingId && exportClassrooms.length > 0) {
+      const exists = exportClassrooms.some(c => c.id === exportClassroomId);
+      if (!exists) {
+        setExportClassroomId(exportClassrooms[0]?.id || "");
+      }
+    }
+  }, [exportSettingId, exportClassrooms, isExportScoreModalOpen, exportClassroomId]);
+
+  // Reset export student when classroom changes
+  useEffect(() => {
+    setExportStudentId("all");
+  }, [exportClassroomId]);
 
   useEffect(() => {
     if (!exportSettingId || !exportClassroomId) {
@@ -308,7 +380,7 @@ export default function AdminPortal() {
       setExportSelectedSubjectIds([]);
       return;
     }
-    const subjs = subjectsList.filter(s => {
+    const subjs = exportSubjects.filter(s => {
       const isForClass = s.classroom_ids?.includes(exportClassroomId);
       if (!isForClass) return false;
       const hasScores = (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0;
@@ -318,7 +390,7 @@ export default function AdminPortal() {
     });
     setExportSubjectList(subjs);
     setExportSelectedSubjectIds(subjs.map(s => s.id));
-  }, [exportSettingId, exportClassroomId, includeActivitySubjects, subjectsList]);
+  }, [exportSettingId, exportClassroomId, includeActivitySubjects, exportSubjects]);
 
   useEffect(() => {
     setIsClient(true);
@@ -356,6 +428,7 @@ export default function AdminPortal() {
     }
     if (token) loadData(token);
     if (token) loadSettings(token);
+    if (token) loadEvalTopics(token);
   }, [loading, adminUser, token, router]);
 
   const loadData = (authToken: string) => {
@@ -367,6 +440,12 @@ export default function AdminPortal() {
     if (selectedSubjectSettingId) {
       loadSubjects(selectedSubjectSettingId, authToken);
     }
+  };
+
+  const loadEvalTopics = (authToken: string) => {
+    fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${authToken}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setEvalTopics);
   };
 
   // นักเรียนต้องโหลดตามเทอม (selectedSettingId) เพราะห้องเรียน/การลงทะเบียนของนักเรียนแยกกันตามเทอม
@@ -454,6 +533,91 @@ export default function AdminPortal() {
     setScoresClassroomId("");
     setScoresSelectedStudentId("");
     if (token) loadStudentScores(settingId, token);
+  };
+
+  const loadEvalData = async (settingId: number, authToken: string) => {
+    setEvalLoading(true);
+    try {
+      const [studentsRes, classroomsRes, summaryRes] = await Promise.all([
+        fetch(`/api/students?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/classrooms?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/evaluations/summary?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+      ]);
+      setEvalStudents(studentsRes.ok ? await studentsRes.json() : []);
+      setEvalClassrooms(classroomsRes.ok ? await classroomsRes.json() : []);
+      setEvalSummary(summaryRes.ok ? await summaryRes.json() : []);
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+  const handleSelectEvalSetting = (settingId: number) => {
+    setEvalSettingId(settingId);
+    setEvalClassroomId("");
+    if (token) loadEvalData(settingId, token);
+  };
+
+  const handleAddEvalTopic = async () => {
+    if (!token || !evalTopicForm.name_th.trim()) return;
+    setEvalSavingTopic(true);
+    try {
+      const res = await fetch("/api/evaluations/topics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(evalTopicForm),
+      });
+      if (res.ok) {
+        setEvalTopicForm({ name_th: "", name_rumi: "", name_jawi: "" });
+        loadEvalTopics(token);
+      } else {
+        const data = await res.json();
+        Swal.fire("ข้อผิดพลาด", data.error || "ไม่สามารถเพิ่มหัวข้อได้", "error");
+      }
+    } finally {
+      setEvalSavingTopic(false);
+    }
+  };
+
+  const handleUpdateEvalTopic = async (id: string, patch: Partial<{ name_th: string; name_rumi: string; name_jawi: string; sort_order: number; is_active: boolean }>) => {
+    if (!token) return;
+    const res = await fetch(`/api/evaluations/topics/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(patch),
+    });
+    if (res.ok) loadEvalTopics(token);
+  };
+
+  const handleReorderEvalTopic = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= evalTopics.length) return;
+    const a = evalTopics[index];
+    const b = evalTopics[targetIndex];
+    handleUpdateEvalTopic(a.id, { sort_order: b.sort_order });
+    handleUpdateEvalTopic(b.id, { sort_order: a.sort_order });
+  };
+
+  const handleDeleteEvalTopic = async (id: string) => {
+    if (!token) return;
+    const confirm = await Swal.fire({
+      title: "ลบหัวข้อนี้?",
+      text: "ลบได้เฉพาะหัวข้อที่ยังไม่มีการประเมินบันทึกไว้",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ลบ",
+      cancelButtonText: "ยกเลิก",
+    });
+    if (!confirm.isConfirmed) return;
+    const res = await fetch(`/api/evaluations/topics/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      loadEvalTopics(token);
+    } else {
+      const data = await res.json();
+      Swal.fire("ลบไม่ได้", data.error || "มีการประเมินที่ใช้หัวข้อนี้อยู่ กรุณาปิดใช้งานแทน", "error");
+    }
   };
 
   const loadYearlyAverage = async (settingId: number, authToken: string) => {
@@ -2495,7 +2659,7 @@ function changeFontSize(dir) {
     }
 
     const setting = settingsList.find(s => s.id === exportSettingId);
-    const classroom = classrooms.find(c => c.id === exportClassroomId);
+    const classroom = exportClassrooms.find(c => c.id === exportClassroomId);
     if (!setting || !classroom) {
       Swal.fire("ข้อผิดพลาด", "ไม่พบข้อมูลชั้นเรียนหรือปีการศึกษา", "error");
       return;
@@ -2507,7 +2671,7 @@ function changeFontSize(dir) {
       return;
     }
 
-    const classStudents = students.filter(s => s.classroom_id === exportClassroomId)
+    const classStudents = exportStudents.filter(s => s.classroom_id === exportClassroomId)
       .sort((a, b) => (a.student_number || 999) - (b.student_number || 999));
 
     if (classStudents.length === 0) {
@@ -2528,8 +2692,68 @@ function changeFontSize(dir) {
       sMap.set(g.subject?.trim().toLowerCase(), { midterm: g.midterm_score, final: g.final_score });
     });
 
+    // การประเมินคุณลักษณะอันพึงประสงค์ / อ่าน คิดวิเคราะห์ เขียน — เปิดใช้เฉพาะภาคเรียนที่ 2
+    const showEvaluations = exportMode === "individual" && isEvaluationTermOpen(setting.term);
+    const evalMap = new Map<string, Map<string, number>>();
+    if (showEvaluations) {
+      const evalRes = await fetch(`/api/evaluations/summary?settingId=${exportSettingId}&classroomId=${exportClassroomId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const evalRows: { student_id: string; category: string; topic_key: string; rating: number }[] = evalRes.ok ? await evalRes.json() : [];
+      evalRows.forEach(r => {
+        if (!evalMap.has(r.student_id)) evalMap.set(r.student_id, new Map());
+        evalMap.get(r.student_id)!.set(`${r.category}:${r.topic_key}`, r.rating);
+      });
+    }
+    const activeEvalTopics = evalTopics.filter(tp => tp.is_active).sort((a, b) => a.sort_order - b.sort_order);
+
     const t = (k: string) => getScoreExportText(k, exportLanguage);
     const langDir = exportLanguage === "ms-jawi" ? "rtl" : "ltr";
+
+    const buildEvalSectionHTML = (studentId: string) => {
+      if (!showEvaluations) return "";
+      const sMap = evalMap.get(studentId);
+      const ratingCellHTML = (rating: number | undefined) => {
+        if (rating === undefined) return `<span style="color:#94a3b8;">—</span>`;
+        return `<b>${getRatingLabel(rating, exportLanguage)}</b>`;
+      };
+      const characterRowsHTML = activeEvalTopics.map(tp => `
+        <tr>
+          <td style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;text-align:${alignLeftOrRight};">${getTopicNameLabel(tp, exportLanguage)}</td>
+          <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${ratingCellHTML(sMap?.get(`character:${tp.id}`))}</td>
+        </tr>
+      `).join("");
+      const rwtRowsHTML = RWT_TOPICS.map(rt => `
+        <tr>
+          <td style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;text-align:${alignLeftOrRight};">${getRwtTopicLabel(rt.key, exportLanguage)}</td>
+          <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${ratingCellHTML(sMap?.get(`rwt:${rt.key}`))}</td>
+        </tr>
+      `).join("");
+      return `
+        <div class="eval-section" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px;">
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:6px;">${t("คุณลักษณะอันพึงประสงค์")}</div>
+            <table style="width:100%;border-collapse:collapse;">
+              <thead><tr style="background:#f1f5f9;">
+                <th style="padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;text-align:${alignLeftOrRight};">${t("หัวข้อ")}</th>
+                <th style="padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;width:90px;">${t("ผลการประเมิน")}</th>
+              </tr></thead>
+              <tbody>${characterRowsHTML || `<tr><td colspan="2" style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:11px;color:#94a3b8;">—</td></tr>`}</tbody>
+            </table>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:6px;">${t("การอ่าน คิดวิเคราะห์ และเขียน")}</div>
+            <table style="width:100%;border-collapse:collapse;">
+              <thead><tr style="background:#f1f5f9;">
+                <th style="padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;text-align:${alignLeftOrRight};">${t("หัวข้อ")}</th>
+                <th style="padding:6px 8px;border:1px solid #cbd5e1;font-size:11px;width:90px;">${t("ผลการประเมิน")}</th>
+              </tr></thead>
+              <tbody>${rwtRowsHTML}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
 
     const studentRows = classStudents.map(st => {
       const sMap = gradeMap.get(st.student_id) || new Map();
@@ -2820,6 +3044,8 @@ function changeFontSize(dir) {
                 <div class="sum-val" style="color:#7c3aed;">${t("อันดับที่")} ${st.rank} / ${classStudents.length}</div>
               </div>
             </div>
+
+            ${buildEvalSectionHTML(st.student_id)}
 
             <div class="signatures">
               <div class="sig-box">
@@ -3258,6 +3484,34 @@ function changeFontSize(dir) {
                 setScoresClassroomId={setScoresClassroomId}
                 scoresSelectedStudentId={scoresSelectedStudentId}
                 setScoresSelectedStudentId={setScoresSelectedStudentId}
+                token={token}
+                onRefreshGrades={() => {
+                  if (scoresSettingId && token) {
+                    loadStudentScores(scoresSettingId, token);
+                  }
+                }}
+              />
+            )}
+
+            {activeTab === "evaluations" && (
+              <EvaluationsTab
+                settingsList={settingsList}
+                evalSettingId={evalSettingId}
+                handleSelectEvalSetting={handleSelectEvalSetting}
+                evalLoading={evalLoading}
+                evalTopics={evalTopics}
+                evalStudents={evalStudents}
+                evalClassrooms={evalClassrooms}
+                evalClassroomId={evalClassroomId}
+                setEvalClassroomId={setEvalClassroomId}
+                evalSummary={evalSummary}
+                evalTopicForm={evalTopicForm}
+                setEvalTopicForm={setEvalTopicForm}
+                evalSavingTopic={evalSavingTopic}
+                onAddTopic={handleAddEvalTopic}
+                onUpdateTopic={handleUpdateEvalTopic}
+                onReorderTopic={handleReorderEvalTopic}
+                onDeleteTopic={handleDeleteEvalTopic}
               />
             )}
 
@@ -3350,6 +3604,21 @@ function changeFontSize(dir) {
         onSave={handleSaveCopySubjects}
       />
 
+      {/* Copy Classrooms Modal */}
+      <CopyClassroomsModal
+        isOpen={isCopyModalOpen}
+        onClose={() => setIsCopyModalOpen(false)}
+        settingsList={settingsList}
+        copySourceSettingId={copySourceSettingId}
+        setCopySourceSettingId={setCopySourceSettingId}
+        copyTargetSettingId={copyTargetSettingId}
+        setCopyTargetSettingId={setCopyTargetSettingId}
+        sourceClassrooms={sourceClassrooms}
+        copyClassroomsMap={copyClassroomsMap}
+        setCopyClassroomsMap={setCopyClassroomsMap}
+        onSave={handleSaveCopyClassrooms}
+      />
+
       {/* Student Detail Modal */}
       <StudentDetailModal
         modalState={studentDetailModal}
@@ -3377,8 +3646,8 @@ function changeFontSize(dir) {
         exportSelectedSubjectIds={exportSelectedSubjectIds}
         setExportSelectedSubjectIds={setExportSelectedSubjectIds}
         settingsList={settingsList}
-        classrooms={classrooms}
-        students={students}
+        classrooms={exportClassrooms}
+        students={exportStudents}
         moveExportSubjectUp={moveExportSubjectUp}
         moveExportSubjectDown={moveExportSubjectDown}
         onExport={handleExecuteClassroomScoreExport}

@@ -14,8 +14,11 @@ import {
   type ScheduleEntry,
   type Tab,
   type CombinedActivityResult,
+  type EvaluationTopic,
+  type EvaluationSummaryRow,
   ALL_DAYS,
 } from "./components/types";
+import { isEvaluationTermOpen } from "../lib/evaluation";
 import LoadingScreen from "./components/LoadingScreen";
 import Header from "./components/Header";
 import TabNav from "./components/TabNav";
@@ -23,6 +26,7 @@ import OverviewTab from "./components/tabs/OverviewTab";
 import GradesTab from "./components/tabs/GradesTab";
 import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import ScheduleTab from "./components/tabs/ScheduleTab";
+import EvaluationTab from "./components/tabs/EvaluationTab";
 
 export default function StudentPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -39,6 +43,9 @@ export default function StudentPortal() {
   const [midtermMax, setMidtermMax] = useState(50);
   const [finalMax, setFinalMax] = useState(50);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [evalTopics, setEvalTopics] = useState<EvaluationTopic[]>([]);
+  const [evalSummary, setEvalSummary] = useState<EvaluationSummaryRow[]>([]);
+  const [evalLoading, setEvalLoading] = useState(false);
   const router = useRouter();
   const { user, loading, logout, token, update } = useAuth();
 
@@ -86,6 +93,11 @@ export default function StudentPortal() {
     fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }).catch(console.error);
 
+    fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setEvalTopics)
+      .catch(console.error);
+
     fetch("/api/public/classrooms").then(r => r.json()).then(setClassrooms);
 
     fetch("/api/public/settings?all=true")
@@ -110,6 +122,21 @@ export default function StudentPortal() {
     fetch(`/api/schedules?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }).catch(console.error);
   }, [token, activeSettingId]);
+
+  useEffect(() => {
+    if (!token || !activeSettingId) return;
+    const setting = settingsList.find(s => s.id === activeSettingId);
+    if (!isEvaluationTermOpen(setting?.term)) {
+      setEvalSummary([]);
+      return;
+    }
+    setEvalLoading(true);
+    fetch(`/api/evaluations/summary?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setEvalSummary)
+      .catch(console.error)
+      .finally(() => setEvalLoading(false));
+  }, [token, activeSettingId, settingsList]);
 
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
 
@@ -529,6 +556,18 @@ export default function StudentPortal() {
             classroomId={currentStudent.classroom_id}
             activeDays={ACTIVE_DAYS}
             onExport={handleExportStudentSchedule}
+          />
+        )}
+
+        {activeTab === "evaluation" && (
+          <EvaluationTab
+            activeTermStr={activeTermStr}
+            settingsList={settingsList}
+            activeSettingId={activeSettingId}
+            onChangeSetting={handleChangeSetting}
+            evalTopics={evalTopics}
+            evalSummary={evalSummary}
+            evalLoading={evalLoading}
           />
         )}
       </main>

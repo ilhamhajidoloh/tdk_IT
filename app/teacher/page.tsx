@@ -14,8 +14,13 @@ import {
   type ScheduleEntry,
   type RowScore,
   type Tab,
+  type EvaluationTopic,
+  type EvaluationRecord,
+  type AttendanceStatus,
+  type AttendanceSummaryRow,
   ALL_DAYS,
 } from "./components/types";
+import { isEvaluationTermOpen } from "../lib/evaluation";
 import LoadingScreen from "./components/LoadingScreen";
 import SkeletonTeacherPortal from "./components/SkeletonTeacherPortal";
 import Header from "./components/Header";
@@ -25,6 +30,10 @@ import StatusTab from "./components/tabs/StatusTab";
 import HomeroomTab from "./components/tabs/HomeroomTab";
 import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import ScheduleTab from "./components/tabs/ScheduleTab";
+import EvaluateTab from "./components/tabs/EvaluateTab";
+import EvaluateStudentModal from "./components/modals/EvaluateStudentModal";
+import AttendanceTab from "./components/tabs/AttendanceTab";
+import DashboardTab from "./components/tabs/DashboardTab";
 
 export default function TeacherPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -33,7 +42,7 @@ export default function TeacherPortal() {
   const [classrooms, setClassrooms] = useState<DBClassroom[]>([]);
   const [subjectsList, setSubjectsList] = useState<DBSubject[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("enter");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [activeSettingId, setActiveSettingId] = useState<number | null>(null);
   const [scheduleDaysConfig, setScheduleDaysConfig] = useState<number[]>([1, 2, 3, 4, 5]);
   const router = useRouter();
@@ -71,6 +80,28 @@ export default function TeacherPortal() {
 
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
+
+  // Evaluations State (คุณลักษณะอันพึงประสงค์ / อ่าน คิดวิเคราะห์ เขียน)
+  const [evalTopics, setEvalTopics] = useState<EvaluationTopic[]>([]);
+  const [evalSubjectId, setEvalSubjectId] = useState("");
+  const [evalClassroomId, setEvalClassroomId] = useState("");
+  const [evalRecords, setEvalRecords] = useState<EvaluationRecord[]>([]);
+  const [evalRecordsLoading, setEvalRecordsLoading] = useState(false);
+  const [evalModalOpen, setEvalModalOpen] = useState(false);
+  const [evalModalStudent, setEvalModalStudent] = useState<DBStudent | null>(null);
+  const [evalRatings, setEvalRatings] = useState<Record<string, number>>({});
+  const [evalSaving, setEvalSaving] = useState(false);
+
+  // Attendance State (เช็คชื่อการมาเรียนของแต่ละวิชา)
+  const [attendanceSubjectId, setAttendanceSubjectId] = useState("");
+  const [attendanceClassroomId, setAttendanceClassroomId] = useState("");
+  const [attendanceView, setAttendanceView] = useState<"record" | "summary">("record");
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [attendanceStatusMap, setAttendanceStatusMap] = useState<Record<string, AttendanceStatus>>({});
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummaryRow[]>([]);
+  const [attendanceSummaryLoading, setAttendanceSummaryLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -124,6 +155,11 @@ export default function TeacherPortal() {
       .catch(console.error);
 
     loadGrades(token);
+
+    fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setEvalTopics)
+      .catch(console.error);
 
     fetch("/api/public/classrooms")
       .then(r => r.json())
@@ -505,6 +541,149 @@ export default function TeacherPortal() {
     }
   };
 
+  const loadEvalRecords = async (subjectId: string, authToken: string) => {
+    setEvalRecordsLoading(true);
+    try {
+      const res = await fetch(`/api/evaluations?subjectId=${subjectId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      setEvalRecords(res.ok ? await res.json() : []);
+    } finally {
+      setEvalRecordsLoading(false);
+    }
+  };
+
+  const handleSelectEvalSubject = (subjectId: string) => {
+    setEvalSubjectId(subjectId);
+    setEvalClassroomId("");
+    setEvalRecords([]);
+    if (token) loadEvalRecords(subjectId, token);
+  };
+
+  const handleOpenEvalModal = (student: DBStudent) => {
+    const prefilled: Record<string, number> = {};
+    evalRecords
+      .filter(r => r.student_id === student.student_id)
+      .forEach(r => { prefilled[`${r.category}:${r.topic_key}`] = r.rating; });
+    setEvalRatings(prefilled);
+    setEvalModalStudent(student);
+    setEvalModalOpen(true);
+  };
+
+  const handleSetEvalRating = (key: string, value: number) => {
+    setEvalRatings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveEvalStudent = async () => {
+    if (!evalModalStudent || !evalSubjectId || !token) return;
+    const records = Object.entries(evalRatings).map(([key, rating]) => {
+      const [category, topicKey] = key.split(/:(.+)/) as ["character" | "rwt", string];
+      return { category, topicKey, rating };
+    });
+    if (records.length === 0) {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกผลการประเมินอย่างน้อย 1 หัวข้อ", confirmButtonColor: "#4f46e5" });
+      return;
+    }
+    setEvalSaving(true);
+    try {
+      const res = await fetch("/api/evaluations/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          studentId: evalModalStudent.student_id,
+          subjectId: evalSubjectId,
+          term: enterTerm,
+          records,
+        }),
+      });
+      if (!res.ok) {
+        Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ", confirmButtonColor: "#4f46e5" });
+        return;
+      }
+      await loadEvalRecords(evalSubjectId, token);
+      setEvalModalOpen(false);
+      Swal.fire({ title: "บันทึกสำเร็จ!", icon: "success", timer: 1200, showConfirmButton: false });
+    } finally {
+      setEvalSaving(false);
+    }
+  };
+
+  const loadAttendanceRecords = async (subjectId: string, date: string, authToken: string) => {
+    setAttendanceLoading(true);
+    try {
+      const res = await fetch(`/api/attendance?subjectId=${subjectId}&date=${date}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const rows = res.ok ? await res.json() : [];
+      const map: Record<string, AttendanceStatus> = {};
+      for (const r of rows) map[r.student_id] = r.status;
+      setAttendanceStatusMap(map);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
+  const loadAttendanceSummary = async (subjectId: string, term: string, classroomId: string, authToken: string) => {
+    setAttendanceSummaryLoading(true);
+    try {
+      const res = await fetch(
+        `/api/attendance/summary?subjectId=${subjectId}&term=${encodeURIComponent(term)}&classroomId=${classroomId}`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      setAttendanceSummary(res.ok ? await res.json() : []);
+    } finally {
+      setAttendanceSummaryLoading(false);
+    }
+  };
+
+  const handleSelectAttendanceSubject = (subjectId: string) => {
+    setAttendanceSubjectId(subjectId);
+    setAttendanceClassroomId("");
+    setAttendanceStatusMap({});
+    setAttendanceSummary([]);
+  };
+
+  useEffect(() => {
+    if (!token || !attendanceSubjectId || !attendanceClassroomId) return;
+    if (attendanceView === "record") {
+      loadAttendanceRecords(attendanceSubjectId, attendanceDate, token);
+    } else {
+      loadAttendanceSummary(attendanceSubjectId, enterTerm, attendanceClassroomId, token);
+    }
+  }, [attendanceSubjectId, attendanceClassroomId, attendanceDate, attendanceView, token, enterTerm]);
+
+  const handleSetAttendanceStatus = (studentId: string, status: AttendanceStatus) => {
+    setAttendanceStatusMap(prev => ({ ...prev, [studentId]: status }));
+  };
+
+  const handleSaveAllAttendance = async () => {
+    if (!attendanceSubjectId || !attendanceClassroomId || !token) return;
+    const records = attendanceClassroomStudents
+      .filter(s => attendanceStatusMap[s.student_id])
+      .map(s => ({ studentId: s.student_id, status: attendanceStatusMap[s.student_id] }));
+    if (records.length === 0) {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกสถานะอย่างน้อย 1 คน", confirmButtonColor: "#4f46e5" });
+      return;
+    }
+    setAttendanceSaving(true);
+    try {
+      const res = await fetch("/api/attendance/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          subjectId: attendanceSubjectId,
+          classroomId: attendanceClassroomId,
+          date: attendanceDate,
+          term: enterTerm,
+          records,
+        }),
+      });
+      if (!res.ok) {
+        Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ", confirmButtonColor: "#4f46e5" });
+        return;
+      }
+      Swal.fire({ title: "บันทึกสำเร็จ!", icon: "success", timer: 1200, showConfirmButton: false });
+    } finally {
+      setAttendanceSaving(false);
+    }
+  };
+
   const handleChangeDisplayMode = async (mode: "separate" | "combined") => {
     if (!currentSubjectObj) return;
     const res = await fetch(`/api/subjects/${currentSubjectObj.id}/display-mode`, {
@@ -576,6 +755,15 @@ export default function TeacherPortal() {
     ? subjectsList.filter(s => s.setting_id === activeSettingId)
     : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId)
   ).filter(s => (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0);
+
+  const evalActiveTopics = evalTopics.filter(t => t.is_active).sort((a, b) => a.sort_order - b.sort_order);
+  const evalClassroomOptions = classrooms.filter(c => mySubjects.find(s => s.id === evalSubjectId)?.classroom_ids?.includes(c.id));
+  const evalClassroomStudents = students.filter(s => s.classroom_id === evalClassroomId);
+  const isEvalTermActive = isEvaluationTermOpen(enterTerm.split("/")[0]);
+  const isEvalActive = isGradingActive && isEvalTermActive;
+
+  const attendanceClassroomOptions = classrooms.filter(c => mySubjects.find(s => s.id === attendanceSubjectId)?.classroom_ids?.includes(c.id));
+  const attendanceClassroomStudents = students.filter(s => s.classroom_id === attendanceClassroomId);
 
   const myScheduleEntries = scheduleEntries.filter(e => {
     if (e.teacher_id) return e.teacher_id === teacherUser?.id;
@@ -694,6 +882,30 @@ export default function TeacherPortal() {
       {/* ===== MAIN CONTENT ===== */}
       <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6 animate-fade-in-up">
 
+        {activeTab === "dashboard" && (
+          <DashboardTab
+            teacherName={teacherUser?.username || "ครู"}
+            homeroomClass={homeroomClass}
+            homeroomStudents={homeroomStudents}
+            mySubjects={mySubjects}
+            students={students}
+            classrooms={classrooms}
+            grades={grades}
+            term={enterTerm}
+            isGradingActive={isGradingActive}
+            settingsStartDate={settingsStartDate}
+            settingsEndDate={settingsEndDate}
+            myScheduleEntries={myScheduleEntries}
+            setActiveTab={setActiveTab}
+            setEnterSubject={setEnterSubject}
+            setEnterClassroom={setEnterClassroom}
+            setEvaluateSubjectId={setEvalSubjectId}
+            setEvaluateClassroomId={setEvalClassroomId}
+            setAttendanceSubjectId={setAttendanceSubjectId}
+            setAttendanceClassroomId={setAttendanceClassroomId}
+          />
+        )}
+
         {activeTab === "enter" && (
           <EnterGradesTab
             isGradingActive={isGradingActive}
@@ -776,7 +988,63 @@ export default function TeacherPortal() {
           />
         )}
 
+        {activeTab === "evaluate" && (
+          <EvaluateTab
+            isEvalActive={isEvalActive}
+            isGradingActive={isGradingActive}
+            isEvalTermActive={isEvalTermActive}
+            settingsStartDate={settingsStartDate}
+            settingsEndDate={settingsEndDate}
+            mySubjects={mySubjects}
+            evalSubjectId={evalSubjectId}
+            onSelectSubject={handleSelectEvalSubject}
+            evalClassroomId={evalClassroomId}
+            setEvalClassroomId={setEvalClassroomId}
+            evalClassroomOptions={evalClassroomOptions}
+            evalClassroomStudents={evalClassroomStudents}
+            evalActiveTopics={evalActiveTopics}
+            evalRecords={evalRecords}
+            evalRecordsLoading={evalRecordsLoading}
+            onOpenStudent={handleOpenEvalModal}
+          />
+        )}
+
+        {activeTab === "attendance" && (
+          <AttendanceTab
+            mySubjects={mySubjects}
+            attendanceSubjectId={attendanceSubjectId}
+            onSelectSubject={handleSelectAttendanceSubject}
+            attendanceClassroomId={attendanceClassroomId}
+            setAttendanceClassroomId={setAttendanceClassroomId}
+            attendanceClassroomOptions={attendanceClassroomOptions}
+            attendanceClassroomStudents={attendanceClassroomStudents}
+            attendanceView={attendanceView}
+            setAttendanceView={setAttendanceView}
+            attendanceDate={attendanceDate}
+            setAttendanceDate={setAttendanceDate}
+            attendanceStatusMap={attendanceStatusMap}
+            onSetStatus={handleSetAttendanceStatus}
+            attendanceLoading={attendanceLoading}
+            attendanceSaving={attendanceSaving}
+            onSaveAll={handleSaveAllAttendance}
+            attendanceSummary={attendanceSummary}
+            attendanceSummaryLoading={attendanceSummaryLoading}
+          />
+        )}
+
       </main>
+
+      <EvaluateStudentModal
+        isOpen={evalModalOpen}
+        student={evalModalStudent}
+        characterTopics={evalActiveTopics}
+        ratings={evalRatings}
+        onSetRating={handleSetEvalRating}
+        saving={evalSaving}
+        onClose={() => setEvalModalOpen(false)}
+        onSave={handleSaveEvalStudent}
+      />
+
       {teacherUser && <ChatWidget userId={teacherUser.id} userRole="teacher" />}
     </div>
   );

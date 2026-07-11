@@ -27,14 +27,31 @@ export const ALL_DAYS: DaySetting[] = [
   { value: 0, label: "อาทิตย์", color: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", gradient: "from-red-400 to-rose-300" },
 ];
 
-export type Tab = "overview" | "grades" | "yearly-average" | "schedule";
+export type Tab = "overview" | "grades" | "yearly-average" | "schedule" | "evaluation";
 
 export const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "overview", label: "ข้อมูลของฉัน", icon: "M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
   { key: "grades", label: "ผลการเรียน", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
   { key: "yearly-average", label: "เฉลี่ยรวมทั้งปี", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
   { key: "schedule", label: "ตารางเรียน", icon: "M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+  { key: "evaluation", label: "ผลการประเมิน", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
 ];
+
+export interface EvaluationTopic {
+  id: string;
+  name_th: string;
+  name_rumi?: string | null;
+  name_jawi?: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface EvaluationSummaryRow {
+  student_id: string;
+  category: "character" | "rwt";
+  topic_key: string;
+  rating: number;
+}
 
 export interface GradeInfo {
   letter: string;

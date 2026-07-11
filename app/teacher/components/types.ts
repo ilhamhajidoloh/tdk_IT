@@ -14,7 +14,55 @@ export interface RowScore {
   final: string;
 }
 
-export type Tab = "enter" | "status" | "homeroom" | "yearly-average" | "schedule";
+export type Tab = "dashboard" | "enter" | "status" | "homeroom" | "yearly-average" | "schedule" | "evaluate" | "attendance";
+
+export interface EvaluationTopic {
+  id: string;
+  name_th: string;
+  name_rumi?: string | null;
+  name_jawi?: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface EvaluationRecord {
+  id: string;
+  student_id: string;
+  subject_id: string;
+  category: "character" | "rwt";
+  topic_key: string;
+  rating: number;
+  term: string;
+}
+
+export type AttendanceStatus = "present" | "absent" | "late" | "leave";
+
+export interface AttendanceRecord {
+  id: string;
+  student_id: string;
+  subject_id: string;
+  classroom_id: string;
+  date: string;
+  status: AttendanceStatus;
+  note?: string | null;
+  term: string;
+}
+
+export interface AttendanceSummaryRow {
+  student_id: string;
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+  total: number;
+}
+
+export const ATTENDANCE_STATUSES: { value: AttendanceStatus; label: string; color: string }[] = [
+  { value: "present", label: "มา", color: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30" },
+  { value: "late", label: "สาย", color: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30" },
+  { value: "leave", label: "ลา", color: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30" },
+  { value: "absent", label: "ขาด", color: "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/30" },
+];
 
 export interface DaySetting {
   value: number;
@@ -44,6 +92,11 @@ export const DAY_COLORS: Record<number, string> = {
 
 export const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
   {
+    key: "dashboard",
+    label: "แดชบอร์ด",
+    icon: "M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6z M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z M14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z",
+  },
+  {
     key: "enter",
     label: "บันทึกคะแนน",
     icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
@@ -67,6 +120,16 @@ export const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
     key: "schedule",
     label: "ตารางสอน",
     icon: "M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+  },
+  {
+    key: "evaluate",
+    label: "ประเมินคุณลักษณะ",
+    icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z",
+  },
+  {
+    key: "attendance",
+    label: "เช็คชื่อ",
+    icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
   },
 ];
 
