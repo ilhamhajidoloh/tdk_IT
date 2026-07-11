@@ -19,6 +19,7 @@ interface AttendanceTabProps {
   attendanceLoading: boolean;
   attendanceSaving: boolean;
   onSaveAll: () => void;
+  onCancelAttendance: () => void;
 
   attendanceSummary: AttendanceSummaryRow[];
   attendanceSummaryLoading: boolean;
@@ -41,6 +42,7 @@ export default function AttendanceTab({
   attendanceLoading,
   attendanceSaving,
   onSaveAll,
+  onCancelAttendance,
   attendanceSummary,
   attendanceSummaryLoading,
 }: AttendanceTabProps) {
@@ -183,7 +185,22 @@ export default function AttendanceTab({
                       );
                     })}
                   </div>
-                  <div className="p-4 flex justify-end border-t border-border/60">
+                  <div className="p-4 flex justify-between items-center border-t border-border/60">
+                    <div>
+                      {Object.keys(attendanceStatusMap).length > 0 && (
+                        <button
+                          type="button"
+                          onClick={onCancelAttendance}
+                          disabled={attendanceSaving}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 font-bold px-4 py-2.5 rounded-xl transition-all text-xs cursor-pointer border border-rose-200 dark:border-rose-500/30 flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          ยกเลิกการเช็คชื่อวันนี้
+                        </button>
+                      )}
+                    </div>
                     <button
                       onClick={onSaveAll}
                       disabled={attendanceSaving}

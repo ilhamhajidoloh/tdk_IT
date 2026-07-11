@@ -22,6 +22,7 @@ interface EvaluateTabProps {
   evalRecordsLoading: boolean;
 
   onOpenStudent: (student: DBStudent) => void;
+  onCancelEvaluation: (student: DBStudent) => void;
 }
 
 export default function EvaluateTab({
@@ -41,6 +42,7 @@ export default function EvaluateTab({
   evalRecords,
   evalRecordsLoading,
   onOpenStudent,
+  onCancelEvaluation,
 }: EvaluateTabProps) {
   const totalTopics = evalActiveTopics.length + RWT_TOPICS.length;
 
@@ -168,13 +170,28 @@ export default function EvaluateTab({
                       <span className={`text-xs font-bold px-2 py-1 rounded-lg border ${isComplete ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30" : "bg-muted text-muted-foreground border-border"}`}>
                         {done}/{totalTopics} ประเมินแล้ว
                       </span>
-                      <button
-                        onClick={() => onOpenStudent(s)}
-                        disabled={!isEvalActive}
-                        className="text-xs bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-border disabled:from-slate-200 disabled:to-slate-200 disabled:cursor-not-allowed text-white font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 shadow-sm"
-                      >
-                        ประเมิน
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => onOpenStudent(s)}
+                          disabled={!isEvalActive}
+                          className="text-xs bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-border disabled:from-slate-200 disabled:to-slate-200 disabled:cursor-not-allowed text-white font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 shadow-sm cursor-pointer"
+                        >
+                          ประเมิน
+                        </button>
+                        {done > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => onCancelEvaluation(s)}
+                            disabled={!isEvalActive}
+                            className="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 disabled:opacity-50 disabled:cursor-not-allowed font-semibold p-1.5 rounded-lg transition-all border border-rose-200 dark:border-rose-500/30 flex items-center justify-center cursor-pointer"
+                            title="ยกเลิกการประเมินนักเรียนคนนี้"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

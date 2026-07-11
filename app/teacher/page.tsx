@@ -606,6 +606,39 @@ export default function TeacherPortal() {
     }
   };
 
+  const handleCancelEvaluation = async (student: DBStudent) => {
+    if (!evalSubjectId || !token) return;
+
+    const result = await Swal.fire({
+      title: "ยืนยันการยกเลิก?",
+      text: `คุณต้องการยกเลิกการประเมินคุณลักษณะของ ${student.name} ในวิชานี้ประจำภาคเรียนนี้ใช่หรือไม่?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ใช่, ยกเลิกการประเมิน",
+      cancelButtonText: "ปิด",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(
+          `/api/evaluations?studentId=${student.student_id}&subjectId=${evalSubjectId}&term=${encodeURIComponent(enterTerm)}`,
+          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) {
+          Swal.fire("ข้อผิดพลาด", "ไม่สามารถยกเลิกการประเมินได้", "error");
+          return;
+        }
+        await loadEvalRecords(evalSubjectId, token);
+        Swal.fire({ title: "ยกเลิกการประเมินสำเร็จ!", icon: "success", timer: 1200, showConfirmButton: false });
+      } catch (err) {
+        console.error(err);
+        Swal.fire("ข้อผิดพลาด", "เกิดข้อผิดพลาดในการยกเลิกการประเมิน", "error");
+      }
+    }
+  };
+
   const loadAttendanceRecords = async (subjectId: string, date: string, authToken: string) => {
     setAttendanceLoading(true);
     try {
@@ -681,6 +714,42 @@ export default function TeacherPortal() {
       Swal.fire({ title: "บันทึกสำเร็จ!", icon: "success", timer: 1200, showConfirmButton: false });
     } finally {
       setAttendanceSaving(false);
+    }
+  };
+
+  const handleCancelAttendance = async () => {
+    if (!attendanceSubjectId || !attendanceClassroomId || !attendanceDate || !token) return;
+
+    const result = await Swal.fire({
+      title: "ยืนยันการยกเลิก?",
+      text: `คุณต้องการยกเลิกการเช็คชื่อของชั้นเรียนนี้ในวันที่ ${attendanceDate} ใช่หรือไม่? ประวัติการเช็คชื่อทั้งหมดของวันนี้จะถูกลบออก`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ใช่, ยกเลิกการเช็คชื่อ",
+      cancelButtonText: "ปิด",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+    });
+
+    if (result.isConfirmed) {
+      setAttendanceSaving(true);
+      try {
+        const res = await fetch(
+          `/api/attendance?subjectId=${attendanceSubjectId}&classroomId=${attendanceClassroomId}&date=${attendanceDate}`,
+          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) {
+          Swal.fire("ข้อผิดพลาด", "ไม่สามารถยกเลิกการเช็คชื่อได้", "error");
+          return;
+        }
+        setAttendanceStatusMap({});
+        Swal.fire({ title: "ยกเลิกการเช็คชื่อสำเร็จ!", icon: "success", timer: 1200, showConfirmButton: false });
+      } catch (err) {
+        console.error(err);
+        Swal.fire("ข้อผิดพลาด", "เกิดข้อผิดพลาดในการยกเลิกการเช็คชื่อ", "error");
+      } finally {
+        setAttendanceSaving(false);
+      }
     }
   };
 
@@ -1006,6 +1075,7 @@ export default function TeacherPortal() {
             evalRecords={evalRecords}
             evalRecordsLoading={evalRecordsLoading}
             onOpenStudent={handleOpenEvalModal}
+            onCancelEvaluation={handleCancelEvaluation}
           />
         )}
 
@@ -1027,6 +1097,7 @@ export default function TeacherPortal() {
             attendanceLoading={attendanceLoading}
             attendanceSaving={attendanceSaving}
             onSaveAll={handleSaveAllAttendance}
+            onCancelAttendance={handleCancelAttendance}
             attendanceSummary={attendanceSummary}
             attendanceSummaryLoading={attendanceSummaryLoading}
           />

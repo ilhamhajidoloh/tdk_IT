@@ -32,3 +32,27 @@ export async function GET(req: NextRequest) {
   );
   return NextResponse.json(result.rows);
 }
+
+export async function DELETE(req: NextRequest) {
+  const user = await verifyUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const studentId = req.nextUrl.searchParams.get("studentId");
+  const subjectId = req.nextUrl.searchParams.get("subjectId");
+  const term = req.nextUrl.searchParams.get("term");
+
+  if (!studentId || !subjectId || !term) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  if (user.role !== "admin" && !(await ownsSubject(user.id, subjectId))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await pool.query(
+    "DELETE FROM evaluation_records WHERE student_id = $1 AND subject_id = $2 AND term = $3",
+    [studentId, subjectId, term]
+  );
+
+  return NextResponse.json({ success: true });
+}
