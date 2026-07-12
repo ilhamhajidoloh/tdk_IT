@@ -51,6 +51,56 @@ export default function CorrespondenceTab() {
   const [attachmentsToDelete, setAttachmentsToDelete] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sort State
+  const [sortColumn, setSortColumn] = useState<keyof Book | "date_registered">("date_registered");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (column: keyof Book | "date_registered") => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  const renderSortIcon = (column: keyof Book | "date_registered") => {
+    if (sortColumn !== column) {
+      return (
+        <svg className="w-3 h-3 text-muted-foreground/30 ml-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+        </svg>
+      );
+    }
+    if (sortDirection === "asc") {
+      return (
+        <svg className="w-3 h-3 text-indigo-600 dark:text-indigo-400 ml-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" />
+        </svg>
+      );
+    }
+    return (
+      <svg className="w-3 h-3 text-indigo-600 dark:text-indigo-400 ml-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+  };
+
+  const sortedBooks = [...books].sort((a, b) => {
+    let aVal: any = a[sortColumn] ?? "";
+    let bVal: any = b[sortColumn] ?? "";
+
+    if (typeof aVal === "string") {
+      return sortDirection === "asc"
+        ? aVal.localeCompare(bVal, "th", { numeric: true, sensitivity: "base" })
+        : bVal.localeCompare(aVal, "th", { numeric: true, sensitivity: "base" });
+    }
+
+    if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -315,18 +365,38 @@ export default function CorrespondenceTab() {
             <table className="w-full text-left">
               <thead className="bg-muted text-muted-foreground">
                 <tr>
-                  <th className="px-6 py-4 font-semibold text-sm">ประเภท</th>
-                  <th className="px-6 py-4 font-semibold text-sm">เลขที่หนังสือ</th>
-                  <th className="px-6 py-4 font-semibold text-sm">เลขทะเบียนรับ-ส่ง</th>
-                  <th className="px-6 py-4 font-semibold text-sm">ลงวันที่</th>
-                  <th className="px-6 py-4 font-semibold text-sm">เรื่อง</th>
-                  <th className="px-6 py-4 font-semibold text-sm">จาก → ถึง</th>
-                  <th className="px-6 py-4 font-semibold text-sm">ไฟล์แนบ</th>
-                  <th className="px-6 py-4 font-semibold text-sm text-center">จัดการ</th>
+                  <th className="px-6 py-4 font-semibold text-sm select-none">ประเภท</th>
+                  <th 
+                    onClick={() => handleSort("book_number")}
+                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
+                  >
+                    เลขที่หนังสือ {renderSortIcon("book_number")}
+                  </th>
+                  <th 
+                    onClick={() => handleSort("register_number")}
+                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
+                  >
+                    เลขทะเบียนรับ-ส่ง {renderSortIcon("register_number")}
+                  </th>
+                  <th 
+                    onClick={() => handleSort("date_issued")}
+                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
+                  >
+                    ลงวันที่ {renderSortIcon("date_issued")}
+                  </th>
+                  <th 
+                    onClick={() => handleSort("title")}
+                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
+                  >
+                    เรื่อง {renderSortIcon("title")}
+                  </th>
+                  <th className="px-6 py-4 font-semibold text-sm select-none">จาก → ถึง</th>
+                  <th className="px-6 py-4 font-semibold text-sm select-none">ไฟล์แนบ</th>
+                  <th className="px-6 py-4 font-semibold text-sm text-center select-none">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {books.map((book) => (
+                {sortedBooks.map((book) => (
                   <tr key={book.id} className="hover:bg-muted/30">
                     <td className="px-6 py-4">
                       <span
@@ -410,7 +480,33 @@ export default function CorrespondenceTab() {
 
           {/* Mobile Cards View */}
           <div className="md:hidden space-y-4">
-            {books.map((book) => (
+            {/* Mobile Sort Controls */}
+            {books.length > 0 && (
+              <div className="flex gap-2 items-center justify-between p-3 rounded-2xl bg-card border border-border text-xs">
+                <span className="font-bold text-muted-foreground">จัดเรียงตาม:</span>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {(["date_issued", "register_number", "book_number", "title"] as const).map((col) => {
+                    const label = col === "date_issued" ? "วันที่" : col === "register_number" ? "ทะเบียน" : col === "book_number" ? "เลขที่" : "เรื่อง";
+                    const isSelected = sortColumn === col;
+                    return (
+                      <button
+                        key={col}
+                        onClick={() => handleSort(col)}
+                        className={`px-2.5 py-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200"
+                            : "bg-muted text-muted-foreground border-transparent"
+                        }`}
+                      >
+                        {label} {isSelected && (sortDirection === "asc" ? "▲" : "▼")}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {sortedBooks.map((book) => (
               <div key={book.id} className="p-5 rounded-2xl border border-border bg-card shadow-sm space-y-4">
                 {/* Header: Book Type badge & Date */}
                 <div className="flex justify-between items-center">
@@ -499,7 +595,7 @@ export default function CorrespondenceTab() {
                 </div>
               </div>
             ))}
-            {books.length === 0 && (
+            {sortedBooks.length === 0 && (
               <div className="text-center py-10 text-muted-foreground bg-card border border-border rounded-2xl">
                 ไม่พบข้อมูลหนังสือในระบบ
               </div>
