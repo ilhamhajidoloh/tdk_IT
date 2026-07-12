@@ -12,13 +12,13 @@ interface Attachment {
 
 interface Book {
   id: string;
-  book_type: "inward" | "outward";
-  book_number: string;
-  register_number: string;
+  book_type: "inward" | "outward" | "archive";
+  book_number: string | null;
+  register_number: string | null;
   date_issued: string;
   date_registered: string;
-  sender: string;
-  receiver: string;
+  sender: string | null;
+  receiver: string | null;
   title: string;
   description: string | null;
   created_by_name: string;
@@ -29,7 +29,7 @@ export default function CorrespondenceTab() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeSubTab, setActiveSubTab] = useState<"all" | "inward" | "outward">("all");
+  const [activeSubTab, setActiveSubTab] = useState<"all" | "inward" | "outward" | "archive">("all");
   
   // Modal State
   const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +37,7 @@ export default function CorrespondenceTab() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   // Form State
-  const [bookType, setBookType] = useState<"inward" | "outward">("inward");
+  const [bookType, setBookType] = useState<"inward" | "outward" | "archive">("inward");
   const [bookNumber, setBookNumber] = useState("");
   const [registerNumber, setRegisterNumber] = useState("");
   const [dateIssued, setDateIssued] = useState("");
@@ -84,7 +84,7 @@ export default function CorrespondenceTab() {
   const handleOpenAddModal = () => {
     setModalMode("add");
     setSelectedBook(null);
-    setBookType(activeSubTab === "outward" ? "outward" : "inward");
+    setBookType(activeSubTab === "all" ? "inward" : activeSubTab);
     setBookNumber("");
     setRegisterNumber("");
     setDateIssued(new Date().toISOString().slice(0, 10));
@@ -101,11 +101,11 @@ export default function CorrespondenceTab() {
     setModalMode("edit");
     setSelectedBook(book);
     setBookType(book.book_type);
-    setBookNumber(book.book_number);
-    setRegisterNumber(book.register_number);
+    setBookNumber(book.book_number || "");
+    setRegisterNumber(book.register_number || "");
     setDateIssued(book.date_issued.slice(0, 10));
-    setSender(book.sender);
-    setReceiver(book.receiver);
+    setSender(book.sender || "");
+    setReceiver(book.receiver || "");
     setTitle(book.title);
     setDescription(book.description || "");
     setSelectedFiles([]);
@@ -129,7 +129,12 @@ export default function CorrespondenceTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookNumber.trim() || !registerNumber.trim() || !dateIssued || !sender.trim() || !receiver.trim() || !title.trim()) {
+    const isArchive = bookType === "archive";
+    const hasRequiredFields = isArchive
+      ? dateIssued && title.trim()
+      : bookNumber.trim() && registerNumber.trim() && dateIssued && sender.trim() && receiver.trim() && title.trim();
+
+    if (!hasRequiredFields) {
       Swal.fire("ข้อผิดพลาด", "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", "error");
       return;
     }
@@ -138,11 +143,11 @@ export default function CorrespondenceTab() {
     try {
       const formData = new FormData();
       formData.append("book_type", bookType);
-      formData.append("book_number", bookNumber.trim());
-      formData.append("register_number", registerNumber.trim());
+      formData.append("book_number", isArchive ? "" : bookNumber.trim());
+      formData.append("register_number", isArchive ? "" : registerNumber.trim());
       formData.append("date_issued", dateIssued);
-      formData.append("sender", sender.trim());
-      formData.append("receiver", receiver.trim());
+      formData.append("sender", isArchive ? "" : sender.trim());
+      formData.append("receiver", isArchive ? "" : receiver.trim());
       formData.append("title", title.trim());
       formData.append("description", description.trim());
 
@@ -266,7 +271,7 @@ export default function CorrespondenceTab() {
       <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6 pb-4 border-b border-border">
         {/* Sub-tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none w-full md:w-auto shrink-0">
-          {(["all", "inward", "outward"] as const).map((tab) => (
+          {(["all", "inward", "outward", "archive"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveSubTab(tab)}
@@ -276,7 +281,7 @@ export default function CorrespondenceTab() {
                   : "bg-card text-muted-foreground border-border hover:bg-muted"
               }`}
             >
-              {tab === "all" ? "ทั้งหมด" : tab === "inward" ? "หนังสือรับ (Inward)" : "หนังสือส่ง (Outward)"}
+              {tab === "all" ? "ทั้งหมด" : tab === "inward" ? "หนังสือรับ (Inward)" : tab === "outward" ? "หนังสือส่ง (Outward)" : "หนังสือเก็บ (Archive)"}
             </button>
           ))}
         </div>
@@ -328,22 +333,30 @@ export default function CorrespondenceTab() {
                         className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                           book.book_type === "inward"
                             ? "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-900/50"
-                            : "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/50"
+                            : book.book_type === "outward"
+                            ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/50"
+                            : "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50"
                         }`}
                       >
-                        {book.book_type === "inward" ? "หนังสือรับ" : "หนังสือส่ง"}
+                        {book.book_type === "inward" ? "หนังสือรับ" : book.book_type === "outward" ? "หนังสือส่ง" : "หนังสือเก็บ"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-foreground">{book.book_number}</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{book.register_number}</td>
+                    <td className="px-6 py-4 font-semibold text-foreground">{book.book_number || "-"}</td>
+                    <td className="px-6 py-4 text-sm text-foreground">{book.register_number || "-"}</td>
                     <td className="px-6 py-4 text-sm text-foreground">{formatThaiDateString(book.date_issued)}</td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-foreground">{book.title}</div>
                       {book.description && <div className="text-xs text-muted-foreground mt-0.5 max-w-xs truncate">{book.description}</div>}
                     </td>
                     <td className="px-6 py-4 text-sm text-foreground">
-                      <div className="font-medium">{book.sender}</div>
-                      <div className="text-xs text-muted-foreground">ถึง: {book.receiver}</div>
+                      {book.book_type === "archive" ? (
+                        <span className="text-xs text-muted-foreground italic">ไม่มีผู้ส่ง-ผู้รับ</span>
+                      ) : (
+                        <>
+                          <div className="font-medium">{book.sender}</div>
+                          <div className="text-xs text-muted-foreground">ถึง: {book.receiver}</div>
+                        </>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1.5">
@@ -405,10 +418,12 @@ export default function CorrespondenceTab() {
                     className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                       book.book_type === "inward"
                         ? "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-900/50"
-                        : "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/50"
+                        : book.book_type === "outward"
+                        ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/50"
+                        : "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50"
                     }`}
                   >
-                    {book.book_type === "inward" ? "หนังสือรับ" : "หนังสือส่ง"}
+                    {book.book_type === "inward" ? "หนังสือรับ" : book.book_type === "outward" ? "หนังสือส่ง" : "หนังสือเก็บ"}
                   </span>
                   <span className="text-xs text-muted-foreground">{formatThaiDateString(book.date_issued)}</span>
                 </div>
@@ -425,19 +440,19 @@ export default function CorrespondenceTab() {
                 <div className="grid grid-cols-2 gap-3 py-3 border-t border-b border-border text-xs">
                   <div>
                     <div className="text-muted-foreground font-semibold">เลขที่หนังสือ</div>
-                    <div className="text-foreground font-bold mt-0.5">{book.book_number}</div>
+                    <div className="text-foreground font-bold mt-0.5">{book.book_number || "-"}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground font-semibold">เลขทะเบียน</div>
-                    <div className="text-foreground font-bold mt-0.5">{book.register_number}</div>
+                    <div className="text-foreground font-bold mt-0.5">{book.register_number || "-"}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground font-semibold">จาก</div>
-                    <div className="text-foreground font-bold mt-0.5 truncate">{book.sender}</div>
+                    <div className="text-foreground font-bold mt-0.5 truncate">{book.sender || "-"}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground font-semibold">ถึง</div>
-                    <div className="text-foreground font-bold mt-0.5 truncate">{book.receiver}</div>
+                    <div className="text-foreground font-bold mt-0.5 truncate">{book.receiver || "-"}</div>
                   </div>
                 </div>
 
@@ -530,8 +545,8 @@ export default function CorrespondenceTab() {
                 <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   ประเภทหนังสือ <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {(["inward", "outward"] as const).map((type) => (
+                <div className="grid grid-cols-3 gap-2.5">
+                  {(["inward", "outward", "archive"] as const).map((type) => (
                     <button
                       key={type}
                       type="button"
@@ -540,45 +555,49 @@ export default function CorrespondenceTab() {
                         bookType === type
                           ? type === "inward"
                             ? "border-teal-500 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 ring-2 ring-teal-400/20"
-                            : "border-purple-500 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-2 ring-purple-400/20"
+                            : type === "outward"
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-2 ring-purple-400/20"
+                            : "border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-2 ring-blue-400/20"
                           : "border-border bg-muted text-muted-foreground hover:border-border"
                       }`}
                     >
-                      {type === "inward" ? "หนังสือรับ (Inward)" : "หนังสือส่ง (Outward)"}
+                      {type === "inward" ? "หนังสือรับ" : type === "outward" ? "หนังสือส่ง" : "หนังสือเก็บ"}
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Number and Register ID */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    เลขที่หนังสือ <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={bookNumber}
-                    onChange={(e) => setBookNumber(e.target.value)}
-                    placeholder="เช่น ศธ 04001/..."
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                  />
+              {bookType !== "archive" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      เลขที่หนังสือ <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bookNumber}
+                      onChange={(e) => setBookNumber(e.target.value)}
+                      placeholder="เช่น ศธ 04001/..."
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      เลขทะเบียน รับ-ส่ง <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={registerNumber}
+                      onChange={(e) => setRegisterNumber(e.target.value)}
+                      placeholder="เช่น 125/2568"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    เลขทะเบียน รับ-ส่ง <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={registerNumber}
-                    onChange={(e) => setRegisterNumber(e.target.value)}
-                    placeholder="เช่น 125/2568"
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Date Issued */}
               <div className="space-y-1.5">
@@ -595,34 +614,36 @@ export default function CorrespondenceTab() {
               </div>
 
               {/* Sender & Receiver */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    ผู้ส่ง (จาก) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={sender}
-                    onChange={(e) => setSender(e.target.value)}
-                    placeholder="หน่วยงานผู้ส่ง"
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                  />
+              {bookType !== "archive" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      ผู้ส่ง (จาก) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={sender}
+                      onChange={(e) => setSender(e.target.value)}
+                      placeholder="หน่วยงานผู้ส่ง"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      ผู้รับ (ถึง) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={receiver}
+                      onChange={(e) => setReceiver(e.target.value)}
+                      placeholder="หน่วยงานผู้รับ"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    ผู้รับ (ถึง) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={receiver}
-                    onChange={(e) => setReceiver(e.target.value)}
-                    placeholder="หน่วยงานผู้รับ"
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                  />
-                </div>
-              </div>
+              )}
 
               {/* Title */}
               <div className="space-y-1.5">

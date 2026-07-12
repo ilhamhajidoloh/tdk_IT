@@ -35,7 +35,8 @@ export async function PUT(
     const files = formData.getAll("files") as File[];
     const deleteAttachmentIds = formData.getAll("delete_attachments") as string[];
 
-    if (!book_type || !book_number || !register_number || !date_issued || !sender || !receiver || !title) {
+    const isArchive = book_type === "archive";
+    if (!book_type || !date_issued || !title || (!isArchive && (!book_number || !register_number || !sender || !receiver))) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -52,11 +53,11 @@ export async function PUT(
       `;
       await client.query(updateBookQuery, [
         book_type,
-        book_number,
-        register_number,
+        isArchive ? null : book_number,
+        isArchive ? null : register_number,
         date_issued,
-        sender,
-        receiver,
+        isArchive ? null : sender,
+        isArchive ? null : receiver,
         title,
         description,
         id,

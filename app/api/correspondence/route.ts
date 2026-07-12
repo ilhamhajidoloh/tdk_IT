@@ -107,7 +107,8 @@ export async function POST(req: NextRequest) {
     // Get all files
     const files = formData.getAll("files") as File[];
 
-    if (!book_type || !book_number || !register_number || !date_issued || !sender || !receiver || !title) {
+    const isArchive = book_type === "archive";
+    if (!book_type || !date_issued || !title || (!isArchive && (!book_number || !register_number || !sender || !receiver))) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -123,11 +124,11 @@ export async function POST(req: NextRequest) {
       `;
       const bookRes = await client.query(insertBookQuery, [
         book_type,
-        book_number,
-        register_number,
+        isArchive ? null : book_number,
+        isArchive ? null : register_number,
         date_issued,
-        sender,
-        receiver,
+        isArchive ? null : sender,
+        isArchive ? null : receiver,
         title,
         description,
         user.id,
