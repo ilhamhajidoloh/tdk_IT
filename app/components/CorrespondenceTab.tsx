@@ -29,7 +29,7 @@ export default function CorrespondenceTab() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeSubTab, setActiveSubTab] = useState<"all" | "inward" | "outward" | "archive">("all");
+  const [activeSubTab, setActiveSubTab] = useState<"inward" | "outward" | "archive">("inward");
   
   // Modal State
   const [isOpen, setIsOpen] = useState(false);
@@ -111,10 +111,7 @@ export default function CorrespondenceTab() {
   const fetchBooks = async () => {
     setLoading(true);
     try {
-      let url = `/api/correspondence?`;
-      if (activeSubTab !== "all") {
-        url += `type=${activeSubTab}&`;
-      }
+      let url = `/api/correspondence?type=${activeSubTab}&`;
       if (searchTerm.trim() !== "") {
         url += `search=${encodeURIComponent(searchTerm)}&`;
       }
@@ -135,7 +132,7 @@ export default function CorrespondenceTab() {
   const handleOpenAddModal = () => {
     setModalMode("add");
     setSelectedBook(null);
-    setBookType(activeSubTab === "all" ? "inward" : activeSubTab);
+    setBookType(activeSubTab);
     setBookNumber("");
     setRegisterNumber("");
     setDateIssued(new Date().toISOString().slice(0, 10));
@@ -354,7 +351,7 @@ export default function CorrespondenceTab() {
       <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6 pb-4 border-b border-border">
         {/* Sub-tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none w-full md:w-auto shrink-0">
-          {(["all", "inward", "outward", "archive"] as const).map((tab) => (
+          {(["inward", "outward", "archive"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveSubTab(tab)}
@@ -364,7 +361,7 @@ export default function CorrespondenceTab() {
                   : "bg-card text-muted-foreground border-border hover:bg-muted"
               }`}
             >
-              {tab === "all" ? "ทั้งหมด" : tab === "inward" ? "หนังสือรับ (Inward)" : tab === "outward" ? "หนังสือส่ง (Outward)" : "หนังสือเก็บ (Archive)"}
+              {tab === "inward" ? "หนังสือรับ (Inward)" : tab === "outward" ? "หนังสือส่ง (Outward)" : "หนังสือเก็บ (Archive)"}
             </button>
           ))}
         </div>
