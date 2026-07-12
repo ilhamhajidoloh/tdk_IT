@@ -9,6 +9,7 @@ export interface DBUser {
   homeroom_classroom_id?: string;
   subjects?: string[];
   email?: string | null;
+  is_clerical?: boolean;
 }
 
 export function useAuth() {
@@ -29,6 +30,7 @@ export function useAuth() {
       homeroom_classroom_id: su.homeroom_classroom_id,
       subjects: su.subjects,
       email: su.email,
+      is_clerical: su.is_clerical,
     };
   }, [session]);
 

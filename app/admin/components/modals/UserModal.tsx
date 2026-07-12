@@ -23,6 +23,8 @@ interface UserModalProps {
   classrooms: { id: string; name: string }[];
   students: DBStudent[];
   onSave: () => void;
+  isClerical: boolean;
+  setIsClerical: (isClerical: boolean) => void;
 }
 
 export default function UserModal({
@@ -48,6 +50,8 @@ export default function UserModal({
   classrooms,
   students,
   onSave,
+  isClerical,
+  setIsClerical,
 }: UserModalProps) {
   if (!isOpen) return null;
 
@@ -403,6 +407,25 @@ export default function UserModal({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
+                </div>
+              </div>
+
+              {/* Clerical Duty checkbox */}
+              <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl border border-border animate-fade-in-up">
+                <input
+                  type="checkbox"
+                  id="user-is-clerical"
+                  checked={isClerical}
+                  onChange={(e) => setIsClerical(e.target.checked)}
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-400 border-border bg-card cursor-pointer"
+                />
+                <div className="flex flex-col cursor-pointer select-none" onClick={() => setIsClerical(!isClerical)}>
+                  <label htmlFor="user-is-clerical" className="text-xs font-bold text-foreground cursor-pointer">
+                    ปฏิบัติหน้าที่ธุรการ (Clerical Staff)
+                  </label>
+                  <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                    อนุญาตให้เข้าถึงการจัดการหนังสือรับ-ส่งในระบบ
+                  </span>
                 </div>
               </div>
             </div>

@@ -22,7 +22,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const result = await pool.query(
-            "SELECT id, username, password, role, student_id, homeroom_classroom_id, subjects, email FROM users WHERE username = $1 OR student_id = $1",
+            "SELECT id, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE username = $1 OR student_id = $1",
             [credentials.username]
           );
 
@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
             homeroom_classroom_id: user.homeroom_classroom_id,
             subjects: user.subjects,
             email: user.email,
+            is_clerical: user.is_clerical,
           };
           
         } catch (error: any) {
@@ -91,7 +92,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account, trigger }) {
       if (account?.provider === "google" || account?.provider === "line" || account?.provider === "facebook") {
         const result = await pool.query(
-          "SELECT id, username, role, student_id, homeroom_classroom_id, subjects, email FROM users WHERE LOWER(email) = LOWER($1)",
+          "SELECT id, username, role, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE LOWER(email) = LOWER($1)",
           [token.email]
         );
         if (result.rows[0]) {
@@ -103,6 +104,7 @@ export const authOptions: NextAuthOptions = {
           token.homeroom_classroom_id = u.homeroom_classroom_id;
           token.subjects = u.subjects;
           token.email = u.email;
+          token.is_clerical = u.is_clerical;
         }
       } else if (user) {
         token.role = (user as any).role;
@@ -111,10 +113,11 @@ export const authOptions: NextAuthOptions = {
         token.homeroom_classroom_id = (user as any).homeroom_classroom_id;
         token.subjects = (user as any).subjects;
         token.email = (user as any).email;
+        token.is_clerical = (user as any).is_clerical;
       } else if (token.id) {
         // ดึงข้อมูลล่าสุดจากฐานข้อมูลทุกครั้งที่มีการอ่านเซสชันเพื่อให้ข้อมูลอีเมลและสิทธิ์ซิงค์ตรงกันเสมอ
         const result = await pool.query(
-          "SELECT username, role, student_id, homeroom_classroom_id, subjects, email FROM users WHERE id = $1",
+          "SELECT username, role, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE id = $1",
           [token.id]
         );
         if (result.rows[0]) {
@@ -125,6 +128,7 @@ export const authOptions: NextAuthOptions = {
           token.homeroom_classroom_id = u.homeroom_classroom_id;
           token.subjects = u.subjects;
           token.email = u.email;
+          token.is_clerical = u.is_clerical;
         }
       }
       return token;
@@ -137,6 +141,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).homeroom_classroom_id = token.homeroom_classroom_id;
         (session.user as any).subjects = token.subjects;
         (session.user as any).email = token.email ?? null;
+        (session.user as any).is_clerical = token.is_clerical;
       }
       return session;
     }

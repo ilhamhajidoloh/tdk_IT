@@ -7,6 +7,7 @@ export interface DBUser {
   homeroom_classroom_id?: string;
   subjects?: string[];
   email?: string | null;
+  is_clerical?: boolean;
 }
 
 export interface DBStudent {
@@ -90,7 +91,8 @@ export type Tab =
   | "rankings"
   | "yearly-average"
   | "duty"
-  | "evaluations";
+  | "evaluations"
+  | "books";
 
 export interface EvaluationTopic {
   id: string;

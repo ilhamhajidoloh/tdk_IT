@@ -34,6 +34,7 @@ import EvaluateTab from "./components/tabs/EvaluateTab";
 import EvaluateStudentModal from "./components/modals/EvaluateStudentModal";
 import AttendanceTab from "./components/tabs/AttendanceTab";
 import DashboardTab from "./components/tabs/DashboardTab";
+import CorrespondenceTab from "../components/CorrespondenceTab";
 
 export default function TeacherPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -946,6 +947,7 @@ export default function TeacherPortal() {
         setActiveTab={setActiveTab}
         enterBadge={enterSubject && enterClassroom ? `${savedCount}/${currentClassroomStudents.length}` : undefined}
         homeroomBadge={homeroomClass ? homeroomStudents.length : undefined}
+        isClerical={teacherUser?.is_clerical}
       />
 
       {/* ===== MAIN CONTENT ===== */}
@@ -1102,6 +1104,8 @@ export default function TeacherPortal() {
             attendanceSummaryLoading={attendanceSummaryLoading}
           />
         )}
+
+        {activeTab === "books" && <CorrespondenceTab />}
 
       </main>
 

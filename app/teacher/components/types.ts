@@ -14,7 +14,7 @@ export interface RowScore {
   final: string;
 }
 
-export type Tab = "dashboard" | "enter" | "status" | "homeroom" | "yearly-average" | "schedule" | "evaluate" | "attendance";
+export type Tab = "dashboard" | "enter" | "status" | "homeroom" | "yearly-average" | "schedule" | "evaluate" | "attendance" | "books";
 
 export interface EvaluationTopic {
   id: string;

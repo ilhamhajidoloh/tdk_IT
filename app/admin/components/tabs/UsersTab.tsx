@@ -243,7 +243,14 @@ export default function UsersTab({
                   />
                 </td>
                 <td className="px-6 py-4">
-                  <div className="font-semibold text-foreground">{u.username}</div>
+                  <div className="font-semibold text-foreground flex items-center gap-1.5">
+                    {u.username}
+                    {u.role === "teacher" && u.is_clerical && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50">
+                        ธุรการ
+                      </span>
+                    )}
+                  </div>
                   {u.email && <div className="text-[11px] text-subtle-foreground mt-0.5">{u.email}</div>}
                   {u.role === "teacher" && (
                     <div className="text-[11px] text-muted-foreground mt-1 space-y-0.5">
@@ -322,7 +329,14 @@ export default function UsersTab({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-semibold text-foreground break-all">{u.username}</div>
+                <div className="font-semibold text-foreground break-all flex items-center gap-1.5">
+                  {u.username}
+                  {u.role === "teacher" && u.is_clerical && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50 shrink-0">
+                      ธุรการ
+                    </span>
+                  )}
+                </div>
                 {u.email && <div className="text-[11px] text-subtle-foreground break-all">{u.email}</div>}
                 <span
                   className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${

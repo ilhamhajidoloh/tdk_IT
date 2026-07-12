@@ -12,7 +12,7 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { username, password, role, student_id, homeroom_classroom_id, subjects, email } = await req.json();
+  const { username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical } = await req.json();
   const finalEmail = email?.trim() || null;
 
   if (!username?.trim() || !role) {
@@ -40,17 +40,17 @@ export async function PUT(
     if (password?.trim()) {
       const hashedPassword = await bcrypt.hash(password.trim(), 10);
       result = await pool.query(
-        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7
-         WHERE id = $8
-         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects`,
-        [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, id]
+        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7, is_clerical = $8
+         WHERE id = $9
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical`,
+        [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id]
       );
     } else {
       result = await pool.query(
-        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6
-         WHERE id = $7
-         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects`,
-        [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, id]
+        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6, is_clerical = $7
+         WHERE id = $8
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical`,
+        [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id]
       );
     }
   } catch (err) {

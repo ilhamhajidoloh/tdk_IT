@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         u.role, 
         u.student_id, 
         u.homeroom_classroom_id,
+        u.is_clerical,
         COALESCE(
           (
             SELECT array_agg(DISTINCT s.name)
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
         u.role, 
         u.student_id, 
         u.homeroom_classroom_id,
+        u.is_clerical,
         COALESCE(
           (
             SELECT array_agg(DISTINCT s.name)
@@ -72,7 +74,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, username, password, role, student_id, homeroom_classroom_id, subjects, email } = await req.json();
+  const { name, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical } = await req.json();
 
   let finalName = name?.trim();
   let finalUsername = username?.trim();
@@ -116,9 +118,9 @@ export async function POST(req: NextRequest) {
   let result;
   try {
      result = await pool.query(
-      `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, subjects, email)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects`,
-      [finalUsername, hashedPassword, role, finalStudentId ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail]
+      `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical`,
+      [finalUsername, hashedPassword, role, finalStudentId ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false]
     );
   } catch (err: any) {
     if (err.code === "23505") {
