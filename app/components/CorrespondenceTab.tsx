@@ -46,7 +46,8 @@ export default function CorrespondenceTab() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  
+  const [isDragging, setIsDragging] = useState(false);
+
   // Track attachments to delete on edit
   const [attachmentsToDelete, setAttachmentsToDelete] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,8 +166,40 @@ export default function CorrespondenceTab() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
+      const newFiles = Array.from(e.target.files);
+      setSelectedFiles((prev) => {
+        const merged = [...prev];
+        newFiles.forEach((f) => {
+          const isDuplicate = merged.some(
+            (existing) => existing.name === f.name && existing.size === f.size
+          );
+          if (!isDuplicate) merged.push(f);
+        });
+        return merged;
+      });
+      // Reset input so the same file can be selected again if needed
+      e.target.value = "";
     }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    setSelectedFiles((prev) => {
+      const merged = [...prev];
+      droppedFiles.forEach((f) => {
+        const isDuplicate = merged.some(
+          (existing) => existing.name === f.name && existing.size === f.size
+        );
+        if (!isDuplicate) merged.push(f);
+      });
+      return merged;
+    });
   };
 
   const toggleDeleteAttachment = (id: string) => {
@@ -807,36 +840,84 @@ export default function CorrespondenceTab() {
                 <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   {modalMode === "add" ? "อัปโหลดไฟล์แนบ" : "เพิ่มไฟล์แนบใหม่"}
                 </label>
-                <div className="relative">
-                  <input
-                    type="file"
-                    multiple
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full border border-dashed border-indigo-200 hover:border-indigo-400 dark:border-indigo-500/30 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 px-4 py-5 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer text-indigo-600 dark:text-indigo-400"
-                  >
-                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <span className="text-xs font-bold">เลือกไฟล์จากเครื่องคอมพิวเตอร์</span>
-                    <span className="text-[10px] text-muted-foreground">อนุญาตไฟล์ PDF, JPG, PNG หรือไฟล์เอกสาร</span>
-                  </button>
+                <input
+                  type="file"
+                  multiple
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                {/* Drag & Drop Zone */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`w-full border-2 border-dashed rounded-2xl px-4 py-6 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
+                    isDragging
+                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/15 scale-[1.01]"
+                      : "border-indigo-200 hover:border-indigo-400 dark:border-indigo-500/30 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10"
+                  } text-indigo-600 dark:text-indigo-400`}
+                >
+                  <svg className="w-8 h-8 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <div className="pointer-events-none text-center">
+                    <p className="text-xs font-bold">
+                      {isDragging ? "ปล่อยไฟล์ที่นี่" : "ลากไฟล์มาวางหรือคลิกเพื่อเลือก"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">เลือกได้หลายไฟล์พร้อมกัน · PDF, Word, Excel, รูปภาพ ฯลฯ</p>
+                  </div>
                 </div>
-                
-                {/* Selected Files Preview */}
+
+                {/* Selected Files Queue */}
                 {selectedFiles.length > 0 && (
-                  <div className="bg-indigo-50/40 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/20 rounded-xl p-3 text-xs space-y-1 animate-fade-in-up">
-                    <div className="font-bold text-indigo-700 dark:text-indigo-300">ไฟล์ที่เลือกเตรียมอัปโหลด ({selectedFiles.length} ไฟล์):</div>
-                    {selectedFiles.map((file, i) => (
-                      <div key={i} className="truncate text-muted-foreground font-semibold">
-                        • {file.name} ({formatBytes(file.size)})
-                      </div>
-                    ))}
+                  <div className="border border-indigo-100 dark:border-indigo-500/20 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-indigo-50/60 dark:bg-indigo-500/10 border-b border-indigo-100 dark:border-indigo-500/20">
+                      <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                        รายการไฟล์ที่จะอัปโหลด ({selectedFiles.length} ไฟล์)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSelectedFiles([]); }}
+                        className="text-[10px] text-red-500 hover:text-red-700 font-bold border-0 bg-transparent cursor-pointer px-1.5 py-0.5 rounded hover:bg-red-50 transition-colors"
+                      >
+                        ล้างทั้งหมด
+                      </button>
+                    </div>
+                    <div className="divide-y divide-border max-h-40 overflow-y-auto">
+                      {selectedFiles.map((file, i) => (
+                        <div key={i} className="flex items-center gap-2 px-3 py-2 bg-card hover:bg-muted/30 transition-colors group">
+                          {/* File icon */}
+                          <svg className="w-4 h-4 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-foreground truncate" title={file.name}>{file.name}</div>
+                            <div className="text-[10px] text-muted-foreground">{formatBytes(file.size)}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleRemoveFile(i); }}
+                            className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 border-0 bg-transparent cursor-pointer transition-colors opacity-0 group-hover:opacity-100"
+                            title="ลบไฟล์นี้ออก"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-3 py-2 bg-muted/20 border-t border-border">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                        className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline border-0 bg-transparent cursor-pointer"
+                      >
+                        + เพิ่มไฟล์อีก
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
