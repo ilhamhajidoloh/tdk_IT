@@ -334,17 +334,19 @@ export default function AdminPortal() {
     }
   }, [includeActivitySubjects]);
 
-  // Default the term/classroom selection when landing on the Export Grades tab directly
+  // Default the term selection when landing on the Export Grades tab directly
   // (e.g. via the sidebar), since without a pre-selected value the <select> shows an
   // option that doesn't match state and the first change never fires onChange.
+  // The classroom itself is intentionally left unset here — it gets picked once
+  // exportClassrooms for this exact setting has actually loaded (see below), so it
+  // never points at a classroom id that belongs to a different term.
   useEffect(() => {
     if (activeTab !== "export-grades" || exportSettingId !== null) return;
     const settingId = selectedSettingId || selectedSubjectSettingId || gradeStatusSettingId || (settingsList[0]?.id ?? null);
     if (settingId) {
       setExportSettingId(settingId);
-      setExportClassroomId(classrooms[0]?.id || "");
     }
-  }, [activeTab, exportSettingId, selectedSettingId, selectedSubjectSettingId, gradeStatusSettingId, settingsList, classrooms]);
+  }, [activeTab, exportSettingId, selectedSettingId, selectedSubjectSettingId, gradeStatusSettingId, settingsList]);
 
   // Load classrooms, students, and subjects for the selected term in export tab
   useEffect(() => {
@@ -385,6 +387,7 @@ export default function AdminPortal() {
           }
         });
         setExportClassrooms(uniqueClassrooms);
+        setExportClassroomId(prev => (uniqueClassrooms.some(c => c.id === prev) ? prev : (uniqueClassrooms[0]?.id || "")));
       }).catch(err => console.error("Failed to load export classrooms", err));
 
       // Fetch students for both terms, deduplicate by student_id
@@ -435,7 +438,11 @@ export default function AdminPortal() {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
-        .then(data => { if (!cancelled) setExportClassrooms(data); })
+        .then(data => {
+          if (cancelled) return;
+          setExportClassrooms(data);
+          setExportClassroomId(prev => (data.some((c: any) => c.id === prev) ? prev : (data[0]?.id || "")));
+        })
         .catch(err => console.error("Failed to load export classrooms", err));
 
       studentsPromise = fetch(`/api/students?settingId=${exportSettingId}`, {
@@ -459,16 +466,6 @@ export default function AdminPortal() {
 
     return () => { cancelled = true; };
   }, [activeTab, exportSettingId, exportType, token, settingsList]);
-
-  // Reset export classroom when export classrooms list is loaded/changed for a new term
-  useEffect(() => {
-    if (activeTab === "export-grades" && exportSettingId && exportClassrooms.length > 0) {
-      const exists = exportClassrooms.some(c => c.id === exportClassroomId);
-      if (!exists) {
-        setExportClassroomId(exportClassrooms[0]?.id || "");
-      }
-    }
-  }, [exportSettingId, exportClassrooms, activeTab, exportClassroomId]);
 
   // Reset export student when classroom changes
   useEffect(() => {
