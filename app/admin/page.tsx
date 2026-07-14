@@ -326,6 +326,7 @@ export default function AdminPortal() {
   const [exportStudents, setExportStudents] = useState<DBStudent[]>([]);
   const [exportSubjects, setExportSubjects] = useState<DBSubject[]>([]);
   const [exportClassrooms, setExportClassrooms] = useState<{ id: string; name: string; setting_id?: number | null }[]>([]);
+  const [exportDataLoading, setExportDataLoading] = useState(false);
 
   useEffect(() => {
     if (!includeActivitySubjects) {
@@ -351,20 +352,29 @@ export default function AdminPortal() {
       setExportStudents([]);
       setExportSubjects([]);
       setExportClassrooms([]);
+      setExportDataLoading(false);
       return;
     }
 
     const setting = settingsList.find(s => s.id === exportSettingId);
     if (!setting) return;
 
+    let cancelled = false;
+    setExportDataLoading(true);
+
+    let classroomsPromise: Promise<unknown>;
+    let studentsPromise: Promise<unknown>;
+    let subjectsPromise: Promise<unknown>;
+
     if (exportType === "yearly") {
       const yearSettings = settingsList.filter(s => s.academic_year === setting.academic_year);
 
       // Fetch classrooms for both terms, deduplicate by name
-      Promise.all(yearSettings.map(s =>
+      classroomsPromise = Promise.all(yearSettings.map(s =>
         fetch(`/api/classrooms?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
       )).then(results => {
+        if (cancelled) return;
         const flatClassrooms = results.flat();
         const uniqueClassrooms: typeof exportClassrooms = [];
         const seenNames = new Set<string>();
@@ -378,10 +388,11 @@ export default function AdminPortal() {
       }).catch(err => console.error("Failed to load export classrooms", err));
 
       // Fetch students for both terms, deduplicate by student_id
-      Promise.all(yearSettings.map(s =>
+      studentsPromise = Promise.all(yearSettings.map(s =>
         fetch(`/api/students?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
       )).then(results => {
+        if (cancelled) return;
         const flatStudents = results.flat();
         const uniqueStudents: DBStudent[] = [];
         const seenIds = new Set<string>();
@@ -395,10 +406,11 @@ export default function AdminPortal() {
       }).catch(err => console.error("Failed to load export students", err));
 
       // Fetch subjects for both terms, deduplicate/merge by name
-      Promise.all(yearSettings.map(s =>
+      subjectsPromise = Promise.all(yearSettings.map(s =>
         fetch(`/api/subjects?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
       )).then(results => {
+        if (cancelled) return;
         const flatSubjects = results.flat();
         const mergedSubjects: DBSubject[] = [];
         const seenNames = new Set<string>();
@@ -419,27 +431,33 @@ export default function AdminPortal() {
       }).catch(err => console.error("Failed to load export subjects", err));
 
     } else {
-      fetch(`/api/classrooms?settingId=${exportSettingId}`, {
+      classroomsPromise = fetch(`/api/classrooms?settingId=${exportSettingId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
-        .then(setExportClassrooms)
+        .then(data => { if (!cancelled) setExportClassrooms(data); })
         .catch(err => console.error("Failed to load export classrooms", err));
 
-      fetch(`/api/students?settingId=${exportSettingId}`, {
+      studentsPromise = fetch(`/api/students?settingId=${exportSettingId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
-        .then(setExportStudents)
+        .then(data => { if (!cancelled) setExportStudents(data); })
         .catch(err => console.error("Failed to load export students", err));
 
-      fetch(`/api/subjects?settingId=${exportSettingId}`, {
+      subjectsPromise = fetch(`/api/subjects?settingId=${exportSettingId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
-        .then(setExportSubjects)
+        .then(data => { if (!cancelled) setExportSubjects(data); })
         .catch(err => console.error("Failed to load export subjects", err));
     }
+
+    Promise.allSettled([classroomsPromise, studentsPromise, subjectsPromise]).then(() => {
+      if (!cancelled) setExportDataLoading(false);
+    });
+
+    return () => { cancelled = true; };
   }, [activeTab, exportSettingId, exportType, token, settingsList]);
 
   // Reset export classroom when export classrooms list is loaded/changed for a new term
@@ -3636,6 +3654,7 @@ function changeFontSize(dir) {
                 onExport={handleExecuteClassroomScoreExport}
                 exportType={exportType}
                 setExportType={setExportType}
+                exportDataLoading={exportDataLoading}
               />
             )}
 

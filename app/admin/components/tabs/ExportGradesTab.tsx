@@ -27,6 +27,7 @@ interface ExportGradesTabProps {
   onExport: () => void;
   exportType: "term" | "yearly";
   setExportType: (type: "term" | "yearly") => void;
+  exportDataLoading: boolean;
 }
 
 export default function ExportGradesTab({
@@ -55,6 +56,7 @@ export default function ExportGradesTab({
   onExport,
   exportType,
   setExportType,
+  exportDataLoading,
 }: ExportGradesTabProps) {
   return (
     <div className="p-8 animate-fade-in-up">
@@ -67,7 +69,7 @@ export default function ExportGradesTab({
         <button
           type="button"
           onClick={onExport}
-          disabled={!exportClassroomId || exportSelectedSubjectIds.length === 0}
+          disabled={exportDataLoading || !exportClassroomId || exportSelectedSubjectIds.length === 0}
           className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md text-sm cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -82,7 +84,17 @@ export default function ExportGradesTab({
         </button>
       </SectionHeader>
 
-      <div className="bg-card rounded-3xl border border-border p-5 sm:p-6 space-y-5 shadow-sm">
+      {exportDataLoading && (
+        <div className="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-sm font-semibold animate-fade-in">
+          <svg className="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          กำลังโหลดข้อมูลนักเรียน ชั้นเรียน และวิชา สำหรับปีการศึกษา/เทอมที่เลือก...
+        </div>
+      )}
+
+      <div className={`bg-card rounded-3xl border border-border p-5 sm:p-6 space-y-5 shadow-sm transition-opacity ${exportDataLoading ? "opacity-50 pointer-events-none" : ""}`}>
         {/* Export Type Switcher */}
         <div>
           <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
