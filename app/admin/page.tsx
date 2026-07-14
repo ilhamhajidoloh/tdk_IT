@@ -69,6 +69,7 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
 
 function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
   const dict: Record<string, { th: string; rumi: string; jawi: string }> = {
+    "เฉลี่ยทั้งปี": { th: "เฉลี่ยทั้งปี", rumi: "Purata Setahun", jawi: "ڤوراتا ستاهون" },
     "รายงานสรุปผลการเรียนประจำชั้นเรียน": {
       th: "รายงานสรุปผลการเรียนประจำชั้นเรียน",
       rumi: "Laporan Keputusan Peperiksaan Mengikut Kelas",
@@ -312,6 +313,7 @@ export default function AdminPortal() {
   // Export Classroom & Individual Scores State
   const [isExportScoreModalOpen, setIsExportScoreModalOpen] = useState(false);
   const [exportMode, setExportMode] = useState<"classroom" | "individual">("classroom");
+  const [exportType, setExportType] = useState<"term" | "yearly">("term");
   const [exportSettingId, setExportSettingId] = useState<number | null>(null);
   const [exportClassroomId, setExportClassroomId] = useState<string>("");
   const [exportStudentId, setExportStudentId] = useState<string>("all");
@@ -340,27 +342,93 @@ export default function AdminPortal() {
       return;
     }
 
-    fetch(`/api/classrooms?settingId=${exportSettingId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(setExportClassrooms)
-      .catch(err => console.error("Failed to load export classrooms", err));
+    const setting = settingsList.find(s => s.id === exportSettingId);
+    if (!setting) return;
 
-    fetch(`/api/students?settingId=${exportSettingId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(setExportStudents)
-      .catch(err => console.error("Failed to load export students", err));
+    if (exportType === "yearly") {
+      const yearSettings = settingsList.filter(s => s.academic_year === setting.academic_year);
 
-    fetch(`/api/subjects?settingId=${exportSettingId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(setExportSubjects)
-      .catch(err => console.error("Failed to load export subjects", err));
-  }, [isExportScoreModalOpen, exportSettingId, token]);
+      // Fetch classrooms for both terms, deduplicate by name
+      Promise.all(yearSettings.map(s =>
+        fetch(`/api/classrooms?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(res => res.ok ? res.json() : [])
+      )).then(results => {
+        const flatClassrooms = results.flat();
+        const uniqueClassrooms: typeof exportClassrooms = [];
+        const seenNames = new Set<string>();
+        flatClassrooms.forEach((c: any) => {
+          if (!seenNames.has(c.name)) {
+            seenNames.add(c.name);
+            uniqueClassrooms.push(c);
+          }
+        });
+        setExportClassrooms(uniqueClassrooms);
+      }).catch(err => console.error("Failed to load export classrooms", err));
+
+      // Fetch students for both terms, deduplicate by student_id
+      Promise.all(yearSettings.map(s =>
+        fetch(`/api/students?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(res => res.ok ? res.json() : [])
+      )).then(results => {
+        const flatStudents = results.flat();
+        const uniqueStudents: DBStudent[] = [];
+        const seenIds = new Set<string>();
+        flatStudents.forEach((s: any) => {
+          if (!seenIds.has(s.student_id)) {
+            seenIds.add(s.student_id);
+            uniqueStudents.push(s);
+          }
+        });
+        setExportStudents(uniqueStudents);
+      }).catch(err => console.error("Failed to load export students", err));
+
+      // Fetch subjects for both terms, deduplicate/merge by name
+      Promise.all(yearSettings.map(s =>
+        fetch(`/api/subjects?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(res => res.ok ? res.json() : [])
+      )).then(results => {
+        const flatSubjects = results.flat();
+        const mergedSubjects: DBSubject[] = [];
+        const seenNames = new Set<string>();
+        flatSubjects.forEach((sub: any) => {
+          const nameKey = sub.name?.trim().toLowerCase();
+          if (!seenNames.has(nameKey)) {
+            seenNames.add(nameKey);
+            const allClassrooms = flatSubjects
+              .filter((s: any) => s.name?.trim().toLowerCase() === nameKey)
+              .flatMap((s: any) => s.classroom_ids || []);
+            mergedSubjects.push({
+              ...sub,
+              classroom_ids: Array.from(new Set(allClassrooms))
+            });
+          }
+        });
+        setExportSubjects(mergedSubjects);
+      }).catch(err => console.error("Failed to load export subjects", err));
+
+    } else {
+      fetch(`/api/classrooms?settingId=${exportSettingId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setExportClassrooms)
+        .catch(err => console.error("Failed to load export classrooms", err));
+
+      fetch(`/api/students?settingId=${exportSettingId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setExportStudents)
+        .catch(err => console.error("Failed to load export students", err));
+
+      fetch(`/api/subjects?settingId=${exportSettingId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setExportSubjects)
+        .catch(err => console.error("Failed to load export subjects", err));
+    }
+  }, [isExportScoreModalOpen, exportSettingId, exportType, token, settingsList]);
 
   // Reset export classroom when export classrooms list is loaded/changed for a new term
   useEffect(() => {
@@ -2623,12 +2691,18 @@ function changeFontSize(dir) {
     if (win) { win.document.write(html); win.document.close(); }
   };
 
-  const handleOpenExportScoreModal = (classroomId?: string, studentId?: string, mode: "classroom" | "individual" = "classroom") => {
+  const handleOpenExportScoreModal = (
+    classroomId?: string,
+    studentId?: string,
+    mode: "classroom" | "individual" = "classroom",
+    type: "term" | "yearly" = "term"
+  ) => {
     const settingId = selectedSettingId || selectedSubjectSettingId || gradeStatusSettingId || (settingsList[0]?.id ?? null);
     setExportSettingId(settingId);
     setExportClassroomId(classroomId || classrooms[0]?.id || "");
     setExportStudentId(studentId || "all");
     setExportMode(mode);
+    setExportType(type);
     setIncludeActivitySubjects(false);
     setIsExportScoreModalOpen(true);
   };
@@ -2682,24 +2756,83 @@ function changeFontSize(dir) {
       return;
     }
 
-    const termKey = `${setting.term}/${setting.academic_year}`;
-    const gradesRes = await fetch(`/api/grades?term=${encodeURIComponent(termKey)}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const allGrades: { student_id: string; subject: string; midterm_score: number | null; final_score: number | null }[] = gradesRes.ok ? await gradesRes.json() : [];
-
+    let allGrades: { student_id: string; subject: string; midterm_score: number | null; final_score: number | null }[] = [];
     const gradeMap = new Map<string, Map<string, { midterm: number | null; final: number | null }>>();
-    allGrades.forEach(g => {
-      if (!gradeMap.has(g.student_id)) gradeMap.set(g.student_id, new Map());
-      const sMap = gradeMap.get(g.student_id)!;
-      sMap.set(g.subject?.trim().toLowerCase(), { midterm: g.midterm_score, final: g.final_score });
-    });
+    const combinedSubjectMap = new Map<string, DBSubject>();
 
-    // การประเมินคุณลักษณะอันพึงประสงค์ / อ่าน คิดวิเคราะห์ เขียน — เปิดใช้เฉพาะภาคเรียนที่ 2
-    const showEvaluations = exportMode === "individual" && isEvaluationTermOpen(setting.term);
+    if (exportType === "yearly") {
+      const yearSettings = settingsList.filter(s => s.academic_year === setting.academic_year);
+      const termKeys = yearSettings.map(s => `${s.term}/${s.academic_year}`);
+
+      // Fetch grades for both terms
+      const gradesPromises = termKeys.map(tk =>
+        fetch(`/api/grades?term=${encodeURIComponent(tk)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(res => res.ok ? res.json() : [])
+      );
+      const gradesResults = await Promise.all(gradesPromises);
+      allGrades = gradesResults.flat();
+
+      // Aggregate grades (sum midterm & final scores for the same student and subject)
+      allGrades.forEach(g => {
+        const studentId = g.student_id;
+        const subKey = g.subject?.trim().toLowerCase();
+        if (!gradeMap.has(studentId)) gradeMap.set(studentId, new Map());
+        const sMap = gradeMap.get(studentId)!;
+
+        if (!sMap.has(subKey)) {
+          sMap.set(subKey, { midterm: null, final: null });
+        }
+        const existing = sMap.get(subKey)!;
+        if (g.midterm_score !== null) {
+          existing.midterm = (existing.midterm ?? 0) + Number(g.midterm_score);
+        }
+        if (g.final_score !== null) {
+          existing.final = (existing.final ?? 0) + Number(g.final_score);
+        }
+      });
+
+      // Fetch subjects for both terms to calculate combined max scores
+      const subjectsPromises = yearSettings.map(s =>
+        fetch(`/api/subjects?settingId=${s.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(res => res.ok ? res.json() : [])
+      );
+      const subjectsResults = await Promise.all(subjectsPromises);
+      const allYearSubjects = subjectsResults.flat();
+
+      selectedSubjects.forEach(sub => {
+        const subKey = sub.name?.trim().toLowerCase();
+        const sameSubjects = allYearSubjects.filter(s => s.name?.trim().toLowerCase() === subKey);
+        const totalMidMax = sameSubjects.reduce((sum, s) => sum + (Number(s.midterm_max_score) || Number(setting.midterm_max_score) || 50), 0);
+        const totalFinMax = sameSubjects.reduce((sum, s) => sum + (Number(s.final_max_score) || Number(setting.final_max_score) || 50), 0);
+        combinedSubjectMap.set(sub.id, {
+          ...sub,
+          midterm_max_score: totalMidMax,
+          final_max_score: totalFinMax,
+        });
+      });
+
+    } else {
+      const termKey = `${setting.term}/${setting.academic_year}`;
+      const gradesRes = await fetch(`/api/grades?term=${encodeURIComponent(termKey)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      allGrades = gradesRes.ok ? await gradesRes.json() : [];
+
+      allGrades.forEach(g => {
+        if (!gradeMap.has(g.student_id)) gradeMap.set(g.student_id, new Map());
+        const sMap = gradeMap.get(g.student_id)!;
+        sMap.set(g.subject?.trim().toLowerCase(), { midterm: g.midterm_score, final: g.final_score });
+      });
+    }
+
+    // การประเมินคุณลักษณะอันพึงประสงค์ / อ่าน คิดวิเคราะห์ เขียน — ย้ายมาแสดงเฉพาะรายงานเฉลี่ยทั้งปีการศึกษา
+    const showEvaluations = exportType === "yearly" && exportMode === "individual";
     const evalMap = new Map<string, Map<string, number>>();
     if (showEvaluations) {
-      const evalRes = await fetch(`/api/evaluations/summary?settingId=${exportSettingId}&classroomId=${exportClassroomId}`, {
+      const term2Setting = settingsList.find(s => s.academic_year === setting.academic_year && String(s.term) === "2") || setting;
+      const evalRes = await fetch(`/api/evaluations/summary?settingId=${term2Setting.id}&classroomId=${exportClassroomId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const evalRows: { student_id: string; category: string; topic_key: string; rating: number }[] = evalRes.ok ? await evalRes.json() : [];
@@ -2770,8 +2903,12 @@ function changeFontSize(dir) {
       selectedSubjects.forEach(sub => {
         const subKey = sub.name?.trim().toLowerCase();
         const scoreData = sMap.get(subKey);
-        const mMax = Number(sub.midterm_max_score) || 50;
-        const fMax = Number(sub.final_max_score) || 50;
+        const maxSubObj = exportType === "yearly" && combinedSubjectMap.has(sub.id)
+          ? combinedSubjectMap.get(sub.id)!
+          : sub;
+
+        const mMax = Number(maxSubObj.midterm_max_score) || 50;
+        const fMax = Number(maxSubObj.final_max_score) || 50;
         const subMax = mMax + fMax;
         const credits = Number(sub.credit_hours) || 1;
 
@@ -2900,7 +3037,7 @@ function changeFontSize(dir) {
         <!DOCTYPE html>
         <html dir="${langDir}">
         <head>
-          <title>${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} - ${t("ชั้น")} ${classroom.name}</title>
+          <title>${exportType === "yearly" ? `${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} (${t("เฉลี่ยทั้งปี")})` : t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} - ${t("ชั้น")} ${classroom.name}</title>
           <meta charset="utf-8" />
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap');
@@ -2925,8 +3062,8 @@ function changeFontSize(dir) {
         <body>
           <button class="print-btn" onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
           <div class="header">
-            <h1>${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")}</h1>
-            <h2>${t("ชั้นเรียน")} ${classroom.name} — ${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}</h2>
+            <h1>${exportType === "yearly" ? `${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} (${t("เฉลี่ยทั้งปี")})` : t("รายงานสรุปผลการเรียนประจำชั้นเรียน")}</h1>
+            <h2>${exportType === "yearly" ? `${t("ชั้นเรียน")} ${classroom.name} — ${t("ปีการศึกษา")} ${setting.academic_year} (${t("เฉลี่ยทั้งปี")})` : `${t("ชั้นเรียน")} ${classroom.name} — ${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}`}</h2>
           </div>
           <div class="meta">
             <span>${t("จำนวนนักเรียนทั้งหมด:")} <b>${classStudents.length} ${t("คน")}</b> | ${t("จำนวนวิชาที่ส่งออก:")} <b>${selectedSubjects.length} ${t("วิชา")}</b></span>
@@ -2997,11 +3134,14 @@ function changeFontSize(dir) {
           `;
         }).join("");
 
+        const titleText = exportType === "yearly" ? `${t("ใบรายงานผลการเรียนรายบุคคล")} (${t("เฉลี่ยทั้งปี")})` : t("ใบรายงานผลการเรียนรายบุคคล");
+        const subtitleText = exportType === "yearly" ? `${t("ปีการศึกษา")} ${setting.academic_year} (${t("เฉลี่ยทั้งปี")})` : `${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}`;
+
         return `
           <div class="report-card ${sIdx < targetStudents.length - 1 ? 'page-break' : ''}">
             <div class="header">
-              <h1 style="margin:0;font-size:22px;font-weight:800;color:#0f172a;">${t("ใบรายงานผลการเรียนรายบุคคล")}</h1>
-              <h2 style="margin:4px 0 0;font-size:15px;font-weight:600;color:#475569;">${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}</h2>
+              <h1 style="margin:0;font-size:22px;font-weight:800;color:#0f172a;">${titleText}</h1>
+              <h2 style="margin:4px 0 0;font-size:15px;font-weight:600;color:#475569;">${subtitleText}</h2>
             </div>
 
             <div class="student-info-grid" style="text-align:${alignLeftOrRight};">
@@ -3070,7 +3210,7 @@ function changeFontSize(dir) {
         <!DOCTYPE html>
         <html dir="${langDir}">
         <head>
-          <title>${t("ใบรายงานผลการเรียนรายบุคคล")} - ${t("ชั้น")} ${classroom.name}</title>
+          <title>${exportType === "yearly" ? `${t("ใบรายงานผลการเรียนรายบุคคล")} (${t("เฉลี่ยทั้งปี")})` : t("ใบรายงานผลการเรียนรายบุคคล")} - ${t("ชั้น")} ${classroom.name}</title>
           <meta charset="utf-8" />
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap');
@@ -3454,6 +3594,7 @@ function changeFontSize(dir) {
                 setYearlyAvgClassroomFilter={setYearlyAvgClassroomFilter}
                 token={token}
                 loadYearlyAverage={loadYearlyAverage}
+                handleOpenExportScoreModal={handleOpenExportScoreModal}
               />
             )}
 
@@ -3660,6 +3801,8 @@ function changeFontSize(dir) {
         moveExportSubjectUp={moveExportSubjectUp}
         moveExportSubjectDown={moveExportSubjectDown}
         onExport={handleExecuteClassroomScoreExport}
+        exportType={exportType}
+        setExportType={setExportType}
       />
       {adminUser && <ChatWidget userId={adminUser.id} userRole="admin" />}
     </div>

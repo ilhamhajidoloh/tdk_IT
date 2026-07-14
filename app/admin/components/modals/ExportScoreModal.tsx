@@ -26,6 +26,8 @@ interface ExportScoreModalProps {
   moveExportSubjectUp: (index: number) => void;
   moveExportSubjectDown: (index: number) => void;
   onExport: () => void;
+  exportType: "term" | "yearly";
+  setExportType: (type: "term" | "yearly") => void;
 }
 
 export default function ExportScoreModal({
@@ -54,6 +56,8 @@ export default function ExportScoreModal({
   moveExportSubjectUp,
   moveExportSubjectDown,
   onExport,
+  exportType,
+  setExportType,
 }: ExportScoreModalProps) {
   if (!isOpen) return null;
 
@@ -98,6 +102,37 @@ export default function ExportScoreModal({
 
         {/* Body */}
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+          {/* Export Type Switcher */}
+          <div>
+            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+              ประเภทการส่งออก (Export Type)
+            </label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-muted/60 rounded-2xl border border-border/80">
+              <button
+                type="button"
+                onClick={() => setExportType("term")}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border-0 cursor-pointer flex items-center justify-center gap-1.5 ${
+                  exportType === "term"
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                📝 รายเทอม (แยกเทอม)
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportType("yearly")}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border-0 cursor-pointer flex items-center justify-center gap-1.5 ${
+                  exportType === "yearly"
+                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                📅 เฉลี่ยรวมทั้งปีการศึกษา
+              </button>
+            </div>
+          </div>
+
           {/* Export Mode Switcher */}
           <div className="grid grid-cols-2 gap-2 p-1 bg-muted/60 rounded-2xl border border-border/80">
             <button
@@ -193,11 +228,19 @@ export default function ExportScoreModal({
                 onChange={(e) => setExportSettingId(Number(e.target.value) || null)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
               >
-                {settingsList.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    ปี {s.academic_year} เทอม {s.term}
-                  </option>
-                ))}
+                {exportType === "yearly" ? (
+                  Array.from(new Map(settingsList.map((s) => [s.academic_year, s])).values()).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      ปีการศึกษา {s.academic_year} (เฉลี่ยทั้งปี)
+                    </option>
+                  ))
+                ) : (
+                  settingsList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      ปี {s.academic_year} เทอม {s.term}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -212,7 +255,7 @@ export default function ExportScoreModal({
               >
                 <option value="">-- เลือกชั้นเรียน --</option>
                 {classrooms
-                  .filter((c) => !exportSettingId || c.setting_id === exportSettingId)
+                  .filter((c) => exportType === "yearly" || !exportSettingId || c.setting_id === exportSettingId)
                   .map((c) => (
                     <option key={c.id} value={c.id}>
                       ชั้น {c.name}
