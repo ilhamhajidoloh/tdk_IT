@@ -90,6 +90,7 @@ export type Tab =
   | "student-scores"
   | "rankings"
   | "yearly-average"
+  | "export-grades"
   | "duty"
   | "evaluations"
   | "books";

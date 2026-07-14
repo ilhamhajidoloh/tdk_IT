@@ -29,7 +29,6 @@ import {
 import { RWT_TOPICS, isEvaluationTermOpen, getTopicNameLabel, getRwtTopicLabel, getRatingLabel } from "../lib/evaluation";
 import CopySubjectsModal from "./components/modals/CopySubjectsModal";
 import CopyClassroomsModal from "./components/modals/CopyClassroomsModal";
-import ExportScoreModal from "./components/modals/ExportScoreModal";
 import UserModal from "./components/modals/UserModal";
 import SubjectModal from "./components/modals/SubjectModal";
 import StudentDetailModal from "./components/modals/StudentDetailModal";
@@ -42,6 +41,7 @@ import GradeStatusTab from "./components/tabs/GradeStatusTab";
 import StudentScoresTab from "./components/tabs/StudentScoresTab";
 import RankingsTab from "./components/tabs/RankingsTab";
 import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
+import ExportGradesTab from "./components/tabs/ExportGradesTab";
 import SettingsTab from "./components/tabs/SettingsTab";
 import DashboardTab from "./components/tabs/DashboardTab";
 import DutyTab from "./components/tabs/DutyTab";
@@ -59,6 +59,7 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "student-scores", label: "ดูคะแนนนักเรียน", sub: "Student Scores", icon: "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" },
   { key: "rankings", label: "อันดับผลการเรียน", sub: "Rankings", icon: "M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" },
   { key: "yearly-average", label: "เฉลี่ยรวมทั้งปี", sub: "Yearly Average", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { key: "export-grades", label: "ส่งออกไฟล์เกรด", sub: "Export Grades", icon: "M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" },
   { key: "evaluations", label: "ประเมินคุณลักษณะ", sub: "Evaluations", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
   { key: "settings", label: "ตั้งค่าระบบ", sub: "Settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" },
   { key: "duty", label: "หน้าแรก & เวรประจำวัน", sub: "Home & Duty", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2" },
@@ -311,7 +312,6 @@ export default function AdminPortal() {
   const [copySubjectsSelected, setCopySubjectsSelected] = useState<Record<string, boolean>>({});
 
   // Export Classroom & Individual Scores State
-  const [isExportScoreModalOpen, setIsExportScoreModalOpen] = useState(false);
   const [exportMode, setExportMode] = useState<"classroom" | "individual">("classroom");
   const [exportType, setExportType] = useState<"term" | "yearly">("term");
   const [exportSettingId, setExportSettingId] = useState<number | null>(null);
@@ -333,9 +333,9 @@ export default function AdminPortal() {
     }
   }, [includeActivitySubjects]);
 
-  // Load classrooms, students, and subjects for the selected term in export modal
+  // Load classrooms, students, and subjects for the selected term in export tab
   useEffect(() => {
-    if (!isExportScoreModalOpen || !exportSettingId || !token) {
+    if (activeTab !== "export-grades" || !exportSettingId || !token) {
       setExportStudents([]);
       setExportSubjects([]);
       setExportClassrooms([]);
@@ -428,17 +428,17 @@ export default function AdminPortal() {
         .then(setExportSubjects)
         .catch(err => console.error("Failed to load export subjects", err));
     }
-  }, [isExportScoreModalOpen, exportSettingId, exportType, token, settingsList]);
+  }, [activeTab, exportSettingId, exportType, token, settingsList]);
 
   // Reset export classroom when export classrooms list is loaded/changed for a new term
   useEffect(() => {
-    if (isExportScoreModalOpen && exportSettingId && exportClassrooms.length > 0) {
+    if (activeTab === "export-grades" && exportSettingId && exportClassrooms.length > 0) {
       const exists = exportClassrooms.some(c => c.id === exportClassroomId);
       if (!exists) {
         setExportClassroomId(exportClassrooms[0]?.id || "");
       }
     }
-  }, [exportSettingId, exportClassrooms, isExportScoreModalOpen, exportClassroomId]);
+  }, [exportSettingId, exportClassrooms, activeTab, exportClassroomId]);
 
   // Reset export student when classroom changes
   useEffect(() => {
@@ -2704,7 +2704,7 @@ function changeFontSize(dir) {
     setExportMode(mode);
     setExportType(type);
     setIncludeActivitySubjects(false);
-    setIsExportScoreModalOpen(true);
+    setActiveTab("export-grades");
   };
 
   const moveExportSubjectUp = (index: number) => {
@@ -3243,7 +3243,6 @@ function changeFontSize(dir) {
     }
 
     win.document.close();
-    setIsExportScoreModalOpen(false);
   };
   useEffect(() => {
     if (!token || !selectedSubjectSettingId || scheduleEntries.length === 0 || subjectsList.length === 0) return;
@@ -3598,6 +3597,36 @@ function changeFontSize(dir) {
               />
             )}
 
+            {activeTab === "export-grades" && (
+              <ExportGradesTab
+                exportMode={exportMode}
+                setExportMode={setExportMode}
+                exportLanguage={exportLanguage}
+                setExportLanguage={setExportLanguage}
+                exportSettingId={exportSettingId}
+                setExportSettingId={setExportSettingId}
+                exportClassroomId={exportClassroomId}
+                setExportClassroomId={setExportClassroomId}
+                exportStudentId={exportStudentId}
+                setExportStudentId={setExportStudentId}
+                includeActivitySubjects={includeActivitySubjects}
+                setIncludeActivitySubjects={setIncludeActivitySubjects}
+                exportSumActivityScores={exportSumActivityScores}
+                setExportSumActivityScores={setExportSumActivityScores}
+                exportSubjectList={exportSubjectList}
+                exportSelectedSubjectIds={exportSelectedSubjectIds}
+                setExportSelectedSubjectIds={setExportSelectedSubjectIds}
+                settingsList={settingsList}
+                classrooms={exportClassrooms}
+                students={exportStudents}
+                moveExportSubjectUp={moveExportSubjectUp}
+                moveExportSubjectDown={moveExportSubjectDown}
+                onExport={handleExecuteClassroomScoreExport}
+                exportType={exportType}
+                setExportType={setExportType}
+              />
+            )}
+
             {activeTab === "grade-status" && (
               <GradeStatusTab
                 settingsList={settingsList}
@@ -3773,36 +3802,6 @@ function changeFontSize(dir) {
       <StudentDetailModal
         modalState={studentDetailModal}
         onClose={() => setStudentDetailModal((prev) => ({ ...prev, open: false }))}
-      />
-      {/* Export Classroom Scores Modal */}
-      <ExportScoreModal
-        isOpen={isExportScoreModalOpen}
-        onClose={() => setIsExportScoreModalOpen(false)}
-        exportMode={exportMode}
-        setExportMode={setExportMode}
-        exportLanguage={exportLanguage}
-        setExportLanguage={setExportLanguage}
-        exportSettingId={exportSettingId}
-        setExportSettingId={setExportSettingId}
-        exportClassroomId={exportClassroomId}
-        setExportClassroomId={setExportClassroomId}
-        exportStudentId={exportStudentId}
-        setExportStudentId={setExportStudentId}
-        includeActivitySubjects={includeActivitySubjects}
-        setIncludeActivitySubjects={setIncludeActivitySubjects}
-        exportSumActivityScores={exportSumActivityScores}
-        setExportSumActivityScores={setExportSumActivityScores}
-        exportSubjectList={exportSubjectList}
-        exportSelectedSubjectIds={exportSelectedSubjectIds}
-        setExportSelectedSubjectIds={setExportSelectedSubjectIds}
-        settingsList={settingsList}
-        classrooms={exportClassrooms}
-        students={exportStudents}
-        moveExportSubjectUp={moveExportSubjectUp}
-        moveExportSubjectDown={moveExportSubjectDown}
-        onExport={handleExecuteClassroomScoreExport}
-        exportType={exportType}
-        setExportType={setExportType}
       />
       {adminUser && <ChatWidget userId={adminUser.id} userRole="admin" />}
     </div>
