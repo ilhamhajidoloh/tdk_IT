@@ -361,6 +361,9 @@ export default function AdminPortal() {
     const setting = settingsList.find(s => s.id === exportSettingId);
     if (!setting) return;
 
+    // TEMP DIAGNOSTIC — remove once the "reloads on classroom change" report is resolved.
+    console.warn("[export-grades][diagnostic] fetch effect fired", { exportSettingId, exportType, activeTab, settingsListLen: settingsList.length, time: new Date().toISOString() });
+
     let cancelled = false;
     setExportDataLoading(true);
 
