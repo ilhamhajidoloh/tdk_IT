@@ -7,6 +7,14 @@ import { addDays, buildCookSchedule, buildTeacherForecast, mondayOf, todayStr } 
 const TEACHER_FORECAST_WEEKS = 5;
 const COOK_FORECAST_DAYS = 8;
 
+function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  const aDate = new Date(Date.UTC(ay, am - 1, ad));
+  const bDate = new Date(Date.UTC(by, bm - 1, bd));
+  return Math.round((bDate.getTime() - aDate.getTime()) / (24 * 3600 * 1000));
+}
+
 interface TeacherGroupRow {
   id: string;
   name: string;
@@ -80,19 +88,35 @@ export async function GET() {
   const rawScheduleDays = scheduleDaysRes.rows[0]?.schedule_days;
   const scheduleDays: number[] = Array.isArray(rawScheduleDays) ? rawScheduleDays : [1, 2, 3, 4, 5];
 
-  // Determine if we have passed the last school day of the current week
+  // Determine if we have passed the last school day of the current week for cooks (Monday to Sunday)
   const baseWeekStart = mondayOf(today);
-  let lastSchoolDayDate = baseWeekStart;
+  let cookLastSchoolDay = baseWeekStart;
   for (let i = 6; i >= 0; i--) {
     const curDateStr = addDays(baseWeekStart, i);
     const [y, m, d] = curDateStr.split("-").map(Number);
     const dayVal = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
     if (scheduleDays.includes(dayVal)) {
-      lastSchoolDayDate = curDateStr;
+      cookLastSchoolDay = curDateStr;
       break;
     }
   }
-  const hasPassedLastSchoolDay = today > lastSchoolDayDate;
+  const cookHasPassedLastSchoolDay = today > cookLastSchoolDay;
+
+  // Determine if we have passed the last school day of the current week for teachers (anchored week window)
+  const teacherEffectiveFrom = today < teacherAnchor ? teacherAnchor : today;
+  const teacherWindowIndex = Math.floor(daysBetween(teacherAnchor, teacherEffectiveFrom) / 7);
+  const teacherWindowStart = addDays(teacherAnchor, teacherWindowIndex * 7);
+  let teacherLastSchoolDay = teacherWindowStart;
+  for (let i = 6; i >= 0; i--) {
+    const curDateStr = addDays(teacherWindowStart, i);
+    const [y, m, d] = curDateStr.split("-").map(Number);
+    const dayVal = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    if (scheduleDays.includes(dayVal)) {
+      teacherLastSchoolDay = curDateStr;
+      break;
+    }
+  }
+  const teacherHasPassedLastSchoolDay = today > teacherLastSchoolDay;
 
   // Normalize holiday dates to YYYY-MM-DD strings
   const holidays: { id: string; date: string; reason: string; applies_to: string }[] = holidaysRes.rows.map((r) => ({
@@ -114,7 +138,7 @@ export async function GET() {
   const cookGroups: CookGroupRow[] = cookGroupsRes.rows;
 
   // Teacher duty: 1 group per effective school week
-  const teacherFromDate = hasPassedLastSchoolDay ? addDays(today, 7) : today;
+  const teacherFromDate = teacherHasPassedLastSchoolDay ? addDays(today, 7) : today;
   const teacherForecast = buildTeacherForecast(
     teacherAnchor,
     teacherGroups,
@@ -134,7 +158,7 @@ export async function GET() {
     : null;
 
   // Cook duty: 1 group per effective school day (skip holidays)
-  const weekStart = hasPassedLastSchoolDay ? addDays(baseWeekStart, 7) : baseWeekStart;
+  const weekStart = cookHasPassedLastSchoolDay ? addDays(baseWeekStart, 7) : baseWeekStart;
   const weekEnd = addDays(weekStart, 6);
   const cookEntries = buildCookSchedule(
     cookAnchor,
