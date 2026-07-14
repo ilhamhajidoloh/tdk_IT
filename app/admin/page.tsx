@@ -333,6 +333,18 @@ export default function AdminPortal() {
     }
   }, [includeActivitySubjects]);
 
+  // Default the term/classroom selection when landing on the Export Grades tab directly
+  // (e.g. via the sidebar), since without a pre-selected value the <select> shows an
+  // option that doesn't match state and the first change never fires onChange.
+  useEffect(() => {
+    if (activeTab !== "export-grades" || exportSettingId !== null) return;
+    const settingId = selectedSettingId || selectedSubjectSettingId || gradeStatusSettingId || (settingsList[0]?.id ?? null);
+    if (settingId) {
+      setExportSettingId(settingId);
+      setExportClassroomId(classrooms[0]?.id || "");
+    }
+  }, [activeTab, exportSettingId, selectedSettingId, selectedSubjectSettingId, gradeStatusSettingId, settingsList, classrooms]);
+
   // Load classrooms, students, and subjects for the selected term in export tab
   useEffect(() => {
     if (activeTab !== "export-grades" || !exportSettingId || !token) {
