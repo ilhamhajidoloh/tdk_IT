@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { resolveIcon } from "./iconMap";
 
 export const STAT_COLOR_MAP: Record<string, string> = {
   indigo: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
@@ -27,15 +28,21 @@ export default function SectionHeader({
   countLabel?: string;
   children?: ReactNode;
 }) {
+  const Icon = resolveIcon(icon);
+
   return (
     <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
       <div className="flex items-start gap-4">
         <div
           className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${STAT_COLOR_MAP[color]} shadow-sm`}
         >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-          </svg>
+          {Icon ? (
+            <Icon className="w-6 h-6" />
+          ) : (
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+            </svg>
+          )}
         </div>
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">

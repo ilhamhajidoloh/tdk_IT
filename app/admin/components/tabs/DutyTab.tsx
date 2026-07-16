@@ -135,6 +135,119 @@ export default function DutyTab({ token }: DutyTabProps) {
     }
   };
 
+  // ---------- Cook Schedule Print ----------
+  const printCookSchedule = (mode: "weekly" | "monthly") => {
+    if (!dutySettings || cookGroups.length === 0) return;
+
+    const anchorDate = new Date(dutySettings.cook_anchor_date);
+    const anchorOffset = dutySettings.cook_anchor_offset ?? 0;
+    const sortedGroups = [...cookGroups].sort((a, b) => a.order_no - b.order_no);
+    const totalGroups = sortedGroups.length;
+    const holidayDates = new Set(
+      holidays
+        .filter((h) => h.applies_to === "all" || h.applies_to === "cooks")
+        .map((h) => h.date)
+    );
+
+    const today = new Date();
+    let startDate: Date;
+    let endDate: Date;
+
+    if (mode === "weekly") {
+      const dayOfWeek = today.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      startDate = new Date(today);
+      startDate.setDate(today.getDate() + mondayOffset);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+    } else {
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    }
+
+    const days: { date: Date; label: string; group: CookGroup | null }[] = [];
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      const dateStr = current.toISOString().split("T")[0];
+      const isHoliday = holidayDates.has(dateStr);
+      const dayOfWeek = current.getDay();
+
+      let group: CookGroup | null = null;
+      if (!isHoliday && dayOfWeek !== 0) {
+        const diffTime = current.getTime() - anchorDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const groupIndex = ((diffDays + anchorOffset) % totalGroups + totalGroups) % totalGroups;
+        group = sortedGroups[groupIndex];
+      }
+
+      const dayLabels = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+      days.push({
+        date: new Date(current),
+        label: `${dayLabels[dayOfWeek]} ${current.getDate()}/${current.getMonth() + 1}`,
+        group,
+      });
+      current.setDate(current.getDate() + 1);
+    }
+
+    const rows = days
+      .map(
+        (d) => `
+        <tr>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;font-weight:600;">${d.label}</td>
+          <td style="padding:8px 12px;border:1px solid #e5e7eb;">
+            ${
+              d.group
+                ? `<span style="background:#ede9fe;color:#5b21b6;padding:4px 12px;border-radius:9999px;font-size:13px;font-weight:700;">${d.group.name}</span>
+                   <div style="margin-top:4px;font-size:12px;color:#6b7280;">${d.group.members.map((m) => m.name).join(", ")}</div>`
+                : `<span style="color:#ef4444;font-weight:600;">วันหยุด</span>`
+            }
+          </td>
+        </tr>`
+      )
+      .join("");
+
+    const title = mode === "weekly"
+      ? `ตารางเวรแม่ครัวประจำสัปดาห์ (${startDate.getDate()}/${startDate.getMonth() + 1}/${startDate.getFullYear()} - ${endDate.getDate()}/${endDate.getMonth() + 1}/${endDate.getFullYear()})`
+      : `ตารางเวรแม่ครัวประจำเดือน ${startDate.getMonth() + 1}/${startDate.getFullYear()}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${title}</title>
+        <style>
+          body { font-family: 'Sarabun', 'Segoe UI', sans-serif; padding: 40px; color: #1f2937; }
+          h1 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+          h2 { font-size: 14px; font-weight: 600; text-align: center; color: #6b7280; margin-bottom: 24px; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #f3f4f6; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid #e5e7eb; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        <h2>โรงเรียน — ปีการศึกษา ${dutySettings ? "" : ""}</h2>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:200px;">วัน</th>
+              <th>กลุ่มเวรแม่ครัว / รายชื่อ</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+  };
+
   useEffect(() => {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1316,6 +1429,35 @@ export default function DutyTab({ token }: DutyTabProps) {
                   </div>
                 )}
               </div>
+
+              {cookGroups.length > 0 && dutySettings && (
+                <div className="card-modern p-5">
+                  <h3 className="font-bold text-foreground mb-3">พิมพ์ตารางเวรแม่ครัว</h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    พิมพ์หรือบันทึก PDF ตารางเวรแม่ครัวประจำสัปดาห์หรือประจำเดือน
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => printCookSchedule("weekly")}
+                      className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 cursor-pointer text-sm border-0"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                      พิมพ์รายสัปดาห์
+                    </button>
+                    <button
+                      onClick={() => printCookSchedule("monthly")}
+                      className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                      พิมพ์รายเดือน
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

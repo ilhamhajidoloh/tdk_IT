@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, type ReactNode, useMemo } from "react";
 import { useAuth } from "../lib/useAuth";
 import * as XLSX from "xlsx";
 import ChatWidget from "../components/ChatWidget";
-import ThemeToggle from "../components/ThemeToggle";
 
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
@@ -47,6 +46,8 @@ import DashboardTab from "./components/tabs/DashboardTab";
 import DutyTab from "./components/tabs/DutyTab";
 import EvaluationsTab from "./components/tabs/EvaluationsTab";
 import CorrespondenceTab from "../components/CorrespondenceTab";
+import AdminSidebar from "./components/AdminSidebar";
+import AdminHeader from "./components/AdminHeader";
 
 const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "dashboard", label: "แดชบอร์ด", sub: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" },
@@ -3380,91 +3381,24 @@ function changeFontSize(dir) {
       <div className="pointer-events-none fixed inset-0 grid-backdrop opacity-50 -z-10" />
 
       {/* Header */}
-      <header className="header-gradient shadow-sm sticky top-0 z-20 border-b border-border">
-        <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-15 blur-sm" />
-              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-card relative border border-border/80">
-                <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold text-foreground leading-none gradient-text">ระบบแอดมิน</h1>
-              <p className="text-xs text-muted-foreground font-medium mt-0.5">จัดการโครงสร้างระบบและผู้ใช้งาน</p>
-            </div>
-          </div>
-          <div className="hidden sm:flex flex-col items-end mr-2">
-            <span className="text-sm font-bold text-foreground">สวัสดี, {adminUser?.username || "ผู้ดูแลระบบ"}</span>
-            <span className="text-xs text-subtle-foreground">{formatThaiDate(new Date().toISOString())}</span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggle className="!h-9 !w-9" />
-            <button
-              onClick={handleConnectGoogle}
-              title={adminUser?.email ? `เชื่อมต่ออีเมล: ${adminUser.email}` : "เชื่อมต่ออีเมล Google"}
-              className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all shrink-0 border ${adminUser?.email ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10" : "text-muted-foreground border-border hover:text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:border-indigo-200 dark:border-indigo-500/30"}`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </button>
-            <button
-              onClick={handleChangePassword}
-              title="เปลี่ยนรหัสผ่าน"
-              className="flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:border-indigo-200 dark:border-indigo-500/30 transition-all shrink-0 border border-border"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:bg-rose-500/15 px-3.5 py-2 rounded-xl transition-all shrink-0 border border-rose-100 dark:border-rose-500/25 hover:border-rose-200 dark:border-rose-500/30"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span className="hidden sm:inline">ออกจากระบบ</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <AdminHeader
+        adminUser={adminUser}
+        handleConnectGoogle={handleConnectGoogle}
+        handleChangePassword={handleChangePassword}
+        handleLogout={handleLogout}
+      />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
         <div className="grid md:grid-cols-4 gap-6">
           {/* Sidebar Tabs */}
-          <div className="space-y-1.5">
-            <div className="glass-strong rounded-2xl p-2 space-y-1">
-              {NAV_ITEMS.map(item => (
-                <button
-                  key={item.key}
-                  onClick={() => setActiveTab(item.key)}
-                  className={`w-full flex items-center gap-3 text-left px-4 py-3 rounded-xl font-semibold text-sm transition-all ${activeTab === item.key
-                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-200/50/50"
-                    : "text-muted-foreground hover:bg-indigo-50/80 dark:hover:bg-indigo-500/20 hover:text-indigo-600 dark:hover:text-indigo-300"
-                    }`}
-                >
-                  <svg className={`w-5 h-5 shrink-0 ${activeTab === item.key ? "text-white" : "text-indigo-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-                  </svg>
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Active term summary */}
-            <div className="hidden md:block mt-3 p-4 rounded-2xl glass-strong">
-              <div className="text-xs font-bold text-subtle-foreground uppercase tracking-wider mb-2">ปีการศึกษาปัจจุบัน</div>
-              <div className="text-sm font-extrabold text-foreground">ปีการศึกษา {adminYear}</div>
-              <div className="text-xs font-semibold mb-3 gradient-text">ภาคเรียนที่ {adminTerm}</div>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${isGradingActive ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"
-                }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isGradingActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
-                {isGradingActive ? "เปิดกรอกคะแนน" : "ปิดกรอกคะแนน"}
-              </span>
-            </div>
-          </div>
+          <AdminSidebar
+            navItems={NAV_ITEMS}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            adminYear={adminYear}
+            adminTerm={adminTerm}
+            isGradingActive={isGradingActive}
+          />
 
           {/* Main Content Area */}
           <div className="md:col-span-3 glass-strong rounded-3xl overflow-hidden min-h-[500px]">
