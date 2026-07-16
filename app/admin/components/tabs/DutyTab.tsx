@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import SectionHeader from "../SectionHeader";
 import { formatThaiDate } from "../../../lib/format";
+import { buildCookSchedule } from "../../../lib/duty";
 
 interface DutyTabProps {
   token: string | null;
@@ -99,6 +100,7 @@ export default function DutyTab({ token }: DutyTabProps) {
   const [cooks, setCooks] = useState<CookItem[]>([]);
   const [cookGroups, setCookGroups] = useState<CookGroup[]>([]);
   const [dutySettings, setDutySettings] = useState<DutySettingsData | null>(null);
+  const [scheduleDays, setScheduleDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [loading, setLoading] = useState(true);
 
   // States for bulk deleting cooks
@@ -114,7 +116,7 @@ export default function DutyTab({ token }: DutyTabProps) {
     if (!token) return;
     setLoading(true);
     try {
-      const [newsRes, teachersRes, teacherGroupsRes, cooksRes, cookGroupsRes, dutySettingsRes, holidaysRes] = await Promise.all([
+      const [newsRes, teachersRes, teacherGroupsRes, cooksRes, cookGroupsRes, dutySettingsRes, holidaysRes, settingsRes] = await Promise.all([
         fetch("/api/news", { headers: authHeaders() }),
         fetch("/api/public/teachers"),
         fetch("/api/teacher-duty-groups", { headers: authHeaders() }),
@@ -122,6 +124,7 @@ export default function DutyTab({ token }: DutyTabProps) {
         fetch("/api/cook-duty-groups", { headers: authHeaders() }),
         fetch("/api/duty-settings", { headers: authHeaders() }),
         fetch("/api/holidays", { headers: authHeaders() }),
+        fetch("/api/settings", { headers: authHeaders() }),
       ]);
       if (newsRes.ok) setNews(await newsRes.json());
       if (teachersRes.ok) setTeachers(await teachersRes.json());
@@ -130,6 +133,13 @@ export default function DutyTab({ token }: DutyTabProps) {
       if (cookGroupsRes.ok) setCookGroups(await cookGroupsRes.json());
       if (dutySettingsRes.ok) setDutySettings(await dutySettingsRes.json());
       if (holidaysRes.ok) setHolidays(await holidaysRes.json());
+      if (settingsRes.ok) {
+        const settingsList = await settingsRes.json();
+        const activeSetting = settingsList.find((s: any) => s.is_active);
+        if (activeSetting && Array.isArray(activeSetting.schedule_days)) {
+          setScheduleDays(activeSetting.schedule_days);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -139,10 +149,8 @@ export default function DutyTab({ token }: DutyTabProps) {
   const printCookSchedule = (mode: "weekly" | "monthly") => {
     if (!dutySettings || cookGroups.length === 0) return;
 
-    const anchorDate = new Date(dutySettings.cook_anchor_date);
     const anchorOffset = dutySettings.cook_anchor_offset ?? 0;
     const sortedGroups = [...cookGroups].sort((a, b) => a.order_no - b.order_no);
-    const totalGroups = sortedGroups.length;
     const holidayDates = new Set(
       holidays
         .filter((h) => h.applies_to === "all" || h.applies_to === "cooks")
@@ -165,19 +173,39 @@ export default function DutyTab({ token }: DutyTabProps) {
       endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     }
 
+    const toLocalYYYYMMDD = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const startDateStr = toLocalYYYYMMDD(startDate);
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    const cookEntries = buildCookSchedule(
+      dutySettings.cook_anchor_date,
+      sortedGroups,
+      scheduleDays,
+      startDateStr,
+      totalDays,
+      Array.from(holidayDates),
+      anchorOffset
+    );
+
     const days: { date: Date; label: string; group: CookGroup | null }[] = [];
     const current = new Date(startDate);
     while (current <= endDate) {
-      const dateStr = current.toISOString().split("T")[0];
+      const dateStr = toLocalYYYYMMDD(current);
       const isHoliday = holidayDates.has(dateStr);
       const dayOfWeek = current.getDay();
 
       let group: CookGroup | null = null;
-      if (!isHoliday && dayOfWeek !== 0) {
-        const diffTime = current.getTime() - anchorDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        const groupIndex = ((diffDays + anchorOffset) % totalGroups + totalGroups) % totalGroups;
-        group = sortedGroups[groupIndex];
+      if (!isHoliday && scheduleDays.includes(dayOfWeek)) {
+        const entry = cookEntries.find((e) => e.date === dateStr);
+        if (entry) {
+          group = entry.item;
+        }
       }
 
       const dayLabels = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
