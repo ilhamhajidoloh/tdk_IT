@@ -5,6 +5,21 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import { signIn } from "next-auth/react";
+import {
+  Eye,
+  EyeOff,
+  LogIn,
+  GraduationCap,
+  BookOpen,
+  Settings,
+  ShieldCheck,
+  Users,
+  Zap,
+  ArrowLeft,
+  Link2,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 import GuestChatWidget from "../components/GuestChatWidget";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -14,7 +29,12 @@ interface Classroom { id: string; name: string; }
 interface Teacher { id: string; username: string; }
 interface Student { id: string; name: string; student_id: string; student_number?: number | null; }
 
-/* Reusable password field with show/hide toggle */
+const TAB_META: Record<LoginTab, { label: string; icon: React.ReactNode; gradient: string; ring: string }> = {
+  student: { label: "นักเรียน", icon: <GraduationCap className="w-4 h-4" />, gradient: "from-violet-500 to-purple-600", ring: "ring-violet-500/40" },
+  teacher: { label: "คุณครู", icon: <BookOpen className="w-4 h-4" />, gradient: "from-indigo-500 to-blue-600", ring: "ring-indigo-500/40" },
+  staff:   { label: "บุคลากร", icon: <Settings className="w-4 h-4" />, gradient: "from-amber-500 to-orange-600", ring: "ring-amber-500/40" },
+};
+
 function PasswordField({
   value,
   onChange,
@@ -44,16 +64,7 @@ function PasswordField({
           className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-subtle-foreground hover:text-primary focus:outline-none transition-colors"
           aria-label={show ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
         >
-          {show ? (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-            </svg>
-          ) : (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-          )}
+          {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
         </button>
       </div>
     </div>
@@ -64,6 +75,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<LoginTab>("student");
   const [isClient, setIsClient] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -244,29 +256,41 @@ export default function LoginPage() {
       if (!res.ok) throw new Error("User not found");
       const user = await res.json();
 
-      Swal.fire({ icon: "success", title: linkEmail ? "เชื่อมต่อบัญชีและเข้าสู่ระบบสำเร็จ" : "เข้าสู่ระบบสำเร็จ", timer: 1000, showConfirmButton: false });
+      setIsRedirecting(true);
+      const roleLabel = user.role === "admin" ? "บุคลากร" : user.role === "teacher" ? "คุณครู" : "นักเรียน";
+      const roleGradient = user.role === "admin" ? "from-amber-500 to-orange-600" : user.role === "teacher" ? "from-indigo-500 to-blue-600" : "from-violet-500 to-purple-600";
+
+      Swal.fire({
+        icon: "success",
+        title: linkEmail ? "เชื่อมต่อบัญชีและเข้าสู่ระบบสำเร็จ" : "เข้าสู่ระบบสำเร็จ",
+        html: `
+          <div class="flex flex-col items-center gap-3 mt-2">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br ${roleGradient} flex items-center justify-center text-white shadow-lg">
+              ${user.role === "admin" ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>' : user.role === "teacher" ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>' : '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>'}
+            </div>
+            <span class="text-sm font-bold text-muted-foreground">กำลังเข้าสู่ระบบในฐานะ <span class="text-foreground">${roleLabel}</span></span>
+          </div>
+        `,
+        timer: 1200,
+        showConfirmButton: false,
+      });
 
       if (user.role === "admin") router.push("/admin");
       else if (user.role === "teacher") router.push("/teacher");
       else router.push("/student");
 
     } catch (err: any) {
+      setIsRedirecting(false);
       Swal.fire({ icon: "error", title: linkEmail ? "เชื่อมต่อบัญชีไม่สำเร็จ" : "เข้าสู่ระบบไม่สำเร็จ", text: err.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
     }
   };
 
   if (!isClient) return null;
 
-  const tabs: { key: LoginTab; label: string; icon: string }[] = [
-    { key: "student", label: "นักเรียน", icon: "M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" },
-    { key: "teacher", label: "คุณครู", icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
-    { key: "staff", label: "บุคลากร", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" },
-  ];
-
   const features = [
-    { icon: "M9 12l2 2 4-4", title: "จัดการคะแนน", desc: "บันทึกและติดตามผลการเรียนแบบเรียลไทม์" },
-    { icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-6a4 4 0 11-8 0 4 4 0 018 0z", title: "รวมทุกบทบาท", desc: "นักเรียน คุณครู และบุคลากรในที่เดียว" },
-    { icon: "M13 10V3L4 14h7v7l9-11h-7z", title: "รวดเร็วทันสมัย", desc: "ใช้งานง่าย ลื่นไหล ทั้งบนมือถือและคอมพิวเตอร์" },
+    { icon: <ShieldCheck className="w-5 h-5" />, title: "จัดการคะแนน", desc: "บันทึกและติดตามผลการเรียนแบบเรียลไทม์" },
+    { icon: <Users className="w-5 h-5" />, title: "รวมทุกบทบาท", desc: "นักเรียน คุณครู และบุคลากรในที่เดียว" },
+    { icon: <Zap className="w-5 h-5" />, title: "รวดเร็วทันสมัย", desc: "ใช้งานง่าย ลื่นไหล ทั้งบนมือถือและคอมพิวเตอร์" },
   ];
 
   return (
@@ -293,9 +317,7 @@ export default function LoginPage() {
             {features.map((f) => (
               <li key={f.title} className="flex items-start gap-3.5">
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={f.icon} />
-                  </svg>
+                  {f.icon}
                 </span>
                 <div>
                   <p className="font-semibold">{f.title}</p>
@@ -313,22 +335,17 @@ export default function LoginPage() {
 
       {/* ===================== RIGHT — FORM ===================== */}
       <main className="relative flex flex-col items-center justify-center p-6 sm:p-10">
-        {/* subtle grid backdrop */}
         <div className="pointer-events-none absolute inset-0 grid-backdrop opacity-70" />
 
-        {/* theme toggle */}
         <div className="absolute top-5 right-5 z-20">
           <ThemeToggle />
         </div>
 
-        {/* back to home */}
         <Link
           href="/"
           className="absolute top-5 left-5 z-20 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
+          <ArrowLeft className="w-4 h-4" />
           หน้าแรก
         </Link>
 
@@ -344,9 +361,7 @@ export default function LoginPage() {
           {linkEmail ? (
             <div className="mb-6 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-sm flex flex-col gap-2 animate-fade-in-down">
               <div className="flex items-center gap-2 font-bold text-base">
-                <svg className="w-5 h-5 shrink-0 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <AlertTriangle className="w-5 h-5 shrink-0 text-yellow-500" />
                 <span>โหมดเชื่อมโยงบัญชี</span>
               </div>
               <p>
@@ -378,24 +393,28 @@ export default function LoginPage() {
 
           {/* Segmented tabs */}
           <div className="ui-segment mb-6">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                data-active={activeTab === tab.key}
-                className="ui-segment-item"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={tab.icon} />
-                </svg>
-                <span>{tab.label}</span>
-              </button>
-            ))}
+            {(["student", "teacher", "staff"] as LoginTab[]).map((key) => {
+              const meta = TAB_META[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveTab(key)}
+                  data-active={activeTab === key}
+                  className="ui-segment-item"
+                >
+                  {meta.icon}
+                  <span>{meta.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Card */}
           <div className="ui-card p-6 sm:p-7">
+            {/* Role indicator strip */}
+            <div className={`h-1 rounded-full bg-gradient-to-r ${TAB_META[activeTab].gradient} mb-5`} />
+
             <form onSubmit={handleLogin} className="space-y-4">
               {/* STUDENT TAB */}
               {activeTab === "student" && (
@@ -481,11 +500,22 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <button type="submit" className="ui-btn ui-btn-primary w-full py-3.5 text-base mt-2 group">
-                <svg className="w-5 h-5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                </svg>
-                {linkEmail ? "ผูกบัญชีและเข้าสู่ระบบ" : "เข้าสู่ระบบ"}
+              <button
+                type="submit"
+                disabled={isRedirecting}
+                className="ui-btn ui-btn-primary w-full py-3.5 text-base mt-2 group disabled:opacity-60"
+              >
+                {isRedirecting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    กำลังเข้าสู่ระบบ...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+                    {linkEmail ? "ผูกบัญชีและเข้าสู่ระบบ" : "เข้าสู่ระบบ"}
+                  </>
+                )}
               </button>
             </form>
 

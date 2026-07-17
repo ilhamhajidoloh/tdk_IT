@@ -1,3 +1,6 @@
+"use client";
+
+import { ClipboardList, Printer, CalendarDays } from "lucide-react";
 import { type SchedulePeriod, type ScheduleEntry, type DaySetting } from "../types";
 
 interface ScheduleTabProps {
@@ -20,9 +23,7 @@ export default function ScheduleTab({
       {schedulePeriods.length === 0 ? (
         <div className="ui-card p-14 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: "var(--primary-soft)" }}>
-            <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            <CalendarDays className="w-8 h-8 text-primary" />
           </div>
           <h3 className="font-bold text-foreground mb-1 text-base">ยังไม่มีตารางเรียน</h3>
           <p className="text-sm text-muted-foreground">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
@@ -32,9 +33,7 @@ export default function ScheduleTab({
           {/* Export button */}
           <div className="flex justify-end">
             <button onClick={onExport} className="ui-btn ui-btn-primary">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
+              <Printer className="w-4 h-4" />
               พิมพ์ตารางเรียน
             </button>
           </div>
