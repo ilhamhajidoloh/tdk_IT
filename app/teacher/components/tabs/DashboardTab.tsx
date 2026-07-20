@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   BookOpen,
   Users,
@@ -10,7 +11,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { type DBStudent, type DBSubject, type DBGrade, type DBClassroom, type ScheduleEntry } from "../types";
-import { formatThaiDateRange } from "../../../lib/format";
+import { formatThaiDate, formatThaiDateRange } from "../../../lib/format";
 
 interface DashboardTabProps {
   teacherName: string;
@@ -55,6 +56,52 @@ export default function DashboardTab({
   setAttendanceSubjectId,
   setAttendanceClassroomId,
 }: DashboardTabProps) {
+  const [timeLeft, setTimeLeft] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isOver: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!settingsEndDate) return;
+
+    const calculateTimeLeft = () => {
+      const datePart = settingsEndDate.split("T")[0];
+      const parts = datePart.split("-");
+      let targetDate: Date;
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        targetDate = new Date(year, month, day, 23, 59, 59);
+      } else {
+        targetDate = new Date(settingsEndDate);
+      }
+
+      const now = new Date();
+      const difference = targetDate.getTime() - now.getTime();
+
+      if (difference <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isOver: true });
+        return;
+      }
+
+      setTimeLeft({
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+        isOver: false,
+      });
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 1000);
+    return () => clearInterval(interval);
+  }, [settingsEndDate]);
+
   const taughtClassrooms = classrooms.filter((c) =>
     mySubjects.some((s) => s.classroom_ids?.includes(c.id))
   );
@@ -166,6 +213,75 @@ export default function DashboardTab({
           </div>
         </div>
       </div>
+
+      {/* Countdown Timer */}
+      {settingsEndDate && (
+        <div className="card-modern relative overflow-hidden p-6 bg-gradient-to-r from-indigo-500/[0.07] via-purple-500/[0.03] to-transparent border-indigo-500/15 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-300 hover:shadow-md">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center animate-pulse">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-foreground text-base tracking-tight">
+                เวลานับถอยหลังก่อนจบภาคเรียน
+              </h3>
+              <p className="text-xs text-muted-foreground font-semibold mt-1">
+                สิ้นสุดภาคเรียน ณ วันที่ {formatThaiDate(settingsEndDate)}
+              </p>
+            </div>
+          </div>
+
+          {timeLeft ? (
+            !timeLeft.isOver ? (
+              <div className="flex items-center gap-2 sm:gap-4 font-mono select-none">
+                <div className="flex flex-col items-center">
+                  <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-card border border-border flex items-center justify-center shadow-sm hover:border-indigo-500/30 transition-colors">
+                    <span className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                      {timeLeft.days}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-muted-foreground mt-1">วัน</span>
+                </div>
+                <span className="text-xl font-bold text-muted-foreground/30 -mt-4">:</span>
+                <div className="flex flex-col items-center">
+                  <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-card border border-border flex items-center justify-center shadow-sm hover:border-indigo-500/30 transition-colors">
+                    <span className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                      {String(timeLeft.hours).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-muted-foreground mt-1">ชั่วโมง</span>
+                </div>
+                <span className="text-xl font-bold text-muted-foreground/30 -mt-4">:</span>
+                <div className="flex flex-col items-center">
+                  <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-card border border-border flex items-center justify-center shadow-sm hover:border-indigo-500/30 transition-colors">
+                    <span className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                      {String(timeLeft.minutes).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-muted-foreground mt-1">นาที</span>
+                </div>
+                <span className="text-xl font-bold text-muted-foreground/30 -mt-4">:</span>
+                <div className="flex flex-col items-center">
+                  <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-xl bg-card border border-indigo-500/30 dark:border-indigo-500/40 flex items-center justify-center shadow-md animate-pulse">
+                    <span className="text-xl sm:text-2xl font-black text-pink-500 dark:text-pink-400">
+                      {String(timeLeft.seconds).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-muted-foreground mt-1">วินาที</span>
+                </div>
+              </div>
+            ) : (
+              <div className="px-5 py-2.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 font-extrabold text-sm border border-rose-500/20">
+                สิ้นสุดภาคเรียนนี้แล้ว
+              </div>
+            )
+          ) : (
+            <div className="h-16 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats Widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
