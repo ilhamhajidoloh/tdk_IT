@@ -36,6 +36,8 @@ interface EnterGradesTabProps {
   currentClassroomStudents: DBStudent[];
   savedCount: number;
   onSaveAll: () => void;
+  onPrintStudentList: () => void;
+  onExportStudentListExcel: () => void;
 
   useCombinedActivity: boolean;
   scoredActivitySubjects: DBSubject[];
@@ -71,6 +73,8 @@ export default function EnterGradesTab({
   currentClassroomStudents,
   savedCount,
   onSaveAll,
+  onPrintStudentList,
+  onExportStudentListExcel,
   useCombinedActivity,
   scoredActivitySubjects,
   getCombinedActivityResult,
@@ -245,16 +249,40 @@ export default function EnterGradesTab({
                 </div>
               </div>
             </div>
-            <button
-              onClick={onSaveAll}
-              disabled={!isGradingActive}
-              className="btn-primary flex items-center gap-2 disabled:bg-border disabled:cursor-not-allowed disabled:shadow-none disabled:from-slate-200 disabled:to-slate-200 font-bold px-5 py-2.5 rounded-xl text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              บันทึกทั้งชั้น
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={onPrintStudentList}
+                disabled={currentClassroomStudents.length === 0}
+                title="พิมพ์รายชื่อนักเรียน"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm border border-border bg-card hover:bg-muted text-foreground shadow-sm transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a1 1 0 001-1v-4a1 1 0 00-1-1H9a1 1 0 00-1 1v4a1 1 0 001 1zm8-14V3a1 1 0 00-1-1H8a1 1 0 00-1 1v4h10z" />
+                </svg>
+                พิมพ์รายชื่อ
+              </button>
+              <button
+                onClick={onExportStudentListExcel}
+                disabled={currentClassroomStudents.length === 0}
+                title="ส่งออกรายชื่อนักเรียนเป็น Excel"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all cursor-pointer border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-6 4h6m2 5H7a2 2 0 01-2-2V4a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V20a2 2 0 01-2 2z" />
+                </svg>
+                Excel
+              </button>
+              <button
+                onClick={onSaveAll}
+                disabled={!isGradingActive}
+                className="btn-primary flex items-center gap-2 disabled:bg-border disabled:cursor-not-allowed disabled:shadow-none disabled:from-slate-200 disabled:to-slate-200 font-bold px-5 py-2.5 rounded-xl text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                บันทึกทั้งชั้น
+              </button>
+            </div>
           </div>
 
           {useCombinedActivity && currentSubjectType === "activity" && (

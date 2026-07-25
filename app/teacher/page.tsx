@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
 import ChatWidget from "../components/ChatWidget";
 import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
 import { useRouter } from "next/navigation";
 import {
   type DBStudent,
@@ -927,6 +928,80 @@ export default function TeacherPortal() {
     if (win) { win.document.write(html); win.document.close(); }
   };
 
+  const handlePrintClassStudentList = () => {
+    if (!enterSubject || !enterClassroom) return;
+    const classroomName = classrooms.find(c => c.id === enterClassroom)?.name || "";
+    const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+    const sortedStudents = currentClassroomStudents
+      .slice()
+      .sort((a, b) => (a.student_number || 0) - (b.student_number || 0) || a.name.localeCompare(b.name, "th"));
+
+    const thStyle = "padding:8px 12px;background:#0f172a;color:#f8fafc;font-size:14px;font-weight:700;text-align:center;border:1px solid #334155;";
+    const tdStyle = "padding:8px 12px;border:1px solid #e2e8f0;text-align:center;";
+    const tdLabelStyle = "padding:8px 12px;border:1px solid #e2e8f0;text-align:left;background:#f8fafc;font-weight:600;";
+
+    const rows = sortedStudents.map((s, i) => `
+      <tr>
+        <td style="${tdStyle}">${s.student_number || i + 1}</td>
+        <td style="${tdStyle}">${s.student_id}</td>
+        <td style="${tdLabelStyle}">${s.name}</td>
+      </tr>
+    `).join("");
+
+    const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>รายชื่อนักเรียน · ${enterSubject}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Sarabun',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;font-size:14px;}
+  h1{font-size:22px;font-weight:800;margin-bottom:4px;}
+  .meta{font-size:14px;color:#64748b;margin-bottom:16px;}
+  .print-btn{position:fixed;top:12px;right:12px;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100;}
+  @media print{.print-btn{display:none;} @page{margin:1cm;size:A4 portrait;}}
+</style>
+</head><body>
+<button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+<h1>รายชื่อนักเรียน · ${enterSubject}</h1>
+<div class="meta">ห้อง ${classroomName} · เทอม ${enterTerm} · ออกรายงาน ณ ${dateStr}</div>
+<table style="width:100%;border-collapse:collapse;">
+  <thead><tr>
+    <th style="${thStyle}min-width:60px;">เลขที่</th>
+    <th style="${thStyle}min-width:100px;">รหัสนักเรียน</th>
+    <th style="${thStyle}">ชื่อ-สกุล</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div style="padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-top:none;text-align:right;font-size:14px;font-weight:600;color:#0f172a;">
+  ทั้งหมด: <span style="color:#4f46e5;">${sortedStudents.length}</span> คน
+</div>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
+  const handleExportClassStudentListExcel = () => {
+    if (!enterSubject || !enterClassroom) return;
+    const classroomName = classrooms.find(c => c.id === enterClassroom)?.name || "";
+    const sortedStudents = currentClassroomStudents
+      .slice()
+      .sort((a, b) => (a.student_number || 0) - (b.student_number || 0) || a.name.localeCompare(b.name, "th"));
+
+    const rows = sortedStudents.map((s, i) => ({
+      "เลขที่": s.student_number || i + 1,
+      "รหัสนักเรียน": s.student_id,
+      "ชื่อ-สกุล": s.name,
+      "ชั้นเรียน": classroomName,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 8 }, { wch: 16 }, { wch: 32 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    const sheetName = enterSubject.replace(/[\\/*?:[\]]/g, "").slice(0, 31) || "รายชื่อนักเรียน";
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, `รายชื่อนักเรียน_${enterSubject}_${classroomName}.xlsx`);
+  };
+
   return (
     <div className="min-h-screen flex flex-col relative bg-background text-foreground">
       <div className="pointer-events-none fixed inset-0 grid-backdrop opacity-50 -z-10" />
@@ -1001,6 +1076,8 @@ export default function TeacherPortal() {
             currentClassroomStudents={currentClassroomStudents}
             savedCount={savedCount}
             onSaveAll={handleSaveAll}
+            onPrintStudentList={handlePrintClassStudentList}
+            onExportStudentListExcel={handleExportClassStudentListExcel}
             useCombinedActivity={useCombinedActivity}
             scoredActivitySubjects={scoredActivitySubjects}
             getCombinedActivityResult={getCombinedActivityResult}

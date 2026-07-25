@@ -2722,6 +2722,55 @@ function changeFontSize(dir) {
     if (win) { win.document.write(html); win.document.close(); }
   };
 
+  const handleExportStudentsExcel = () => {
+    const studentsByClassroom = new Map<string, typeof filteredStudents>();
+    filteredStudents.forEach(s => {
+      const classroomId = s.classroom_id || "unassigned";
+      if (!studentsByClassroom.has(classroomId)) studentsByClassroom.set(classroomId, []);
+      studentsByClassroom.get(classroomId)!.push(s);
+    });
+
+    const sortedClassrooms = Array.from(studentsByClassroom.entries()).sort((a, b) => {
+      if (a[0] === "unassigned") return 1;
+      if (b[0] === "unassigned") return -1;
+      const aName = classrooms.find(c => c.id === a[0])?.name || a[0];
+      const bName = classrooms.find(c => c.id === b[0])?.name || b[0];
+      return aName.localeCompare(bName, "th");
+    });
+
+    const wb = XLSX.utils.book_new();
+    const usedSheetNames = new Set<string>();
+    sortedClassrooms.forEach(([classroomId, studentsInClassroom]) => {
+      const classroomName = classroomId === "unassigned"
+        ? "ยังไม่ระบุชั้นเรียน"
+        : classrooms.find(c => c.id === classroomId)?.name || classroomId;
+
+      const rows = studentsInClassroom
+        .slice()
+        .sort((a, b) => (a.student_number || 0) - (b.student_number || 0))
+        .map((s, i) => ({
+          "เลขที่": s.student_number || i + 1,
+          "รหัสนักเรียน": s.student_id,
+          "ชื่อ-สกุล": s.name,
+          "ชั้นเรียน": classroomName,
+        }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [{ wch: 8 }, { wch: 16 }, { wch: 32 }, { wch: 16 }];
+
+      const baseSheetName = classroomName.replace(/[\\/*?:[\]]/g, "").slice(0, 31) || "ชั้นเรียน";
+      let uniqueName = baseSheetName;
+      let suffix = 1;
+      while (usedSheetNames.has(uniqueName)) {
+        uniqueName = `${baseSheetName.slice(0, 28)}(${suffix++})`;
+      }
+      usedSheetNames.add(uniqueName);
+      XLSX.utils.book_append_sheet(wb, ws, uniqueName);
+    });
+
+    XLSX.writeFile(wb, `รายชื่อนักเรียน_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const handleOpenExportScoreModal = (
     classroomId?: string,
     studentId?: string,
@@ -3486,6 +3535,7 @@ function changeFontSize(dir) {
                 exportLanguage={exportLanguage}
                 setExportLanguage={setExportLanguage}
                 handleExportStudents={handleExportStudents}
+                handleExportStudentsExcel={handleExportStudentsExcel}
                 handleRandomStudentNumbers={handleRandomStudentNumbers}
                 setStudents={setStudents}
                 handleUpdateStudentNumber={handleUpdateStudentNumber}

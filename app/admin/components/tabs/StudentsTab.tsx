@@ -16,6 +16,7 @@ interface StudentsTabProps {
   exportLanguage: "th" | "ms-rumi" | "ms-jawi";
   setExportLanguage: (lang: "th" | "ms-rumi" | "ms-jawi") => void;
   handleExportStudents: () => void;
+  handleExportStudentsExcel: () => void;
   handleRandomStudentNumbers: () => void;
   setStudents: React.Dispatch<React.SetStateAction<DBStudent[]>>;
   handleUpdateStudentNumber: (studentDbId: string, rawValue: string) => void;
@@ -36,6 +37,7 @@ export default function StudentsTab({
   exportLanguage,
   setExportLanguage,
   handleExportStudents,
+  handleExportStudentsExcel,
   handleRandomStudentNumbers,
   setStudents,
   handleUpdateStudentNumber,
@@ -113,6 +115,20 @@ export default function StudentsTab({
             />
           </svg>
           ส่งออกรายชื่อนักเรียน
+        </button>
+        <button
+          onClick={handleExportStudentsExcel}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 13h6m-6 4h6m2 5H7a2 2 0 01-2-2V4a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V20a2 2 0 01-2 2z"
+            />
+          </svg>
+          ส่งออก Excel
         </button>
       </div>
 
