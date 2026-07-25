@@ -18,6 +18,16 @@ function getDriveClient() {
   return google.drive({ version: "v3", auth: oauth2Client });
 }
 
+function handleDriveError(error: any): never {
+  const errStr = typeof error === "object" ? JSON.stringify(error) : String(error);
+  if (errStr.includes("invalid_grant") || error?.message?.includes("invalid_grant")) {
+    throw new Error(
+      "Google Drive Token Expired (invalid_grant): Refresh Token หมดอายุหรือถูกยกเลิกสิทธิ์ กรุณาออก GOOGLE_DRIVE_REFRESH_TOKEN ใหม่"
+    );
+  }
+  throw error;
+}
+
 /**
  * Uploads a file to the configured Google Drive folder.
  * Returns the Google Drive File ID.
@@ -27,40 +37,44 @@ export async function uploadFileToDrive(
   fileName: string,
   mimeType: string
 ): Promise<string> {
-  const drive = getDriveClient();
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  try {
+    const drive = getDriveClient();
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
-  const requestBody: any = {
-    name: fileName,
-  };
+    const requestBody: any = {
+      name: fileName,
+    };
 
-  if (folderId) {
-    requestBody.parents = [folderId];
+    if (folderId) {
+      requestBody.parents = [folderId];
+    }
+
+    const response = await drive.files.create({
+      requestBody,
+      media: {
+        mimeType,
+        body: Readable.from(fileBuffer),
+      },
+      fields: "id",
+      supportsAllDrives: true,
+    });
+
+    if (!response.data.id) {
+      throw new Error("Failed to get file ID from Google Drive upload response");
+    }
+
+    return response.data.id;
+  } catch (error: any) {
+    handleDriveError(error);
   }
-
-  const response = await drive.files.create({
-    requestBody,
-    media: {
-      mimeType,
-      body: Readable.from(fileBuffer),
-    },
-    fields: "id",
-    supportsAllDrives: true,
-  });
-
-  if (!response.data.id) {
-    throw new Error("Failed to get file ID from Google Drive upload response");
-  }
-
-  return response.data.id;
 }
 
 /**
  * Deletes a file from Google Drive by its file ID.
  */
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
-  const drive = getDriveClient();
   try {
+    const drive = getDriveClient();
     await drive.files.delete({ 
       fileId,
       supportsAllDrives: true
@@ -75,27 +89,32 @@ export async function deleteFileFromDrive(fileId: string): Promise<void> {
  * Downloads a file from Google Drive as a Readable stream.
  */
 export async function downloadFileFromDrive(fileId: string) {
-  const drive = getDriveClient();
+  try {
+    const drive = getDriveClient();
 
-  // Get file metadata to check mimeType and name
-  const metadata = await drive.files.get({
-    fileId,
-    fields: "name, mimeType",
-    supportsAllDrives: true,
-  });
+    // Get file metadata to check mimeType and name
+    const metadata = await drive.files.get({
+      fileId,
+      fields: "name, mimeType",
+      supportsAllDrives: true,
+    });
 
-  const response = await drive.files.get(
-    { 
-      fileId, 
-      alt: "media",
-      supportsAllDrives: true
-    },
-    { responseType: "stream" }
-  );
+    const response = await drive.files.get(
+      { 
+        fileId, 
+        alt: "media",
+        supportsAllDrives: true
+      },
+      { responseType: "stream" }
+    );
 
-  return {
-    stream: response.data as Readable,
-    fileName: metadata.data.name || "file",
-    mimeType: metadata.data.mimeType || "application/octet-stream",
-  };
+    return {
+      stream: response.data as Readable,
+      fileName: metadata.data.name || "file",
+      mimeType: metadata.data.mimeType || "application/octet-stream",
+    };
+  } catch (error: any) {
+    handleDriveError(error);
+  }
 }
+
