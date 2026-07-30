@@ -262,13 +262,29 @@ export default function CorrespondenceTab() {
         });
         setIsOpen(false);
         fetchBooks();
+      } else if (res.status === 413) {
+        Swal.fire(
+          "ไฟล์แนบมีขนาดใหญ่เกินไป",
+          "ไฟล์แนบทั้งหมดรวมกันต้องมีขนาดไม่เกิน 4 MB ต่อการบันทึกหนึ่งครั้ง กรุณาลดขนาดไฟล์ (เช่น ย่อรูปถ่าย) หรือแนบไฟล์ให้น้อยลงแล้วลองใหม่",
+          "error"
+        );
       } else {
-        const errorData = await res.json();
-        Swal.fire("ข้อผิดพลาด", errorData.error || "เกิดข้อผิดพลาดในการบันทึกข้อมูล", "error");
+        let message = `เกิดข้อผิดพลาดในการบันทึกข้อมูล (รหัส ${res.status})`;
+        try {
+          const errorData = await res.json();
+          message = errorData.error || message;
+        } catch {
+          // Server ตอบกลับไม่ใช่ JSON (เช่น หน้า error ของตัวกลาง/โฮสติ้ง) ใช้ข้อความเริ่มต้นด้านบนแทน
+        }
+        Swal.fire("ข้อผิดพลาด", message, "error");
       }
     } catch (err: any) {
       console.error(err);
-      Swal.fire("ข้อผิดพลาด", "เกิดข้อผิดพลาดในการส่งข้อมูล", "error");
+      Swal.fire(
+        "ไม่สามารถส่งข้อมูลได้",
+        "ติดต่อเซิร์ฟเวอร์ไม่สำเร็จ สาเหตุที่พบบ่อยคือไฟล์แนบมีขนาดใหญ่เกินไปหรืออินเทอร์เน็ตไม่เสถียร กรุณาลดขนาด/จำนวนไฟล์แนบ ตรวจสอบการเชื่อมต่อ แล้วลองใหม่อีกครั้ง",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
