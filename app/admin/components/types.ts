@@ -93,7 +93,8 @@ export type Tab =
   | "export-grades"
   | "duty"
   | "evaluations"
-  | "books";
+  | "books"
+  | "achievement";
 
 export interface EvaluationTopic {
   id: string;
