@@ -16,8 +16,10 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type"); // inward or outward
+  const type = searchParams.get("type"); // inward, outward, archive, or all
   const search = searchParams.get("search");
+  const startDate = searchParams.get("start_date");
+  const endDate = searchParams.get("end_date");
 
   let queryText = `
     SELECT 
@@ -51,9 +53,19 @@ export async function GET(req: NextRequest) {
   const queryParams: any[] = [];
   const clauses: string[] = [];
 
-  if (type) {
+  if (type && type !== "all") {
     queryParams.push(type);
     clauses.push(`b.book_type = $${queryParams.length}`);
+  }
+
+  if (startDate && startDate.trim() !== "") {
+    queryParams.push(startDate.trim());
+    clauses.push(`b.date_issued >= $${queryParams.length}`);
+  }
+
+  if (endDate && endDate.trim() !== "") {
+    queryParams.push(endDate.trim());
+    clauses.push(`b.date_issued <= $${queryParams.length}`);
   }
 
   if (search && search.trim() !== "") {

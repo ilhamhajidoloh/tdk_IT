@@ -52,6 +52,258 @@ export default function CorrespondenceTab() {
   const [attachmentsToDelete, setAttachmentsToDelete] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Print Register Modal State
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printType, setPrintType] = useState<"current" | "inward" | "outward" | "archive" | "all">("current");
+  const [printStartDate, setPrintStartDate] = useState("");
+  const [printEndDate, setPrintEndDate] = useState("");
+  const [printSearch, setPrintSearch] = useState("");
+  const [officerName, setOfficerName] = useState("");
+  const [officerPosition, setOfficerPosition] = useState("เจ้าหน้าที่สารบรรณ");
+  const [isGeneratingPrint, setIsGeneratingPrint] = useState(false);
+
+  const handleOpenPrintModal = () => {
+    setPrintType("current");
+    setPrintStartDate("");
+    setPrintEndDate("");
+    setPrintSearch(searchTerm);
+    setIsPrintModalOpen(true);
+  };
+
+  const handlePrintRegister = async () => {
+    setIsGeneratingPrint(true);
+    try {
+      const targetType = printType === "current" ? activeSubTab : printType;
+      let url = `/api/correspondence?type=${targetType}&`;
+      if (printSearch.trim() !== "") {
+        url += `search=${encodeURIComponent(printSearch.trim())}&`;
+      }
+      if (printStartDate.trim() !== "") {
+        url += `start_date=${encodeURIComponent(printStartDate.trim())}&`;
+      }
+      if (printEndDate.trim() !== "") {
+        url += `end_date=${encodeURIComponent(printEndDate.trim())}&`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch books for print");
+      const booksToPrint: Book[] = await res.json();
+
+      if (booksToPrint.length === 0) {
+        Swal.fire("ไม่พบข้อมูล", "ไม่พบรายการหนังสือตามเงื่อนไขที่เลือกเพื่อพิมพ์", "info");
+        setIsGeneratingPrint(false);
+        return;
+      }
+
+      // Title determination
+      let reportTitle = "สมุดทะเบียนคุมหนังสือรับ - ส่ง";
+      let registerColLabel = "รับ / ส่ง";
+      if (targetType === "inward") {
+        reportTitle = "สมุดทะเบียนคุมหนังสือรับ (Inward Register)";
+        registerColLabel = "รับ";
+      } else if (targetType === "outward") {
+        reportTitle = "สมุดทะเบียนคุมหนังสือส่ง (Outward Register)";
+        registerColLabel = "ส่ง";
+      } else if (targetType === "archive") {
+        reportTitle = "สมุดทะเบียนคุมหนังสือเก็บ (Archive Register)";
+        registerColLabel = "เก็บ";
+      }
+
+      let dateSubtitle = "ข้อมูลทั้งหมดในระบบ";
+      if (printStartDate && printEndDate) {
+        dateSubtitle = `ระหว่างวันที่ ${formatThaiDateString(printStartDate)} ถึง ${formatThaiDateString(printEndDate)}`;
+      } else if (printStartDate) {
+        dateSubtitle = `ตั้งแต่วันที่ ${formatThaiDateString(printStartDate)}`;
+      } else if (printEndDate) {
+        dateSubtitle = `ถึงวันที่ ${formatThaiDateString(printEndDate)}`;
+      }
+
+      const todayStr = new Date().toLocaleDateString("th-TH", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      const tableRowsHtml = booksToPrint
+        .map((b, idx) => {
+          const typeBadge =
+            b.book_type === "inward"
+              ? "หนังสือรับ"
+              : b.book_type === "outward"
+              ? "หนังสือส่ง"
+              : "หนังสือเก็บ";
+
+          return `
+            <tr>
+              <td style="text-align: center;">${idx + 1}</td>
+              <td style="text-align: center; font-weight: bold;">${b.register_number || "-"}</td>
+              <td style="text-align: center;">${b.book_number || "-"}</td>
+              <td style="text-align: center; white-space: nowrap;">${formatThaiDateString(b.date_issued)}</td>
+              <td>${b.sender || "-"}</td>
+              <td>${b.receiver || "-"}</td>
+              <td>
+                <div style="font-weight: bold;">${b.title}</div>
+                ${targetType === "all" ? `<div style="font-size: 11px; color: #4b5563;">[${typeBadge}]</div>` : ""}
+              </td>
+              <td>${b.description || "-"}</td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      const printHtml = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>${reportTitle}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Sarabun', 'TH Sarabun New', sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      padding: 24px;
+      color: #111827;
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .print-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      padding: 10px 20px;
+      background: #4f46e5;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(79,70,229,0.35);
+      z-index: 9999;
+    }
+    .header-container {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+    .header-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .header-subtitle {
+      font-size: 14px;
+      color: #4b5563;
+    }
+    .meta-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #374151;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #4b5563;
+      padding: 6px 8px;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f3f4f6;
+      font-weight: 700;
+      text-align: center;
+    }
+    .footer-signature {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 36px;
+      page-break-inside: avoid;
+    }
+    .signature-box {
+      text-align: center;
+      width: 280px;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    @media print {
+      .print-btn { display: none !important; }
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+      body {
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+  <div class="header-container">
+    <div class="header-title">${reportTitle}</div>
+    <div class="header-subtitle">${dateSubtitle}</div>
+  </div>
+  <div class="meta-info">
+    <div><strong>จำนวนทั้งหมด:</strong> ${booksToPrint.length} รายการ</div>
+    <div><strong>วันที่พิมพ์:</strong> ${todayStr}</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 45px;">ลำดับ</th>
+        <th style="width: 110px;">เลขทะเบียน${registerColLabel}</th>
+        <th style="width: 110px;">เลขที่หนังสือ</th>
+        <th style="width: 95px;">ลงวันที่</th>
+        <th style="width: 150px;">จาก (ผู้ส่ง)</th>
+        <th style="width: 150px;">ถึง (ผู้รับ)</th>
+        <th>เรื่อง</th>
+        <th style="width: 130px;">หมายเหตุ</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tableRowsHtml}
+    </tbody>
+  </table>
+  <div class="footer-signature">
+    <div class="signature-box">
+      <p>ลงชื่อ.........................................................................</p>
+      <p style="margin-top: 2px;">( ${officerName.trim() ? officerName.trim() : "..........................................................."} )</p>
+      <p>ตำแหน่ง ${officerPosition.trim() ? officerPosition.trim() : "เจ้าหน้าที่สารบรรณ"}</p>
+      <p style="margin-top: 4px;">วันที่ .......... เดือน .................... พ.ศ. ..........</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(printHtml);
+        printWindow.document.close();
+        setIsPrintModalOpen(false);
+      } else {
+        Swal.fire("แจ้งเตือน", "กรุณายินยอมให้เบราว์เซอร์เปิด Pop-up เพื่อพิมพ์เอกสาร", "warning");
+      }
+    } catch (err) {
+      console.error("Print register error:", err);
+      Swal.fire("ข้อผิดพลาด", "ไม่สามารถสร้างรายงานทะเบียนคุมได้", "error");
+    } finally {
+      setIsGeneratingPrint(false);
+    }
+  };
+
   // Sort State
   const [sortColumn, setSortColumn] = useState<keyof Book | "date_registered">("date_registered");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -352,15 +604,26 @@ export default function CorrespondenceTab() {
           <h1 className="text-2xl font-bold text-foreground">ระบบงานสารบรรณ (หนังสือรับ-ส่ง)</h1>
           <p className="text-sm text-muted-foreground mt-1">จัดการ ลงทะเบียน ค้นหาเอกสารรับและส่งภายในหน่วยงาน</p>
         </div>
-        <button
-          onClick={handleOpenAddModal}
-          className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-0"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
-          </svg>
-          ลงทะเบียนหนังสือใหม่
-        </button>
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={handleOpenPrintModal}
+            className="w-full sm:w-auto bg-card hover:bg-muted text-foreground border border-border font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer text-sm"
+          >
+            <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            พิมพ์ทะเบียนคุม
+          </button>
+          <button
+            onClick={handleOpenAddModal}
+            className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-0 text-sm whitespace-nowrap"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
+            </svg>
+            ลงทะเบียนหนังสือใหม่
+          </button>
+        </div>
       </div>
 
       {/* Tabs & Search */}
@@ -961,6 +1224,167 @@ export default function CorrespondenceTab() {
                   "บันทึกหนังสือ"
                 ) : (
                   "บันทึกการแก้ไข"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Register Modal */}
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden my-8 transform transition-all">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-foreground">พิมพ์ทะเบียนคุมหนังสือ</h3>
+                  <p className="text-xs text-muted-foreground">กำหนดเงื่อนไขรายงานและแบบฟอร์มลงนามก่อนพิมพ์</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPrintModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-xl font-bold border-0 bg-transparent cursor-pointer p-1 rounded-lg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4 text-sm text-foreground">
+              {/* Option 1: Select Type */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  ประเภทหนังสือ
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: "current", label: `แท็บปัจจุบัน (${activeSubTab === "inward" ? "รับ" : activeSubTab === "outward" ? "ส่ง" : "เก็บ"})` },
+                    { id: "inward", label: "หนังสือรับ" },
+                    { id: "outward", label: "หนังสือส่ง" },
+                    { id: "archive", label: "หนังสือเก็บ" },
+                    { id: "all", label: "ทั้งหมด (รับ-ส่ง)" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setPrintType(item.id as any)}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all ${
+                        printType === item.id
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                          : "bg-background border-border text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Option 2: Date Range */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    ตั้งแต่วันที่ (ลงวันที่)
+                  </label>
+                  <input
+                    type="date"
+                    value={printStartDate}
+                    onChange={(e) => setPrintStartDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                    ถึงวันที่ (ลงวันที่)
+                  </label>
+                  <input
+                    type="date"
+                    value={printEndDate}
+                    onChange={(e) => setPrintEndDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+              </div>
+
+              {/* Option 3: Search text */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  กรองคำค้นหา (ถ้ามี)
+                </label>
+                <input
+                  type="text"
+                  placeholder="เช่น เลขที่หนังสือ, ผู้ส่ง, เรื่อง..."
+                  value={printSearch}
+                  onChange={(e) => setPrintSearch(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+
+              {/* Option 4: Signature fields */}
+              <div className="pt-2 border-t border-border">
+                <label className="block text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">
+                  ข้อมูลผู้ลงนามท้ายรายงาน
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">ชื่อ-นามสกุล ผู้จัดทำ</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น นายสมชาย ใจดี"
+                      value={officerName}
+                      onChange={(e) => setOfficerName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">ตำแหน่ง</label>
+                    <input
+                      type="text"
+                      placeholder="เจ้าหน้าที่สารบรรณ"
+                      value={officerPosition}
+                      onChange={(e) => setOfficerPosition(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-card border-t border-border flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(false)}
+                className="px-4 py-2 rounded-xl font-bold text-sm text-foreground hover:bg-muted bg-transparent border-0 cursor-pointer"
+                disabled={isGeneratingPrint}
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handlePrintRegister}
+                disabled={isGeneratingPrint}
+                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2 rounded-xl transition-all shadow-md text-sm border-0 cursor-pointer flex items-center gap-2"
+              >
+                {isGeneratingPrint ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    กำลังจัดเตรียม...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    ออกรายงาน / พิมพ์
+                  </>
                 )}
               </button>
             </div>
