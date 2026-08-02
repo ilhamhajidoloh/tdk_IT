@@ -9,15 +9,18 @@ export async function GET(req: NextRequest) {
     const settingId = req.nextUrl.searchParams.get("settingId");
     if (!settingId) return NextResponse.json({ error: "settingId required" }, { status: 400 });
 
+    // Ensure column exists
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS subject_display_names JSONB DEFAULT '{}'::jsonb");
+
     const settingRes = await pool.query(
-      "SELECT academic_year, term, midterm_max_score, final_max_score FROM system_settings WHERE id = $1",
+      "SELECT academic_year, term, midterm_max_score, final_max_score, subject_display_names FROM system_settings WHERE id = $1",
       [settingId]
     );
     if (settingRes.rows.length === 0) {
       return NextResponse.json({ error: "Setting not found" }, { status: 404 });
     }
 
-    const { academic_year, term: settingTerm, midterm_max_score: defaultMidMax, final_max_score: defaultFinMax } = settingRes.rows[0];
+    const { academic_year, term: settingTerm, midterm_max_score: defaultMidMax, final_max_score: defaultFinMax, subject_display_names } = settingRes.rows[0];
     const termKey = `${settingTerm}/${academic_year}`;
 
     // 1. Fetch Classrooms, Subjects, Students, and Grades
@@ -196,6 +199,7 @@ export async function GET(req: NextRequest) {
       academic_year,
       term: settingTerm,
       term_key: termKey,
+      subject_display_names: subject_display_names || {},
       subjects: subjects.map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -206,6 +210,34 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error calculating achievement matrix:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const token = req.headers.get("Authorization")?.split("Bearer ")[1];
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json();
+    const { settingId, subjectDisplayNames } = body;
+
+    if (!settingId) {
+      return NextResponse.json({ error: "settingId required" }, { status: 400 });
+    }
+
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS subject_display_names JSONB DEFAULT '{}'::jsonb");
+    await pool.query(
+      "UPDATE system_settings SET subject_display_names = $1 WHERE id = $2",
+      [JSON.stringify(subjectDisplayNames || {}), settingId]
+    );
+
+    return NextResponse.json({
+      success: true,
+      subject_display_names: subjectDisplayNames || {},
+    });
+  } catch (error: any) {
+    console.error("Error updating subject_display_names:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

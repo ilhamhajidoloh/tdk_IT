@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import Swal from "sweetalert2";
 import { type SystemSetting } from "../types";
 import TermSelector from "../TermSelector";
@@ -37,10 +37,18 @@ interface SchoolSummary {
   overall_avg_percentage: number;
 }
 
+export interface MultiLangSubjectEntry {
+  thai?: string;
+  rumi?: string;
+  arabic?: string;
+  active_lang?: "thai" | "rumi" | "arabic";
+}
+
 interface AchievementData {
   academic_year: string;
   term: string;
   term_key: string;
+  subject_display_names?: Record<string, MultiLangSubjectEntry | string>;
   subjects: SubjectHeader[];
   matrix_rows: MatrixRow[];
   school_summary: SchoolSummary;
@@ -53,6 +61,24 @@ interface AchievementTabProps {
   token: string | null;
 }
 
+const DEFAULT_ARABIC_MAP: Record<string, { thai: string; rumi: string; arabic: string }> = {
+  "อัลกุรอาน": { thai: "อัลกุรอาน", rumi: "Al-Quran", arabic: "القرآن الكريم" },
+  "อัลฮะดีษ": { thai: "อัลฮะดีษ", rumi: "Al-Hadith", arabic: "الحديث الشريف" },
+  "การอ่าน": { thai: "การอ่านตัจญ์วีด", rumi: "Tilawah & Tajweed", arabic: "التلاوة والتجويد" },
+  "อักขระวิธี": { thai: "อักขระวิธี (ตัจญ์วีด)", rumi: "Tajweed", arabic: "التجويد" },
+  "ฟิกฮ์": { thai: "ฟิกฮ์ (ศาสนบัญญัติ)", rumi: "Fiqh", arabic: "الفقه" },
+  "อัลฟิกฮ์": { thai: "ฟิกฮ์ (ศาสนบัญญัติ)", rumi: "Fiqh", arabic: "الفقه" },
+  "เตาฮีด": { thai: "เตาฮีด (หลักการศรัทธา)", rumi: "Tauhid", arabic: "التوحيد" },
+  "อัลเตาฮีด": { thai: "เตาฮีด (หลักการศรัทธา)", rumi: "Tauhid", arabic: "التوحيد" },
+  "ประวัติศาสตร์": { thai: "ประวัติศาสตร์อิสลาม", rumi: "Tarikh", arabic: "التاريخ الإسلامي" },
+  "สิระฮ์": { thai: "สิระฮ์ (ชีวประวัติ)", rumi: "Sirah", arabic: "السيرة النبوية" },
+  "ภาษามลายู": { thai: "ภาษามลายู", rumi: "Bahasa Melayu", arabic: "اللغة الجاوية" },
+  "ภาษาอาหรับ": { thai: "ภาษาอาหรับ", rumi: "Bahasa Arab", arabic: "اللغة العربية" },
+  "อัคลาก": { thai: "อัคลาก (จริยธรรม)", rumi: "Akhlak", arabic: "الأخلاق" },
+  "ศาสนสมบัติ": { thai: "ศาสนสมบัติ", rumi: "Pendidikan Islam", arabic: "التربية الإسلامية" },
+  "กิจกรรม": { thai: "กิจกรรมพัฒนาผู้เรียน", rumi: "Aktiviti", arabic: "الأنشطة" },
+};
+
 export default function AchievementTab({
   settingsList,
   selectedSettingId,
@@ -64,6 +90,29 @@ export default function AchievementTab({
   const [reportTitle, setReportTitle] = useState<string>("รายงานสรุปผลสัมฤทธิ์ทางการเรียน");
   const [agencyName, setAgencyName] = useState<string>("");
   const [includeActivity, setIncludeActivity] = useState<boolean>(false);
+
+  // Feature 1: Classroom calculation selection
+  const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
+
+  // Feature 2: Multi-Language Custom Subject Names JSON (thai, rumi, arabic)
+  const [customSubjectNames, setCustomSubjectNames] = useState<Record<string, MultiLangSubjectEntry>>({});
+  const [globalActiveLang, setGlobalActiveLang] = useState<"thai" | "rumi" | "arabic">("thai");
+  const [showSubjectModal, setShowSubjectModal] = useState<boolean>(false);
+
+  // Load saved custom subject names from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined" && selectedSettingId) {
+      const storageKey = `achievement_subject_names_${selectedSettingId}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          setCustomSubjectNames(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to parse saved subject names from localStorage", e);
+        }
+      }
+    }
+  }, [selectedSettingId]);
 
   useEffect(() => {
     if (selectedSettingId && token) {
@@ -78,8 +127,23 @@ export default function AchievementTab({
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const json = await res.json();
+        const json: AchievementData = await res.json();
         setData(json);
+        if (json.matrix_rows) {
+          setSelectedClassroomIds(json.matrix_rows.map((r) => r.classroom_id));
+        }
+        // Normalize DB JSONB subject display names if available
+        if (json.subject_display_names && Object.keys(json.subject_display_names).length > 0) {
+          const normalized: Record<string, MultiLangSubjectEntry> = {};
+          Object.entries(json.subject_display_names).forEach(([id, val]) => {
+            if (typeof val === "string") {
+              normalized[id] = { thai: val, rumi: "", arabic: val };
+            } else if (typeof val === "object" && val !== null) {
+              normalized[id] = val;
+            }
+          });
+          setCustomSubjectNames(normalized);
+        }
       } else {
         const err = await res.json();
         console.error("Failed to load achievement data:", err);
@@ -91,20 +155,199 @@ export default function AchievementTab({
     }
   };
 
-  const handlePrintReport = () => {
-    if (!data) return;
+  // Helper: Toggle classroom selection
+  const handleToggleClassroom = (classroomId: string) => {
+    setSelectedClassroomIds((prev) =>
+      prev.includes(classroomId)
+        ? prev.filter((id) => id !== classroomId)
+        : [...prev, classroomId]
+    );
+  };
 
-    const todayStr = new Date().toLocaleDateString("th-TH", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
+  const handleSelectAllClassrooms = () => {
+    if (!data) return;
+    if (selectedClassroomIds.length === data.matrix_rows.length) {
+      setSelectedClassroomIds([]);
+    } else {
+      setSelectedClassroomIds(data.matrix_rows.map((r) => r.classroom_id));
+    }
+  };
+
+  // Helper: Resolve subject name according to active language (thai, rumi, arabic)
+  const getSubjectName = (subj: SubjectHeader | SubjectStat) => {
+    const id = "id" in subj ? subj.id : subj.subject_id;
+    const rawDefaultName = "name" in subj ? subj.name : subj.subject_name;
+    const entry = customSubjectNames[id];
+
+    if (!entry) return rawDefaultName;
+
+    const lang = entry.active_lang || globalActiveLang;
+    if (lang === "rumi" && entry.rumi && entry.rumi.trim()) return entry.rumi.trim();
+    if (lang === "arabic" && entry.arabic && entry.arabic.trim()) return entry.arabic.trim();
+    if (lang === "thai" && entry.thai && entry.thai.trim()) return entry.thai.trim();
+
+    return entry.thai?.trim() || entry.rumi?.trim() || entry.arabic?.trim() || rawDefaultName;
+  };
+
+  // Helper: Auto-fill Arabic & Rumi presets
+  const handleApplyArabicPresets = () => {
+    if (!data) return;
+    const updatedMap: Record<string, MultiLangSubjectEntry> = { ...customSubjectNames };
+    let count = 0;
+    data.subjects.forEach((subj) => {
+      const cleanName = subj.name.trim();
+      for (const [key, preset] of Object.entries(DEFAULT_ARABIC_MAP)) {
+        if (cleanName.includes(key)) {
+          updatedMap[subj.id] = {
+            thai: subj.name,
+            rumi: preset.rumi,
+            arabic: preset.arabic,
+            active_lang: globalActiveLang,
+          };
+          count++;
+          break;
+        }
+      }
     });
+    setCustomSubjectNames(updatedMap);
+    Swal.fire({
+      title: "เติมพรีเซ็ตสำเร็จ",
+      text: `เติมชื่อวิชาภาษา Thai/Rumi/Arabic แล้ว ${count} วิชา (กดบันทึกลงฐานข้อมูลเพื่อจัดเก็บ)`,
+      icon: "success",
+      timer: 1500,
+      showConfirmButton: false,
+    });
+  };
+
+  // Save subject display names to PostgreSQL DB via API + localStorage
+  const handleSaveSubjectNames = async () => {
+    if (selectedSettingId && token) {
+      try {
+        const res = await fetch("/api/grades/achievement", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            settingId: selectedSettingId,
+            subjectDisplayNames: customSubjectNames,
+          }),
+        });
+        if (res.ok) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`achievement_subject_names_${selectedSettingId}`, JSON.stringify(customSubjectNames));
+          }
+          setShowSubjectModal(false);
+          Swal.fire({
+            title: "บันทึกลงฐานข้อมูลสำเร็จ",
+            text: "ระบบได้บันทึกโครงสร้างภาษา (Thai, Rumi, Arabic) ลงใน PostgreSQL เรียบร้อยแล้ว",
+            icon: "success",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to save subject names to PostgreSQL DB:", err);
+      }
+    }
+
+    if (typeof window !== "undefined" && selectedSettingId) {
+      localStorage.setItem(`achievement_subject_names_${selectedSettingId}`, JSON.stringify(customSubjectNames));
+    }
+    setShowSubjectModal(false);
+    Swal.fire({
+      title: "บันทึกสำเร็จ",
+      text: "ระบบได้บันทึกการตั้งค่าภาษาเรียบร้อยแล้ว",
+      icon: "success",
+      timer: 1500,
+      showConfirmButton: false,
+    });
+  };
+
+  const handleResetSubjectNames = () => {
+    setCustomSubjectNames({});
+    if (typeof window !== "undefined" && selectedSettingId) {
+      localStorage.removeItem(`achievement_subject_names_${selectedSettingId}`);
+    }
+  };
+
+  // Dynamic Filtering: Compute matrix rows for selected classrooms
+  const filteredMatrixRows = useMemo(() => {
+    if (!data) return [];
+    return data.matrix_rows.filter((r) => selectedClassroomIds.includes(r.classroom_id));
+  }, [data, selectedClassroomIds]);
+
+  // Dynamic Filtering: Recalculate summary totals for selected classrooms
+  const filteredSchoolSummary = useMemo(() => {
+    if (!data) {
+      return {
+        total_students: 0,
+        subject_stats: [],
+        total_all_subjects: 0,
+        max_possible_all_subjects: 0,
+        overall_avg_percentage: 0,
+      };
+    }
+
+    const totalStudents = filteredMatrixRows.reduce((sum, r) => sum + r.student_count, 0);
+    let schoolAllSubjectsTotal = 0;
+    let schoolAllSubjectsMaxTotal = 0;
+
+    const subjectStats = data.subjects.map((subj) => {
+      let totalSubjectScore = 0;
+      let maxPossibleScore = 0;
+
+      filteredMatrixRows.forEach((r) => {
+        const st = r.subject_stats.find((s) => s.subject_id === subj.id);
+        if (st) {
+          totalSubjectScore += st.total_score;
+          maxPossibleScore += st.max_possible_score;
+        }
+      });
+
+      const avgPercentage =
+        maxPossibleScore > 0 ? (totalSubjectScore * 100) / maxPossibleScore : 0;
+
+      schoolAllSubjectsTotal += totalSubjectScore;
+      schoolAllSubjectsMaxTotal += maxPossibleScore;
+
+      return {
+        subject_id: subj.id,
+        subject_name: subj.name,
+        total_score: totalSubjectScore,
+        max_possible_score: maxPossibleScore,
+        avg_percentage: parseFloat(avgPercentage.toFixed(2)),
+      };
+    });
+
+    const overallAvgPercentage =
+      schoolAllSubjectsMaxTotal > 0
+        ? (schoolAllSubjectsTotal * 100) / schoolAllSubjectsMaxTotal
+        : 0;
+
+    return {
+      total_students: totalStudents,
+      subject_stats: subjectStats,
+      total_all_subjects: schoolAllSubjectsTotal,
+      max_possible_all_subjects: schoolAllSubjectsMaxTotal,
+      overall_avg_percentage: parseFloat(overallAvgPercentage.toFixed(2)),
+    };
+  }, [data, filteredMatrixRows]);
+
+  // Print PDF Export
+  const handlePrintReport = () => {
+    if (!data || filteredMatrixRows.length === 0) {
+      Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนที่ต้องการคำนวณอย่างน้อย 1 ห้อง", "warning");
+      return;
+    }
 
     const subjectHeadersHtml = data.subjects
       .map(
         (s) => `
         <th colspan="2" style="text-align: center; font-size: 11px; border: 1px solid #4b5563; padding: 6px; background-color: #f3f4f6;">
-          <strong>${s.name}</strong><br/>
+          <strong>${getSubjectName(s)}</strong><br/>
           <span style="font-weight: normal; font-size: 10px; color: #4b5563;">(เต็ม ${s.max_score} คะแนน)</span>
         </th>
       `
@@ -120,7 +363,7 @@ export default function AchievementTab({
       )
       .join("");
 
-    const bodyRowsHtml = data.matrix_rows
+    const bodyRowsHtml = filteredMatrixRows
       .map(
         (row, idx) => `
         <tr>
@@ -144,9 +387,9 @@ export default function AchievementTab({
 
     const footerRowHtml = `
       <tr style="background-color: #e2e8f0; color: #0f172a; font-weight: bold;">
-        <td colspan="2" style="text-align: center; border: 1px solid #4b5563; padding: 8px;">รวมทั้งหมด (ทุกระดับชั้น)</td>
-        <td style="text-align: center; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${data.school_summary.total_students}</td>
-        ${data.school_summary.subject_stats
+        <td colspan="2" style="text-align: center; border: 1px solid #4b5563; padding: 8px;">รวมทั้งหมด (${filteredMatrixRows.length} ระดับชั้น)</td>
+        <td style="text-align: center; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${filteredSchoolSummary.total_students}</td>
+        ${filteredSchoolSummary.subject_stats
           .map(
             (st) => `
             <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${st.total_score.toLocaleString()}</td>
@@ -154,8 +397,8 @@ export default function AchievementTab({
           `
           )
           .join("")}
-        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${data.school_summary.total_all_subjects.toLocaleString()}</td>
-        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${data.school_summary.overall_avg_percentage.toFixed(2)}%</td>
+        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${filteredSchoolSummary.total_all_subjects.toLocaleString()}</td>
+        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%</td>
       </tr>
     `;
 
@@ -325,8 +568,12 @@ export default function AchievementTab({
     }
   };
 
+  // CSV Export
   const handleExportCSV = () => {
-    if (!data) return;
+    if (!data || filteredMatrixRows.length === 0) {
+      Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนอย่างน้อย 1 ห้องเพื่อส่งออกข้อมูล", "warning");
+      return;
+    }
 
     let csvContent = "\uFEFF"; // UTF-8 BOM
     csvContent += `"${reportTitle} - ภาคเรียนที่ ${data.term} ประจำปีการศึกษา ${data.academic_year}"\n\n`;
@@ -334,13 +581,14 @@ export default function AchievementTab({
     // Header row 1
     let row1 = ["ที่", "ระดับชั้น", "จำนวนนักเรียนทั้งชั้น (คน)"];
     data.subjects.forEach((s) => {
-      row1.push(`"${s.name} (คะแนนรวม)"`, `"${s.name} (เฉลี่ย %)"`);
+      const sName = getSubjectName(s);
+      row1.push(`"${sName} (คะแนนรวม)"`, `"${sName} (เฉลี่ย %)"`);
     });
     row1.push('"คะแนนรวมทุกวิชา"', '"เฉลี่ยรวม (%)"');
     csvContent += row1.join(",") + "\n";
 
     // Body rows
-    data.matrix_rows.forEach((row, idx) => {
+    filteredMatrixRows.forEach((row, idx) => {
       let r = [idx + 1, `"${row.classroom_name}"`, row.student_count];
       row.subject_stats.forEach((st) => {
         r.push(st.total_score, `${st.avg_percentage}%`);
@@ -350,11 +598,11 @@ export default function AchievementTab({
     });
 
     // Summary row
-    let sumRow = ['"รวมทั้งหมด"', '"ทุกระดับชั้น"', data.school_summary.total_students];
-    data.school_summary.subject_stats.forEach((st) => {
+    let sumRow = ['"รวมทั้งหมด"', `"${filteredMatrixRows.length} ระดับชั้น"`, filteredSchoolSummary.total_students];
+    filteredSchoolSummary.subject_stats.forEach((st) => {
       sumRow.push(st.total_score, `${st.avg_percentage}%`);
     });
-    sumRow.push(data.school_summary.total_all_subjects, `${data.school_summary.overall_avg_percentage}%`);
+    sumRow.push(filteredSchoolSummary.total_all_subjects, `${filteredSchoolSummary.overall_avg_percentage}%`);
     csvContent += sumRow.join(",") + "\n";
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -385,18 +633,25 @@ export default function AchievementTab({
         </div>
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <button
-            onClick={handleExportCSV}
+            onClick={() => setShowSubjectModal(true)}
             disabled={!data || loading}
+            className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
+          >
+            🌐 ภาษา / ชื่อวิชาที่แสดง
+          </button>
+          <button
+            onClick={handleExportCSV}
+            disabled={!data || loading || filteredMatrixRows.length === 0}
             className="w-full sm:w-auto bg-card hover:bg-muted text-foreground border border-border font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
           >
             <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h55.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             ส่งออก CSV / Excel
           </button>
           <button
             onClick={handlePrintReport}
-            disabled={!data || loading}
+            disabled={!data || loading || filteredMatrixRows.length === 0}
             className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm border-0 cursor-pointer disabled:opacity-50"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -465,6 +720,55 @@ export default function AchievementTab({
             </label>
           </div>
         </div>
+
+        {/* Feature 1: Classroom Selection Filter Bar */}
+        {data && data.matrix_rows.length > 0 && (
+          <div className="pt-4 border-t border-border space-y-2">
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <span>🏫 เลือกระดับชั้นเรียนที่ต้องการคำนวณ:</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
+                  ({selectedClassroomIds.length} / {data.matrix_rows.length} ชั้น)
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={handleSelectAllClassrooms}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 cursor-pointer underline"
+              >
+                {selectedClassroomIds.length === data.matrix_rows.length ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {data.matrix_rows.map((row) => {
+                const isSelected = selectedClassroomIds.includes(row.classroom_id);
+                return (
+                  <button
+                    key={`cls-btn-${row.classroom_id}`}
+                    type="button"
+                    onClick={() => handleToggleClassroom(row.classroom_id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer select-none ${
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                        : "bg-background text-muted-foreground border-border hover:border-indigo-400"
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded-md flex items-center justify-center text-[10px] ${
+                      isSelected ? "bg-white text-indigo-600" : "border border-border"
+                    }`}>
+                      {isSelected ? "✓" : ""}
+                    </span>
+                    <span>{row.classroom_name}</span>
+                    <span className={`text-[10px] opacity-80 font-mono ${isSelected ? "text-indigo-100" : "text-muted-foreground"}`}>
+                      ({row.student_count} คน)
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -475,8 +779,8 @@ export default function AchievementTab({
               👥
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-muted-foreground">นักเรียนทั้งหมด</div>
-              <div className="text-lg font-extrabold text-foreground">{data.school_summary.total_students} คน</div>
+              <div className="text-[11px] font-semibold text-muted-foreground">นักเรียนที่เลือก</div>
+              <div className="text-lg font-extrabold text-foreground">{filteredSchoolSummary.total_students} คน</div>
             </div>
           </div>
 
@@ -485,8 +789,8 @@ export default function AchievementTab({
               🏫
             </div>
             <div>
-              <div className="text-[11px] font-semibold text-muted-foreground">จำนวนระดับชั้น</div>
-              <div className="text-lg font-extrabold text-foreground">{data.matrix_rows.length} ห้อง</div>
+              <div className="text-[11px] font-semibold text-muted-foreground">ระดับชั้นที่คำนวณ</div>
+              <div className="text-lg font-extrabold text-foreground">{filteredMatrixRows.length} / {data.matrix_rows.length} ชั้น</div>
             </div>
           </div>
 
@@ -507,7 +811,7 @@ export default function AchievementTab({
             <div>
               <div className="text-[11px] font-semibold text-muted-foreground">เฉลี่ยรวมภาพรวม</div>
               <div className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
-                {data.school_summary.overall_avg_percentage.toFixed(2)}%
+                {filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%
               </div>
             </div>
           </div>
@@ -524,6 +828,18 @@ export default function AchievementTab({
         <div className="p-16 text-center bg-card border border-border rounded-3xl">
           <p className="text-muted-foreground text-sm">ไม่พบข้อมูลคะแนนในภาคเรียนที่เลือก</p>
         </div>
+      ) : filteredMatrixRows.length === 0 ? (
+        <div className="p-16 text-center bg-card border border-border rounded-3xl space-y-2">
+          <p className="text-lg font-bold text-foreground">ไม่ได้เลือกระดับชั้นเรียนสำหรับการคำนวณ</p>
+          <p className="text-sm text-muted-foreground">กรุณาติ๊กเลือกห้องเรียนในแถบตัวเลือกด้านบนอย่างน้อย 1 ห้อง</p>
+          <button
+            type="button"
+            onClick={handleSelectAllClassrooms}
+            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold cursor-pointer"
+          >
+            เลือกทุกระดับชั้น
+          </button>
+        </div>
       ) : (
         <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -537,7 +853,7 @@ export default function AchievementTab({
                   </th>
                   {data.subjects.map((subj) => (
                     <th key={subj.id} colSpan={2} className="px-3 py-2 text-center border-r border-slate-700 border-b border-slate-700 bg-slate-800 text-slate-100">
-                      {subj.name}
+                      {getSubjectName(subj)}
                       <span className="block text-[10px] font-normal text-slate-300">(เต็ม {subj.max_score} คะแนน)</span>
                     </th>
                   ))}
@@ -557,7 +873,7 @@ export default function AchievementTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-medium">
-                {data.matrix_rows.map((row, idx) => (
+                {filteredMatrixRows.map((row, idx) => (
                   <tr key={row.classroom_id} className="hover:bg-muted/40 transition-colors">
                     <td className="px-3 py-3 text-center border-r border-border text-muted-foreground">{idx + 1}</td>
                     <td className="px-4 py-3 border-r border-border font-bold text-foreground">{row.classroom_name}</td>
@@ -590,12 +906,12 @@ export default function AchievementTab({
               <tfoot>
                 <tr className="bg-indigo-900 text-white font-bold border-t-2 border-indigo-700">
                   <td colSpan={2} className="px-4 py-3.5 text-center border-r border-indigo-800">
-                    รวมทั้งหมด (ทุกระดับชั้น)
+                    รวมทั้งหมด ({filteredMatrixRows.length} ระดับชั้น)
                   </td>
                   <td className="px-3 py-3.5 text-center border-r border-indigo-800 text-sm font-bold">
-                    {data.school_summary.total_students}
+                    {filteredSchoolSummary.total_students}
                   </td>
-                  {data.school_summary.subject_stats.map((st) => (
+                  {filteredSchoolSummary.subject_stats.map((st) => (
                     <Fragment key={`sch-${st.subject_id}`}>
                       <td className="px-3 py-3.5 text-right border-r border-indigo-800 font-mono">
                         {st.total_score.toLocaleString()}
@@ -606,14 +922,207 @@ export default function AchievementTab({
                     </Fragment>
                   ))}
                   <td className="px-3 py-3.5 text-right border-r border-indigo-800 font-mono">
-                    {data.school_summary.total_all_subjects.toLocaleString()}
+                    {filteredSchoolSummary.total_all_subjects.toLocaleString()}
                   </td>
                   <td className="px-3 py-3.5 text-right font-mono text-amber-300 text-sm font-extrabold">
-                    {data.school_summary.overall_avg_percentage.toFixed(2)}%
+                    {filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%
                   </td>
                 </tr>
               </tfoot>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Feature 2: Modal Manager for Subject Names & Multi-Language JSON */}
+      {showSubjectModal && data && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-scale-up max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
+              <div>
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  🌐 จัดการภาษาชื่อรายวิชา (Thai / Rumi / Arabic JSON)
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  ป้อนชื่อภาษาไทย ภาษาอักษรรูมี (Rumi) และอักษรอาหรับ (Arabic) สำหรับวิชาที่ระบบดึงมา ทั้งหมดจะถูกจัดเก็บลงในฐานข้อมูล PostgreSQL
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSubjectModal(false)}
+                className="text-muted-foreground hover:text-foreground text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              {/* Global Display Language Selector */}
+              <div className="bg-card border border-border p-4 rounded-2xl space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                  เลือกภาษาหลักที่จะให้แสดงในรายงาน ณ ปัจจุบัน:
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGlobalActiveLang("thai")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      globalActiveLang === "thai"
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                        : "bg-background text-foreground border-border hover:border-indigo-400"
+                    }`}
+                  >
+                    🇹🇭 ภาษาไทย (Thai)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGlobalActiveLang("rumi")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      globalActiveLang === "rumi"
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                        : "bg-background text-foreground border-border hover:border-indigo-400"
+                    }`}
+                  >
+                    🔤 Rumi / English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGlobalActiveLang("arabic")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      globalActiveLang === "arabic"
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                        : "bg-background text-foreground border-border hover:border-indigo-400"
+                    }`}
+                  >
+                    🇸🇦 อักษรอาหรับ (Arabic / Jawi)
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-border">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleApplyArabicPresets}
+                    className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    ✨ เติมชื่อพรีเซ็ตอัตโนมัติ (Presets)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetSubjectNames}
+                    className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    🔄 ล้างชื่อทั้งหมด
+                  </button>
+                </div>
+                <span className="text-[11px] font-semibold text-muted-foreground">
+                  ดึงจากระบบ ({data.subjects.length} วิชา)
+                </span>
+              </div>
+
+              {/* Multi-Language Subject Inputs */}
+              <div className="space-y-4">
+                {data.subjects.map((subj) => {
+                  const entry = customSubjectNames[subj.id] || {};
+                  return (
+                    <div key={`mod-subj-${subj.id}`} className="bg-muted/30 p-4 rounded-2xl border border-border space-y-3">
+                      <div className="flex justify-between items-center border-b border-border/60 pb-2">
+                        <div>
+                          <span className="text-sm font-bold text-foreground">{subj.name}</span>
+                          <span className="text-[10px] text-muted-foreground ml-2">(เต็ม {subj.max_score} คะแนน)</span>
+                        </div>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-background border border-border text-muted-foreground">
+                          แสดงปัจจุบัน: {getSubjectName(subj)}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                            🇹🇭 ภาษาไทย (thai)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={subj.name}
+                            value={entry.thai || ""}
+                            onChange={(e) =>
+                              setCustomSubjectNames((prev) => ({
+                                ...prev,
+                                [subj.id]: {
+                                  ...prev[subj.id],
+                                  thai: e.target.value,
+                                },
+                              }))
+                            }
+                            className="w-full px-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                            🔤 Rumi / English (rumi)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="เช่น Al-Quran / Fiqh"
+                            value={entry.rumi || ""}
+                            onChange={(e) =>
+                              setCustomSubjectNames((prev) => ({
+                                ...prev,
+                                [subj.id]: {
+                                  ...prev[subj.id],
+                                  rumi: e.target.value,
+                                },
+                              }))
+                            }
+                            className="w-full px-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                            🇸🇦 อักษรอาหรับ (arabic)
+                          </label>
+                          <input
+                            type="text"
+                            dir="auto"
+                            placeholder="เช่น القرآن الكريم"
+                            value={entry.arabic || ""}
+                            onChange={(e) =>
+                              setCustomSubjectNames((prev) => ({
+                                ...prev,
+                                [subj.id]: {
+                                  ...prev[subj.id],
+                                  arabic: e.target.value,
+                                },
+                              }))
+                            }
+                            className="w-full px-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border bg-muted/20 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSubjectModal(false)}
+                className="px-4 py-2 bg-card hover:bg-muted text-foreground border border-border rounded-xl text-xs font-bold cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveSubjectNames}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <span>💾</span>
+                <span>บันทึกลงฐานข้อมูล (PostgreSQL)</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
