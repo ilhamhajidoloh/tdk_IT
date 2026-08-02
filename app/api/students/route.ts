@@ -6,21 +6,14 @@ export async function GET(req: NextRequest) {
   const token = req.headers.get("Authorization")?.split("Bearer ")[1];
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // ดึง users ที่มีบทบาทเป็น student และมี student_id เพื่อมาสร้างในตาราง students อัตโนมัติ
+  // Auto-sync students from users using a single fast query
   try {
-    const studentUsers = await pool.query(
-      "SELECT username, student_id FROM users WHERE role = 'student' AND student_id IS NOT NULL AND student_id != ''"
-    );
-
-    for (const u of studentUsers.rows) {
-      const checkRes = await pool.query("SELECT id FROM students WHERE student_id = $1", [u.student_id]);
-      if (checkRes.rows.length === 0) {
-        await pool.query(
-          "INSERT INTO students (name, student_id) VALUES ($1, $2)",
-          [u.username, u.student_id]
-        );
-      }
-    }
+    await pool.query(`
+      INSERT INTO students (name, student_id)
+      SELECT username, student_id FROM users
+      WHERE role = 'student' AND student_id IS NOT NULL AND student_id != ''
+      ON CONFLICT (student_id) DO NOTHING
+    `);
   } catch (e) {
     console.error("Error auto-syncing students from users:", e);
   }
@@ -50,20 +43,36 @@ export async function GET(req: NextRequest) {
       params
     );
   } else {
+    // Resolve target setting ID cleanly in JS
+    let targetSettingId = settingIdParam;
+    if (!targetSettingId) {
+      try {
+        const activeRes = await pool.query(
+          `SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1`
+        );
+        if (activeRes.rows.length > 0) {
+          targetSettingId = activeRes.rows[0].id.toString();
+        } else {
+          const dateRes = await pool.query(
+            `SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1`
+          );
+          if (dateRes.rows.length > 0) {
+            targetSettingId = dateRes.rows[0].id.toString();
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching active setting ID:", e);
+      }
+    }
+
     const settingParamIdx = params.length + 1;
-    params.push(settingIdParam);
+    params.push(targetSettingId || null);
+
     result = await pool.query(
       `SELECT s.id, s.name, s.student_id, COALESCE(s.status, 'active') AS status, s.graduation_year, s.status_updated_at, s.status_note, s.enrollment_date, s.graduation_date, cs.classroom_id, cs.student_number
        FROM students s
        LEFT JOIN classroom_students cs ON cs.student_id = s.id
-         AND (
-           cs.setting_id = COALESCE(
-             $${settingParamIdx}::bigint,
-             (SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1),
-             (SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1)
-           )
-           OR cs.setting_id IS NULL
-         )
+         AND (cs.setting_id = $${settingParamIdx}::bigint OR cs.setting_id IS NULL)
        WHERE 1=1 ${statusClause}
        ORDER BY cs.student_number ASC NULLS LAST, s.name ASC`,
       params
@@ -92,20 +101,41 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const result = await pool.query(
-    "INSERT INTO students (name, student_id) VALUES ($1, $2) RETURNING id, name, student_id",
-    [name.trim(), studentIdVal]
-  );
-  const newStudent = result.rows[0];
-
-  if (classroom_id && setting_id) {
-    await pool.query(
-      "INSERT INTO classroom_students (student_id, classroom_id, setting_id) VALUES ($1, $2, $3)",
-      [newStudent.id, classroom_id, setting_id]
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const studentRes = await client.query(
+      "INSERT INTO students (name, student_id) VALUES ($1, $2) RETURNING id, name, student_id",
+      [name.trim(), studentIdVal]
     );
-  }
+    const newStudent = studentRes.rows[0];
 
-  return NextResponse.json({ ...newStudent, classroom_id: classroom_id || null }, { status: 201 });
+    if (classroom_id) {
+      let targetSettingId = setting_id;
+      if (!targetSettingId) {
+        const settingRes = await client.query(
+          "SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1"
+        );
+        if (settingRes.rows.length > 0) {
+          targetSettingId = settingRes.rows[0].id;
+        }
+      }
+
+      await client.query(
+        "INSERT INTO classroom_students (student_id, classroom_id, setting_id) VALUES ($1, $2, $3)",
+        [newStudent.id, classroom_id, targetSettingId || null]
+      );
+    }
+
+    await client.query("COMMIT");
+    return NextResponse.json(newStudent, { status: 201 });
+  } catch (error: any) {
+    await client.query("ROLLBACK");
+    console.error("Error creating student:", error);
+    return NextResponse.json({ error: error.message || "Failed to create student" }, { status: 500 });
+  } finally {
+    client.release();
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -113,26 +143,36 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { id, student_number, setting_id } = body;
+  const { id, classroom_id, student_number, setting_id } = await req.json();
 
-  if (!id || !setting_id) {
-    return NextResponse.json({ error: "Missing student ID or setting ID" }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
   }
 
   try {
-    const numberVal = student_number === "" || student_number === null ? null : Number(student_number);
-    const result = await pool.query(
-      "UPDATE classroom_students SET student_number = $1 WHERE student_id = $2 AND setting_id = $3 RETURNING *",
-      [numberVal, id, setting_id]
-    );
-
-    if (result.rowCount === 0) {
-      return NextResponse.json({ error: "Student not enrolled in this term" }, { status: 404 });
+    let targetSettingId = setting_id;
+    if (!targetSettingId) {
+      const settingRes = await pool.query(
+        "SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1"
+      );
+      if (settingRes.rows.length > 0) {
+        targetSettingId = settingRes.rows[0].id;
+      }
     }
 
-    return NextResponse.json({ id, student_number: numberVal });
+    if (classroom_id && targetSettingId) {
+      await pool.query(
+        `INSERT INTO classroom_students (student_id, classroom_id, setting_id, student_number)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (student_id, setting_id)
+         DO UPDATE SET classroom_id = EXCLUDED.classroom_id, student_number = EXCLUDED.student_number`,
+        [id, classroom_id, targetSettingId, student_number || null]
+      );
+    }
+
+    return NextResponse.json({ message: "Student classroom updated successfully" });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error updating student classroom:", error);
+    return NextResponse.json({ error: error.message || "Failed to update student classroom" }, { status: 500 });
   }
 }
