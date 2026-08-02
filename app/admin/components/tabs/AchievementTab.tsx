@@ -131,33 +131,31 @@ export default function AchievementTab({
             .map(
               (st) => `
               <td style="text-align: right; border: 1px solid #4b5563; padding: 5px;">${st.total_score.toLocaleString()}</td>
-              <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px; color: ${
-                st.avg_percentage >= 50 ? "#15803d" : "#b91c1c"
-              }">${st.avg_percentage.toFixed(2)}%</td>
+              <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px;">${st.avg_percentage.toFixed(2)}%</td>
             `
             )
             .join("")}
-          <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px; background-color: #eef2ff;">${row.total_all_subjects.toLocaleString()}</td>
-          <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px; background-color: #eef2ff; color: #4338ca;">${row.overall_avg_percentage.toFixed(2)}%</td>
+          <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px; background-color: #f8fafc;">${row.total_all_subjects.toLocaleString()}</td>
+          <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px; background-color: #f8fafc;">${row.overall_avg_percentage.toFixed(2)}%</td>
         </tr>
       `
       )
       .join("");
 
     const footerRowHtml = `
-      <tr style="background-color: #1e1b4b; color: #ffffff; font-weight: bold;">
+      <tr style="background-color: #e2e8f0; color: #0f172a; font-weight: bold;">
         <td colspan="2" style="text-align: center; border: 1px solid #4b5563; padding: 8px;">รวมทั้งหมด (ทุกระดับชั้น)</td>
         <td style="text-align: center; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${data.school_summary.total_students}</td>
         ${data.school_summary.subject_stats
           .map(
             (st) => `
             <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${st.total_score.toLocaleString()}</td>
-            <td style="text-align: right; border: 1px solid #4b5563; padding: 8px; color: #fbbf24;">${st.avg_percentage.toFixed(2)}%</td>
+            <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${st.avg_percentage.toFixed(2)}%</td>
           `
           )
           .join("")}
         <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${data.school_summary.total_all_subjects.toLocaleString()}</td>
-        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px; color: #fbbf24; font-size: 13px;">${data.school_summary.overall_avg_percentage.toFixed(2)}%</td>
+        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${data.school_summary.overall_avg_percentage.toFixed(2)}%</td>
       </tr>
     `;
 
@@ -167,12 +165,12 @@ export default function AchievementTab({
   <meta charset="UTF-8">
   <title>${reportTitle}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Sarabun', 'TH Sarabun New', sans-serif;
+      font-family: 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Inter', 'Sarabun', 'TH Sarabun New', sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -205,6 +203,12 @@ export default function AchievementTab({
     .header-title {
       font-size: 22px;
       font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .header-agency {
+      font-size: 15px;
+      font-weight: 600;
+      color: #374151;
       margin-bottom: 4px;
     }
     .header-subtitle {
@@ -262,7 +266,8 @@ export default function AchievementTab({
   <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
 
   <div class="header-container">
-    <div class="header-title">${reportTitle} ${agencyName ? `(${agencyName})` : ""}</div>
+    <div class="header-title">${reportTitle}</div>
+    ${agencyName ? `<div class="header-agency">${agencyName}</div>` : ""}
     <div class="header-subtitle">ภาคเรียนที่ ${data.term} ประจำปีการศึกษา ${data.academic_year}</div>
   </div>
 
@@ -273,12 +278,12 @@ export default function AchievementTab({
         <th rowspan="2" style="width: 120px; text-align: center;">ระดับชั้น</th>
         <th rowspan="2" style="width: 90px; text-align: center;">จำนวนนักเรียน<br/>ทั้งชั้น (คน)</th>
         ${subjectHeadersHtml}
-        <th colspan="2" style="text-align: center; background-color: #4338ca; color: #ffffff;">คะแนนรวมทุกวิชา</th>
+        <th colspan="2" style="text-align: center; background-color: #f1f5f9; color: #0f172a;">คะแนนรวมทุกวิชา</th>
       </tr>
       <tr>
         ${subjectSubHeadersHtml}
-        <th style="font-size: 10px; text-align: center; background-color: #e0e7ff; color: #3730a3;">รวมดิบ</th>
-        <th style="font-size: 10px; text-align: center; background-color: #e0e7ff; color: #3730a3;">เฉลี่ยรวม (%)</th>
+        <th style="font-size: 10px; text-align: center; background-color: #f8fafc; color: #0f172a;">รวมดิบ</th>
+        <th style="font-size: 10px; text-align: center; background-color: #f8fafc; color: #0f172a;">เฉลี่ยรวม (%)</th>
       </tr>
     </thead>
     <tbody>

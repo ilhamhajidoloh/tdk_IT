@@ -244,8 +244,10 @@ export default function DutyTab({ token }: DutyTabProps) {
       <head>
         <meta charset="utf-8">
         <title>${title}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-          body { font-family: 'Sarabun', 'Segoe UI', sans-serif; padding: 40px; color: #1f2937; }
+          body { font-family: 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Inter', 'Sarabun', 'Segoe UI', sans-serif; padding: 40px; color: #1f2937; }
           h1 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 4px; }
           h2 { font-size: 14px; font-weight: 600; text-align: center; color: #6b7280; margin-bottom: 24px; }
           table { width: 100%; border-collapse: collapse; }
