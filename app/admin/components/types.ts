@@ -166,6 +166,8 @@ export interface SystemSetting {
   highest_grade_level?: string | null;
   data_retention_years?: number | null;
   auto_cleanup_enabled?: boolean;
+  is_grade_released?: boolean;
+  grade_release_date?: string | null;
 }
 
 export const ALL_DAYS = [

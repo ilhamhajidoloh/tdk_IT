@@ -24,9 +24,10 @@ interface CombinedGpaData {
 
 interface YearlyAverageTabProps {
   combinedGpaData: CombinedGpaData | null;
+  settingsList?: any[];
 }
 
-export default function YearlyAverageTab({ combinedGpaData }: YearlyAverageTabProps) {
+export default function YearlyAverageTab({ combinedGpaData, settingsList = [] }: YearlyAverageTabProps) {
   if (!combinedGpaData) {
     return (
       <div className="space-y-5 animate-fade-in-up">
@@ -40,6 +41,40 @@ export default function YearlyAverageTab({ combinedGpaData }: YearlyAverageTabPr
           </div>
           <h3 className="font-bold text-foreground mb-1 text-base">ยังไม่มีข้อมูลเฉลี่ยรวม</h3>
           <p className="text-sm text-muted-foreground">ต้องมีคะแนนครบทั้ง 2 เทอมของปีการศึกษาเดียวกันจึงจะคำนวณได้</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if any setting in this academic year is unreleased
+  const yearSettings = settingsList.filter(
+    (s) => String(s.academic_year) === String(combinedGpaData.academicYear)
+  );
+
+  const isYearFullyReleased = yearSettings.every((s) => {
+    const isManual = s.is_grade_released !== false;
+    const releaseDate = s.grade_release_date;
+    if (releaseDate && releaseDate.trim() !== "") {
+      return new Date().getTime() >= new Date(releaseDate).getTime();
+    }
+    return isManual;
+  });
+
+  if (!isYearFullyReleased) {
+    return (
+      <div className="space-y-5 animate-fade-in-up">
+        <div>
+          <h3 className="font-bold text-foreground">เฉลี่ยรวมทั้งปีการศึกษา</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            ปีการศึกษา {combinedGpaData.academicYear} · รวม {combinedGpaData.termCount} เทอม
+          </p>
+        </div>
+        <div className="ui-card p-10 text-center space-y-3 bg-amber-500/5 border-amber-500/20">
+          <div className="text-3xl">🔒</div>
+          <h3 className="font-bold text-foreground text-base">ผลการเรียนเฉลี่ยรวมทั้งปียังไม่เปิดเผยสำหรับนักเรียน</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            ผลการเรียนในบางภาคเรียนของปีการศึกษา {combinedGpaData.academicYear} ยังไม่ถึงเวลากำหนดเปิดประกาศ
+          </p>
         </div>
       </div>
     );

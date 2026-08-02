@@ -47,6 +47,21 @@ export default function OverviewTab({
   myScheduleToday,
   setActiveTab,
 }: OverviewTabProps) {
+  // Check release status for active setting
+  const activeSetting = settingsList.find((s: any) => s.id === activeSettingId);
+  const isManualReleased = activeSetting?.is_grade_released !== false;
+  const releaseDateStr = activeSetting?.grade_release_date || null;
+
+  let isGradeReleased = true;
+
+  if (releaseDateStr && releaseDateStr.trim() !== "") {
+    const targetTime = new Date(releaseDateStr).getTime();
+    const now = new Date().getTime();
+    isGradeReleased = now >= targetTime;
+  } else {
+    isGradeReleased = isManualReleased;
+  }
+
   return (
     <div className="space-y-6 animate-fade-in-up">
 
@@ -98,10 +113,14 @@ export default function OverviewTab({
         <div className="col-span-3 sm:col-span-1 ui-card-interactive p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
           <div className={`w-22 h-22 rounded-full border-4 ${gpaRingColor} flex items-center justify-center mb-3 relative bg-muted`}>
-            <span className={`relative text-2xl font-extrabold ${gpaColor}`}>{gpaValue}</span>
+            <span className={`relative text-2xl font-extrabold ${isGradeReleased ? gpaColor : "text-amber-600 dark:text-amber-400"}`}>
+              {isGradeReleased ? gpaValue : "🔒"}
+            </span>
           </div>
           <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">เกรดเฉลี่ย (GPA)</div>
-          <div className="text-[11px] text-subtle-foreground mt-0.5">{gpaCredits} หน่วยกิต</div>
+          <div className="text-[11px] text-subtle-foreground mt-0.5">
+            {isGradeReleased ? `${gpaCredits} หน่วยกิต` : "รอเปิดประกาศผล"}
+          </div>
         </div>
 
         {/* Right stats */}
@@ -111,7 +130,9 @@ export default function OverviewTab({
             <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center mb-2">
               <BookOpen className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
             </div>
-            <div className="text-3xl font-extrabold text-violet-600 dark:text-violet-400 mb-1">{filteredGrades.length}</div>
+            <div className="text-3xl font-extrabold text-violet-600 dark:text-violet-400 mb-1">
+              {isGradeReleased ? filteredGrades.length : "🔒"}
+            </div>
             <div className="text-xs font-semibold text-muted-foreground">วิชาที่มีคะแนน</div>
             <div className="text-[11px] text-subtle-foreground">เทอมนี้</div>
           </div>
@@ -121,13 +142,13 @@ export default function OverviewTab({
               <Star className="w-4.5 h-4.5 text-pink-600 dark:text-pink-400" />
             </div>
             <div className="text-3xl font-extrabold text-pink-500 dark:text-pink-400 mb-1">
-              {filteredGrades.filter(g => {
+              {isGradeReleased ? filteredGrades.filter(g => {
                 const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                 const mMax = Number(sub?.midterm_max_score) || midtermMax;
                 const fMax = Number(sub?.final_max_score) || finalMax;
                 const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
                 return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 80;
-              }).length}
+              }).length : "🔒"}
             </div>
             <div className="text-xs font-semibold text-muted-foreground">เกรด A</div>
             <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 80%</div>
@@ -138,13 +159,13 @@ export default function OverviewTab({
               <CircleCheck className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mb-1">
-              {filteredGrades.filter(g => {
+              {isGradeReleased ? filteredGrades.filter(g => {
                 const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                 const mMax = Number(sub?.midterm_max_score) || midtermMax;
                 const fMax = Number(sub?.final_max_score) || finalMax;
                 const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
                 return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 50;
-              }).length}
+              }).length : "🔒"}
             </div>
             <div className="text-xs font-semibold text-muted-foreground">ผ่านทั้งหมด</div>
             <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 50%</div>
@@ -155,13 +176,13 @@ export default function OverviewTab({
               <AlertTriangle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
             </div>
             <div className="text-3xl font-extrabold text-rose-500 dark:text-rose-400 mb-1">
-              {filteredGrades.filter(g => {
+              {isGradeReleased ? filteredGrades.filter(g => {
                 const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                 const mMax = Number(sub?.midterm_max_score) || midtermMax;
                 const fMax = Number(sub?.final_max_score) || finalMax;
                 const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
                 return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 < 50;
-              }).length}
+              }).length : "🔒"}
             </div>
             <div className="text-xs font-semibold text-muted-foreground">ต้องปรับปรุง</div>
             <div className="text-[11px] text-subtle-foreground">คะแนน &lt; 50%</div>
@@ -200,42 +221,52 @@ export default function OverviewTab({
       )}
 
       {/* Quick Grades Preview */}
-      {filteredGrades.length > 0 && (
-        <div className="ui-card overflow-hidden animate-fade-in-up">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <span className="font-bold text-foreground text-sm">คะแนนล่าสุด</span>
-            <button onClick={() => setActiveTab("grades")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
+      <div className="ui-card overflow-hidden animate-fade-in-up">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <span className="font-bold text-foreground text-sm">คะแนนล่าสุด</span>
+          <button onClick={() => setActiveTab("grades")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
+        </div>
+        {!isGradeReleased ? (
+          <div className="p-6 text-center space-y-2 bg-amber-500/5">
+            <div className="text-2xl">🔒</div>
+            <div className="text-sm font-bold text-foreground">ผลการเรียนเทอมนี้ยังไม่เปิดเผยสำหรับนักเรียน</div>
+            <div className="text-xs text-muted-foreground font-medium">กดแท็บ "ผลการเรียน" เพื่อดูเวลานับถอยหลังเปิดระบบ</div>
           </div>
-          <div className="divide-y divide-border stagger-children">
-            {filteredGrades.slice(0, 4).map(grade => {
-              const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-              const mMax = Number(subject?.midterm_max_score) || midtermMax;
-              const fMax = Number(subject?.final_max_score) || finalMax;
-              const totalScore = (grade.midterm_score ?? 0) + (grade.final_score ?? 0);
-              const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
-              const isActivity = subject?.subject_type === "activity";
-              const info = isActivity
-                ? (percent >= 50 ? { letter: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" })
-                : getGradeInfo(percent);
-              return (
-                <div key={grade.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
-                  <span className={`w-10 text-center py-1.5 rounded-xl border text-xs font-extrabold shrink-0 ${info.color}`}>{info.letter}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-foreground truncate">{grade.subject}</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-500 ${info.bar}`} style={{ width: `${Math.min(100, percent)}%` }} />
+        ) : (
+          filteredGrades.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground font-medium">ยังไม่มีผลการเรียนในเทอมนี้</div>
+          ) : (
+            <div className="divide-y divide-border stagger-children">
+              {filteredGrades.slice(0, 4).map(grade => {
+                const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
+                const mMax = Number(subject?.midterm_max_score) || midtermMax;
+                const fMax = Number(subject?.final_max_score) || finalMax;
+                const totalScore = (grade.midterm_score ?? 0) + (grade.final_score ?? 0);
+                const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
+                const isActivity = subject?.subject_type === "activity";
+                const info = isActivity
+                  ? (percent >= 50 ? { letter: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" })
+                  : getGradeInfo(percent);
+                return (
+                  <div key={grade.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
+                    <span className={`w-10 text-center py-1.5 rounded-xl border text-xs font-extrabold shrink-0 ${info.color}`}>{info.letter}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-foreground truncate">{grade.subject}</div>
+                      <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-500 ${info.bar}`} style={{ width: `${Math.min(100, percent)}%` }} />
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-bold text-sm text-foreground">{totalScore}</div>
+                      <div className="text-[11px] text-subtle-foreground">/{mMax + fMax}</div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-bold text-sm text-foreground">{totalScore}</div>
-                    <div className="text-[11px] text-subtle-foreground">/{mMax + fMax}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                );
+              })}
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }

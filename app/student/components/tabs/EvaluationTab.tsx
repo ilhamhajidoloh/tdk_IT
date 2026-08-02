@@ -34,9 +34,22 @@ export default function EvaluationTab({
   evalSummary,
   evalLoading,
 }: EvaluationTabProps) {
-  const activeSetting = settingsList.find(s => s.id === activeSettingId);
+  const activeSetting = settingsList.find((s: any) => s.id === activeSettingId);
   const termOpen = isEvaluationTermOpen(activeSetting?.term);
   const activeTopics = [...evalTopics].filter(t => t.is_active).sort((a, b) => a.sort_order - b.sort_order);
+
+  const isManualReleased = activeSetting?.is_grade_released !== false;
+  const releaseDateStr = activeSetting?.grade_release_date || null;
+
+  let isGradeReleased = true;
+
+  if (releaseDateStr && releaseDateStr.trim() !== "") {
+    const targetTime = new Date(releaseDateStr).getTime();
+    const now = new Date().getTime();
+    isGradeReleased = now >= targetTime;
+  } else {
+    isGradeReleased = isManualReleased;
+  }
 
   const findRating = (category: "character" | "rwt", topicKey: string) =>
     evalSummary.find(r => r.category === category && r.topic_key === topicKey)?.rating;
@@ -63,7 +76,15 @@ export default function EvaluationTab({
         </select>
       </div>
 
-      {!termOpen ? (
+      {!isGradeReleased ? (
+        <div className="ui-card p-10 text-center space-y-3 bg-amber-500/5 border-amber-500/20">
+          <div className="text-3xl">🔒</div>
+          <h3 className="font-bold text-foreground text-base">ผลการประเมินยังไม่เปิดเผยสำหรับนักเรียน</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            ผู้ดูแลระบบได้กำหนดช่วงเวลาเปิดประกาศผลการประเมินและเกรดไว้สำหรับเทอม {activeTermStr}
+          </p>
+        </div>
+      ) : !termOpen ? (
         <div className="ui-card p-14 text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-primary-soft rounded-2xl flex items-center justify-center" style={{ background: "var(--primary-soft)" }}>
             <Award className="w-8 h-8 text-primary" />

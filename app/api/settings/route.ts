@@ -19,6 +19,8 @@ function formatRow(row: Record<string, unknown>) {
     highest_grade_level: row.highest_grade_level ?? "",
     data_retention_years: Number(row.data_retention_years ?? 5),
     auto_cleanup_enabled: row.auto_cleanup_enabled !== false,
+    is_grade_released: row.is_grade_released !== false,
+    grade_release_date: row.grade_release_date ? String(row.grade_release_date) : null,
   };
 }
 
@@ -28,7 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   await ensureStatusSchema();
-  const result = await pool.query("SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings ORDER BY academic_year DESC, term DESC");
+  const result = await pool.query("SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings ORDER BY academic_year DESC, term DESC");
   return NextResponse.json(result.rows.map(formatRow));
 }
 
@@ -50,6 +52,8 @@ export async function PUT(req: NextRequest) {
     highest_grade_level,
     data_retention_years,
     auto_cleanup_enabled,
+    is_grade_released,
+    grade_release_date,
   } = await req.json();
 
   if (!academic_year || !term || !start_date || !end_date) {
@@ -66,15 +70,17 @@ export async function PUT(req: NextRequest) {
   const highestLevel = highest_grade_level || "ม.6";
   const retentionYears = Number(data_retention_years ?? 5);
   const autoCleanup = auto_cleanup_enabled !== false;
+  const isReleased = is_grade_released !== false;
+  const releaseDate = grade_release_date ? String(grade_release_date) : null;
 
   if (id) {
     // Update
     const result = await pool.query(
       `UPDATE system_settings
-       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, midterm_max_score = $5, final_max_score = $6, schedule_days = $8, highest_grade_level = $9, data_retention_years = $10, auto_cleanup_enabled = $11
+       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, midterm_max_score = $5, final_max_score = $6, schedule_days = $8, highest_grade_level = $9, data_retention_years = $10, auto_cleanup_enabled = $11, is_grade_released = $12, grade_release_date = $13
        WHERE id = $7
        RETURNING *`,
-      [academic_year, term, start_date, end_date, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup]
+      [academic_year, term, start_date, end_date, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Setting not found" }, { status: 444 });
@@ -83,10 +89,10 @@ export async function PUT(req: NextRequest) {
   } else {
     // Create
     const result = await pool.query(
-      `INSERT INTO system_settings (academic_year, term, start_date, end_date, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled)
-       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10)
+      `INSERT INTO system_settings (academic_year, term, start_date, end_date, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [academic_year, term, start_date, end_date, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup]
+      [academic_year, term, start_date, end_date, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate]
     );
     return NextResponse.json(formatRow(result.rows[0]));
   }

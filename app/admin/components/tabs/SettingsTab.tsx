@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Swal from "sweetalert2";
 import { type SystemSetting } from "../types";
 import { formatThaiDateRange } from "../../../lib/format";
 import SectionHeader from "../SectionHeader";
@@ -45,10 +46,96 @@ export default function SettingsTab({
   const levelOptions = Array.from(
     new Set(
       classrooms
-        .flatMap((c) => [c.name.split("/")[0].trim(), c.name.trim()])
+        .flatMap((c) => {
+          if (!c.name) return [];
+          const name = c.name.trim();
+          const prefix = name.split("/")[0].trim();
+          return [prefix, name];
+        })
         .filter(Boolean)
     )
-  );
+  ).sort();
+
+  const handleOpenReleaseModal = async (setting: any) => {
+    const isReleasedChecked = setting.is_grade_released !== false ? "checked" : "";
+    const releaseDateVal = setting.grade_release_date || "";
+
+    const { value: formValues } = await Swal.fire({
+      title: `📢 ตั้งเวลาประกาศผลการเรียน`,
+      html: `
+        <div class="space-y-4 text-left mt-3">
+          <div class="p-3 bg-amber-50/70 dark:bg-amber-500/10 rounded-2xl border border-amber-200/80 dark:border-amber-500/30">
+            <div class="text-xs font-extrabold text-amber-900 dark:text-amber-200">
+              ปีการศึกษา ${setting.academic_year} · ภาคเรียนที่ (เทอม) ${setting.term}
+            </div>
+            <div class="text-[11px] text-muted-foreground mt-0.5 font-medium">
+              กำหนดสวิตช์เปิด/ปิด หรือระบุเวลานับถอยหลังให้นักเรียนเห็นเกรดเฉพาะเทอมนี้
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-foreground">1. สวิตช์เปิด/ปิดการเห็นเกรด (Manual Toggle)</label>
+            <label class="flex items-center gap-3 p-3 rounded-xl border border-border bg-card cursor-pointer hover:bg-muted/40 transition-colors">
+              <input id="swal-modal-is-released" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-border" ${isReleasedChecked}>
+              <span class="text-xs font-bold text-foreground">เปิดประกาศผลการเรียนให้นักเรียนเห็นทันที</span>
+            </label>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-foreground">2. กำหนดวัน-เวลานับถอยหลังเปิดระบบล่วงหน้า (ถ้ามี)</label>
+            <input id="swal-modal-release-date" type="datetime-local" class="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-amber-400" value="${releaseDateVal}">
+            <p class="text-[11px] text-muted-foreground font-medium">
+              💡 หากระบุวัน-เวลาไว้ เกรดจะถูกล็อกและแสดงตัวนับเวลาถอยหลังให้นักเรียนเห็นจนกว่าจะถึงกำหนด
+            </p>
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "บันทึกการตั้งค่า",
+      cancelButtonText: "ยกเลิก",
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-3xl border border-border/50 p-6 shadow-2xl bg-card max-w-md w-full",
+        title: "text-xl font-extrabold text-foreground mb-1",
+        confirmButton: "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-md text-xs cursor-pointer mr-3",
+        cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-5 py-2.5 rounded-xl transition-all text-xs cursor-pointer"
+      },
+      preConfirm: () => {
+        const isReleased = (document.getElementById("swal-modal-is-released") as HTMLInputElement).checked;
+        const releaseDate = (document.getElementById("swal-modal-release-date") as HTMLInputElement).value;
+        return { isReleased, releaseDate };
+      }
+    });
+
+    if (formValues) {
+      setting.is_grade_released = formValues.isReleased;
+      setting.grade_release_date = formValues.releaseDate || null;
+
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(setting),
+      });
+
+      if (res.ok) {
+        if (onSettingsUpdated) onSettingsUpdated();
+        Swal.fire({
+          icon: "success",
+          title: "บันทึกสำเร็จ",
+          text: `อัปเดตการประกาศผลการเรียน ปี ${setting.academic_year} เทอม ${setting.term} เรียบร้อยแล้ว`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire("ข้อผิดพลาด", "ไม่สามารถบันทึกข้อมูลได้", "error");
+      }
+    }
+  };
+
   return (
     <div className="p-8 animate-fade-in-up">
       <SectionHeader
@@ -220,6 +307,7 @@ export default function SettingsTab({
                 <th className="px-6 py-4 font-semibold font-bold">ปีการศึกษา / เทอม</th>
                 <th className="px-6 py-4 font-semibold">ช่วงเวลากรอกคะแนน</th>
                 <th className="px-6 py-4 font-semibold text-center">คะแนนเต็ม (เก็บ/สอบ)</th>
+                <th className="px-6 py-4 font-semibold text-center">📢 ประกาศผลการเรียน</th>
                 <th className="px-6 py-4 font-semibold text-center">สถานะ</th>
                 <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
               </tr>
@@ -227,7 +315,7 @@ export default function SettingsTab({
             <tbody className="divide-y divide-border">
               {settingsList.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-subtle-foreground font-semibold">
+                  <td colSpan={6} className="px-6 py-8 text-center text-subtle-foreground font-semibold">
                     ไม่มีข้อมูลปีการศึกษาในระบบ
                   </td>
                 </tr>
@@ -237,11 +325,15 @@ export default function SettingsTab({
                   const isPeriodActive = todayStr >= (s.start_date ?? "") && todayStr <= (s.end_date ?? "");
                   const isWaiting = (s.start_date ?? "") > todayStr;
 
+                  const isReleased = s.is_grade_released !== false;
+                  const hasReleaseDate = s.grade_release_date && s.grade_release_date.trim() !== "";
+                  const isDateReached = hasReleaseDate ? new Date().getTime() >= new Date(s.grade_release_date).getTime() : false;
+                  const isCurrentlyVisibleToStudent = hasReleaseDate ? isDateReached : isReleased;
+
                   return (
                     <tr
                       key={s.id}
-                      className={`hover:bg-muted/50 ${s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""
-                        }`}
+                      className={`hover:bg-muted/50 ${s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""}`}
                     >
                       <td className="px-6 py-4">
                         <div className="font-bold text-foreground">ปีการศึกษา {s.academic_year}</div>
@@ -267,6 +359,30 @@ export default function SettingsTab({
                       </td>
                       <td className="px-6 py-4 text-center text-sm font-semibold text-foreground">
                         {s.midterm_max_score ?? 50} / {s.final_max_score ?? 50}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1.5">
+                          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border shadow-sm ${
+                            isCurrentlyVisibleToStudent
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300"
+                              : (hasReleaseDate ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300" : "bg-muted text-muted-foreground border-border")
+                          }`}>
+                            {isCurrentlyVisibleToStudent ? "🟢 เปิดประกาศแล้ว" : (hasReleaseDate ? "⏳ กำลังนับถอยหลัง" : "🔒 ปิดประกาศ")}
+                          </span>
+
+                          <button
+                            onClick={() => handleOpenReleaseModal(s)}
+                            className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1 cursor-pointer border-0 mt-0.5"
+                          >
+                            <span>⚙️ ตั้งเวลา/เปิด-ปิด</span>
+                          </button>
+
+                          {hasReleaseDate && (
+                            <span className="text-[10px] text-muted-foreground font-semibold">
+                              {new Date(s.grade_release_date).toLocaleString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} น.
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-center">
                         {s.is_active ? (
@@ -324,10 +440,15 @@ export default function SettingsTab({
               const isPeriodActive = todayStr >= (s.start_date ?? "") && todayStr <= (s.end_date ?? "");
               const isWaiting = (s.start_date ?? "") > todayStr;
 
+              const isReleased = s.is_grade_released !== false;
+              const hasReleaseDate = s.grade_release_date && s.grade_release_date.trim() !== "";
+              const isDateReached = hasReleaseDate ? new Date().getTime() >= new Date(s.grade_release_date).getTime() : false;
+              const isCurrentlyVisibleToStudent = hasReleaseDate ? isDateReached : isReleased;
+
               return (
                 <div
                   key={s.id}
-                  className={`card-modern p-4 ${s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""}`}
+                  className={`card-modern p-4 space-y-3 ${s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -351,11 +472,12 @@ export default function SettingsTab({
                       </span>
                     )}
                   </div>
-                  <div className="mt-2 pt-2 border-t border-border">
+
+                  <div className="pt-2 border-t border-border space-y-1">
                     <div className="text-sm text-foreground font-semibold">
                       {formatThaiDateRange(s.start_date, s.end_date)}
                     </div>
-                    <div className="text-[10px] text-subtle-foreground font-semibold mt-0.5">
+                    <div className="text-[10px] text-subtle-foreground font-semibold">
                       {isPeriodActive ? (
                         <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                           ● กำลังอยู่ในช่วงเวลากรอกคะแนน
@@ -366,21 +488,39 @@ export default function SettingsTab({
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground font-semibold mt-1.5">
-                      คะแนนเต็ม: เก็บ {s.midterm_max_score ?? 50} / สอบ {s.final_max_score ?? 50}
-                    </div>
                   </div>
+
+                  {/* Mobile Grade Release Button */}
+                  <div className="p-3 bg-amber-50/50 dark:bg-amber-500/10 rounded-xl border border-amber-200/60 dark:border-amber-500/20 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-bold text-foreground">📢 ประกาศผลการเรียน:</div>
+                      <div className="text-[11px] font-bold mt-0.5">
+                        <span className={isCurrentlyVisibleToStudent ? "text-emerald-600" : (hasReleaseDate ? "text-amber-600" : "text-muted-foreground")}>
+                          {isCurrentlyVisibleToStudent ? "🟢 เปิดประกาศแล้ว" : (hasReleaseDate ? `⏳ นับถอยหลัง (${new Date(s.grade_release_date).toLocaleString("th-TH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} น.)` : "🔒 ปิดประกาศ")}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleOpenReleaseModal(s)}
+                      className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all border-0 shrink-0 cursor-pointer"
+                    >
+                      ⚙️ ตั้งเวลา
+                    </button>
+                  </div>
+
                   <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
                     <button
                       onClick={() => handleEditSetting(s)}
-                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      className="flex-1 py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-xl transition-colors border-0 cursor-pointer text-center"
                     >
-                      แก้ไข
+                      แก้ไขข้อมูล
                     </button>
                     {!s.is_active && (
                       <button
-                        onClick={() => handleDeleteSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)}
-                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                        onClick={() =>
+                          handleDeleteSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)
+                        }
+                        className="py-2 px-4 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-colors border-0 cursor-pointer"
                       >
                         ลบ
                       </button>

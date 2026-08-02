@@ -467,6 +467,21 @@ export default function StudentPortal() {
   const gpaColor = gpaNum >= 3.5 ? "text-emerald-600 dark:text-emerald-400" : gpaNum >= 2.5 ? "text-blue-600 dark:text-blue-400" : gpaNum >= 1.5 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400";
   const gpaRingColor = gpaNum >= 3.5 ? "border-emerald-400 dark:border-emerald-500/60" : gpaNum >= 2.5 ? "border-blue-400 dark:border-blue-500/60" : gpaNum >= 1.5 ? "border-amber-400 dark:border-amber-500/60" : "border-rose-400 dark:border-rose-500/60";
 
+  const isManualReleased = activeSetting?.is_grade_released !== false;
+  const releaseDateStr = activeSetting?.grade_release_date || null;
+
+  let isGradeReleased = true;
+
+  if (releaseDateStr && releaseDateStr.trim() !== "") {
+    const targetTime = new Date(releaseDateStr).getTime();
+    const now = new Date().getTime();
+    isGradeReleased = now >= targetTime;
+  } else {
+    isGradeReleased = isManualReleased;
+  }
+
+  const gradesCount = isGradeReleased ? filteredGrades.length : 0;
+
   const handleExportStudentSchedule = () => {
     if (!schedulePeriods.length || !currentStudent) return;
     const myEntries = scheduleEntries.filter(e => e.classroom_id === currentStudent.classroom_id);
@@ -535,7 +550,7 @@ export default function StudentPortal() {
         onLogout={handleLogout}
       />
 
-      <TabNav activeTab={activeTab} setActiveTab={setActiveTab} gradesCount={filteredGrades.length} />
+      <TabNav activeTab={activeTab} setActiveTab={setActiveTab} gradesCount={gradesCount} />
 
       {/* ── MAIN ── */}
       <main className="flex-1 max-w-screen-lg mx-auto w-full px-4 sm:px-6 py-8">
@@ -581,7 +596,7 @@ export default function StudentPortal() {
         )}
 
         {activeTab === "yearly-average" && (
-          <YearlyAverageTab combinedGpaData={combinedGpaData} />
+          <YearlyAverageTab combinedGpaData={combinedGpaData} settingsList={settingsList} />
         )}
 
         {activeTab === "schedule" && (

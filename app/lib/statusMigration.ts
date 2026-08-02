@@ -9,6 +9,8 @@ export async function ensureStatusSchema() {
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS highest_grade_level VARCHAR");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS data_retention_years INT DEFAULT 5");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS auto_cleanup_enabled BOOLEAN DEFAULT true");
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS is_grade_released BOOLEAN DEFAULT true");
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS grade_release_date VARCHAR DEFAULT NULL");
 
     // students columns
     await pool.query("ALTER TABLE students ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'");
