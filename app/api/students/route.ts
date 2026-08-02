@@ -56,9 +56,13 @@ export async function GET(req: NextRequest) {
       `SELECT s.id, s.name, s.student_id, COALESCE(s.status, 'active') AS status, s.graduation_year, s.status_updated_at, s.status_note, s.enrollment_date, s.graduation_date, cs.classroom_id, cs.student_number
        FROM students s
        LEFT JOIN classroom_students cs ON cs.student_id = s.id
-         AND cs.setting_id = COALESCE(
-           $${settingParamIdx}::bigint,
-           (SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1)
+         AND (
+           cs.setting_id = COALESCE(
+             $${settingParamIdx}::bigint,
+             (SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1),
+             (SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1)
+           )
+           OR cs.setting_id IS NULL
          )
        WHERE 1=1 ${statusClause}
        ORDER BY cs.student_number ASC NULLS LAST, s.name ASC`,
