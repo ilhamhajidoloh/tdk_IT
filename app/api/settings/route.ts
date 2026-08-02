@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 function formatRow(row: Record<string, unknown>) {
   if (!row) return row;
@@ -15,6 +16,9 @@ function formatRow(row: Record<string, unknown>) {
     midterm_max_score: Number(row.midterm_max_score ?? 50),
     final_max_score: Number(row.final_max_score ?? 50),
     schedule_days: Array.isArray(row.schedule_days) ? row.schedule_days : [1, 2, 3, 4, 5],
+    highest_grade_level: row.highest_grade_level ?? "",
+    data_retention_years: Number(row.data_retention_years ?? 5),
+    auto_cleanup_enabled: row.auto_cleanup_enabled !== false,
   };
 }
 
@@ -23,7 +27,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
 
-  const result = await pool.query("SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings ORDER BY academic_year DESC, term DESC");
+  await ensureStatusSchema();
+  const result = await pool.query("SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings ORDER BY academic_year DESC, term DESC");
   return NextResponse.json(result.rows.map(formatRow));
 }
 
@@ -32,7 +37,20 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
 
-  const { id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days } = await req.json();
+  await ensureStatusSchema();
+  const {
+    id,
+    academic_year,
+    term,
+    start_date,
+    end_date,
+    midterm_max_score,
+    final_max_score,
+    schedule_days,
+    highest_grade_level,
+    data_retention_years,
+    auto_cleanup_enabled,
+  } = await req.json();
 
   if (!academic_year || !term || !start_date || !end_date) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -45,15 +63,18 @@ export async function PUT(req: NextRequest) {
   const midtermMax = midterm_max_score ?? 50;
   const finalMax = final_max_score ?? 50;
   const days = Array.isArray(schedule_days) ? schedule_days : [1, 2, 3, 4, 5];
+  const highestLevel = highest_grade_level || "ม.6";
+  const retentionYears = Number(data_retention_years ?? 5);
+  const autoCleanup = auto_cleanup_enabled !== false;
 
   if (id) {
     // Update
     const result = await pool.query(
       `UPDATE system_settings
-       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, midterm_max_score = $5, final_max_score = $6, schedule_days = $8
+       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, midterm_max_score = $5, final_max_score = $6, schedule_days = $8, highest_grade_level = $9, data_retention_years = $10, auto_cleanup_enabled = $11
        WHERE id = $7
        RETURNING *`,
-      [academic_year, term, start_date, end_date, midtermMax, finalMax, id, JSON.stringify(days)]
+      [academic_year, term, start_date, end_date, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Setting not found" }, { status: 444 });
@@ -62,10 +83,10 @@ export async function PUT(req: NextRequest) {
   } else {
     // Create
     const result = await pool.query(
-      `INSERT INTO system_settings (academic_year, term, start_date, end_date, midterm_max_score, final_max_score, is_active, schedule_days)
-       VALUES ($1, $2, $3, $4, $5, $6, false, $7)
+      `INSERT INTO system_settings (academic_year, term, start_date, end_date, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10)
        RETURNING *`,
-      [academic_year, term, start_date, end_date, midtermMax, finalMax, JSON.stringify(days)]
+      [academic_year, term, start_date, end_date, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup]
     );
     return NextResponse.json(formatRow(result.rows[0]));
   }

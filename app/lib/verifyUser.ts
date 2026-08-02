@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { getAuthToken } from "@/app/lib/getAuthToken";
 
 export async function verifyUser(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getAuthToken(req);
   if (!token?.id) return null;
   return {
     id: token.id as string,

@@ -1,6 +1,11 @@
+import { formatThaiDateRange } from "../../../lib/format";
 import { ATTENDANCE_STATUSES, type AttendanceStatus, type DBStudent, type DBClassroom, type DBSubject, type AttendanceSummaryRow } from "../types";
 
 interface AttendanceTabProps {
+  isGradingActive: boolean;
+  settingsStartDate: string;
+  settingsEndDate: string;
+
   mySubjects: DBSubject[];
   attendanceSubjectId: string;
   onSelectSubject: (subjectId: string) => void;
@@ -26,6 +31,9 @@ interface AttendanceTabProps {
 }
 
 export default function AttendanceTab({
+  isGradingActive,
+  settingsStartDate,
+  settingsEndDate,
   mySubjects,
   attendanceSubjectId,
   onSelectSubject,
@@ -50,6 +58,14 @@ export default function AttendanceTab({
 
   return (
     <div className="space-y-5">
+      {!isGradingActive && (
+        <div className="flex items-start gap-3 bg-rose-50\80 dark:bg-rose-500/10 backdrop-blur-sm border border-rose-200/60 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 px-5 py-4 rounded-2xl text-sm font-semibold shadow-lg shadow-rose-100/20">
+          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>🔴 ไม่อยู่ในช่วงเทอม — ระบบปิดรับการเช็คชื่อชั่วคราว นอกช่วงเวลา {formatThaiDateRange(settingsStartDate, settingsEndDate)}</span>
+        </div>
+      )}
       {/* Step 1: Select Subject */}
       <div className="card-modern overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60 flex items-center gap-3">
@@ -173,7 +189,8 @@ export default function AttendanceTab({
                               <button
                                 key={opt.value}
                                 onClick={() => onSetStatus(s.student_id, opt.value)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+                                disabled={!isGradingActive}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
                                   status === opt.value ? opt.color + " scale-105" : "bg-card text-muted-foreground border-border hover:border-indigo-300"
                                 }`}
                               >
@@ -191,7 +208,7 @@ export default function AttendanceTab({
                         <button
                           type="button"
                           onClick={onCancelAttendance}
-                          disabled={attendanceSaving}
+                          disabled={attendanceSaving || !isGradingActive}
                           className="bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:text-rose-400 font-bold px-4 py-2.5 rounded-xl transition-all text-xs cursor-pointer border border-rose-200 dark:border-rose-500/30 flex items-center gap-1.5 disabled:opacity-50"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -203,7 +220,7 @@ export default function AttendanceTab({
                     </div>
                     <button
                       onClick={onSaveAll}
-                      disabled={attendanceSaving}
+                      disabled={attendanceSaving || !isGradingActive}
                       className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md text-sm cursor-pointer border-0"
                     >
                       {attendanceSaving ? "กำลังบันทึก..." : "บันทึกทั้งหมด"}

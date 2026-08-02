@@ -27,30 +27,42 @@ export async function GET(req: NextRequest) {
 
   const classroomId = req.nextUrl.searchParams.get("classroomId");
   const settingIdParam = req.nextUrl.searchParams.get("settingId");
+  const statusParam = req.nextUrl.searchParams.get("status"); // active | graduated | resigned | all
+
+  let statusClause = "";
+  const params: any[] = [];
+
+  if (statusParam && statusParam !== "all") {
+    params.push(statusParam);
+    statusClause = `AND COALESCE(s.status, 'active') = $${params.length}`;
+  }
 
   let result;
   if (classroomId) {
+    const classParamIdx = params.length + 1;
+    params.push(classroomId);
     result = await pool.query(
-      `SELECT s.id, s.name, s.student_id, cs.classroom_id, cs.student_number
+      `SELECT s.id, s.name, s.student_id, COALESCE(s.status, 'active') AS status, s.graduation_year, s.status_updated_at, s.status_note, s.enrollment_date, s.graduation_date, cs.classroom_id, cs.student_number
        FROM students s
        JOIN classroom_students cs ON cs.student_id = s.id
-       WHERE cs.classroom_id = $1
+       WHERE cs.classroom_id = $${classParamIdx} ${statusClause}
        ORDER BY cs.student_number ASC NULLS LAST, s.name ASC`,
-      [classroomId]
+      params
     );
   } else {
-    // Scope each student's classroom_id/student_number to a specific term: the
-    // requested settingId, or (if omitted) whichever term is currently active.
+    const settingParamIdx = params.length + 1;
+    params.push(settingIdParam);
     result = await pool.query(
-      `SELECT s.id, s.name, s.student_id, cs.classroom_id, cs.student_number
+      `SELECT s.id, s.name, s.student_id, COALESCE(s.status, 'active') AS status, s.graduation_year, s.status_updated_at, s.status_note, s.enrollment_date, s.graduation_date, cs.classroom_id, cs.student_number
        FROM students s
        LEFT JOIN classroom_students cs ON cs.student_id = s.id
          AND cs.setting_id = COALESCE(
-           $1::bigint,
+           $${settingParamIdx}::bigint,
            (SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1)
          )
+       WHERE 1=1 ${statusClause}
        ORDER BY cs.student_number ASC NULLS LAST, s.name ASC`,
-      [settingIdParam]
+      params
     );
   }
   return NextResponse.json(result.rows);

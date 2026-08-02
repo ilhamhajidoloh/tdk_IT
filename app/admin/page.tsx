@@ -3721,6 +3721,9 @@ function changeFontSize(dir) {
                 handleAddSetting={handleAddSetting}
                 handleEditSetting={handleEditSetting}
                 handleDeleteSetting={handleDeleteSetting}
+                classrooms={classrooms}
+                token={token}
+                onSettingsUpdated={() => token && loadSettings(token)}
               />
             )}
 

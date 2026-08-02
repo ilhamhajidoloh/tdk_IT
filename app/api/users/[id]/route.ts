@@ -12,8 +12,21 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical } = await req.json();
+  const {
+    username,
+    password,
+    role,
+    student_id,
+    homeroom_classroom_id,
+    subjects,
+    email,
+    is_clerical,
+    status,
+    resignation_reason,
+    replacement_teacher_id,
+  } = await req.json();
   const finalEmail = email?.trim() || null;
+  const statusVal = status || 'active';
 
   if (!username?.trim() || !role) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -34,23 +47,28 @@ export async function PUT(
     );
   }
 
+  // หากเป็นครูและปรับสถานะเป็น resigned (พ้นสภาพ)
+  if (statusVal === 'resigned' && oldRole === 'teacher' && replacement_teacher_id) {
+    await pool.query("UPDATE subjects SET teacher_id = $1 WHERE teacher_id = $2", [replacement_teacher_id, id]);
+    await pool.query("UPDATE classrooms SET teacher_id = $1 WHERE teacher_id = $2", [replacement_teacher_id, id]);
+  }
+
   let result;
-  // ถ้ามี password ให้เข้ารหัสและอัปเดตด้วย
   try {
     if (password?.trim()) {
       const hashedPassword = await bcrypt.hash(password.trim(), 10);
       result = await pool.query(
-        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7, is_clerical = $8
+        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7, is_clerical = $8, status = $10, resigned_at = CASE WHEN $10 = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $11
          WHERE id = $9
-         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical`,
-        [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id]
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason`,
+        [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null]
       );
     } else {
       result = await pool.query(
-        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6, is_clerical = $7
+        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6, is_clerical = $7, status = $9, resigned_at = CASE WHEN $9 = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $10
          WHERE id = $8
-         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical`,
-        [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id]
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason`,
+        [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null]
       );
     }
   } catch (err) {
@@ -107,19 +125,55 @@ export async function DELETE(
   if (userRow.rows.length === 0) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
+  const { role, student_id: studentCode } = userRow.rows[0];
 
-  // ลบ student และเกรดที่เกี่ยวข้อง ถ้าผู้ใช้เป็น student
-  if (userRow.rows[0].role === "student" && userRow.rows[0].student_id) {
+  // ตรวจสอบประวัติของนักเรียนก่อนลบ
+  if (role === "student" && studentCode) {
+    const historyCheck = await pool.query(
+      `SELECT 1 FROM grades WHERE student_id = $1
+       UNION
+       SELECT 1 FROM evaluations WHERE student_id = $1
+       UNION
+       SELECT 1 FROM attendance WHERE student_id = $1
+       LIMIT 1`,
+      [studentCode]
+    );
+    if (historyCheck.rows.length > 0) {
+      return NextResponse.json(
+        { error: "ผู้ใช้นักเรียนคนนี้มีประวัติผลการเรียน/การประเมิน/การเช็คชื่อในระบบแล้ว ไม่สามารถลบถาวรได้ โปรดเปลี่ยนสถานะเป็น 'จบการศึกษา' หรือ 'ลาออก' แทน" },
+        { status: 400 }
+      );
+    }
+  }
+
+  // ตรวจสอบประวัติของครูก่อนลบ
+  if (role === "teacher") {
+    const historyCheck = await pool.query(
+      `SELECT 1 FROM attendance WHERE teacher_id = $1
+       UNION
+       SELECT 1 FROM evaluations WHERE evaluated_by = $1
+       LIMIT 1`,
+      [id]
+    );
+    if (historyCheck.rows.length > 0) {
+      return NextResponse.json(
+        { error: "ผู้ใช้ครูท่านนี้มีประวัติการประเมินหรือเช็คชื่อในระบบแล้ว ไม่สามารถลบถาวรได้ โปรดเปลี่ยนสถานะเป็น 'พ้นสภาพ/ลาออก' แทน" },
+        { status: 400 }
+      );
+    }
+  }
+
+  // ลบ student ถ้าผู้ใช้เป็น student
+  if (role === "student" && studentCode) {
     try {
-      await pool.query("DELETE FROM grades WHERE student_id = $1", [userRow.rows[0].student_id]);
-      await pool.query("DELETE FROM students WHERE student_id = $1", [userRow.rows[0].student_id]);
+      await pool.query("DELETE FROM students WHERE student_id = $1", [studentCode]);
     } catch (err) {
       console.error("Error auto-deleting student when user is deleted:", err);
     }
   }
 
   // ยกเลิกการผูกวิชาที่ผู้ใช้นี้สอน ถ้าผู้ใช้เป็น teacher
-  if (userRow.rows[0].role === "teacher") {
+  if (role === "teacher") {
     try {
       await pool.query("UPDATE subjects SET teacher_id = NULL WHERE teacher_id = $1", [id]);
     } catch (err) {

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { type SystemSetting } from "../types";
 import { formatThaiDateRange } from "../../../lib/format";
 import SectionHeader from "../SectionHeader";
@@ -12,6 +13,9 @@ interface SettingsTabProps {
   handleAddSetting: () => void;
   handleEditSetting: (setting: SystemSetting) => void;
   handleDeleteSetting: (id: string, name: string) => void;
+  classrooms?: { id: string; name: string }[];
+  token?: string | null;
+  onSettingsUpdated?: () => void;
 }
 
 export default function SettingsTab({
@@ -24,7 +28,27 @@ export default function SettingsTab({
   handleAddSetting,
   handleEditSetting,
   handleDeleteSetting,
+  classrooms = [],
+  token,
+  onSettingsUpdated,
 }: SettingsTabProps) {
+  const [selectedHighest, setSelectedHighest] = useState(settingsList[0]?.highest_grade_level || "");
+  const [selectedRetention, setSelectedRetention] = useState(settingsList[0]?.data_retention_years ?? 5);
+
+  useEffect(() => {
+    if (settingsList[0]) {
+      setSelectedHighest(settingsList[0]?.highest_grade_level || "");
+      setSelectedRetention(settingsList[0]?.data_retention_years ?? 5);
+    }
+  }, [settingsList]);
+
+  const levelOptions = Array.from(
+    new Set(
+      classrooms
+        .flatMap((c) => [c.name.split("/")[0].trim(), c.name.trim()])
+        .filter(Boolean)
+    )
+  );
   return (
     <div className="p-8 animate-fade-in-up">
       <SectionHeader
@@ -49,11 +73,10 @@ export default function SettingsTab({
       <div className="space-y-6">
         {/* Status Banner */}
         <div
-          className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${
-            isGradingActive
-              ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
-              : "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300"
-          }`}
+          className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isGradingActive
+            ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+            : "bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-rose-300"
+            }`}
         >
           <div className="flex items-center gap-2 font-bold text-base">
             {isGradingActive ? (
@@ -79,6 +102,112 @@ export default function SettingsTab({
               <span className="font-bold text-foreground">ช่วงเวลาทำงานปัจจุบัน:</span>{" "}
               {formatThaiDateRange(startDate, endDate)}
             </div>
+          </div>
+        </div>
+
+        {/* Data Retention & Storage Policy Card */}
+        <div className="p-6 rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-500/10 dark:to-violet-500/10 space-y-4">
+          <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-bold text-base">
+            <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            <span>💾 การจัดเก็บข้อมูลและประหยัดพื้นที่ฐานข้อมูล (Data Retention Policy)</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+            <div className="bg-card p-4 rounded-xl border border-border">
+              <label className="block text-foreground mb-1.5 font-bold">
+                🎓 ชั้นจบการศึกษาของโรงเรียน (Highest Grade Level)
+              </label>
+              <p className="text-subtle-foreground text-[11px] mb-2 font-normal">
+                นักเรียนชั้นนี้เมื่อขึ้นปีการศึกษาใหม่ จะถูกปรับสถานะเป็น "จบการศึกษา" อัตโนมัติ
+              </p>
+              <select
+                value={selectedHighest}
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground font-bold cursor-pointer"
+                onChange={async (e) => {
+                  const newVal = e.target.value;
+                  setSelectedHighest(newVal);
+                  if (settingsList[0]) {
+                    settingsList[0].highest_grade_level = newVal;
+                    await fetch("/api/settings", {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({ ...settingsList[0], highest_grade_level: newVal }),
+                    });
+                    if (onSettingsUpdated) onSettingsUpdated();
+                  }
+                }}
+              >
+                <option value="">-- เลือกชั้นจบการศึกษา --</option>
+                {levelOptions.map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    {lvl}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-card p-4 rounded-xl border border-border">
+              <label className="block text-foreground mb-1.5 font-bold">
+                ⏳ ระยะเวลาเก็บข้อมูลการเช็คชื่อ/แชท (Retention Period)
+              </label>
+              <p className="text-subtle-foreground text-[11px] mb-2 font-normal">
+                เมื่อพ้นกำหนด N ปี ระบบจะสรุปเกรดถาวรไว้ และคืนพื้นที่ฐานข้อมูลจากการเช็คชื่อรายวัน
+              </p>
+              <select
+                value={selectedRetention}
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground font-bold cursor-pointer"
+                onChange={async (e) => {
+                  const newVal = Number(e.target.value);
+                  setSelectedRetention(newVal);
+                  if (settingsList[0]) {
+                    settingsList[0].data_retention_years = newVal;
+                    await fetch("/api/settings", {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                      body: JSON.stringify({ ...settingsList[0], data_retention_years: newVal }),
+                    });
+                    if (onSettingsUpdated) onSettingsUpdated();
+                  }
+                }}
+              >
+                <option value={3}>3 ปี (ประหยัดพื้นที่สูงสุด)</option>
+                <option value={5}>5 ปี (แนะนำมาตรฐาน)</option>
+                <option value={10}>10 ปี (จัดเก็บระยะยาว)</option>
+                <option value={999}>ไม่ลบข้อมูล (เก็บถาวรตลอดไป)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-indigo-200/60 dark:border-indigo-500/20 flex-wrap gap-2">
+            <span className="text-xs text-subtle-foreground font-medium">
+              💡 ข้อมูลเกรดรวมและ Transcript จะถูกสรุปไว้ถาวร สามารถเรียกดูได้ตลอดไปแม้จะคืนพื้นที่เช็คชื่อรายวันแล้ว
+            </span>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/admin/retention-cleanup", { method: "POST" });
+                  const data = await res.json();
+                  if (res.ok) {
+                    alert(`✅ ประมวลผลคืนพื้นที่เรียบร้อยแล้ว!\nนักเรียนที่ประมวลผล: ${data.processed_students} คน\nประหยัดพื้นที่ได้ประมาณ: ${data.approx_saved_mb} MB`);
+                  } else {
+                    alert(`❌ เกิดข้อผิดพลาด: ${data.error}`);
+                  }
+                } catch {
+                  alert("❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+                }
+              }}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition-all cursor-pointer border-0 flex items-center gap-1.5"
+            >
+              🧹 ประมวลผลล้างข้อมูลเก่าเพื่อคืนพื้นที่
+            </button>
           </div>
         </div>
 
@@ -111,9 +240,8 @@ export default function SettingsTab({
                   return (
                     <tr
                       key={s.id}
-                      className={`hover:bg-muted/50 ${
-                        s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""
-                      }`}
+                      className={`hover:bg-muted/50 ${s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""
+                        }`}
                     >
                       <td className="px-6 py-4">
                         <div className="font-bold text-foreground">ปีการศึกษา {s.academic_year}</div>

@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TDK IT — School Management Web System
 
-## Getting Started
+ระบบสารสนเทศและการบริหารจัดการสถานศึกษา (TDK IT) พัฒนาด้วย **Next.js (App Router)**, **PostgreSQL** และ **TailwindCSS** พร้อมรองรับการเชื่อมต่อกับแอปพลิเคชันมือถือ (Flutter Mobile App)
 
-First, run the development server:
+---
 
+## 🌟 ฟีเจอร์หลักของระบบ (System Features)
+
+### 1. ระบบจัดการสถานะนักเรียน และครู (Student & Teacher Status System)
+- **การจัดการสถานะโดยไม่ต้องลบผู้ใช้**: รองรับการเปลี่ยนสถานะผู้ใช้เป็น `active` (กำลังศึกษา/ปฏิบัติงาน), `graduated` (จบการศึกษา), `resigned` (ลาออก/พ้นสภาพ) และ `expired` (สิ้นสุดระยะจัดเก็บ)
+- **การล็อกอินและสิทธิ์การใช้งาน (Role & Read-Only Access)**:
+  - **นักเรียนจบการศึกษา / ลาออก**: สามารถล็อกอินเข้าสู่ระบบผ่านเว็บและมือถือได้ในโหมด **Read-Only** (ดูประวัติเกรดเดิมของตนเองได้อย่างเดียว)
+  - **ครูพ้นสภาพ / ลาออก**: ระบบปฏิเสธการล็อกอินทันที (**401 Unauthorized**) เพื่อรักษาความปลอดภัยของข้อมูลโรงเรียน
+- **การโอนย้ายวิชาสอนครูพ้นสภาพ**: เมื่อครูลาออก แอดมินสามารถโอนย้ายวิชาสอนและห้องประจำชั้นให้ครูผู้สอนคนใหม่รับช่วงต่อได้ทันที
+- **การลงวันที่เข้าศึกษาและจบการศึกษา**: บันทึก `enrollment_date` (วันที่เข้าศึกษา) และ `graduation_date` (วันที่จบการศึกษา) เพื่อออกใบประวัติการศึกษา (Transcript)
+
+### 2. ระบบอนุมัติจบการศึกษาและเลื่อนชั้นปีอัตโนมัติ (Batch Promotion & Graduation)
+- **อนุมัติจบการศึกษาและเลื่อนชั้นปีอัตโนมัติ (`/api/admin/batch-promote`)**:
+  - ตรวจจับนักเรียนชั้นจบการศึกษา (เช่น `ม.6` หรือ `ป.6`) แล้วปรับสถานะเป็น **"จบการศึกษา"** พร้อมลงวันที่จบการศึกษาและปีจบการศึกษาให้อัตโนมัติ
+  - เลื่อนชั้นนักเรียนในระดับอื่นๆ ไปยังระดับถัดไปให้อัตโนมัติ (เช่น `ม.1` -> `ม.2`)
+
+### 3. ระบบป้องกันการลบข้อมูลโดยผิดพลาด (Hard Delete Protection)
+- หากนักเรียนหรือครูมีประวัติผลการเรียน (`grades`), การประเมินคุณลักษณะ (`evaluations`) หรือประวัติการเช็คชื่อ (`attendance`) ในระบบแล้ว ระบบจะบล็อกการกดลบถาวร และแจ้งเตือนให้แอดมินย้ายสถานะเป็น **จบการศึกษา** หรือ **ลาออก/พ้นสภาพ** แทน
+
+### 4. นโยบายจัดเก็บข้อมูลและประหยัดพื้นที่ฐานข้อมูล (Data Retention Policy & Optimization)
+- กำหนดระยะเวลาเก็บข้อมูลรายวัน (เช่น 3 ปี, 5 ปี, 10 ปี)
+- สรุปเกรดถาวรลงตาราง `student_gpa_digests` แล้วคืนพื้นที่ฐานข้อมูลจากการลบประวัติการเช็คชื่อรายวันและแชทเก่าที่พ้นกำหนด สามารถคืนพื้นที่ฐานข้อมูลได้มากกว่า 70%
+
+---
+
+## 🚀 การเริ่มต้นใช้งาน (Getting Started)
+
+1. ติดตั้ง Dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. ตั้งค่า Environment Variables ใน `.env.local`:
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/tdk_it
+JWT_SECRET=your_jwt_secret_key
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. รันเซิร์ฟเวอร์สำหรับการพัฒนา:
+```bash
+npm run dev
+```
+เปิดเบราว์เซอร์เข้าใช้งานที่ [http://localhost:3000](http://localhost:3000)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🛠️ API Endpoints สำคัญ
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/auth/mobile-login`: ล็อกอินสำหรับแอปมือถือ (คืน JWT และ flag `is_read_only`)
+- `GET /api/settings` / `PUT /api/settings`: ตั้งค่าปีการศึกษา ระดับชั้นจบการศึกษา และนโยบายระยะเวลาเก็บข้อมูล
+- `GET /api/students` / `PUT /api/students/[id]`: ดึงและอัปเดตข้อมูลนักเรียน สถานะ วันที่เข้าศึกษา และวันที่จบการศึกษา
+- `PUT /api/users/[id]`: อัปเดตสถานะผู้ใช้งาน ครูพ้นสภาพ และโอนย้ายวิชาสอน
+- `POST /api/admin/batch-promote`: อนุมัติจบการศึกษาและเลื่อนชั้นปีนักเรียนแบบกลุ่ม
+- `POST /api/admin/retention-cleanup`: ประมวลผลล้างข้อมูลเก่าเพื่อคืนพื้นที่ฐานข้อมูล

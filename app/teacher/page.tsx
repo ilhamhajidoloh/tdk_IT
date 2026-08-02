@@ -1160,6 +1160,9 @@ export default function TeacherPortal() {
 
         {activeTab === "attendance" && (
           <AttendanceTab
+            isGradingActive={isGradingActive}
+            settingsStartDate={settingsStartDate}
+            settingsEndDate={settingsEndDate}
             mySubjects={mySubjects}
             attendanceSubjectId={attendanceSubjectId}
             onSelectSubject={handleSelectAttendanceSubject}

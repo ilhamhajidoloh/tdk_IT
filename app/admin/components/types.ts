@@ -8,6 +8,9 @@ export interface DBUser {
   subjects?: string[];
   email?: string | null;
   is_clerical?: boolean;
+  status?: "active" | "graduated" | "resigned" | "disabled" | "expired";
+  resigned_at?: string | null;
+  resignation_reason?: string | null;
 }
 
 export interface DBStudent {
@@ -16,6 +19,12 @@ export interface DBStudent {
   student_id: string;
   classroom_id: string | null;
   student_number?: number | null;
+  status?: "active" | "graduated" | "resigned" | "expired";
+  graduation_year?: string | null;
+  status_updated_at?: string | null;
+  status_note?: string | null;
+  enrollment_date?: string | null;
+  graduation_date?: string | null;
 }
 
 export interface DBClassroom {
@@ -154,6 +163,9 @@ export interface SystemSetting {
   end_date?: string | null;
   is_active?: boolean;
   schedule_days?: number[];
+  highest_grade_level?: string | null;
+  data_retention_years?: number | null;
+  auto_cleanup_enabled?: boolean;
 }
 
 export const ALL_DAYS = [

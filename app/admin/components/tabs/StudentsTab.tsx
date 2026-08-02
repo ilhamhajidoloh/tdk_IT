@@ -1,6 +1,7 @@
 import { type DBStudent, type SystemSetting } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
+import Swal from "sweetalert2";
 
 interface StudentsTabProps {
   settingsList: SystemSetting[];
@@ -45,6 +46,66 @@ export default function StudentsTab({
 }: StudentsTabProps) {
   const activeStudentSetting = settingsList.find((s) => s.id === selectedSettingId);
 
+  const handleBatchPromote = async () => {
+    const { value: formValues } = await Swal.fire({
+      title: "🎓 อนุมัติจบการศึกษาและเลื่อนชั้นปี",
+      html: `
+        <div style="text-align:left; font-size: 13px; line-height: 1.6;">
+          <p style="margin-bottom:8px; color:#555;">
+            ระบบจะตรวจจับนักเรียนชั้นจบการศึกษา (เช่น ม.6/ป.6) แล้วปรับสถานะเป็น <b>"จบการศึกษา"</b> อัตโนมัติ<br/>
+            ส่วนนักเรียนชั้นอื่นๆ จะถูกเตรียมเลื่อนชั้นปีไปยังระดับถัดไป (เช่น ม.1 -> ม.2)
+          </p>
+          <label style="font-weight:bold; display:block; margin-top:12px; color:#333;">📅 เลือกวันที่อนุมัติจบการศึกษา:</label>
+          <input id="swal-grad-date" type="date" class="swal2-input" value="${new Date().toISOString().split("T")[0]}" style="margin-top:4px; width:85%; font-size:14px;" />
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "อนุมัติจบการศึกษา & เลื่อนชั้น",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#10b981",
+      preConfirm: () => {
+        const gradDate = (document.getElementById("swal-grad-date") as HTMLInputElement).value;
+        if (!gradDate) {
+          Swal.showValidationMessage("กรุณาระบุวันที่จบการศึกษา");
+          return false;
+        }
+        return { gradDate };
+      },
+    });
+
+    if (formValues && selectedSettingId && token) {
+      Swal.showLoading();
+      try {
+        const res = await fetch("/api/admin/batch-promote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            current_setting_id: selectedSettingId,
+            graduation_date: formValues.gradDate,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          Swal.fire({
+            icon: "success",
+            title: "อนุมัติจบการศึกษาสำเร็จ!",
+            html: `
+              <div style="text-align:left; font-size:13px; line-height:1.8;">
+                <p>🎓 นักเรียนที่จบการศึกษา: <b style="color:#10b981;">${data.graduatedCount} คน</b></p>
+                <p>⬆️ นักเรียนที่เลื่อนชั้นปี: <b style="color:#6366f1;">${data.promotedCount} คน</b></p>
+              </div>
+            `,
+          });
+          loadStudents(selectedSettingId, token);
+        } else {
+          Swal.fire("เกิดข้อผิดพลาด", data.error || "ไม่สามารถเลื่อนชั้นปีได้", "error");
+        }
+      } catch (err) {
+        Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "error");
+      }
+    }
+  };
+
   return (
     <div className="p-8">
       <SectionHeader
@@ -59,6 +120,15 @@ export default function StudentsTab({
         count={filteredStudents.length}
         countLabel="คน"
       >
+        <button
+          onClick={handleBatchPromote}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+          </svg>
+          🎓 อนุมัติจบการศึกษา / เลื่อนชั้นปี
+        </button>
         <select
           className="border border-border rounded-xl px-4 py-2 bg-card text-sm font-medium text-foreground hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
           value={studentFilterClassroomId}
@@ -151,54 +221,77 @@ export default function StudentsTab({
                 <th className="px-6 py-4 font-semibold">รหัสนักเรียน</th>
                 <th className="px-6 py-4 font-semibold">ชื่อ-สกุล</th>
                 <th className="px-6 py-4 font-semibold">ห้องเรียน</th>
+                <th className="px-6 py-4 font-semibold text-center">สถานะ</th>
                 <th className="px-6 py-4 font-semibold text-center">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredStudents.map((s) => (
-                <tr key={s.id} className="hover:bg-muted/50">
-                  <td className="px-6 py-4">
-                    <input
-                      type="number"
-                      className="w-16 px-2 py-1.5 border border-border rounded-lg text-center text-sm font-medium text-foreground focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-card hover:bg-muted"
-                      value={s.student_number ?? ""}
-                      placeholder="-"
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setStudents((prev) =>
-                          prev.map((item) =>
-                            item.id === s.id
-                              ? { ...item, student_number: val === "" ? null : Number(val) }
-                              : item
-                          )
-                        );
-                      }}
-                      onBlur={(e) => {
-                        handleUpdateStudentNumber(s.id, e.target.value);
-                      }}
-                    />
-                  </td>
-                  <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">
-                    {s.student_id}
-                  </td>
-                  <td className="px-6 py-4 text-foreground font-semibold">{s.name}</td>
-                  <td className="px-6 py-4 text-muted-foreground">
-                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-border/50">
-                      ชั้น {classrooms.find((c) => c.id === s.classroom_id)?.name || "ยังไม่ระบุ"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleEditStudent(s)}
-                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                      >
-                        แก้ไขข้อมูล / จัดห้องเรียน
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredStudents.map((s) => {
+                const st = s.status || "active";
+                return (
+                  <tr key={s.id} className="hover:bg-muted/50">
+                    <td className="px-6 py-4">
+                      <input
+                        type="number"
+                        className="w-16 px-2 py-1.5 border border-border rounded-lg text-center text-sm font-medium text-foreground focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all bg-card hover:bg-muted"
+                        value={s.student_number ?? ""}
+                        placeholder="-"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStudents((prev) =>
+                            prev.map((item) =>
+                              item.id === s.id
+                                ? { ...item, student_number: val === "" ? null : Number(val) }
+                                : item
+                            )
+                          );
+                        }}
+                        onBlur={(e) => {
+                          handleUpdateStudentNumber(s.id, e.target.value);
+                        }}
+                      />
+                    </td>
+                    <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">
+                      {s.student_id}
+                    </td>
+                    <td className="px-6 py-4 text-foreground font-semibold">{s.name}</td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-border/50">
+                        ชั้น {classrooms.find((c) => c.id === s.classroom_id)?.name || "ยังไม่ระบุ"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {st === "graduated" ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
+                          🎓 จบการศึกษา {s.graduation_year ? `(${s.graduation_year})` : ""}
+                        </span>
+                      ) : st === "resigned" ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30">
+                          🛑 ลาออก/จำหน่ายออก
+                        </span>
+                      ) : st === "expired" ? (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 dark:bg-slate-500/15 dark:text-slate-300 border border-slate-200 dark:border-slate-500/30">
+                          📁 สิ้นสุดการจัดเก็บ
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30">
+                          🟢 กำลังศึกษา
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleEditStudent(s)}
+                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                        >
+                          แก้ไขข้อมูล
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
