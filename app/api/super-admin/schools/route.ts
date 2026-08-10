@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { generateSubdomain } from "@/app/lib/format";
 
 const DEFAULT_MODULES = {
   news: true,
@@ -20,7 +21,7 @@ export async function GET() {
 
   try {
     const result = await pool.query(
-      "SELECT id, name, name_en, subdomain, logo_url, address, phone, email, is_active, enabled_modules, deletion_requested, deletion_requested_at, created_at, updated_at FROM public.schools ORDER BY name ASC"
+      "SELECT id, name, name_en, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules, deletion_requested, deletion_requested_at, created_at, updated_at FROM public.schools ORDER BY name ASC"
     );
     return NextResponse.json(result.rows);
   } catch (error: any) {
@@ -36,20 +37,25 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, name_en, subdomain, logo_url, address, phone, email, enabled_modules } = body;
+    const { name, name_en, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules } = body;
 
-    if (!name || !subdomain) {
+    console.log("POST /api/super-admin/schools - received data:", {
+      name, name_en, subdomain, logo_url, logo_drive_file_id, address, phone, email
+    });
+
+    const cleanSubdomain = generateSubdomain(subdomain, name_en, name);
+
+    if (!name || !cleanSubdomain) {
       return NextResponse.json({ error: "Name and Subdomain are required" }, { status: 400 });
     }
 
-    const cleanSubdomain = subdomain.trim().toLowerCase();
     const finalModules = enabled_modules ? JSON.stringify(enabled_modules) : JSON.stringify(DEFAULT_MODULES);
 
     const result = await pool.query(
-      `INSERT INTO public.schools (name, name_en, subdomain, logo_url, address, phone, email, is_active, enabled_modules)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8::jsonb)
+      `INSERT INTO public.schools (name, name_en, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9::jsonb)
        RETURNING *`,
-      [name, name_en || null, cleanSubdomain, logo_url || null, address || null, phone || null, email || null, finalModules]
+      [name, name_en || null, cleanSubdomain, logo_url || null, logo_drive_file_id || null, address || null, phone || null, email || null, finalModules]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });

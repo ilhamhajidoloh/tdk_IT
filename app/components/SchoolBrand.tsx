@@ -11,13 +11,28 @@ export interface SchoolInfo {
   name_en?: string | null;
   subdomain?: string | null;
   logo_url?: string | null;
+  logo_drive_file_id?: string | null;
   enabled_modules?: object | null;
+}
+
+export function getSchoolLogoUrl(
+  logoDriveFileId?: string | null,
+  logoUrl?: string | null
+): string {
+  // Priority: Drive File ID > Legacy URL > Default
+  if (logoDriveFileId?.trim()) {
+    return `/api/public/schools/logo/${logoDriveFileId}`;
+  }
+  if (logoUrl?.trim()) {
+    return logoUrl;
+  }
+  return DEFAULT_SCHOOL_LOGO;
 }
 
 export function updateSchoolDocumentMeta(school?: SchoolInfo | null) {
   if (typeof document === "undefined") return;
 
-  const logo = school?.logo_url?.trim() || DEFAULT_SCHOOL_LOGO;
+  const logo = getSchoolLogoUrl(school?.logo_drive_file_id, school?.logo_url);
   const name = school?.name?.trim() || "TDK IT";
   const nameEn = school?.name_en?.trim();
 
@@ -44,7 +59,7 @@ interface SchoolLogoProps {
 
 export function SchoolLogo({ school, schoolKey, className = "h-10 w-10", alt }: SchoolLogoProps) {
   const [src, setSrc] = useState(DEFAULT_SCHOOL_LOGO);
-  const logoUrl = school?.logo_url?.trim() || DEFAULT_SCHOOL_LOGO;
+  const logoUrl = getSchoolLogoUrl(school?.logo_drive_file_id, school?.logo_url);
 
   useEffect(() => {
     setSrc(logoUrl);

@@ -48,6 +48,16 @@ export async function POST(req: NextRequest) {
       [username.trim(), hashedPassword, email?.trim() || null, school_id]
     );
 
+    // Activate the school once admin user is created
+    await pool.query("UPDATE public.schools SET is_active = true WHERE id = $1", [school_id]);
+
+    // Delete matching school request as requested
+    await pool.query(
+      `DELETE FROM public.school_creation_requests
+       WHERE LOWER(subdomain) IN (SELECT LOWER(subdomain) FROM public.schools WHERE id = $1)`,
+      [school_id]
+    );
+
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error: any) {
     if (error.code === "23505") {

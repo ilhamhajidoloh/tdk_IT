@@ -117,22 +117,29 @@ function LoginContent() {
       .catch(() => setSchoolInfo(null));
 
     fetch(`/api/public/classrooms?school=${encodeURIComponent(schoolParam)}`)
-      .then(r => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data: Classroom[]) => {
-        setClassrooms(data);
-        if (data.length > 0) setStudentClassroom(data[0].id);
-      });
+        if (Array.isArray(data)) {
+          setClassrooms(data);
+          if (data.length > 0) setStudentClassroom(data[0].id);
+        }
+      })
+      .catch(() => setClassrooms([]));
 
     fetch(`/api/public/teachers?school=${encodeURIComponent(schoolParam)}`)
-      .then(r => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data: Teacher[]) => {
-        setTeachers(data);
-        if (data.length > 0) setTeacherUsername(data[0].username);
-      });
+        if (Array.isArray(data)) {
+          setTeachers(data);
+          if (data.length > 0) setTeacherUsername(data[0].username);
+        }
+      })
+      .catch(() => setTeachers([]));
 
     fetch(`/api/public/settings?school=${encodeURIComponent(schoolParam)}`)
-      .then(r => r.json())
-      .then(data => setStudentYear(data.academic_year ?? "2568"));
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setStudentYear(data?.academic_year ?? "2568"))
+      .catch(() => setStudentYear("2568"));
   }, []);
 
   useEffect(() => {

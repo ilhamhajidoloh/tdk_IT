@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import {
@@ -24,10 +24,14 @@ import {
   ClipboardList,
   Check,
   Ban,
-  Clock3
+  Clock3,
+  Upload,
+  X
 } from "lucide-react";
 import { useAuth } from "../lib/useAuth";
 import ThemeToggle from "../components/ThemeToggle";
+import { slugify, generateSubdomain } from "../lib/format";
+import { getSchoolLogoUrl } from "../components/SchoolBrand";
 
 interface EnabledModules {
   news?: boolean;
@@ -45,6 +49,7 @@ interface School {
   name_en?: string | null;
   subdomain: string;
   logo_url?: string | null;
+  logo_drive_file_id?: string | null;
   address?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -104,6 +109,11 @@ export default function SuperAdminPage() {
   const [schoolNameEn, setSchoolNameEn] = useState("");
   const [schoolSubdomain, setSchoolSubdomain] = useState("");
   const [schoolLogoUrl, setSchoolLogoUrl] = useState("");
+  const [schoolLogoDriveFileId, setSchoolLogoDriveFileId] = useState("");
+  const [logoPreview, setLogoPreview] = useState("");
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoUploadPromiseRef = useRef<Promise<{ fileId: string; logoUrl: string } | null> | null>(null);
   const [schoolAddress, setSchoolAddress] = useState("");
   const [schoolPhone, setSchoolPhone] = useState("");
   const [schoolEmail, setSchoolEmail] = useState("");
@@ -192,6 +202,8 @@ export default function SuperAdminPage() {
     setSchoolNameEn("");
     setSchoolSubdomain("");
     setSchoolLogoUrl("");
+    setSchoolLogoDriveFileId("");
+    setLogoPreview("");
     setSchoolAddress("");
     setSchoolPhone("");
     setSchoolEmail("");
@@ -205,6 +217,8 @@ export default function SuperAdminPage() {
     setSchoolNameEn(school.name_en || "");
     setSchoolSubdomain(school.subdomain || "");
     setSchoolLogoUrl(school.logo_url || "");
+    setSchoolLogoDriveFileId(school.logo_drive_file_id || "");
+    setLogoPreview("");
     setSchoolAddress(school.address || "");
     setSchoolPhone(school.phone || "");
     setSchoolEmail(school.email || "");
@@ -212,45 +226,166 @@ export default function SuperAdminPage() {
     setIsSchoolModalOpen(true);
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!validTypes.includes(file.type)) {
+      Swal.fire("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพ (JPG, PNG, WebP, SVG)", "error");
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire("ไฟล์ใหญ่เกินไป", "ขนาดสูงสุด 5MB", "error");
+      return;
+    }
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => setLogoPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+
+    // Upload to server
+    setIsUploadingLogo(true);
+    const promise = (async () => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/super-admin/schools/upload-logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to upload logo");
+
+      const uploadedUrl = data.url || data.logo_url || `/api/public/schools/logo/${data.fileId}`;
+      setSchoolLogoDriveFileId(data.fileId);
+      setSchoolLogoUrl(uploadedUrl);
+      setLogoPreview(uploadedUrl);
+      return { fileId: data.fileId as string, logoUrl: uploadedUrl as string };
+    })();
+
+    logoUploadPromiseRef.current = promise;
+
+    try {
+      await promise;
+      Swal.fire("สำเร็จ", "อัพโหลดโลโก้เรียบร้อยแล้ว", "success");
+    } catch (error: any) {
+      console.error("Logo upload error:", error);
+      Swal.fire("เกิดข้อผิดพลาด", error.message || "ไม่สามารถอัพโหลดโลโก้ได้", "error");
+      setLogoPreview("");
+    } finally {
+      setIsUploadingLogo(false);
+      logoUploadPromiseRef.current = null;
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setSchoolLogoDriveFileId("");
+    setSchoolLogoUrl("");
+    setLogoPreview("");
+    logoUploadPromiseRef.current = null;
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSchoolNameEnChange = (val: string) => {
+    setSchoolNameEn(val);
+    if (!schoolSubdomain || schoolSubdomain === slugify(schoolNameEn)) {
+      setSchoolSubdomain(slugify(val));
+    }
+  };
+
   const handleSaveSchool = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!schoolName.trim() || !schoolSubdomain.trim()) {
-      Swal.fire("ข้อผิดพลาด", "กรุณากรอกชื่อโรงเรียนและ Subdomain", "error");
+    const finalSubdomain = generateSubdomain(schoolSubdomain, schoolNameEn, schoolName);
+
+    if (!schoolName.trim() || !finalSubdomain) {
+      Swal.fire("ข้อผิดพลาด", "กรุณากรอกชื่อโรงเรียน และ Subdomain หรือชื่อภาษาอังกฤษ", "error");
       return;
     }
 
     try {
+      // If logo is currently uploading in background, wait for it to finish!
+      let currentDriveId = schoolLogoDriveFileId.trim() || null;
+      let currentLogoUrl = schoolLogoUrl.trim() || null;
+
+      if (logoUploadPromiseRef.current) {
+        try {
+          const uploadRes = await logoUploadPromiseRef.current;
+          if (uploadRes) {
+            currentDriveId = uploadRes.fileId;
+            currentLogoUrl = uploadRes.logoUrl;
+          }
+        } catch (uploadErr) {
+          console.error("In-flight logo upload failed before save:", uploadErr);
+        }
+      }
+
+      if (!currentLogoUrl && currentDriveId) {
+        currentLogoUrl = `/api/public/schools/logo/${currentDriveId}`;
+      }
+
       const url = editingSchool
         ? `/api/super-admin/schools/${editingSchool.id}`
         : "/api/super-admin/schools";
       const method = editingSchool ? "PUT" : "POST";
 
+      const payload = {
+        name: schoolName.trim(),
+        name_en: schoolNameEn.trim() || null,
+        subdomain: finalSubdomain,
+        logo_url: currentLogoUrl,
+        logo_drive_file_id: currentDriveId,
+        address: schoolAddress.trim() || null,
+        phone: schoolPhone.trim() || null,
+        email: schoolEmail.trim() || null,
+        enabled_modules: enabledModules,
+      };
+
+      console.log("Saving school with payload:", payload);
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: schoolName.trim(),
-          name_en: schoolNameEn.trim() || null,
-          subdomain: schoolSubdomain.trim().toLowerCase(),
-          logo_url: schoolLogoUrl.trim() || null,
-          address: schoolAddress.trim() || null,
-          phone: schoolPhone.trim() || null,
-          email: schoolEmail.trim() || null,
-          enabled_modules: enabledModules,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "เกิดข้อผิดพลาดในการบันทึก");
 
       setIsSchoolModalOpen(false);
-      Swal.fire({
-        icon: "success",
-        title: editingSchool ? "อัปเดตโรงเรียนสำเร็จ" : "สร้างโรงเรียนสำเร็จ",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-      fetchSchools();
+      await fetchSchools();
+
+      if (!editingSchool && data.id) {
+        const createAdminConfirm = await Swal.fire({
+          icon: "success",
+          title: "🎉 สร้างโรงเรียนสำเร็จ!",
+          html: `โรงเรียน <strong>${data.name}</strong> ถูกเพิ่มและพร้อมแสดงผลบนหน้าหลักแล้ว<br/><br/><strong>ต้องการสร้างบัญชีผู้ดูแลระบบ (Admin) สำหรับโรงเรียนนี้เลยหรือไม่?</strong>`,
+          showCancelButton: true,
+          confirmButtonText: "สร้างบัญชี Admin ทันที",
+          cancelButtonText: "ไว้สร้างภายหลัง",
+          confirmButtonColor: "#4f46e5",
+          cancelButtonColor: "#6b7280",
+        });
+
+        if (createAdminConfirm.isConfirmed) {
+          const defaultUser = `admin_${data.subdomain}`;
+          openAddAdminModal(data.id, defaultUser, data.email || "");
+        }
+      } else {
+        Swal.fire({
+          icon: "success",
+          title: "อัปเดตโรงเรียนสำเร็จ",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
     } catch (err: any) {
       Swal.fire("ข้อผิดพลาด", err.message, "error");
     }
@@ -323,11 +458,11 @@ export default function SuperAdminPage() {
   };
 
   // --- ADMIN ACTIONS ---
-  const openAddAdminModal = (targetSchoolId?: string) => {
+  const openAddAdminModal = (targetSchoolId?: string, defaultUsername?: string, defaultEmail?: string) => {
     setEditingAdmin(null);
-    setAdminUsername("");
+    setAdminUsername(defaultUsername || "");
     setAdminPassword("");
-    setAdminEmail("");
+    setAdminEmail(defaultEmail || "");
     setAdminSchoolId(targetSchoolId || (schools.length > 0 ? schools[0].id : ""));
     setIsAdminModalOpen(true);
   };
@@ -371,8 +506,9 @@ export default function SuperAdminPage() {
       setIsAdminModalOpen(false);
       Swal.fire({
         icon: "success",
-        title: editingAdmin ? "อัปเดตข้อมูลแอดมินสำเร็จ" : "เพิ่มแอดมินสำเร็จ",
-        timer: 1500,
+        title: editingAdmin ? "อัปเดตข้อมูลแอดมินสำเร็จ" : "สร้างแอดมินสำเร็จ",
+        text: "โรงเรียนพร้อมสำหรับการเข้าใช้งานบนหน้าหลักแล้ว",
+        timer: 2000,
         showConfirmButton: false,
       });
       fetchAdmins();
@@ -436,13 +572,33 @@ export default function SuperAdminPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "ไม่สามารถดำเนินการกับคำขอได้");
+
       await Promise.all([fetchSchoolRequests(), fetchSchools()]);
-      Swal.fire({
-        icon: "success",
-        title: status === "approved" ? "อนุมัติคำขอสำเร็จ" : "บันทึกการไม่อนุมัติแล้ว",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+
+      if (status === "approved" && data.school) {
+        const createAdminConfirm = await Swal.fire({
+          icon: "success",
+          title: "🎉 อนุมัติคำขอสำเร็จ!",
+          html: `โรงเรียน <strong>${data.school.name}</strong> ถูกสร้างและเพิ่มลงหน้าหลักแล้ว<br/><br/><strong>ต้องการสร้างบัญชีผู้ดูแลระบบ (Admin) สำหรับโรงเรียนนี้ตอนนี้เลยหรือไม่?</strong>`,
+          showCancelButton: true,
+          confirmButtonText: "สร้างบัญชี Admin ทันที",
+          cancelButtonText: "ไว้สร้างภายหลัง",
+          confirmButtonColor: "#4f46e5",
+          cancelButtonColor: "#6b7280",
+        });
+
+        if (createAdminConfirm.isConfirmed) {
+          const defaultUser = `admin_${data.school.subdomain}`;
+          openAddAdminModal(data.school.id, defaultUser, request.requester_email || "");
+        }
+      } else {
+        Swal.fire({
+          icon: "success",
+          title: "บันทึกการไม่อนุมัติแล้ว",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
     } catch (err: any) {
       Swal.fire("เกิดข้อผิดพลาด", err.message, "error");
     }
@@ -757,9 +913,9 @@ export default function SuperAdminPage() {
                       {/* Header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          {school.logo_url ? (
+                          {school.logo_drive_file_id || school.logo_url ? (
                             <img
-                              src={school.logo_url}
+                              src={getSchoolLogoUrl(school.logo_drive_file_id, school.logo_url)}
                               alt={school.name}
                               className="w-12 h-12 rounded-2xl object-cover ring-2 ring-primary/20 shrink-0"
                             />
@@ -1135,34 +1291,70 @@ export default function SuperAdminPage() {
                 <input
                   type="text"
                   value={schoolNameEn}
-                  onChange={(e) => setSchoolNameEn(e.target.value)}
+                  onChange={(e) => handleSchoolNameEnChange(e.target.value)}
                   placeholder="เช่น Bannawittaya School"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-foreground font-bold mb-1">Subdomain (รหัสประจำ URL) *</label>
+                <label className="block text-foreground font-bold mb-1">Subdomain (ถ้าไม่ระบุ จะสร้างจากชื่อภาษาอังกฤษให้อัตโนมัติ)</label>
                 <input
                   type="text"
                   value={schoolSubdomain}
                   onChange={(e) => setSchoolSubdomain(e.target.value)}
-                  placeholder="เช่น school1 หรือ bannawittaya"
+                  placeholder="เช่น bannawittaya"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary font-mono"
-                  required
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">ใช้สำหรับเข้าถึงระบบผ่าน URL: `?school=subdomain`</p>
               </div>
 
               <div>
-                <label className="block text-foreground font-bold mb-1">Logo URL (ลิงก์รูปโลโก้)</label>
+                <label className="block text-foreground font-bold mb-1">โลโก้โรงเรียน</label>
+
+                {/* Show current/preview logo */}
+                {(logoPreview || schoolLogoDriveFileId || schoolLogoUrl) && (
+                  <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-border mb-3">
+                    <img
+                      src={logoPreview || getSchoolLogoUrl(schoolLogoDriveFileId, schoolLogoUrl)}
+                      alt="Logo Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.src = "/logo.jpg"; }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Hidden file input */}
                 <input
-                  type="text"
-                  value={schoolLogoUrl}
-                  onChange={(e) => setSchoolLogoUrl(e.target.value)}
-                  placeholder="เช่น /logo.jpg หรือ https://..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                  disabled={isUploadingLogo}
                 />
+
+                {/* Upload button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingLogo}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isUploadingLogo ? "กำลังอัพโหลด..." : "เลือกไฟล์โลโก้"}
+                </button>
+
+                <p className="text-xs text-muted-foreground mt-2">
+                  รองรับ: JPG, PNG, WebP, SVG (สูงสุด 5MB)
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1258,9 +1450,17 @@ export default function SuperAdminPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md"
+                  disabled={isUploadingLogo}
+                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  บันทึกข้อมูลโรงเรียน
+                  {isUploadingLogo ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>กำลังอัปโหลดโลโก้...</span>
+                    </>
+                  ) : (
+                    <span>บันทึกข้อมูลโรงเรียน</span>
+                  )}
                 </button>
               </div>
             </form>

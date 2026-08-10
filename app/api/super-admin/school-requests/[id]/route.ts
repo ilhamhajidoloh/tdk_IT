@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { generateSubdomain } from "@/app/lib/format";
 
 const DEFAULT_MODULES = {
   news: true,
@@ -51,15 +52,17 @@ export async function PUT(
     let school = null;
     if (status === "approved") {
       const modules = request.requested_modules || DEFAULT_MODULES;
+      const finalSubdomain = generateSubdomain(request.subdomain, request.school_name_en, request.school_name);
+
       const schoolResult = await client.query(
         `INSERT INTO public.schools
           (name, name_en, subdomain, logo_url, address, phone, email, is_active, enabled_modules)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8::jsonb)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8::jsonb)
          RETURNING id, name, name_en, subdomain, logo_url, enabled_modules`,
         [
           request.school_name,
           request.school_name_en,
-          request.subdomain,
+          finalSubdomain,
           request.logo_url,
           request.address,
           request.phone,

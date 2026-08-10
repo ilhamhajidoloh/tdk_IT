@@ -13,6 +13,7 @@ interface School {
   name_en?: string;
   subdomain: string;
   logo_url?: string;
+  logo_drive_file_id?: string;
   address?: string;
   phone?: string;
   email?: string;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { deleteFileFromDrive } from "@/app/lib/googleDrive";
 
 export async function PUT(
   req: NextRequest,
@@ -15,30 +16,63 @@ export async function PUT(
 
   try {
     const body = await req.json();
-    const { name, name_en, subdomain, logo_url, address, phone, email, is_active, enabled_modules } = body;
+    const { name, name_en, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules } = body;
 
     const modulesJson = enabled_modules !== undefined ? JSON.stringify(enabled_modules) : null;
+
+    // Get current school data to check for old logo
+    const currentSchool = await pool.query(
+      "SELECT logo_drive_file_id FROM public.schools WHERE id = $1",
+      [id]
+    );
+
+    if (currentSchool.rows.length === 0) {
+      return NextResponse.json({ error: "School not found" }, { status: 404 });
+    }
+
+    const oldLogoDriveFileId = currentSchool.rows[0].logo_drive_file_id;
+
+    // If updating logo and there's an old one, delete it from Drive
+    if (logo_drive_file_id && oldLogoDriveFileId && logo_drive_file_id !== oldLogoDriveFileId) {
+      try {
+        await deleteFileFromDrive(oldLogoDriveFileId);
+      } catch (err) {
+        console.error("Failed to delete old logo from Drive:", err);
+        // Don't block the update if cleanup fails
+      }
+    }
+
+    const finalLogoUrl = logo_url || (logo_drive_file_id ? `/api/public/schools/logo/${logo_drive_file_id}` : null);
 
     const result = await pool.query(
       `UPDATE public.schools
        SET name = COALESCE($1, name),
-           name_en = COALESCE($2, name_en),
+           name_en = $2,
            subdomain = COALESCE($3, subdomain),
-           logo_url = COALESCE($4, logo_url),
-           address = COALESCE($5, address),
-           phone = COALESCE($6, phone),
-           email = COALESCE($7, email),
-           is_active = COALESCE($8, is_active),
-           enabled_modules = COALESCE($9::jsonb, enabled_modules),
+           logo_url = $4,
+           logo_drive_file_id = $5,
+           address = $6,
+           phone = $7,
+           email = $8,
+           is_active = COALESCE($9, is_active),
+           enabled_modules = COALESCE($10::jsonb, enabled_modules),
            updated_at = NOW()
-       WHERE id = $10
+       WHERE id = $11
        RETURNING *`,
-      [name, name_en, subdomain ? subdomain.trim().toLowerCase() : null, logo_url, address, phone, email, is_active, modulesJson, id]
+      [
+        name,
+        name_en || null,
+        subdomain ? subdomain.trim().toLowerCase() : null,
+        finalLogoUrl,
+        logo_drive_file_id || null,
+        address || null,
+        phone || null,
+        email || null,
+        is_active,
+        modulesJson,
+        id,
+      ]
     );
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
-    }
 
     return NextResponse.json(result.rows[0]);
   } catch (error: any) {
@@ -60,7 +94,7 @@ export async function DELETE(
   try {
     // Only allow delete if admin has formally requested it
     const check = await pool.query(
-      "SELECT id, name, deletion_requested FROM public.schools WHERE id = $1",
+      "SELECT id, name, deletion_requested, logo_drive_file_id FROM public.schools WHERE id = $1",
       [id]
     );
 
@@ -73,6 +107,16 @@ export async function DELETE(
         { error: "ไม่สามารถลบได้: แอดมินโรงเรียนยังไม่ได้ส่งคำขอลบข้อมูล" },
         { status: 403 }
       );
+    }
+
+    // Delete logo from Google Drive if exists
+    if (check.rows[0].logo_drive_file_id) {
+      try {
+        await deleteFileFromDrive(check.rows[0].logo_drive_file_id);
+      } catch (err) {
+        console.error("Failed to delete school logo from Drive:", err);
+        // Continue with school deletion even if logo cleanup fails
+      }
     }
 
     // Hard delete the school (CASCADE will remove related users, etc.)
