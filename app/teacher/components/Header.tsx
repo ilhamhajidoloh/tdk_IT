@@ -2,6 +2,7 @@
 
 import { Mail, Key, LogOut } from "lucide-react";
 import ThemeToggle from "../../components/ThemeToggle";
+import { SchoolLogo, useSchoolBrand } from "../../components/SchoolBrand";
 
 interface HeaderProps {
   teacherName: string;
@@ -12,6 +13,7 @@ interface HeaderProps {
   onConnectGoogle: () => void;
   onChangePassword: () => void;
   onLogout: () => void;
+  schoolId?: string | null;
 }
 
 export default function Header({
@@ -23,21 +25,24 @@ export default function Header({
   onConnectGoogle,
   onChangePassword,
   onLogout,
+  schoolId,
 }: HeaderProps) {
+  const { school } = useSchoolBrand(schoolId);
+
   return (
     <header className="header-gradient border-b border-border sticky top-0 z-20">
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Left: Logo + Info */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-indigo-200/30 border border-border ring-2 ring-indigo-100/50">
-            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+            <SchoolLogo school={school} schoolKey={schoolId} className="w-full h-full" />
           </div>
           <div className="min-w-0">
             <div className="font-extrabold text-foreground text-sm leading-tight truncate">
               {teacherName || "ครู"}
             </div>
             <div className="text-xs text-muted-foreground font-medium truncate">
-              {homeroomClassName ? `ครูประจำชั้น · ${homeroomClassName}` : "ระบบจัดการคะแนน"}
+              {school?.name || (homeroomClassName ? `ครูประจำชั้น · ${homeroomClassName}` : "ระบบจัดการคะแนน")}
             </div>
           </div>
         </div>

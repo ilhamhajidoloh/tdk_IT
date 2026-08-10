@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { addDays, buildCookSchedule, buildTeacherForecast, mondayOf, todayStr } from "@/app/lib/duty";
+import { getSchoolFromUrl } from "@/app/lib/getSchoolByParam";
 
 const TEACHER_FORECAST_WEEKS = 5;
 const COOK_FORECAST_DAYS = 8;
@@ -29,8 +30,16 @@ interface CookGroupRow {
   members: { id: string; name: string }[];
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const today = todayStr();
+  const schoolSubdomain = getSchoolFromUrl(req);
+
+  // Get school ID
+  const schoolRes = await pool.query(
+    "SELECT id FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true",
+    [schoolSubdomain]
+  );
+  const schoolId = schoolRes.rows[0]?.id || "00000000-0000-0000-0000-000000000001";
 
   // Look-ahead window for holiday fetching (cover all forecast + some buffer)
   const holidayWindowEnd = addDays(today, TEACHER_FORECAST_WEEKS * 7 + COOK_FORECAST_DAYS + 14);
@@ -38,35 +47,44 @@ export async function GET() {
   const [newsRes, teacherGroupsRes, cookGroupsRes, dutySettingsRes, scheduleDaysRes, holidaysRes] =
     await Promise.all([
       pool.query(
-        "SELECT id, title, content, created_at FROM news WHERE is_published = true ORDER BY created_at DESC LIMIT 10"
+        "SELECT id, title, content, created_at FROM public.news WHERE is_published = true AND (school_id = $1 OR school_id IS NULL) ORDER BY created_at DESC LIMIT 10",
+        [schoolId]
       ),
-      pool.query(`
-        SELECT g.id, g.name, g.order_no,
-          COALESCE(json_agg(json_build_object('id', u.id, 'username', u.username)) FILTER (WHERE u.id IS NOT NULL), '[]') AS members
-        FROM teacher_duty_groups g
-        LEFT JOIN teacher_duty_members m ON m.group_id = g.id
-        LEFT JOIN users u ON u.id = m.teacher_id
-        GROUP BY g.id
-        ORDER BY g.order_no ASC
-      `),
-      pool.query(`
-        SELECT g.id, g.name, g.order_no,
-          COALESCE(json_agg(json_build_object('id', c.id, 'name', c.name) ORDER BY m.order_no ASC) FILTER (WHERE c.id IS NOT NULL), '[]') AS members
-        FROM cook_duty_groups g
-        LEFT JOIN cook_duty_members m ON m.group_id = g.id
-        LEFT JOIN cooks c ON c.id = m.cook_id
-        GROUP BY g.id
-        ORDER BY g.order_no ASC
-      `),
-      pool.query("SELECT teacher_anchor_date, cook_anchor_date, teacher_anchor_offset, cook_anchor_offset FROM duty_settings WHERE id = 1"),
-      pool.query(`
-        SELECT schedule_days FROM system_settings
-        WHERE end_date >= CURRENT_DATE
-        ORDER BY start_date ASC LIMIT 1
-      `),
       pool.query(
-        "SELECT id, date, reason, applies_to FROM school_holidays WHERE is_published = true AND date >= $1 AND date <= $2 ORDER BY date ASC",
-        [addDays(today, -7), holidayWindowEnd]
+        `SELECT g.id, g.name, g.order_no,
+          COALESCE(json_agg(json_build_object('id', u.id, 'username', u.username)) FILTER (WHERE u.id IS NOT NULL), '[]') AS members
+        FROM public.teacher_duty_groups g
+        LEFT JOIN public.teacher_duty_members m ON m.group_id = g.id
+        LEFT JOIN public.users u ON u.id = m.teacher_id
+        WHERE g.school_id = $1 OR g.school_id IS NULL
+        GROUP BY g.id
+        ORDER BY g.order_no ASC`,
+        [schoolId]
+      ),
+      pool.query(
+        `SELECT g.id, g.name, g.order_no,
+          COALESCE(json_agg(json_build_object('id', c.id, 'name', c.name) ORDER BY m.order_no ASC) FILTER (WHERE c.id IS NOT NULL), '[]') AS members
+        FROM public.cook_duty_groups g
+        LEFT JOIN public.cook_duty_members m ON m.group_id = g.id
+        LEFT JOIN public.cooks c ON c.id = m.cook_id
+        WHERE g.school_id = $1 OR g.school_id IS NULL
+        GROUP BY g.id
+        ORDER BY g.order_no ASC`,
+        [schoolId]
+      ),
+      pool.query(
+        "SELECT teacher_anchor_date, cook_anchor_date, teacher_anchor_offset, cook_anchor_offset FROM public.duty_settings WHERE school_id = $1 OR id = 1 LIMIT 1",
+        [schoolId]
+      ),
+      pool.query(
+        `SELECT schedule_days FROM public.system_settings
+        WHERE (school_id = $1 OR school_id IS NULL) AND end_date >= CURRENT_DATE
+        ORDER BY start_date ASC LIMIT 1`,
+        [schoolId]
+      ),
+      pool.query(
+        "SELECT id, date, reason, applies_to FROM public.school_holidays WHERE is_published = true AND (school_id = $1 OR school_id IS NULL) AND date >= $2 AND date <= $3 ORDER BY date ASC",
+        [schoolId, addDays(today, -7), holidayWindowEnd]
       ),
     ]);
 

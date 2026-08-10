@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
 import { uploadFileToDrive } from "@/app/lib/googleDrive";
+import { getSchoolContext } from "@/app/lib/schoolContext";
 
 // Helper to check permission
 function hasAccess(user: any) {
   if (!user) return false;
-  return user.role === "admin" || !!user.is_clerical;
+  return user.role === "admin" || !!user.is_clerical || user.role === "super_admin";
 }
 
 export async function GET(req: NextRequest) {
@@ -20,6 +21,13 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search");
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
+
+  const context = await getSchoolContext();
+  let schoolId = context?.schoolId || (user as any)?.school_id;
+  if (context?.isSuperAdmin) {
+    schoolId = searchParams.get("schoolId") || searchParams.get("school_id") || schoolId;
+  }
+  if (!schoolId) schoolId = "00000000-0000-0000-0000-000000000001";
 
   let queryText = `
     SELECT 
@@ -50,8 +58,8 @@ export async function GET(req: NextRequest) {
     LEFT JOIN users u ON u.id = b.created_by
   `;
 
-  const queryParams: any[] = [];
-  const clauses: string[] = [];
+  const queryParams: any[] = [schoolId];
+  const clauses: string[] = ["(b.school_id = $1 OR b.school_id IS NULL)"];
 
   if (type && type !== "all") {
     queryParams.push(type);

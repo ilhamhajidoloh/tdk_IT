@@ -8,6 +8,8 @@ import { buildCookSchedule } from "../../../lib/duty";
 
 interface DutyTabProps {
   token: string | null;
+  enabledNews?: boolean;
+  enabledDuty?: boolean;
 }
 
 interface NewsItem {
@@ -90,8 +92,26 @@ function Chips({ items }: { items: string[] }) {
   );
 }
 
-export default function DutyTab({ token }: DutyTabProps) {
-  const [subTab, setSubTab] = useState<DutySubTab>("news");
+export default function DutyTab({ token, enabledNews = true, enabledDuty = true }: DutyTabProps) {
+  const visibleSubTabs = SUB_TABS.filter((st) => {
+    if (st.key === "news" && !enabledNews) return false;
+    if ((st.key === "teachers" || st.key === "cooks" || st.key === "settings") && !enabledDuty) return false;
+    return true;
+  });
+
+  const [subTab, setSubTab] = useState<DutySubTab>(() => {
+    if (enabledNews) return "news";
+    if (enabledDuty) return "teachers";
+    return "news";
+  });
+
+  useEffect(() => {
+    if (subTab === "news" && !enabledNews && enabledDuty) {
+      setSubTab("teachers");
+    } else if ((subTab === "teachers" || subTab === "cooks" || subTab === "settings") && !enabledDuty && enabledNews) {
+      setSubTab("news");
+    }
+  }, [enabledNews, enabledDuty, subTab]);
 
   const [news, setNews] = useState<NewsItem[]>([]);
   const [holidays, setHolidays] = useState<HolidayItem[]>([]);
@@ -1040,12 +1060,24 @@ export default function DutyTab({ token }: DutyTabProps) {
       <SectionHeader
         icon="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"
         color="indigo"
-        title="หน้าแรก & เวรประจำวัน"
-        subtitle="จัดการข่าวประชาสัมพันธ์ เวรครู และเวรแม่ครัวที่แสดงบนหน้าแรกก่อนเข้าสู่ระบบ"
+        title={
+          enabledNews && !enabledDuty
+            ? "ข่าวประชาสัมพันธ์"
+            : !enabledNews && enabledDuty
+            ? "ตารางเวรครู & แม่ครัว"
+            : "หน้าแรก & เวรประจำวัน"
+        }
+        subtitle={
+          enabledNews && !enabledDuty
+            ? "จัดการข่าวประชาสัมพันธ์และประกาศข่าวสารที่แสดงบนหน้าแรกก่อนเข้าสู่ระบบ"
+            : !enabledNews && enabledDuty
+            ? "จัดการเวรครูและเวรแม่ครัวที่แสดงบนหน้าแรกก่อนเข้าสู่ระบบ"
+            : "จัดการข่าวประชาสัมพันธ์ เวรครู และเวรแม่ครัวที่แสดงบนหน้าแรกก่อนเข้าสู่ระบบ"
+        }
       />
 
       <div className="ui-segment mb-6 max-w-2xl">
-        {SUB_TABS.map((t) => (
+        {visibleSubTabs.map((t) => (
           <button
             key={t.key}
             type="button"

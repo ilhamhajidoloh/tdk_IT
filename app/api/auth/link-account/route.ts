@@ -5,9 +5,9 @@ import pool from "@/app/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, provider, sig, username, role, password } = await req.json();
+    const { email, provider, sig, username, role, password, school } = await req.json();
 
-    if (!email || !provider || !sig || !username || !role || !password) {
+    if (!email || !provider || !sig || !username || !role || !password || !school) {
       return NextResponse.json(
         { error: "ข้อมูลไม่ครบถ้วนสำหรับการเชื่อมโยงบัญชี" },
         { status: 400 }
@@ -41,8 +41,19 @@ export async function POST(req: NextRequest) {
     // 3. Find the user by username/student_id and role
     const dbRole = role === "staff" ? "admin" : role;
     const result = await pool.query(
-      "SELECT id, password, email FROM users WHERE (username = $1 OR student_id = $1) AND role = $2",
-      [username, dbRole]
+      `SELECT u.id, u.password, u.email
+       FROM users u
+       WHERE (u.username = $1 OR u.student_id = $1)
+         AND u.role = $2
+         AND EXISTS (
+           SELECT 1
+           FROM public.schools s
+           WHERE s.id = u.school_id
+             AND s.is_active = true
+             AND (LOWER(s.subdomain) = LOWER($3) OR s.id::text = $3)
+         )
+       LIMIT 1`,
+      [username, dbRole, school]
     );
 
     const user = result.rows[0];

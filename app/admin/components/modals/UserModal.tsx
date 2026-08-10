@@ -14,8 +14,8 @@ interface UserModalProps {
   setPassword: (password: string) => void;
   email: string;
   setEmail: (email: string) => void;
-  role: "admin" | "teacher" | "student";
-  setRole: (role: "admin" | "teacher" | "student") => void;
+  role: "super_admin" | "admin" | "teacher" | "student";
+  setRole: (role: "super_admin" | "admin" | "teacher" | "student") => void;
   studentId: string;
   setStudentId: (studentId: string) => void;
   homeroomClassroomId: string;

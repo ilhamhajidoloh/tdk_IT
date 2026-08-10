@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef, type ReactNode, useMemo } from "react";
+import { useEffect, useState, useRef, Suspense, type ReactNode, useMemo } from "react";
 import { useAuth } from "../lib/useAuth";
 import * as XLSX from "xlsx";
 import ChatWidget from "../components/ChatWidget";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import { formatThaiDate } from "../lib/format";
 
@@ -49,6 +49,8 @@ import CorrespondenceTab from "../components/CorrespondenceTab";
 import AchievementTab from "./components/tabs/AchievementTab";
 import AdminSidebar from "./components/AdminSidebar";
 import AdminHeader from "./components/AdminHeader";
+import SchoolSelector from "./components/SchoolSelector";
+import SchoolLoadingScreen from "../components/SchoolLoadingScreen";
 
 const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "dashboard", label: "แดชบอร์ด", sub: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" },
@@ -144,23 +146,11 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
 
 
 
-function LoadingScreen({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-5 relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 grid-backdrop opacity-60" />
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full border-4 border-border" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-      </div>
-      <div className="text-center relative z-10">
-        <p className="text-foreground font-extrabold text-lg">{title}</p>
-        {subtitle && <p className="text-muted-foreground text-sm mt-1.5 font-medium">{subtitle}</p>}
-      </div>
-    </div>
-  );
+function LoadingScreen({ title, subtitle, schoolKey }: { title: string; subtitle?: string; schoolKey?: string | null }) {
+  return <SchoolLoadingScreen title={title} subtitle={subtitle} schoolKey={schoolKey} />;
 }
 
-export default function AdminPortal() {
+function AdminPortalContent() {
   const [users, setUsers] = useState<DBUser[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [classrooms, setClassrooms] = useState<{ id: string; name: string; setting_id?: number }[]>([]);
@@ -189,8 +179,92 @@ export default function AdminPortal() {
   const [isGradingActive, setIsGradingActive] = useState(true);
   const [settingsList, setSettingsList] = useState<any[]>([]);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user: adminUser, loading, logout, token, update } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [schoolEnabledModules, setSchoolEnabledModules] = useState<{
+    news?: boolean;
+    duty?: boolean;
+    attendance?: boolean;
+    evaluations?: boolean;
+    correspondence?: boolean;
+    grades?: boolean;
+    schedule?: boolean;
+  }>({
+    news: true,
+    duty: true,
+    attendance: true,
+    evaluations: true,
+    correspondence: true,
+    grades: true,
+    schedule: true,
+  });
+
+  useEffect(() => {
+    const schoolIdFromUrl = searchParams.get("schoolId") || searchParams.get("school_id");
+    if (schoolIdFromUrl) {
+      setSelectedSchoolId(schoolIdFromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const schoolTarget =
+      selectedSchoolId ||
+      searchParams.get("schoolId") ||
+      searchParams.get("school_id") ||
+      searchParams.get("school") ||
+      (adminUser as any)?.school_id ||
+      (adminUser as any)?.subdomain ||
+      "main";
+
+    fetch(`/api/public/schools/${schoolTarget}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.enabled_modules) {
+          setSchoolEnabledModules(data.enabled_modules);
+        }
+      })
+      .catch(() => {});
+  }, [searchParams, adminUser, selectedSchoolId]);
+
+  useEffect(() => {
+    const isCurrentTabDisabled =
+      (activeTab === "schedule" && schoolEnabledModules.schedule === false) ||
+      (activeTab === "evaluations" && schoolEnabledModules.evaluations === false) ||
+      // "duty" tab covers both news and duty sub-features — only disable if BOTH are off
+      (activeTab === "duty" && schoolEnabledModules.duty === false && schoolEnabledModules.news === false) ||
+      (activeTab === "books" && schoolEnabledModules.correspondence === false) ||
+      (["grade-status", "student-scores", "rankings", "yearly-average", "export-grades", "achievement"].includes(activeTab) && schoolEnabledModules.grades === false);
+
+    if (isCurrentTabDisabled) {
+      setActiveTab("dashboard");
+    }
+  }, [activeTab, schoolEnabledModules]);
+
+  const filteredNavItems = NAV_ITEMS.map((item) => {
+    if (item.key === "duty") {
+      if (schoolEnabledModules.news !== false && schoolEnabledModules.duty === false) {
+        return { ...item, label: "ข่าวประชาสัมพันธ์", sub: "News & Announcements" };
+      }
+      if (schoolEnabledModules.news === false && schoolEnabledModules.duty !== false) {
+        return { ...item, label: "จัดตารางเวรครู-แม่ครัว", sub: "Duty Schedules" };
+      }
+    }
+    return item;
+  }).filter((item) => {
+    if (item.key === "schedule" && schoolEnabledModules.schedule === false) return false;
+    if (
+      ["grade-status", "student-scores", "rankings", "yearly-average", "export-grades", "achievement"].includes(item.key) &&
+      schoolEnabledModules.grades === false
+    ) {
+      return false;
+    }
+    if (item.key === "evaluations" && schoolEnabledModules.evaluations === false) return false;
+    if (item.key === "duty" && schoolEnabledModules.duty === false && schoolEnabledModules.news === false) return false;
+    if (item.key === "books" && schoolEnabledModules.correspondence === false) return false;
+    return true;
+  });
 
   // Modal State
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -206,7 +280,7 @@ export default function AdminPortal() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"student" | "teacher" | "admin">("student");
+  const [role, setRole] = useState<"student" | "teacher" | "admin" | "super_admin">("student");
   const [studentId, setStudentId] = useState("");
   const [homeroomClassroomId, setHomeroomClassroomId] = useState("");
   const [email, setEmail] = useState("");
@@ -376,10 +450,11 @@ export default function AdminPortal() {
 
     if (exportType === "yearly") {
       const yearSettings = settingsList.filter(s => s.academic_year === setting.academic_year);
+      const schoolParam = getSchoolParam();
 
       // Fetch classrooms for both terms, deduplicate by name
       classroomsPromise = Promise.all(yearSettings.map(s =>
-        fetch(`/api/classrooms?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`/api/classrooms?settingId=${s.id}${schoolParam}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
       )).then(results => {
         if (cancelled) return;
@@ -398,7 +473,7 @@ export default function AdminPortal() {
 
       // Fetch students for both terms, deduplicate by student_id
       studentsPromise = Promise.all(yearSettings.map(s =>
-        fetch(`/api/students?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`/api/students?settingId=${s.id}${schoolParam}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
       )).then(results => {
         if (cancelled) return;
@@ -416,7 +491,7 @@ export default function AdminPortal() {
 
       // Fetch subjects for both terms, deduplicate/merge by name
       subjectsPromise = Promise.all(yearSettings.map(s =>
-        fetch(`/api/subjects?settingId=${s.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`/api/subjects?settingId=${s.id}${schoolParam}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
       )).then(results => {
         if (cancelled) return;
@@ -440,7 +515,8 @@ export default function AdminPortal() {
       }).catch(err => console.error("Failed to load export subjects", err));
 
     } else {
-      classroomsPromise = fetch(`/api/classrooms?settingId=${exportSettingId}`, {
+      const schoolParam = getSchoolParam();
+      classroomsPromise = fetch(`/api/classrooms?settingId=${exportSettingId}${schoolParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
@@ -451,14 +527,14 @@ export default function AdminPortal() {
         })
         .catch(err => console.error("Failed to load export classrooms", err));
 
-      studentsPromise = fetch(`/api/students?settingId=${exportSettingId}`, {
+      studentsPromise = fetch(`/api/students?settingId=${exportSettingId}${schoolParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
         .then(data => { if (!cancelled) setExportStudents(data); })
         .catch(err => console.error("Failed to load export students", err));
 
-      subjectsPromise = fetch(`/api/subjects?settingId=${exportSettingId}`, {
+      subjectsPromise = fetch(`/api/subjects?settingId=${exportSettingId}${schoolParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
@@ -527,7 +603,11 @@ export default function AdminPortal() {
   useEffect(() => {
     if (loading) return;
     if (!adminUser || adminUser.role !== "admin") {
-      router.push("/login");
+      if (adminUser?.role === "super_admin") {
+        router.push("/super-admin");
+      } else {
+        router.push("/login");
+      }
       return;
     }
     if (token) loadData(token);
@@ -535,8 +615,20 @@ export default function AdminPortal() {
     if (token) loadEvalTopics(token);
   }, [loading, adminUser, token, router]);
 
+  useEffect(() => {
+    if (token && selectedSchoolId) {
+      loadData(token);
+      loadSettings(token);
+      loadEvalTopics(token);
+    }
+  }, [selectedSchoolId, token]);
+
+  const getSchoolParam = (prefix: "?" | "&" = "&") => {
+    return selectedSchoolId ? `${prefix}schoolId=${selectedSchoolId}&school_id=${selectedSchoolId}` : "";
+  };
+
   const loadData = (authToken: string) => {
-    fetch("/api/users", { headers: { Authorization: `Bearer ${authToken}` } })
+    fetch(`/api/users${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.json()).then(setUsers);
     if (selectedSettingId) {
       loadStudents(selectedSettingId, authToken);
@@ -547,14 +639,14 @@ export default function AdminPortal() {
   };
 
   const loadEvalTopics = (authToken: string) => {
-    fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${authToken}` } })
+    fetch(`/api/evaluations/topics${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.ok ? r.json() : [])
       .then(setEvalTopics);
   };
 
   // นักเรียนต้องโหลดตามเทอม (selectedSettingId) เพราะห้องเรียน/การลงทะเบียนของนักเรียนแยกกันตามเทอม
   const loadStudents = (settingId: number, authToken: string) => {
-    fetch(`/api/students?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } })
+    fetch(`/api/students?settingId=${settingId}${getSchoolParam("&")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.json()).then(setStudents);
   };
 
@@ -565,28 +657,28 @@ export default function AdminPortal() {
   }, [selectedSettingId, token]);
 
   const loadSubjects = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/subjects?settingId=${settingId}`, {
+    const res = await fetch(`/api/subjects?settingId=${settingId}${getSchoolParam("&")}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     if (res.ok) setSubjectsList(await res.json());
   };
 
   const loadSubjectClassrooms = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/classrooms?settingId=${settingId}`, {
+    const res = await fetch(`/api/classrooms?settingId=${settingId}${getSchoolParam("&")}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     if (res.ok) setSubjectClassrooms(await res.json());
   };
 
   const loadSchedulePeriods = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/schedule-periods?settingId=${settingId}`, {
+    const res = await fetch(`/api/schedule-periods?settingId=${settingId}${getSchoolParam("&")}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     if (res.ok) setSchedulePeriods(await res.json());
   };
 
   const loadScheduleEntries = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/schedules?settingId=${settingId}`, {
+    const res = await fetch(`/api/schedules?settingId=${settingId}${getSchoolParam("&")}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     if (res.ok) setScheduleEntries(await res.json());
@@ -595,7 +687,7 @@ export default function AdminPortal() {
   const loadRankings = async (settingId: number, authToken: string) => {
     setRankingsLoading(true);
     try {
-      const res = await fetch(`/api/grades/rankings?settingId=${settingId}`, {
+      const res = await fetch(`/api/grades/rankings?settingId=${settingId}${getSchoolParam("&")}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) setRankingsData(await res.json());
@@ -615,12 +707,13 @@ export default function AdminPortal() {
     try {
       const setting = settingsList.find(s => s.id === settingId);
       const termKey = setting ? `${setting.term}/${setting.academic_year}` : "";
+      const schoolParam = getSchoolParam("&");
       const [studentsRes, subjectsRes, classroomsRes, gradesRes] = await Promise.all([
-        fetch(`/api/students?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
-        fetch(`/api/subjects?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
-        fetch(`/api/classrooms?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/students?settingId=${settingId}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/subjects?settingId=${settingId}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/classrooms?settingId=${settingId}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } }),
         termKey
-          ? fetch(`/api/grades?term=${encodeURIComponent(termKey)}`, { headers: { Authorization: `Bearer ${authToken}` } })
+          ? fetch(`/api/grades?term=${encodeURIComponent(termKey)}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } })
           : Promise.resolve(null),
       ]);
       setScoresStudents(studentsRes.ok ? await studentsRes.json() : []);
@@ -642,9 +735,10 @@ export default function AdminPortal() {
   const loadEvalData = async (settingId: number, authToken: string) => {
     setEvalLoading(true);
     try {
+      const schoolParam = getSchoolParam();
       const [studentsRes, classroomsRes, summaryRes] = await Promise.all([
-        fetch(`/api/students?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
-        fetch(`/api/classrooms?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/students?settingId=${settingId}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } }),
+        fetch(`/api/classrooms?settingId=${settingId}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } }),
         fetch(`/api/evaluations/summary?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
       ]);
       setEvalStudents(studentsRes.ok ? await studentsRes.json() : []);
@@ -804,14 +898,15 @@ export default function AdminPortal() {
   };
 
   const loadClassrooms = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/classrooms?settingId=${settingId}`, {
+    const schoolParam = selectedSchoolId ? `&school_id=${selectedSchoolId}` : "";
+    const res = await fetch(`/api/classrooms?settingId=${settingId}${schoolParam}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     if (res.ok) setClassrooms(await res.json());
   };
 
   const loadSettings = async (authToken: string) => {
-    const res = await fetch("/api/settings", {
+    const res = await fetch(`/api/settings${getSchoolParam("?")}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     });
     if (!res.ok) return;
@@ -3446,7 +3541,8 @@ function changeFontSize(dir) {
     });
   };
 
-  const filteredUsers = users.filter(u => {
+  const safeUsers = Array.isArray(users) ? users : [];
+  const filteredUsers = safeUsers.filter(u => {
     if (userSubTab === "all") return true;
     return u.role === userSubTab;
   });
@@ -3465,6 +3561,8 @@ function changeFontSize(dir) {
       {/* Header */}
       <AdminHeader
         adminUser={adminUser}
+        selectedSchoolId={selectedSchoolId}
+        onSchoolChange={setSelectedSchoolId}
         handleConnectGoogle={handleConnectGoogle}
         handleChangePassword={handleChangePassword}
         handleLogout={handleLogout}
@@ -3475,7 +3573,7 @@ function changeFontSize(dir) {
           {/* Sidebar Tabs */}
           <div className="lg:col-span-3">
             <AdminSidebar
-              navItems={NAV_ITEMS}
+              navItems={filteredNavItems}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               adminYear={adminYear}
@@ -3499,7 +3597,7 @@ function changeFontSize(dir) {
                 startDate={startDate}
                 endDate={endDate}
                 isGradingActive={isGradingActive}
-                navItems={NAV_ITEMS}
+                navItems={filteredNavItems}
                 setActiveTab={setActiveTab}
               />
             )}
@@ -3758,7 +3856,13 @@ function changeFontSize(dir) {
               />
             )}
 
-            {activeTab === "duty" && <DutyTab token={token} />}
+            {activeTab === "duty" && (
+              <DutyTab
+                token={token}
+                enabledNews={schoolEnabledModules.news !== false}
+                enabledDuty={schoolEnabledModules.duty !== false}
+              />
+            )}
             {activeTab === "books" && <CorrespondenceTab />}
             {activeTab === "achievement" && (
               <AchievementTab
@@ -3866,6 +3970,14 @@ function changeFontSize(dir) {
       />
       {adminUser && <ChatWidget userId={adminUser.id} userRole="admin" />}
     </div>
+  );
+}
+
+export default function AdminPortal() {
+  return (
+    <Suspense fallback={<LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การเข้าใช้งาน" />}>
+      <AdminPortalContent />
+    </Suspense>
   );
 }
 

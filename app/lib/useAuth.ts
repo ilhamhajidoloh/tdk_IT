@@ -4,7 +4,8 @@ import { useSession, signOut } from "next-auth/react";
 export interface DBUser {
   id: string;
   username: string;
-  role: "admin" | "teacher" | "student";
+  role: "super_admin" | "admin" | "teacher" | "student";
+  school_id?: string;
   student_id?: string;
   homeroom_classroom_id?: string;
   subjects?: string[];
@@ -17,8 +18,6 @@ export function useAuth() {
 
   const loading = status === "loading";
 
-  // useMemo เพื่อให้ reference ของ user คงที่ระหว่าง render ถ้า session ไม่เปลี่ยน
-  // ไม่งั้น useEffect ที่มี user เป็น dependency (ในหน้า admin/teacher/student) จะ fire ซ้ำไม่รู้จบ
   const user: DBUser | null = useMemo(() => {
     if (!session?.user) return null;
     const su = session.user as any;
@@ -26,6 +25,7 @@ export function useAuth() {
       id: su.id,
       username: session.user!.name || "",
       role: su.role,
+      school_id: su.school_id,
       student_id: su.student_id,
       homeroom_classroom_id: su.homeroom_classroom_id,
       subjects: su.subjects,

@@ -2,7 +2,8 @@ export interface DBUser {
   id: string;
   firebase_uid?: string;
   username: string;
-  role: "admin" | "teacher" | "student";
+  role: "super_admin" | "admin" | "teacher" | "student";
+  school_id?: string;
   student_id?: string;
   homeroom_classroom_id?: string;
   subjects?: string[];

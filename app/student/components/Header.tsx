@@ -2,6 +2,7 @@
 
 import { Mail, Key, LogOut } from "lucide-react";
 import ThemeToggle from "../../components/ThemeToggle";
+import { SchoolLogo, useSchoolBrand } from "../../components/SchoolBrand";
 
 interface HeaderProps {
   studentName: string;
@@ -11,6 +12,7 @@ interface HeaderProps {
   onConnectGoogle: () => void;
   onChangePassword: () => void;
   onLogout: () => void;
+  schoolId?: string | null;
 }
 
 export default function Header({
@@ -21,17 +23,22 @@ export default function Header({
   onConnectGoogle,
   onChangePassword,
   onLogout,
+  schoolId,
 }: HeaderProps) {
+  const { school } = useSchoolBrand(schoolId);
+
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-card/80 backdrop-blur-xl">
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 ring-1 ring-border shadow-sm">
-            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+            <SchoolLogo school={school} schoolKey={schoolId} className="w-full h-full" />
           </div>
           <div className="min-w-0">
             <div className="font-bold text-foreground text-sm leading-tight truncate">{studentName}</div>
-            <div className="text-xs text-muted-foreground font-medium">รหัส {studentCode} · ห้อง {classroomName || "—"}</div>
+            <div className="text-xs text-muted-foreground font-medium truncate">
+              {school?.name || `รหัส ${studentCode} · ห้อง ${classroomName || "—"}`}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">

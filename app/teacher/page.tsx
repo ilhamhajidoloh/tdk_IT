@@ -1015,6 +1015,7 @@ export default function TeacherPortal() {
         onConnectGoogle={handleConnectGoogle}
         onChangePassword={handleChangePassword}
         onLogout={handleLogout}
+        schoolId={teacherUser?.school_id}
       />
 
       <TabNav

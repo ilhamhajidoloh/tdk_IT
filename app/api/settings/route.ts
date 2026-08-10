@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 import { ensureStatusSchema } from "@/app/lib/statusMigration";
+import { getSchoolContext } from "@/app/lib/schoolContext";
 
 function formatRow(row: Record<string, unknown>) {
   if (!row) return row;
@@ -29,8 +30,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
 
+  const context = await getSchoolContext();
+  let schoolId = context?.schoolId;
+
+  if (context?.isSuperAdmin) {
+    schoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id") || schoolId;
+  } else if (req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id")) {
+    return NextResponse.json({ error: "Forbidden: Cannot access other school's data" }, { status: 403 });
+  }
+
+  if (!schoolId) {
+    schoolId = "00000000-0000-0000-0000-000000000001";
+  }
+
   await ensureStatusSchema();
-  const result = await pool.query("SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings ORDER BY academic_year DESC, term DESC");
+  const result = await pool.query(
+    "SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
+    [schoolId]
+  );
   return NextResponse.json(result.rows.map(formatRow));
 }
 

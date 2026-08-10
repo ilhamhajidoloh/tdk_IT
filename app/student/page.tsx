@@ -548,6 +548,7 @@ export default function StudentPortal() {
         onConnectGoogle={handleConnectGoogle}
         onChangePassword={handleChangePassword}
         onLogout={handleLogout}
+        schoolId={user?.school_id}
       />
 
       <TabNav activeTab={activeTab} setActiveTab={setActiveTab} gradesCount={gradesCount} />

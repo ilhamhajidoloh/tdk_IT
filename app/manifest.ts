@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "th",
     icons: [
       {
-        src: "/logo.jpg",
+        src: "/tdk-it-logo.svg",
         sizes: "any",
         type: "image/jpeg",
       },

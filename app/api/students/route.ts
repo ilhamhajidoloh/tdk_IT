@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
+import { getSchoolContext } from "@/app/lib/schoolContext";
 
 export async function GET(req: NextRequest) {
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const context = await getSchoolContext();
+  let schoolId = context?.schoolId;
+
+  if (context?.isSuperAdmin) {
+    schoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id") || schoolId;
+  } else if (req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id")) {
+    // Non-super admin cannot request data from other schools
+    return NextResponse.json({ error: "Forbidden: Cannot access other school's data" }, { status: 403 });
+  }
+
+  if (!schoolId) {
+    schoolId = "00000000-0000-0000-0000-000000000001";
+  }
 
   // Auto-sync students from users using a single fast query
   try {
-    await pool.query(`
-      INSERT INTO students (name, student_id)
-      SELECT username, student_id FROM users
-      WHERE role = 'student' AND student_id IS NOT NULL AND student_id != ''
-      ON CONFLICT (student_id) DO NOTHING
-    `);
+    await pool.query(
+      `INSERT INTO students (name, student_id, school_id)
+       SELECT username, student_id, COALESCE(school_id, $1::uuid) FROM users
+       WHERE role = 'student' AND student_id IS NOT NULL AND student_id != ''
+       ON CONFLICT (student_id) DO NOTHING`,
+      [schoolId]
+    );
   } catch (e) {
     console.error("Error auto-syncing students from users:", e);
   }
@@ -23,7 +36,7 @@ export async function GET(req: NextRequest) {
   const statusParam = req.nextUrl.searchParams.get("status"); // active | graduated | resigned | all
 
   let statusClause = "";
-  const params: any[] = [];
+  const params: any[] = [schoolId];
 
   if (statusParam && statusParam !== "all") {
     params.push(statusParam);
@@ -38,7 +51,7 @@ export async function GET(req: NextRequest) {
       `SELECT s.id, s.name, s.student_id, COALESCE(s.status, 'active') AS status, s.graduation_year, s.status_updated_at, s.status_note, s.enrollment_date, s.graduation_date, cs.classroom_id, cs.student_number
        FROM students s
        JOIN classroom_students cs ON cs.student_id = s.id
-       WHERE cs.classroom_id = $${classParamIdx} ${statusClause}
+       WHERE (s.school_id = $1 OR s.school_id IS NULL) AND cs.classroom_id = $${classParamIdx} ${statusClause}
        ORDER BY cs.student_number ASC NULLS LAST, s.name ASC`,
       params
     );
@@ -48,13 +61,15 @@ export async function GET(req: NextRequest) {
     if (!targetSettingId) {
       try {
         const activeRes = await pool.query(
-          `SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1`
+          `SELECT id FROM system_settings WHERE (school_id = $1 OR school_id IS NULL) AND is_active = true ORDER BY id DESC LIMIT 1`,
+          [schoolId]
         );
         if (activeRes.rows.length > 0) {
           targetSettingId = activeRes.rows[0].id.toString();
         } else {
           const dateRes = await pool.query(
-            `SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1`
+            `SELECT id FROM system_settings WHERE (school_id = $1 OR school_id IS NULL) AND CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1`,
+            [schoolId]
           );
           if (dateRes.rows.length > 0) {
             targetSettingId = dateRes.rows[0].id.toString();
@@ -73,7 +88,7 @@ export async function GET(req: NextRequest) {
        FROM students s
        LEFT JOIN classroom_students cs ON cs.student_id = s.id
          AND (cs.setting_id = $${settingParamIdx}::bigint OR cs.setting_id IS NULL)
-       WHERE 1=1 ${statusClause}
+       WHERE (s.school_id = $1 OR s.school_id IS NULL) ${statusClause}
        ORDER BY cs.student_number ASC NULLS LAST, s.name ASC`,
       params
     );
@@ -82,9 +97,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
+  if (!(await verifyAdmin(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const context = await getSchoolContext();
+  let schoolId = context?.schoolId;
+  if (!schoolId) schoolId = "00000000-0000-0000-0000-000000000001";
 
   const { name, student_id, classroom_id, setting_id } = await req.json();
 
@@ -95,7 +114,10 @@ export async function POST(req: NextRequest) {
   const studentIdVal = student_id?.trim() || null;
 
   if (studentIdVal) {
-    const checkExists = await pool.query("SELECT id FROM students WHERE student_id = $1", [studentIdVal]);
+    const checkExists = await pool.query(
+      "SELECT id FROM students WHERE student_id = $1 AND (school_id = $2 OR school_id IS NULL)",
+      [studentIdVal, schoolId]
+    );
     if (checkExists.rows.length > 0) {
       return NextResponse.json({ error: "รหัสนักเรียนนี้มีอยู่ในระบบแล้ว" }, { status: 400 });
     }
@@ -105,8 +127,8 @@ export async function POST(req: NextRequest) {
   try {
     await client.query("BEGIN");
     const studentRes = await client.query(
-      "INSERT INTO students (name, student_id) VALUES ($1, $2) RETURNING id, name, student_id",
-      [name.trim(), studentIdVal]
+      "INSERT INTO students (name, student_id, school_id) VALUES ($1, $2, $3) RETURNING id, name, student_id",
+      [name.trim(), studentIdVal, schoolId]
     );
     const newStudent = studentRes.rows[0];
 
@@ -114,7 +136,8 @@ export async function POST(req: NextRequest) {
       let targetSettingId = setting_id;
       if (!targetSettingId) {
         const settingRes = await client.query(
-          "SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1"
+          "SELECT id FROM system_settings WHERE (school_id = $1 OR school_id IS NULL) AND is_active = true ORDER BY id DESC LIMIT 1",
+          [schoolId]
         );
         if (settingRes.rows.length > 0) {
           targetSettingId = settingRes.rows[0].id;
@@ -122,8 +145,8 @@ export async function POST(req: NextRequest) {
       }
 
       await client.query(
-        "INSERT INTO classroom_students (student_id, classroom_id, setting_id) VALUES ($1, $2, $3)",
-        [newStudent.id, classroom_id, targetSettingId || null]
+        "INSERT INTO classroom_students (student_id, classroom_id, setting_id, school_id) VALUES ($1, $2, $3, $4)",
+        [newStudent.id, classroom_id, targetSettingId || null, schoolId]
       );
     }
 
@@ -139,9 +162,12 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
+  if (!(await verifyAdmin(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const context = await getSchoolContext();
+  let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   const { id, classroom_id, student_number, setting_id } = await req.json();
 
@@ -153,7 +179,8 @@ export async function PUT(req: NextRequest) {
     let targetSettingId = setting_id;
     if (!targetSettingId) {
       const settingRes = await pool.query(
-        "SELECT id FROM system_settings WHERE is_active = true ORDER BY id DESC LIMIT 1"
+        "SELECT id FROM system_settings WHERE (school_id = $1 OR school_id IS NULL) AND is_active = true ORDER BY id DESC LIMIT 1",
+        [schoolId]
       );
       if (settingRes.rows.length > 0) {
         targetSettingId = settingRes.rows[0].id;
@@ -162,11 +189,11 @@ export async function PUT(req: NextRequest) {
 
     if (classroom_id && targetSettingId) {
       await pool.query(
-        `INSERT INTO classroom_students (student_id, classroom_id, setting_id, student_number)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO classroom_students (student_id, classroom_id, setting_id, student_number, school_id)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (student_id, setting_id)
-         DO UPDATE SET classroom_id = EXCLUDED.classroom_id, student_number = EXCLUDED.student_number`,
-        [id, classroom_id, targetSettingId, student_number || null]
+         DO UPDATE SET classroom_id = EXCLUDED.classroom_id, student_number = EXCLUDED.student_number, school_id = EXCLUDED.school_id`,
+        [id, classroom_id, targetSettingId, student_number || null, schoolId]
       );
     }
 

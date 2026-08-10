@@ -13,7 +13,8 @@ export const authOptions: NextAuthOptions = {
       name: "Credentials",
       credentials: {
         username: { label: "Username", type: "text", placeholder: "admin" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        school: { label: "School", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) {
@@ -22,8 +23,26 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const result = await pool.query(
-            "SELECT id, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE username = $1 OR student_id = $1",
-            [credentials.username]
+            `SELECT u.id, u.username, u.password, u.role, u.school_id, u.student_id,
+                    u.homeroom_classroom_id, u.subjects, u.email, u.is_clerical
+             FROM users u
+             WHERE (u.username = $1 OR u.student_id = $1)
+               AND (
+                 u.role = 'super_admin'
+                 OR EXISTS (
+                   SELECT 1
+                   FROM public.schools s
+                   WHERE s.id = u.school_id
+                     AND s.is_active = true
+                     AND (
+                       LOWER(s.subdomain) = LOWER(NULLIF($2, ''))
+                       OR s.id::text = NULLIF($2, '')
+                     )
+                 )
+               )
+             ORDER BY CASE WHEN u.role = 'super_admin' THEN 0 ELSE 1 END
+             LIMIT 1`,
+            [credentials.username, credentials.school || "main"]
           );
 
           const user = result.rows[0];
@@ -42,6 +61,7 @@ export const authOptions: NextAuthOptions = {
             id: user.id.toString(),
             name: user.username,
             role: user.role,
+            school_id: user.school_id,
             student_id: user.student_id,
             homeroom_classroom_id: user.homeroom_classroom_id,
             subjects: user.subjects,
@@ -92,13 +112,14 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account, trigger }) {
       if (account?.provider === "google" || account?.provider === "line" || account?.provider === "facebook") {
         const result = await pool.query(
-          "SELECT id, username, role, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE LOWER(email) = LOWER($1)",
+          "SELECT id, username, role, school_id, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE LOWER(email) = LOWER($1)",
           [token.email]
         );
         if (result.rows[0]) {
           const u = result.rows[0];
           token.id = u.id.toString();
           token.role = u.role;
+          token.school_id = u.school_id;
           token.name = u.username;
           token.student_id = u.student_id;
           token.homeroom_classroom_id = u.homeroom_classroom_id;
@@ -109,6 +130,7 @@ export const authOptions: NextAuthOptions = {
       } else if (user) {
         token.role = (user as any).role;
         token.id = user.id;
+        token.school_id = (user as any).school_id;
         token.student_id = (user as any).student_id;
         token.homeroom_classroom_id = (user as any).homeroom_classroom_id;
         token.subjects = (user as any).subjects;
@@ -117,13 +139,14 @@ export const authOptions: NextAuthOptions = {
       } else if (token.id) {
         // ดึงข้อมูลล่าสุดจากฐานข้อมูลทุกครั้งที่มีการอ่านเซสชันเพื่อให้ข้อมูลอีเมลและสิทธิ์ซิงค์ตรงกันเสมอ
         const result = await pool.query(
-          "SELECT username, role, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE id = $1",
+          "SELECT username, role, school_id, student_id, homeroom_classroom_id, subjects, email, is_clerical FROM users WHERE id = $1",
           [token.id]
         );
         if (result.rows[0]) {
           const u = result.rows[0];
           token.name = u.username;
           token.role = u.role;
+          token.school_id = u.school_id;
           token.student_id = u.student_id;
           token.homeroom_classroom_id = u.homeroom_classroom_id;
           token.subjects = u.subjects;
@@ -137,6 +160,7 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
+        (session.user as any).school_id = token.school_id;
         (session.user as any).student_id = token.student_id;
         (session.user as any).homeroom_classroom_id = token.homeroom_classroom_id;
         (session.user as any).subjects = token.subjects;

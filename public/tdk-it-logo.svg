@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">TDK IT</title>
+  <desc id="desc">Central TDK IT education technology logo</desc>
+  <rect width="512" height="512" rx="112" fill="#073b3a"/>
+  <circle cx="256" cy="184" r="124" fill="#0b5d57"/>
+  <path d="M136 260h240v18H136z" fill="#f4c95d"/>
+  <path d="M164 260v-72h28v72M320 260v-72h28v72" fill="#f4c95d"/>
+  <path d="M156 188h44l-22-44zM312 188h44l-22-44z" fill="#f4c95d"/>
+  <circle cx="178" cy="138" r="5" fill="#f4c95d"/>
+  <circle cx="334" cy="138" r="5" fill="#f4c95d"/>
+  <path d="M202 260v-43c0-30 24-54 54-54s54 24 54 54v43z" fill="#f4c95d"/>
+  <path d="M232 260v-42c0-13 11-24 24-24s24 11 24 24v42z" fill="#073b3a"/>
+  <path d="M256 155v-24" stroke="#f4c95d" stroke-width="7" stroke-linecap="round"/>
+  <path d="M256 126c-8 0-14-6-14-14 8 3 14 3 14 3s6 0 14-3c0 8-6 14-14 14z" fill="#f4c95d"/>
+  <path d="M92 300c51-16 108-10 164 18 56-28 113-34 164-18v74c-51-16-108-10-164 18-56-28-113-34-164-18z" fill="#fff"/>
+  <path d="M256 318v74M104 318c48-12 99-5 152 20M408 318c-48-12-99-5-152 20" fill="none" stroke="#22a89a" stroke-width="8" stroke-linecap="round"/>
+  <text x="256" y="454" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="55" font-weight="700" text-anchor="middle" letter-spacing="4">TDK IT</text>
+</svg>

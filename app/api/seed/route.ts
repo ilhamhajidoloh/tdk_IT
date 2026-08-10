@@ -1,35 +1,46 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/app/lib/firebase-admin";
+import bcrypt from "bcrypt";
 import pool from "@/app/lib/db";
 
-// รันครั้งเดียวเพื่อสร้าง test users
+// Endpoint สำหรับรันครั้งเดียว เพื่อสร้าง/อัปเดต Super Admin และ Test Users
 export async function POST() {
-  const usersToCreate = [
-    { email: "admin@school.local",   password: "admin1234",   username: "admin",    role: "admin" },
-    { email: "teacher1@school.local", password: "teacher1234", username: "teacher1", role: "teacher" },
-    { email: "s001@school.local",     password: "student1234", username: "s001",     role: "student", studentId: "S001" },
-  ];
+  try {
+    const superAdminPasswordHash = await bcrypt.hash("superadmin1234", 10);
+    const adminPasswordHash = await bcrypt.hash("admin1234", 10);
 
-  const results = [];
-
-  for (const u of usersToCreate) {
-    // สร้างใน Firebase Auth
-    const firebaseUser = await adminAuth.createUser({
-      email: u.email,
-      password: u.password,
-      displayName: u.username,
-    });
-
-    // Insert ลง CockroachDB
+    // 1. สร้าง/อัปเดต Super Admin
     await pool.query(
-      `INSERT INTO users (firebase_uid, username, role, student_id)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (username) DO NOTHING`,
-      [firebaseUser.uid, u.username, u.role, u.studentId ?? null]
+      `INSERT INTO users (username, password, role, school_id)
+       VALUES ('superadmin', $1, 'super_admin', '00000000-0000-0000-0000-000000000001')
+       ON CONFLICT (username) 
+       DO UPDATE SET password = EXCLUDED.password, role = EXCLUDED.role`,
+      [superAdminPasswordHash]
     );
 
-    results.push({ username: u.username, uid: firebaseUser.uid });
-  }
+    // 2. สร้าง/อัปเดต Admin ปกติ
+    await pool.query(
+      `INSERT INTO users (username, password, role, school_id)
+       VALUES ('admin', $1, 'admin', '00000000-0000-0000-0000-000000000001')
+       ON CONFLICT (username) 
+       DO UPDATE SET password = EXCLUDED.password, role = EXCLUDED.role`,
+      [adminPasswordHash]
+    );
 
-  return NextResponse.json({ created: results });
+    return NextResponse.json({
+      message: "Seed users completed successfully!",
+      superAdmin: {
+        username: "superadmin",
+        password: "superadmin1234",
+        role: "super_admin",
+      },
+      admin: {
+        username: "admin",
+        password: "admin1234",
+        role: "admin",
+      },
+    });
+  } catch (error: any) {
+    console.error("Seed error:", error);
+    return NextResponse.json({ error: error.message || "Failed to seed users" }, { status: 500 });
+  }
 }

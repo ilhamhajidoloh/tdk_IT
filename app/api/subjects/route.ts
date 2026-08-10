@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
+import { getSchoolContext } from "@/app/lib/schoolContext";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -16,11 +17,25 @@ export async function GET(req: NextRequest) {
     const token = req.headers.get("Authorization")?.split("Bearer ")[1];
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const context = await getSchoolContext();
+    let schoolId = context?.schoolId;
+    if (context?.isSuperAdmin) {
+      schoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id") || schoolId;
+    } else if (req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id")) {
+      // Non-super admin cannot request data from other schools
+      return NextResponse.json({ error: "Forbidden: Cannot access other school's data" }, { status: 403 });
+    }
+    if (!schoolId) schoolId = "00000000-0000-0000-0000-000000000001";
+
     const { searchParams } = new URL(req.url);
     const settingId = searchParams.get("settingId");
 
-    const whereClause = settingId ? `WHERE s.setting_id = $1` : "";
-    const params = settingId ? [settingId] : [];
+    const params: any[] = [schoolId];
+    let whereClause = `WHERE (s.school_id = $1 OR s.school_id IS NULL)`;
+    if (settingId) {
+      params.push(settingId);
+      whereClause += ` AND s.setting_id = $2`;
+    }
 
     const multiTeacherReady = await hasSubjectTeachersTable();
 
@@ -64,9 +79,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
+  if (!(await verifyAdmin(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const context = await getSchoolContext();
+  let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   const { name, teacher_ids, classroom_ids, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours } = await req.json();
   if (!name?.trim()) {
@@ -80,25 +98,25 @@ export async function POST(req: NextRequest) {
     await client.query("BEGIN");
 
     const result = await client.query(
-      "INSERT INTO subjects (name, teacher_id, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-      [name.trim(), primaryTeacherId || null, setting_id || null, midterm_max_score || null, final_max_score || null, subject_type === "activity" ? "activity" : "main", credit_hours ?? 1]
+      "INSERT INTO subjects (name, teacher_id, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours, school_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
+      [name.trim(), primaryTeacherId || null, setting_id || null, midterm_max_score || null, final_max_score || null, subject_type === "activity" ? "activity" : "main", credit_hours ?? 1, schoolId]
     );
     const subject = result.rows[0];
 
     if (Array.isArray(classroom_ids) && classroom_ids.length > 0) {
-      const values = classroom_ids.map((_: string, i: number) => `($1, $${i + 2})`).join(", ");
+      const values = classroom_ids.map((_: string, i: number) => `($1, $${i + 2}, $${classroom_ids.length + 2})`).join(", ");
       await client.query(
-        `INSERT INTO subject_classrooms (subject_id, classroom_id) VALUES ${values}`,
-        [subject.id, ...classroom_ids]
+        `INSERT INTO subject_classrooms (subject_id, classroom_id, school_id) VALUES ${values}`,
+        [subject.id, ...classroom_ids, schoolId]
       );
     }
 
     const multiTeacherReady = await hasSubjectTeachersTable();
     if (multiTeacherReady && Array.isArray(teacher_ids) && teacher_ids.length > 0) {
-      const values = teacher_ids.map((_: string, i: number) => `($1, $${i + 2})`).join(", ");
+      const values = teacher_ids.map((_: string, i: number) => `($1, $${i + 2}, $${teacher_ids.length + 2})`).join(", ");
       await client.query(
-        `INSERT INTO subject_teachers (subject_id, user_id) VALUES ${values} ON CONFLICT DO NOTHING`,
-        [subject.id, ...teacher_ids]
+        `INSERT INTO subject_teachers (subject_id, user_id, school_id) VALUES ${values} ON CONFLICT DO NOTHING`,
+        [subject.id, ...teacher_ids, schoolId]
       );
     }
 

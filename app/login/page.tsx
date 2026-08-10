@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Swal from "sweetalert2";
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import GuestChatWidget from "../components/GuestChatWidget";
 import ThemeToggle from "../components/ThemeToggle";
+import { SchoolLogo, type SchoolInfo, updateSchoolDocumentMeta } from "../components/SchoolBrand";
 
 type LoginTab = "staff" | "teacher" | "student";
 
@@ -71,7 +72,7 @@ function PasswordField({
   );
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<LoginTab>("student");
   const [isClient, setIsClient] = useState(false);
@@ -96,6 +97,7 @@ export default function LoginPage() {
   const [linkEmail, setLinkEmail] = useState("");
   const [linkProvider, setLinkProvider] = useState("");
   const [linkSig, setLinkSig] = useState("");
+  const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
 
   useEffect(() => {
     setShowPassword(false);
@@ -103,22 +105,32 @@ export default function LoginPage() {
 
   useEffect(() => {
     setIsClient(true);
+    const urlParams = new URLSearchParams(window.location.search);
+    const schoolParam = urlParams.get("school") || (typeof window !== "undefined" ? localStorage.getItem("selectedSchool") : null) || "main";
 
-    fetch("/api/public/classrooms")
+    fetch(`/api/public/schools/${encodeURIComponent(schoolParam)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        setSchoolInfo(data);
+        updateSchoolDocumentMeta(data);
+      })
+      .catch(() => setSchoolInfo(null));
+
+    fetch(`/api/public/classrooms?school=${encodeURIComponent(schoolParam)}`)
       .then(r => r.json())
       .then((data: Classroom[]) => {
         setClassrooms(data);
         if (data.length > 0) setStudentClassroom(data[0].id);
       });
 
-    fetch("/api/public/teachers")
+    fetch(`/api/public/teachers?school=${encodeURIComponent(schoolParam)}`)
       .then(r => r.json())
       .then((data: Teacher[]) => {
         setTeachers(data);
         if (data.length > 0) setTeacherUsername(data[0].username);
       });
 
-    fetch("/api/public/settings")
+    fetch(`/api/public/settings?school=${encodeURIComponent(schoolParam)}`)
       .then(r => r.json())
       .then(data => setStudentYear(data.academic_year ?? "2568"));
   }, []);
@@ -151,7 +163,8 @@ export default function LoginPage() {
         .then(user => {
           if (!user) return;
           Swal.fire({ icon: "success", title: "เข้าสู่ระบบสำเร็จ", timer: 1000, showConfirmButton: false });
-          if (user.role === "admin") router.push("/admin");
+          if (user.role === "super_admin") router.push("/super-admin");
+          else if (user.role === "admin") router.push("/admin");
           else if (user.role === "teacher") router.push("/teacher");
           else router.push("/student");
         });
@@ -174,20 +187,25 @@ export default function LoginPage() {
   }, [router]);
 
   const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: "/login?google=1" });
+    const school = new URLSearchParams(window.location.search).get("school") || localStorage.getItem("selectedSchool") || "main";
+    signIn("google", { callbackUrl: `/login?google=1&school=${encodeURIComponent(school)}` });
   };
 
   const handleLineLogin = () => {
-    signIn("line", { callbackUrl: "/login?line=1" });
+    const school = new URLSearchParams(window.location.search).get("school") || localStorage.getItem("selectedSchool") || "main";
+    signIn("line", { callbackUrl: `/login?line=1&school=${encodeURIComponent(school)}` });
   };
 
   const handleFacebookLogin = () => {
-    signIn("facebook", { callbackUrl: "/login?facebook=1" });
+    const school = new URLSearchParams(window.location.search).get("school") || localStorage.getItem("selectedSchool") || "main";
+    signIn("facebook", { callbackUrl: `/login?facebook=1&school=${encodeURIComponent(school)}` });
   };
 
   useEffect(() => {
     if (!studentClassroom) return;
-    fetch(`/api/public/students?classroomId=${studentClassroom}`)
+    const urlParams = new URLSearchParams(window.location.search);
+    const schoolParam = urlParams.get("school") || (typeof window !== "undefined" ? localStorage.getItem("selectedSchool") : null) || "main";
+    fetch(`/api/public/students?classroomId=${studentClassroom}&school=${encodeURIComponent(schoolParam)}`)
       .then(r => r.json())
       .then((data: Student[]) => {
         setStudents(data);
@@ -233,6 +251,9 @@ export default function LoginPage() {
             username,
             role: activeTab,
             password,
+            school: new URLSearchParams(window.location.search).get("school") ||
+              localStorage.getItem("selectedSchool") ||
+              "main",
           }),
         });
 
@@ -245,6 +266,9 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         username,
         password,
+        school: new URLSearchParams(window.location.search).get("school") ||
+          localStorage.getItem("selectedSchool") ||
+          "main",
         redirect: false,
       });
 
@@ -257,8 +281,10 @@ export default function LoginPage() {
       const user = await res.json();
 
       setIsRedirecting(true);
-      const roleLabel = user.role === "admin" ? "บุคลากร" : user.role === "teacher" ? "คุณครู" : "นักเรียน";
-      const roleGradient = user.role === "admin" ? "from-amber-500 to-orange-600" : user.role === "teacher" ? "from-indigo-500 to-blue-600" : "from-violet-500 to-purple-600";
+      const roleLabel = (user.role === "admin" || user.role === "super_admin") 
+        ? (user.role === "super_admin" ? "ผู้ดูแลระบบสูงสุด (Super Admin)" : "บุคลากร") 
+        : user.role === "teacher" ? "คุณครู" : "นักเรียน";
+      const roleGradient = (user.role === "admin" || user.role === "super_admin") ? "from-amber-500 to-orange-600" : user.role === "teacher" ? "from-indigo-500 to-blue-600" : "from-violet-500 to-purple-600";
 
       Swal.fire({
         icon: "success",
@@ -266,7 +292,7 @@ export default function LoginPage() {
         html: `
           <div class="flex flex-col items-center gap-3 mt-2">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-br ${roleGradient} flex items-center justify-center text-white shadow-lg">
-              ${user.role === "admin" ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>' : user.role === "teacher" ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>' : '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>'}
+              ${(user.role === "admin" || user.role === "super_admin") ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>' : user.role === "teacher" ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>' : '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>'}
             </div>
             <span class="text-sm font-bold text-muted-foreground">กำลังเข้าสู่ระบบในฐานะ <span class="text-foreground">${roleLabel}</span></span>
           </div>
@@ -275,7 +301,8 @@ export default function LoginPage() {
         showConfirmButton: false,
       });
 
-      if (user.role === "admin") router.push("/admin");
+      if (user.role === "super_admin") router.push("/super-admin");
+      else if (user.role === "admin") router.push("/admin");
       else if (user.role === "teacher") router.push("/teacher");
       else router.push("/student");
 
@@ -299,7 +326,7 @@ export default function LoginPage() {
       <aside className="aurora-panel hidden lg:flex flex-col justify-between p-12 xl:p-16 text-white">
         <Link href="/" className="relative z-10 flex items-center gap-3 animate-fade-in-down">
           <div className="h-11 w-11 rounded-2xl bg-white/15 backdrop-blur-md ring-1 ring-white/25 overflow-hidden shadow-lg">
-            <img src="/logo.jpg" alt="Logo" className="h-full w-full object-cover" />
+            <SchoolLogo school={schoolInfo} schoolKey={schoolInfo?.id || schoolInfo?.subdomain} className="h-full w-full" />
           </div>
           <span className="text-lg font-bold tracking-tight">ระบบจัดการโรงเรียน</span>
         </Link>
@@ -353,7 +380,7 @@ export default function LoginPage() {
           {/* Mobile brand */}
           <div className="lg:hidden mb-8 flex flex-col items-center text-center">
             <div className="h-14 w-14 rounded-2xl overflow-hidden ring-1 ring-border shadow-md mb-3">
-              <img src="/logo.jpg" alt="Logo" className="h-full w-full object-cover" />
+              <SchoolLogo school={schoolInfo} schoolKey={schoolInfo?.id || schoolInfo?.subdomain} className="h-full w-full" />
             </div>
           </div>
 
@@ -572,5 +599,13 @@ export default function LoginPage() {
 
       <GuestChatWidget />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

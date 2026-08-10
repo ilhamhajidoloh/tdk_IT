@@ -82,7 +82,7 @@ export default function InstallPrompt() {
         <div className="relative shrink-0">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-15 blur-sm" />
           <div className="w-11 h-11 rounded-xl overflow-hidden bg-white shadow-sm relative border border-white/80">
-            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+            <img src="/tdk-it-logo.svg" alt="TDK IT" className="w-full h-full object-cover" />
           </div>
         </div>
         <div className="flex-1 min-w-0">

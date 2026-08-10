@@ -4,9 +4,14 @@ import { Mail, Key, LogOut } from "lucide-react";
 import ThemeToggle from "../../components/ThemeToggle";
 import { formatThaiDate } from "../../lib/format";
 import type { DBUser } from "./types";
+import SchoolSelector from "./SchoolSelector";
+import { useAuth } from "../../lib/useAuth";
+import { SchoolLogo, useSchoolBrand } from "../../components/SchoolBrand";
 
 interface AdminHeaderProps {
   adminUser: DBUser | null;
+  selectedSchoolId: string | null;
+  onSchoolChange: (schoolId: string) => void;
   handleConnectGoogle: () => void;
   handleChangePassword: () => void;
   handleLogout: () => void;
@@ -14,10 +19,17 @@ interface AdminHeaderProps {
 
 export default function AdminHeader({
   adminUser,
+  selectedSchoolId,
+  onSchoolChange,
   handleConnectGoogle,
   handleChangePassword,
   handleLogout,
 }: AdminHeaderProps) {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+  const schoolKey = selectedSchoolId || adminUser?.school_id;
+  const { school } = useSchoolBrand(schoolKey);
+
   return (
     <header className="header-gradient shadow-sm sticky top-0 z-20 border-b border-border">
       <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between gap-4">
@@ -25,18 +37,22 @@ export default function AdminHeader({
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-15 blur-sm" />
             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-card relative border border-border/80">
-              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+              <SchoolLogo school={school} schoolKey={schoolKey} className="w-full h-full" />
             </div>
           </div>
           <div>
             <h1 className="text-lg font-extrabold text-foreground leading-none gradient-text">
-              ระบบแอดมิน
+              {school?.name || "ระบบแอดมิน"}
             </h1>
             <p className="text-xs text-muted-foreground font-medium mt-0.5">
               จัดการโครงสร้างระบบและผู้ใช้งาน
             </p>
           </div>
         </div>
+
+        {isSuperAdmin && (
+          <SchoolSelector selectedSchoolId={selectedSchoolId} onSchoolChange={onSchoolChange} />
+        )}
 
         <div className="hidden sm:flex flex-col items-end mr-2">
           <span className="text-sm font-bold text-foreground">
