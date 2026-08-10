@@ -2,19 +2,20 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ระบบจัดการโรงเรียน",
-    short_name: "ระบบโรงเรียน",
-    description: "ระบบจัดการคะแนนและข้อมูลนักเรียน",
+    name: "TDK IT",
+    short_name: "TDK IT",
+    description: "ระบบจัดการโรงเรียน TDK IT",
     start_url: "/",
     display: "standalone",
-    background_color: "#f8fafc",
+    background_color: "#0a0b10",
     theme_color: "#4f46e5",
     lang: "th",
     icons: [
       {
         src: "/tdk-it-logo.svg",
         sizes: "any",
-        type: "image/jpeg",
+        type: "image/svg+xml",
+        purpose: "any",
       },
       {
         src: "/icons/icon-192.png",

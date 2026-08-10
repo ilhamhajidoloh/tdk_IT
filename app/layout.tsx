@@ -2,6 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter, Sarabun, Noto_Naskh_Arabic, Noto_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
+import InstallPrompt from "./components/InstallPrompt";
+import { ToastProvider } from "./components/ToastProvider";
+import { CommandPalette } from "./components/CommandPalette";
+import SchoolDocumentMeta from "./components/SchoolDocumentMeta";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -33,10 +38,13 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "ระบบจัดการโรงเรียน",
-  description: "ระบบจัดการคะแนนและข้อมูลนักเรียน",
+  title: "TDK IT",
+  description: "ระบบจัดการโรงเรียน TDK IT",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/tdk-it-logo.svg",
+    shortcut: "/tdk-it-logo.svg",
+    apple: "/tdk-it-logo.svg",
   },
 };
 
@@ -46,12 +54,6 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: dark)", color: "#0a0b10" },
   ],
 };
-
-import { Providers } from "./providers";
-import InstallPrompt from "./components/InstallPrompt";
-import { ToastProvider } from "./components/ToastProvider";
-import { CommandPalette } from "./components/CommandPalette";
-import SchoolDocumentMeta from "./components/SchoolDocumentMeta";
 
 // Applies the saved/preferred theme before first paint to avoid a flash.
 const themeScript = `(function(){try{var t=localStorage.getItem('theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
