@@ -62,11 +62,21 @@ export async function GET(req: NextRequest) {
              u.username as teacher_name,
              ${teacherCols}
              COALESCE(array_agg(sc.classroom_id) FILTER (WHERE sc.classroom_id IS NOT NULL), '{}') as classroom_ids,
-             COALESCE(array_agg(c.name) FILTER (WHERE c.name IS NOT NULL), '{}') as classroom_names
+             COALESCE(array_agg(c.name) FILTER (WHERE c.name IS NOT NULL), '{}') as classroom_names,
+             MAX(t.thai) as name_thai,
+             MAX(t.malay_rumi) as name_rumi,
+             MAX(t.malay_jawi) as name_jawi
       FROM subjects s
       LEFT JOIN users u ON s.teacher_id = u.id
       LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
       LEFT JOIN classrooms c ON c.id = sc.classroom_id
+      LEFT JOIN translations t ON (
+        t.key = s.name 
+        OR t.key = 'subj_' || s.id 
+        OR LOWER(t.thai) = LOWER(s.name) 
+        OR LOWER(t.malay_rumi) = LOWER(s.name) 
+        OR LOWER(t.malay_jawi) = LOWER(s.name)
+      )
       ${whereClause}
       GROUP BY s.id, s.name, s.teacher_id, s.setting_id, s.subject_type, s.credit_hours, s.score_display_mode, s.sort_order, u.username
       ORDER BY COALESCE(s.sort_order, 999) ASC, s.name ASC

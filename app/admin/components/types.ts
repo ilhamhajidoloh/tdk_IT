@@ -51,6 +51,9 @@ export interface DBSubject {
   credit_hours?: number | null;
   score_display_mode?: "separate" | "combined";
   sort_order?: number | null;
+  name_thai?: string;
+  name_rumi?: string;
+  name_jawi?: string;
 }
 
 export interface DBGrade {

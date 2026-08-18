@@ -530,8 +530,13 @@ export default function StudentScoresTab({
                                 <tr key={su.id} className="hover:bg-muted transition-colors">
                                   <td className="px-4 py-2.5">
                                     <div className="font-semibold text-foreground text-xs">{su.name}</div>
+                                    {(su.name_rumi || su.name_jawi) && (
+                                      <div className="text-[10px] text-muted-foreground font-medium">
+                                        {[su.name_rumi, su.name_jawi].filter(Boolean).join(" · ")}
+                                      </div>
+                                    )}
                                     {su.subject_type === "activity" && (
-                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30">
+                                      <span className="inline-block mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30">
                                         กิจกรรม
                                       </span>
                                     )}

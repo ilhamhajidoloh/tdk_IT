@@ -15,8 +15,12 @@ export async function PUT(
     const { id } = await params;
     const { thai, malay_rumi, malay_jawi } = await req.json();
 
-    if (!thai) {
-      return NextResponse.json({ error: "Thai translation is required" }, { status: 400 });
+    const thaiVal = thai?.trim() || "";
+    const rumiVal = malay_rumi?.trim() || "";
+    const jawiVal = malay_jawi?.trim() || "";
+
+    if (!thaiVal && !rumiVal && !jawiVal) {
+      return NextResponse.json({ error: "At least one translation is required" }, { status: 400 });
     }
 
     const result = await pool.query(
@@ -28,7 +32,7 @@ export async function PUT(
          updated_at = NOW()
        WHERE id = $4
        RETURNING id, key, thai, malay_rumi, malay_jawi`,
-      [thai, malay_rumi || "", malay_jawi || "", id]
+      [thaiVal, rumiVal, jawiVal, id]
     );
 
     if (result.rows.length === 0) {

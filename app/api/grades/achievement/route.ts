@@ -13,18 +13,28 @@ export async function GET(req: NextRequest) {
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS subject_display_names JSONB DEFAULT '{}'::jsonb");
 
     const settingRes = await pool.query(
-      "SELECT academic_year, term, midterm_max_score, final_max_score, subject_display_names FROM system_settings WHERE id = $1",
+      "SELECT academic_year, term, midterm_max_score, final_max_score, subject_display_names, school_id FROM system_settings WHERE id = $1",
       [settingId]
     );
     if (settingRes.rows.length === 0) {
       return NextResponse.json({ error: "Setting not found" }, { status: 404 });
     }
 
-    const { academic_year, term: settingTerm, midterm_max_score: defaultMidMax, final_max_score: defaultFinMax, subject_display_names } = settingRes.rows[0];
+    const { academic_year, term: settingTerm, midterm_max_score: defaultMidMax, final_max_score: defaultFinMax, subject_display_names, school_id: settingSchoolId } = settingRes.rows[0];
     const termKey = `${settingTerm}/${academic_year}`;
 
+    let schoolNameTh = "";
+    if (settingSchoolId) {
+      const sRes = await pool.query("SELECT name FROM public.schools WHERE id = $1", [settingSchoolId]);
+      if (sRes.rows.length > 0) schoolNameTh = sRes.rows[0].name || "";
+    }
+    if (!schoolNameTh) {
+      const sRes = await pool.query("SELECT name FROM public.schools WHERE is_active = true ORDER BY created_at ASC LIMIT 1");
+      if (sRes.rows.length > 0) schoolNameTh = sRes.rows[0].name || "";
+    }
+
     // 1. Fetch Classrooms, Subjects, Students, and Grades
-    const [classroomsRes, subjectsRes, studentsRes] = await Promise.all([
+    const [classroomsRes, subjectsRes, studentsRes, translationsRes] = await Promise.all([
       pool.query(
         "SELECT id, name FROM classrooms WHERE setting_id = $1 ORDER BY name",
         [settingId]
@@ -42,6 +52,7 @@ export async function GET(req: NextRequest) {
          WHERE cs.setting_id = $1`,
         [settingId]
       ),
+      pool.query("SELECT key, thai, malay_rumi, malay_jawi FROM translations"),
     ]);
 
     const includeActivity = req.nextUrl.searchParams.get("includeActivity") === "true";
@@ -50,7 +61,43 @@ export async function GET(req: NextRequest) {
     let subjects = subjectsRes.rows;
     if (!includeActivity) {
       subjects = subjects.filter((s: any) => s.subject_type !== "activity");
+    } else {
+      // Only include activity subjects that have scores (midterm_max_score + final_max_score > 0)
+      subjects = subjects.filter((s: any) =>
+        s.subject_type !== "activity" ||
+        ((Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0)
+      );
     }
+
+    const mergedDisplayNames: Record<string, any> = { ...(subject_display_names || {}) };
+    translationsRes.rows.forEach((t: any) => {
+      const entry = {
+        thai: t.thai || t.key,
+        rumi: t.malay_rumi || "",
+        arabic: t.malay_jawi || "",
+      };
+      if (t.key) mergedDisplayNames[t.key] = { ...entry, ...(typeof mergedDisplayNames[t.key] === "object" ? mergedDisplayNames[t.key] : {}) };
+      if (t.thai) mergedDisplayNames[t.thai] = { ...entry, ...(typeof mergedDisplayNames[t.thai] === "object" ? mergedDisplayNames[t.thai] : {}) };
+    });
+
+    subjects.forEach((s: any) => {
+      const t = translationsRes.rows.find((tr: any) =>
+        tr.key === s.name ||
+        tr.key === `subj_${s.id}` ||
+        (tr.thai && tr.thai.trim().toLowerCase() === s.name.trim().toLowerCase()) ||
+        (tr.malay_rumi && tr.malay_rumi.trim().toLowerCase() === s.name.trim().toLowerCase()) ||
+        (tr.malay_jawi && tr.malay_jawi.trim().toLowerCase() === s.name.trim().toLowerCase())
+      );
+      if (t) {
+        const entry = {
+          thai: t.thai || s.name,
+          rumi: t.malay_rumi || "",
+          arabic: t.malay_jawi || "",
+        };
+        mergedDisplayNames[s.id] = { ...entry, ...(typeof mergedDisplayNames[s.id] === "object" ? mergedDisplayNames[s.id] : {}) };
+        mergedDisplayNames[s.name] = { ...entry, ...(typeof mergedDisplayNames[s.name] === "object" ? mergedDisplayNames[s.name] : {}) };
+      }
+    });
     const students = studentsRes.rows;
 
     const studentIds = students.map((s: any) => s.student_id);
@@ -199,7 +246,8 @@ export async function GET(req: NextRequest) {
       academic_year,
       term: settingTerm,
       term_key: termKey,
-      subject_display_names: subject_display_names || {},
+      school_name: schoolNameTh,
+      subject_display_names: mergedDisplayNames,
       subjects: subjects.map((s: any) => ({
         id: s.id,
         name: s.name,

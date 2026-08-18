@@ -2465,6 +2465,23 @@ function AdminPortalContent() {
     ));
   };
 
+  function getSubjectDisplayName(
+    sub: DBSubject | { name: string; name_thai?: string; name_rumi?: string; name_jawi?: string } | undefined | null,
+    lang?: "th" | "ms-rumi" | "ms-jawi" | string
+  ): string {
+    if (!sub) return "";
+    if (lang === "ms-rumi" && sub.name_rumi && sub.name_rumi.trim()) {
+      return sub.name_rumi.trim();
+    }
+    if (lang === "ms-jawi" && sub.name_jawi && sub.name_jawi.trim()) {
+      return sub.name_jawi.trim();
+    }
+    if (lang === "th" && sub.name_thai && sub.name_thai.trim()) {
+      return sub.name_thai.trim();
+    }
+    return sub.name || "";
+  }
+
   const handleExportSchedule = (type: "overview" | "classroom" | "teacher") => {
     if (!selectedSubjectSettingId || schedulePeriods.length === 0) return;
     const setting = settingsList.find((s: any) => s.id === selectedSubjectSettingId);
@@ -2552,8 +2569,10 @@ function AdminPortalContent() {
           if (!e) return `<td style="border:1px solid #f1f5f9;min-width:110px;"></td>`;
           const tc = cellTextColor(e);
           const tDisplay = e.teacher_name || (e.teacher_names?.join(", ") || "");
+          const subObj = subjectsList.find(s => s.id === e.subject_id || s.name === e.subject_name);
+          const subDisplayName = getSubjectDisplayName(subObj || { name: e.subject_name }, exportLanguage);
           return `<td style="padding:6px 8px;border:1px solid;${cellStyle(e)}text-align:center;vertical-align:middle;">
-            <div dir="auto" style="font-size:14px;font-weight:700;color:${tc};">${e.subject_name}</div>
+            <div dir="auto" style="font-size:14px;font-weight:700;color:${tc};">${subDisplayName}</div>
             ${tDisplay ? `<div dir="auto" style="font-size:12px;color:${tc};opacity:0.8;">${getLocalizedText("อ.")}${tDisplay}</div>` : ""}
           </td>`;
         }).join("");
@@ -2615,8 +2634,10 @@ function AdminPortalContent() {
             if (!e) return `<td style="border:1px solid #f1f5f9;min-width:100px;"></td>`;
             const cs = cellStyle(e); const tc = cellTextColor(e);
             const tDisplay = e.teacher_name || (e.teacher_names?.join(", ") || "");
+            const subObj = subjectsList.find(s => s.id === e.subject_id || s.name === e.subject_name);
+            const subDisplayName = getSubjectDisplayName(subObj || { name: e.subject_name }, exportLanguage);
             return `<td style="padding:5px 6px;border:1px solid;${cs}text-align:center;vertical-align:middle;">
-              <div dir="auto" style="font-size:14px;font-weight:700;color:${tc};">${e.subject_name}</div>
+              <div dir="auto" style="font-size:14px;font-weight:700;color:${tc};">${subDisplayName}</div>
               ${tDisplay ? `<div dir="auto" style="font-size:12px;color:${tc};opacity:0.75;">${tDisplay}</div>` : ""}
             </td>`;
           }).join("");
@@ -2662,8 +2683,10 @@ function AdminPortalContent() {
           const cells = ACTIVE_DAYS.map(d => {
             const e = te.find(x => Number(x.day_of_week) === d.value && x.period_id === p.id);
             if (!e) return `<td style="border:1px solid #f1f5f9;min-width:110px;"></td>`;
+            const subObj = subjectsList.find(s => s.id === e.subject_id || s.name === e.subject_name);
+            const subDisplayName = getSubjectDisplayName(subObj || { name: e.subject_name }, exportLanguage);
             return `<td style="padding:6px 8px;border:1px solid #bfdbfe;background:#eff6ff;text-align:center;vertical-align:middle;">
-              <div dir="auto" style="font-size:14px;font-weight:700;color:#1e40af;">${e.subject_name}</div>
+              <div dir="auto" style="font-size:14px;font-weight:700;color:#1e40af;">${subDisplayName}</div>
               <div dir="auto" style="font-size:12px;color:#3b82f6;">${e.classroom_name}</div>
             </td>`;
           }).join("");
@@ -3231,7 +3254,7 @@ function changeFontSize(dir) {
     if (exportMode === "classroom") {
       const subjectsHeaderHTML = selectedSubjects.map(s => `
         <th style="padding:8px 6px;text-align:center;border:1px solid #cbd5e1;background:#f8fafc;font-size:11px;">
-          <div>${s.name}</div>
+          <div dir="auto">${getSubjectDisplayName(s, exportLanguage)}</div>
           <div style="font-weight:normal;color:#64748b;font-size:10px;">${s.subject_type === "activity" ? t("กิจกรรม") : `${s.credit_hours} ${t("นก.")}`}</div>
         </th>
       `).join("");
@@ -3357,7 +3380,7 @@ function changeFontSize(dir) {
           return `
             <tr>
               <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${idx + 1}</td>
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;font-weight:600;">${sub.name}</td>
+              <td dir="auto" style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;font-weight:600;">${getSubjectDisplayName(sub, exportLanguage)}</td>
               <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${sub.subject_type === "activity" ? `<span style='color:#7c3aed;font-weight:bold;'>${t("กิจกรรม")}</span>` : t("วิชาหลัก")}</td>
               <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${sub.subject_type === "activity" ? "-" : sub.credit_hours}</td>
               <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${midText}</td>

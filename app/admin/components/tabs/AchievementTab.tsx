@@ -48,6 +48,7 @@ interface AchievementData {
   academic_year: string;
   term: string;
   term_key: string;
+  school_name?: string;
   subject_display_names?: Record<string, MultiLangSubjectEntry | string>;
   subjects: SubjectHeader[];
   matrix_rows: MatrixRow[];
@@ -129,12 +130,17 @@ export default function AchievementTab({
       if (res.ok) {
         const json: AchievementData = await res.json();
         setData(json);
+        if (json.school_name) {
+          setAgencyName((prev) => prev || json.school_name || "");
+        }
         if (json.matrix_rows) {
           setSelectedClassroomIds(json.matrix_rows.map((r) => r.classroom_id));
         }
+
+        const normalized: Record<string, MultiLangSubjectEntry> = {};
+
         // Normalize DB JSONB subject display names if available
         if (json.subject_display_names && Object.keys(json.subject_display_names).length > 0) {
-          const normalized: Record<string, MultiLangSubjectEntry> = {};
           Object.entries(json.subject_display_names).forEach(([id, val]) => {
             if (typeof val === "string") {
               normalized[id] = { thai: val, rumi: "", arabic: val };
@@ -142,8 +148,52 @@ export default function AchievementTab({
               normalized[id] = val;
             }
           });
-          setCustomSubjectNames(normalized);
         }
+
+        // Also fetch from /api/translations to sync any fresh subject translation
+        try {
+          const transRes = await fetch("/api/translations", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (transRes.ok) {
+            const transList: { key: string; thai: string; malay_rumi: string; malay_jawi: string }[] = await transRes.json();
+            transList.forEach((t) => {
+              const item = {
+                thai: t.thai || t.key,
+                rumi: t.malay_rumi || "",
+                arabic: t.malay_jawi || "",
+              };
+              if (t.key) normalized[t.key] = { ...item, ...(normalized[t.key] || {}) };
+              if (t.thai) normalized[t.thai] = { ...item, ...(normalized[t.thai] || {}) };
+            });
+
+            if (json.subjects) {
+              json.subjects.forEach((s) => {
+                const match = transList.find(
+                  (t) =>
+                    t.key === s.name ||
+                    t.key === `subj_${s.id}` ||
+                    (t.thai && t.thai.trim().toLowerCase() === s.name.trim().toLowerCase()) ||
+                    (t.malay_rumi && t.malay_rumi.trim().toLowerCase() === s.name.trim().toLowerCase()) ||
+                    (t.malay_jawi && t.malay_jawi.trim().toLowerCase() === s.name.trim().toLowerCase())
+                );
+                if (match) {
+                  const item = {
+                    thai: match.thai || s.name,
+                    rumi: match.malay_rumi || "",
+                    arabic: match.malay_jawi || "",
+                  };
+                  normalized[s.id] = { ...item, ...(normalized[s.id] || {}) };
+                  normalized[s.name] = { ...item, ...(normalized[s.name] || {}) };
+                }
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching translations for achievement", e);
+        }
+
+        setCustomSubjectNames(normalized);
       } else {
         const err = await res.json();
         console.error("Failed to load achievement data:", err);
@@ -177,7 +227,8 @@ export default function AchievementTab({
   const getSubjectName = (subj: SubjectHeader | SubjectStat) => {
     const id = "id" in subj ? subj.id : subj.subject_id;
     const rawDefaultName = "name" in subj ? subj.name : subj.subject_name;
-    const entry = customSubjectNames[id];
+    const cleanName = (rawDefaultName || "").trim();
+    const entry = customSubjectNames[id] || customSubjectNames[cleanName] || customSubjectNames[rawDefaultName];
 
     if (!entry) return rawDefaultName;
 
@@ -632,12 +683,49 @@ export default function AchievementTab({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          {/* Quick Language Selector */}
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => setGlobalActiveLang("thai")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+                globalActiveLang === "thai"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🇹🇭 ไทย
+            </button>
+            <button
+              type="button"
+              onClick={() => setGlobalActiveLang("rumi")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+                globalActiveLang === "rumi"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🇲🇾 Rumi
+            </button>
+            <button
+              type="button"
+              onClick={() => setGlobalActiveLang("arabic")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
+                globalActiveLang === "arabic"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🇸🇦 Jawi / อาหรับ
+            </button>
+          </div>
+
           <button
             onClick={() => setShowSubjectModal(true)}
             disabled={!data || loading}
             className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
           >
-            🌐 ภาษา / ชื่อวิชาที่แสดง
+            ⚙️ ปรับแต่งชื่อวิชา
           </button>
           <button
             onClick={handleExportCSV}
@@ -696,10 +784,10 @@ export default function AchievementTab({
               </label>
               <input
                 type="text"
-                placeholder="เช่น ศูนย์ตาดีกายันนาตุลฆุลดี หรือ โรงเรียน..."
+                placeholder={data?.school_name || "เช่น ศูนย์ตาดีกายันนาตุลฆุลดี หรือ โรงเรียน..."}
                 value={agencyName}
                 onChange={(e) => setAgencyName(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
           </div>
@@ -715,7 +803,7 @@ export default function AchievementTab({
               />
               <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
               <span className="ml-3 text-xs font-bold text-foreground">
-                รวมวิชากิจกรรม
+                รวมวิชากิจกรรม (ที่มีคะแนน)
               </span>
             </label>
           </div>

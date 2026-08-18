@@ -31,25 +31,29 @@ export async function POST(req: NextRequest) {
 
     const { key, thai, malay_rumi, malay_jawi } = await req.json();
 
-    if (!key || !thai) {
-      return NextResponse.json({ error: "Key and Thai translation are required" }, { status: 400 });
+    if (!key?.trim()) {
+      return NextResponse.json({ error: "Key is required" }, { status: 400 });
     }
 
-    // Check if key already exists
-    const existing = await pool.query(
-      `SELECT id FROM translations WHERE key = $1`,
-      [key]
-    );
+    const thaiVal = thai?.trim() || "";
+    const rumiVal = malay_rumi?.trim() || "";
+    const jawiVal = malay_jawi?.trim() || "";
 
-    if (existing.rows.length > 0) {
-      return NextResponse.json({ error: "Key already exists" }, { status: 400 });
+    if (!thaiVal && !rumiVal && !jawiVal) {
+      return NextResponse.json({ error: "At least one translation language is required" }, { status: 400 });
     }
 
     const result = await pool.query(
       `INSERT INTO translations (key, thai, malay_rumi, malay_jawi)
        VALUES ($1, $2, $3, $4)
+       ON CONFLICT (key)
+       DO UPDATE SET
+         thai = EXCLUDED.thai,
+         malay_rumi = EXCLUDED.malay_rumi,
+         malay_jawi = EXCLUDED.malay_jawi,
+         updated_at = NOW()
        RETURNING id, key, thai, malay_rumi, malay_jawi`,
-      [key, thai, malay_rumi || "", malay_jawi || ""]
+      [key.trim(), thaiVal, rumiVal, jawiVal]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
