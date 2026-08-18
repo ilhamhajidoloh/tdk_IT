@@ -3686,6 +3686,7 @@ function changeFontSize(dir) {
                 handleOpenCopySubjectsModal={handleOpenCopySubjectsModal}
                 handleEditSubject={handleEditSubject}
                 handleDeleteSubject={handleDeleteSubject}
+                token={token}
               />
             )}
 
