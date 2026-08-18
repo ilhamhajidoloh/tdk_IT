@@ -50,6 +50,7 @@ export interface DBSubject {
   subject_type?: "main" | "activity";
   credit_hours?: number | null;
   score_display_mode?: "separate" | "combined";
+  sort_order?: number | null;
 }
 
 export interface DBGrade {
