@@ -191,7 +191,7 @@ export default function StudentScoresTab({
 
   const classroomSubjectsAll = displaySubjects
     .filter(su => su.classroom_ids?.includes(scoresClassroomId))
-    .sort((a, b) => a.name.localeCompare(b.name, "th"));
+    .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999) || a.name.localeCompare(b.name, "th"));
   const classroomSubjectsGraded = classroomSubjectsAll.filter(su =>
     classroomStudents.some(s => findGrade(s.student_id, su.name))
   );
@@ -202,7 +202,7 @@ export default function StudentScoresTab({
   const studentSubjectsAll = selectedStudent
     ? displaySubjects
         .filter(su => !selectedStudent.classroom_id || su.classroom_ids?.includes(selectedStudent.classroom_id))
-        .sort((a, b) => a.name.localeCompare(b.name, "th"))
+        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999) || a.name.localeCompare(b.name, "th"))
     : [];
   const studentSubjectsGraded = selectedStudent
     ? studentSubjectsAll.filter(su => findGrade(selectedStudent.student_id, su.name))

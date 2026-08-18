@@ -28,6 +28,7 @@ import {
 import { RWT_TOPICS, isEvaluationTermOpen, getTopicNameLabel, getRwtTopicLabel, getRatingLabel } from "../lib/evaluation";
 import CopySubjectsModal from "./components/modals/CopySubjectsModal";
 import CopyClassroomsModal from "./components/modals/CopyClassroomsModal";
+import AssignStudentsModal from "./components/modals/AssignStudentsModal";
 import UserModal from "./components/modals/UserModal";
 import SubjectModal from "./components/modals/SubjectModal";
 import StudentDetailModal from "./components/modals/StudentDetailModal";
@@ -2120,22 +2121,35 @@ function AdminPortalContent() {
       `<option value="${c.id}" ${c.id === student.classroom_id ? 'selected' : ''}>${c.name}</option>`
     ).join("");
 
+    const statusOptions = `
+      <option value="active" ${(!student.status || student.status === 'active') ? 'selected' : ''}>🟢 กำลังศึกษา (Active)</option>
+      <option value="graduated" ${student.status === 'graduated' ? 'selected' : ''}>🎓 จบการศึกษา (Graduated)</option>
+      <option value="resigned" ${student.status === 'resigned' ? 'selected' : ''}>🛑 ลาออก/จำหน่ายออก (Resigned)</option>
+      <option value="expired" ${student.status === 'expired' ? 'selected' : ''}>📁 สิ้นสุดการจัดเก็บ (Expired)</option>
+    `;
+
     const { value: formValues } = await Swal.fire({
       title: "แก้ไขข้อมูลนักเรียน",
       html: `
         <div class="space-y-4 text-left mt-4">
           <div>
-            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID)</label>
-            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-border bg-muted focus:outline-none transition-all text-sm font-semibold text-muted-foreground shadow-sm cursor-not-allowed" value="${student.student_id}" disabled>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">รหัสนักเรียน (Student ID) <span class="text-red-500">*</span></label>
+            <input id="swal-student-id" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground shadow-sm" value="${student.student_id || ''}">
           </div>
           <div>
-            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล</label>
-            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-border bg-muted focus:outline-none transition-all text-sm font-semibold text-muted-foreground shadow-sm cursor-not-allowed" value="${student.name}" disabled>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
+            <input id="swal-student-name" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground shadow-sm" value="${student.name || ''}">
           </div>
           <div>
-            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชั้นเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชั้นเรียน</label>
             <select id="swal-student-classroom" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground shadow-sm">
               ${classroomOptions}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">สถานะนักเรียน</label>
+            <select id="swal-student-status" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground shadow-sm">
+              ${statusOptions}
             </select>
           </div>
         </div>
@@ -2155,13 +2169,19 @@ function AdminPortalContent() {
         const studentId = (document.getElementById("swal-student-id") as HTMLInputElement).value;
         const name = (document.getElementById("swal-student-name") as HTMLInputElement).value;
         const classroomId = (document.getElementById("swal-student-classroom") as HTMLSelectElement).value;
+        const status = (document.getElementById("swal-student-status") as HTMLSelectElement).value;
 
-        if (!name) {
+        if (!studentId?.trim()) {
+          Swal.showValidationMessage("กรุณากรอกรหัสนักเรียน");
+          return null;
+        }
+
+        if (!name?.trim()) {
           Swal.showValidationMessage("กรุณากรอกชื่อ-นามสกุล");
           return null;
         }
 
-        return { studentId, name, classroomId: classroomId || null };
+        return { studentId: studentId.trim(), name: name.trim(), classroomId: classroomId || null, status };
       }
     });
 
@@ -2169,7 +2189,13 @@ function AdminPortalContent() {
       const res = await fetch(`/api/students/${student.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ student_id: formValues.studentId.trim(), name: formValues.name.trim(), classroom_id: formValues.classroomId, setting_id: selectedSettingId }),
+        body: JSON.stringify({
+          student_id: formValues.studentId,
+          name: formValues.name,
+          classroom_id: formValues.classroomId,
+          setting_id: selectedSettingId,
+          status: formValues.status,
+        }),
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -3962,6 +3988,21 @@ function changeFontSize(dir) {
         copyClassroomsMap={copyClassroomsMap}
         setCopyClassroomsMap={setCopyClassroomsMap}
         onSave={handleSaveCopyClassrooms}
+      />
+
+      {/* Assign Students Modal */}
+      <AssignStudentsModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        targetClassroom={targetClassroom}
+        students={students}
+        searchAssignStudent={searchAssignStudent}
+        setSearchAssignStudent={setSearchAssignStudent}
+        selectedStudentsForAssign={selectedStudentsForAssign}
+        setSelectedStudentsForAssign={setSelectedStudentsForAssign}
+        handleEditStudent={handleEditStudent}
+        handleRemoveStudentFromClass={handleRemoveStudentFromClass}
+        onSave={handleSaveAssignedStudents}
       />
 
       {/* Student Detail Modal */}

@@ -32,6 +32,9 @@ export async function PUT(
   const enrollDateVal = enrollment_date || null;
   const gradDateVal = graduation_date || null;
 
+  const oldStudent = await pool.query("SELECT student_id, name FROM students WHERE id = $1", [id]);
+  const oldStudentCode = oldStudent.rows[0]?.student_id;
+
   const result = await pool.query(
     `UPDATE students
      SET name = $1, student_id = $2, status = $4, graduation_year = $5, status_updated_at = NOW(), status_note = $6, enrollment_date = $7, graduation_date = $8
@@ -42,8 +45,13 @@ export async function PUT(
     return NextResponse.json({ error: "Student not found" }, { status: 404 });
   }
 
-  if (studentIdVal) {
-    await pool.query("UPDATE users SET status = $1 WHERE student_id = $2", [statusVal, studentIdVal]);
+  if (oldStudentCode) {
+    await pool.query(
+      `UPDATE users
+       SET student_id = $1, status = $2, username = CASE WHEN username = $3 THEN $1 ELSE username END
+       WHERE student_id = $3`,
+      [studentIdVal, statusVal, oldStudentCode]
+    );
   }
 
   // classroom_id is scoped to this specific term (setting_id) only
