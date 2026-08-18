@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     const result = await pool.query(`
       SELECT s.id, s.name, s.teacher_id, s.setting_id, s.midterm_max_score, s.final_max_score,
-             s.subject_type, s.credit_hours, s.score_display_mode,
+             s.subject_type, s.credit_hours, s.score_display_mode, s.sort_order,
              u.username as teacher_name,
              ${teacherCols}
              COALESCE(array_agg(sc.classroom_id) FILTER (WHERE sc.classroom_id IS NOT NULL), '{}') as classroom_ids,
@@ -68,8 +68,8 @@ export async function GET(req: NextRequest) {
       LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
       LEFT JOIN classrooms c ON c.id = sc.classroom_id
       ${whereClause}
-      GROUP BY s.id, s.name, s.teacher_id, s.setting_id, s.subject_type, s.credit_hours, s.score_display_mode, u.username
-      ORDER BY s.name
+      GROUP BY s.id, s.name, s.teacher_id, s.setting_id, s.subject_type, s.credit_hours, s.score_display_mode, s.sort_order, u.username
+      ORDER BY COALESCE(s.sort_order, 999) ASC, s.name ASC
     `, params);
     return NextResponse.json(result.rows);
   } catch (error: any) {

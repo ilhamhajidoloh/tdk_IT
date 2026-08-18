@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
 async function handleSingleTerm(settingId: string, termKey: string, defaultMidMax: number, defaultFinMax: number) {
   const [subjectsRes, studentsRes] = await Promise.all([
     pool.query(
-      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours
-       FROM subjects WHERE setting_id = $1`,
+      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, sort_order
+       FROM subjects WHERE setting_id = $1 ORDER BY COALESCE(sort_order, 999) ASC, name ASC`,
       [settingId]
     ),
     pool.query(
@@ -89,8 +89,8 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
 
   const [allSubjectsRes, enrollmentsRes] = await Promise.all([
     pool.query(
-      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, setting_id
-       FROM subjects WHERE setting_id = ANY($1)`,
+      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, setting_id, sort_order
+       FROM subjects WHERE setting_id = ANY($1) ORDER BY COALESCE(sort_order, 999) ASC, name ASC`,
       [settingIds]
     ),
     pool.query(
