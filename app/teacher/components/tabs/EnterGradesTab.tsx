@@ -207,7 +207,12 @@ export default function EnterGradesTab({
                       </div>
                     )}
                     <span className="font-extrabold text-base leading-tight">{c.name}</span>
-                    <span className={`text-xs mt-1.5 font-semibold ${isActive ? "text-indigo-200" : isComplete ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                    {c.name_thai && c.name_thai !== c.name && (
+                      <span className={`text-[11px] font-medium leading-tight truncate max-w-full px-1 ${isActive ? "text-indigo-100" : "text-muted-foreground"}`}>
+                        {c.name_thai}
+                      </span>
+                    )}
+                    <span className={`text-xs mt-1 font-semibold ${isActive ? "text-indigo-200" : isComplete ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
                       {saved}/{total} คน
                     </span>
                     {total > 0 && !isActive && (

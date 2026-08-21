@@ -19,6 +19,7 @@ import {
   ALL_DAYS,
 } from "./components/types";
 import { isEvaluationTermOpen } from "../lib/evaluation";
+import { getClassroomName, formatClassroomOption } from "../lib/classroom";
 import LoadingScreen from "./components/LoadingScreen";
 import Header from "./components/Header";
 import TabNav from "./components/TabNav";
@@ -543,7 +544,7 @@ export default function StudentPortal() {
       <Header
         studentName={currentStudent.name}
         studentCode={currentStudent.student_id}
-        classroomName={classroom?.name || ""}
+        classroomName={formatClassroomOption(classroom)}
         userEmail={user?.email}
         onConnectGoogle={handleConnectGoogle}
         onChangePassword={handleChangePassword}
@@ -559,7 +560,7 @@ export default function StudentPortal() {
           <OverviewTab
             studentName={currentStudent.name}
             studentCode={currentStudent.student_id}
-            classroomName={classroom?.name || ""}
+            classroomName={formatClassroomOption(classroom)}
             settingsList={settingsList}
             activeSettingId={activeSettingId}
             onChangeSetting={handleChangeSetting}

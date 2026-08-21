@@ -121,6 +121,11 @@ export default function AttendanceTab({
                   }`}
                 >
                   <span className="font-extrabold text-base leading-tight">{c.name}</span>
+                  {c.name_thai && c.name_thai !== c.name && (
+                    <span className={`text-[11px] font-medium leading-tight truncate max-w-full px-1 mt-0.5 ${attendanceClassroomId === c.id ? "text-indigo-100" : "text-muted-foreground"}`}>
+                      {c.name_thai}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

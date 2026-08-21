@@ -31,6 +31,9 @@ export interface DBStudent {
 export interface DBClassroom {
   id: string;
   name: string;
+  name_thai?: string;
+  name_rumi?: string;
+  name_jawi?: string;
   setting_id?: number | null;
   created_at?: string;
 }
@@ -79,6 +82,9 @@ export interface ScheduleEntry {
   id: string;
   classroom_id: string;
   classroom_name: string;
+  classroom_name_thai?: string | null;
+  classroom_name_rumi?: string | null;
+  classroom_name_jawi?: string | null;
   subject_id: string;
   subject_name: string;
   teacher_id: string | null;
@@ -132,6 +138,9 @@ export interface RankingRow {
   student_number: number | null;
   classroom_id: string;
   classroom_name: string;
+  classroom_name_thai?: string | null;
+  classroom_name_rumi?: string | null;
+  classroom_name_jawi?: string | null;
   total_score: number;
   max_possible: number;
   percentage: number;
@@ -154,6 +163,9 @@ export interface GradeStatusRow {
   teacher_name: string | null;
   classroom_id: string | null;
   classroom_name: string | null;
+  classroom_name_thai?: string | null;
+  classroom_name_rumi?: string | null;
+  classroom_name_jawi?: string | null;
   total_students: string;
   graded_students: string;
   midterm_entered: string;
@@ -173,6 +185,7 @@ export interface SystemSetting {
   auto_cleanup_enabled?: boolean;
   is_grade_released?: boolean;
   grade_release_date?: string | null;
+  academic_head?: string | null;
 }
 
 export const ALL_DAYS = [

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Fragment } from "react";
 import Swal from "sweetalert2";
 import { type SystemSetting } from "../types";
 import TermSelector from "../TermSelector";
+import { getClassroomName } from "@/app/lib/classroom";
 
 interface SubjectHeader {
   id: string;
@@ -22,6 +23,9 @@ interface SubjectStat {
 interface MatrixRow {
   classroom_id: string;
   classroom_name: string;
+  classroom_name_thai?: string | null;
+  classroom_name_rumi?: string | null;
+  classroom_name_jawi?: string | null;
   student_count: number;
   subject_stats: SubjectStat[];
   total_all_subjects: number;
@@ -419,7 +423,7 @@ export default function AchievementTab({
         (row, idx) => `
         <tr>
           <td style="text-align: center; border: 1px solid #4b5563; padding: 5px;">${idx + 1}</td>
-          <td style="font-weight: bold; border: 1px solid #4b5563; padding: 5px;">${row.classroom_name}</td>
+          <td style="font-weight: bold; border: 1px solid #4b5563; padding: 5px;">${getClassroomName(row, globalActiveLang)}</td>
           <td style="text-align: center; border: 1px solid #4b5563; padding: 5px; font-weight: bold;">${row.student_count}</td>
           ${row.subject_stats
             .map(
@@ -640,7 +644,7 @@ export default function AchievementTab({
 
     // Body rows
     filteredMatrixRows.forEach((row, idx) => {
-      let r = [idx + 1, `"${row.classroom_name}"`, row.student_count];
+      let r = [idx + 1, `"${getClassroomName(row, globalActiveLang)}"`, row.student_count];
       row.subject_stats.forEach((st) => {
         r.push(st.total_score, `${st.avg_percentage}%`);
       });
@@ -847,7 +851,7 @@ export default function AchievementTab({
                     }`}>
                       {isSelected ? "✓" : ""}
                     </span>
-                    <span>{row.classroom_name}</span>
+                    <span>{getClassroomName(row, globalActiveLang)}</span>
                     <span className={`text-[10px] opacity-80 font-mono ${isSelected ? "text-indigo-100" : "text-muted-foreground"}`}>
                       ({row.student_count} คน)
                     </span>
@@ -964,7 +968,7 @@ export default function AchievementTab({
                 {filteredMatrixRows.map((row, idx) => (
                   <tr key={row.classroom_id} className="hover:bg-muted/40 transition-colors">
                     <td className="px-3 py-3 text-center border-r border-border text-muted-foreground">{idx + 1}</td>
-                    <td className="px-4 py-3 border-r border-border font-bold text-foreground">{row.classroom_name}</td>
+                    <td className="px-4 py-3 border-r border-border font-bold text-foreground">{getClassroomName(row, globalActiveLang)}</td>
                     <td className="px-3 py-3 text-center border-r border-border font-bold text-foreground">{row.student_count}</td>
                     {row.subject_stats.map((st) => (
                       <Fragment key={st.subject_id}>

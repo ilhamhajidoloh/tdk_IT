@@ -21,7 +21,13 @@ interface ScheduleTabProps {
   handleExportSchedule: (type: "overview" | "classroom" | "teacher") => void;
   scheduleClassroomId: string;
   setScheduleClassroomId: (id: string) => void;
-  subjectClassrooms: { id: string; name: string }[];
+  subjectClassrooms: {
+    id: string;
+    name: string;
+    name_thai?: string | null;
+    name_rumi?: string | null;
+    name_jawi?: string | null;
+  }[];
   subjectsList: DBSubject[];
   handleScheduleCellChange: (
     day: number,
@@ -339,7 +345,7 @@ export default function ScheduleTab({
                 <option value="">-- เลือกห้องเรียน --</option>
                 {subjectClassrooms.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.name}{c.name_thai && c.name_thai !== c.name ? ` (${c.name_thai})` : ""}
                   </option>
                 ))}
               </select>

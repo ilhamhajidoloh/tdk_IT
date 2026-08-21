@@ -51,7 +51,9 @@ export default function StatusTab({
             >
               <option value="">— เลือกชั้นเรียน —</option>
               {classrooms.filter(c => mySubjects.find(s => s.name === statusSubject)?.classroom_ids?.includes(c.id)).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.name}{c.name_thai && c.name_thai !== c.name ? ` (${c.name_thai})` : ""}
+                </option>
               ))}
             </select>
           </div>

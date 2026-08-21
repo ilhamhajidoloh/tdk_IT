@@ -13,7 +13,13 @@ interface StudentsTabProps {
   filteredStudents: DBStudent[];
   studentFilterClassroomId: string;
   setStudentFilterClassroomId: (id: string) => void;
-  classrooms: { id: string; name: string }[];
+  classrooms: {
+    id: string;
+    name: string;
+    name_thai?: string | null;
+    name_rumi?: string | null;
+    name_jawi?: string | null;
+  }[];
   exportLanguage: "th" | "ms-rumi" | "ms-jawi";
   setExportLanguage: (lang: "th" | "ms-rumi" | "ms-jawi") => void;
   handleExportStudents: () => void;
@@ -137,7 +143,7 @@ export default function StudentsTab({
           <option value="unassigned">-- ยังไม่ระบุชั้นเรียน --</option>
           {classrooms.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {c.name}{c.name_thai && c.name_thai !== c.name ? ` (${c.name_thai})` : ""}
             </option>
           ))}
         </select>

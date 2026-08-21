@@ -52,14 +52,14 @@ export async function POST(req: NextRequest) {
   const context = await getSchoolContext();
   let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
-  const { name, setting_id } = await req.json();
+  const { name, name_thai, name_rumi, name_jawi, setting_id } = await req.json();
   if (!name?.trim() || !setting_id) {
     return NextResponse.json({ error: "Missing required fields: name, setting_id" }, { status: 400 });
   }
 
   const result = await pool.query(
-    "INSERT INTO classrooms (name, setting_id, school_id) VALUES ($1, $2, $3) RETURNING *",
-    [name.trim(), setting_id, schoolId]
+    "INSERT INTO classrooms (name, name_thai, name_rumi, name_jawi, setting_id, school_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+    [name.trim(), name_thai || null, name_rumi || null, name_jawi || null, setting_id, schoolId]
   );
   return NextResponse.json(result.rows[0], { status: 201 });
 }

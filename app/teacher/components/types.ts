@@ -1,10 +1,18 @@
 export interface DBStudent { id: string; name: string; student_id: string; classroom_id: string | null; student_number?: number | null; }
 export interface DBGrade { id: string; student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term: string; }
-export interface DBClassroom { id: string; name: string; setting_id?: number; }
+export interface DBClassroom {
+  id: string;
+  name: string;
+  name_thai?: string | null;
+  name_rumi?: string | null;
+  name_jawi?: string | null;
+  setting_id?: number;
+}
 export interface DBSubject { id: string; name: string; teacher_id?: string | null; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; classroom_ids?: string[]; }
 export interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; is_break?: boolean; }
 export interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;
+  classroom_name_thai?: string | null; classroom_name_rumi?: string | null; classroom_name_jawi?: string | null;
   subject_id: string; subject_name: string; teacher_id: string | null; teacher_name: string | null;
   day_of_week: number | string; period_id: string; period_no: number | string; start_time: string; end_time: string; label?: string | null;
 }

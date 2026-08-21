@@ -31,6 +31,9 @@ export async function GET(req: NextRequest) {
       u.username AS teacher_name,
       sc.classroom_id,
       c.name AS classroom_name,
+      c.name_thai AS classroom_name_thai,
+      c.name_rumi AS classroom_name_rumi,
+      c.name_jawi AS classroom_name_jawi,
       COUNT(st.id) AS total_students,
       COUNT(g.id) AS graded_students,
       COUNT(CASE WHEN g.midterm_score IS NOT NULL THEN 1 END) AS midterm_entered,
@@ -46,7 +49,7 @@ export async function GET(req: NextRequest) {
     WHERE s.setting_id = $1
       AND (COALESCE(s.midterm_max_score, 0) + COALESCE(s.final_max_score, 0)) > 0
     GROUP BY s.id, s.name, s.subject_type, s.midterm_max_score, s.final_max_score, s.credit_hours, s.sort_order,
-             u.id, u.username, sc.classroom_id, c.name
+             u.id, u.username, sc.classroom_id, c.name, c.name_thai, c.name_rumi, c.name_jawi
     ORDER BY COALESCE(s.sort_order, 999) ASC, u.username NULLS LAST, s.name, c.name
   `, [settingId, termKey]);
 

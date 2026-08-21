@@ -8,6 +8,7 @@ import ChatWidget from "../components/ChatWidget";
 import { useRouter, useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
 import { formatThaiDate } from "../lib/format";
+import { getClassroomName } from "../lib/classroom";
 
 import {
   DBUser,
@@ -121,6 +122,7 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "ผ่าน": { th: "ผ่าน", rumi: "Lulus", jawi: "لولوس" },
     "ไม่ผ่าน": { th: "ไม่ผ่าน", rumi: "Gagal", jawi: "ڬاڬل" },
     "คะแนนรวมวิชาหลัก": { th: "คะแนนรวมวิชาหลัก", rumi: "Jumlah Markah Teras", jawi: "جومله مركه ت رس" },
+    "คะแนนรวมของแต่ละวิชา": { th: "คะแนนรวมของแต่ละวิชา", rumi: "Jumlah Markah Setiap Subjek", jawi: "جومله مركه ستياڤ سوبجيك" },
     "คะแนนรวมทั้งหมด": {
       th: "คะแนนรวมทั้งหมด",
       rumi: "Jumlah Keseluruhan",
@@ -966,6 +968,10 @@ function AdminPortalContent() {
             <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">วันสิ้นสุดภาคเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
             <input id="swal-end-date" type="date" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm">
           </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">หัวหน้าฝ่ายวิชาการ / Ketua Bahagian Pelajaran</label>
+            <input id="swal-academic-head" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="ระบุชื่อหัวหน้าฝ่ายวิชาการ">
+          </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">คะแนนเก็บเต็ม <span class="text-red-500 dark:text-red-400">*</span></label>
@@ -1017,6 +1023,7 @@ function AdminPortalContent() {
         const term = (document.getElementById("swal-term") as HTMLInputElement).value;
         const startDate = (document.getElementById("swal-start-date") as HTMLInputElement).value;
         const endDate = (document.getElementById("swal-end-date") as HTMLInputElement).value;
+        const academicHead = (document.getElementById("swal-academic-head") as HTMLInputElement).value;
         const midtermMax = (document.getElementById("swal-midterm-max") as HTMLInputElement).value;
         const finalMax = (document.getElementById("swal-final-max") as HTMLInputElement).value;
         const isReleased = (document.getElementById("swal-is-released") as HTMLInputElement).checked;
@@ -1038,7 +1045,7 @@ function AdminPortalContent() {
           return null;
         }
 
-        return { year, term, startDate, endDate, midtermMax, finalMax, scheduleDays, isReleased, releaseDate };
+        return { year, term, startDate, endDate, academicHead, midtermMax, finalMax, scheduleDays, isReleased, releaseDate };
       }
     });
 
@@ -1054,6 +1061,7 @@ function AdminPortalContent() {
           term: formValues.term.trim(),
           start_date: formValues.startDate,
           end_date: formValues.endDate,
+          academic_head: formValues.academicHead.trim() || null,
           midterm_max_score: Number(formValues.midtermMax),
           final_max_score: Number(formValues.finalMax),
           schedule_days: formValues.scheduleDays,
@@ -1101,6 +1109,10 @@ function AdminPortalContent() {
           <div>
             <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">วันสิ้นสุดภาคเรียน <span class="text-red-500 dark:text-red-400">*</span></label>
             <input id="swal-end-date" type="date" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${setting.end_date || ''}">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">หัวหน้าฝ่ายวิชาการ / Ketua Bahagian Pelajaran</label>
+            <input id="swal-academic-head" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${setting.academic_head || ''}" placeholder="ระบุชื่อหัวหน้าฝ่ายวิชาการ">
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -1153,6 +1165,7 @@ function AdminPortalContent() {
         const term = (document.getElementById("swal-term") as HTMLInputElement).value;
         const startDate = (document.getElementById("swal-start-date") as HTMLInputElement).value;
         const endDate = (document.getElementById("swal-end-date") as HTMLInputElement).value;
+        const academicHead = (document.getElementById("swal-academic-head") as HTMLInputElement).value;
         const midtermMax = (document.getElementById("swal-midterm-max") as HTMLInputElement).value;
         const finalMax = (document.getElementById("swal-final-max") as HTMLInputElement).value;
         const isReleased = (document.getElementById("swal-is-released") as HTMLInputElement).checked;
@@ -1174,7 +1187,7 @@ function AdminPortalContent() {
           return null;
         }
 
-        return { year, term, startDate, endDate, midtermMax, finalMax, scheduleDays, isReleased, releaseDate };
+        return { year, term, startDate, endDate, academicHead, midtermMax, finalMax, scheduleDays, isReleased, releaseDate };
       }
     });
 
@@ -1191,6 +1204,7 @@ function AdminPortalContent() {
           term: formValues.term.trim(),
           start_date: formValues.startDate,
           end_date: formValues.endDate,
+          academic_head: formValues.academicHead.trim() || null,
           midterm_max_score: Number(formValues.midtermMax),
           final_max_score: Number(formValues.finalMax),
           schedule_days: formValues.scheduleDays,
@@ -1853,56 +1867,139 @@ function AdminPortalContent() {
   const handleAddClassroom = async () => {
     if (!selectedSettingId || !token) return;
 
-    const { value: name } = await Swal.fire({
+    const { value: formValues } = await Swal.fire({
       title: "เพิ่มชั้นเรียนใหม่",
-      input: "text",
-      inputLabel: "ชื่อชั้นเรียน (Classroom Name)",
-      inputPlaceholder: "เช่น M.1/3, M.4/2",
+      html: `
+        <div class="space-y-4 text-left mt-4">
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อชั้นเรียน (หลัก) <span class="text-red-500">*</span></label>
+            <input id="swal-classroom-name" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="เช่น M.1/3, ม.4/2">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อภาษาไทย (Thai Name)</label>
+            <input id="swal-classroom-name-thai" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="เช่น มัธยมศึกษาปีที่ 1 ห้อง 3">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">Nama Melayu (Rumi)</label>
+            <input id="swal-classroom-name-rumi" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="Contoh: Tingkatan 1 Kelas 3">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">Nama Melayu (جاوي/Jawi)</label>
+            <input id="swal-classroom-name-jawi" dir="rtl" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" placeholder="تيڠكتن ١ كلس ٣">
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#4f46e5",
-      inputValidator: (value) => (!value ? "กรุณากรอกชื่อชั้นเรียน!" : null),
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        title: "text-2xl font-extrabold text-foreground mb-4",
+        confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
+        cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
+      },
+      preConfirm: () => {
+        const name = (document.getElementById("swal-classroom-name") as HTMLInputElement).value;
+        const nameThai = (document.getElementById("swal-classroom-name-thai") as HTMLInputElement).value;
+        const nameRumi = (document.getElementById("swal-classroom-name-rumi") as HTMLInputElement).value;
+        const nameJawi = (document.getElementById("swal-classroom-name-jawi") as HTMLInputElement).value;
+
+        if (!name) {
+          Swal.showValidationMessage("กรุณากรอกชื่อชั้นเรียน!");
+          return null;
+        }
+
+        return { name, nameThai, nameRumi, nameJawi };
+      }
     });
 
-    if (name) {
+    if (formValues) {
       const res = await fetch("/api/classrooms", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: name.trim(), setting_id: selectedSettingId }),
+        body: JSON.stringify({
+          name: formValues.name.trim(),
+          name_thai: formValues.nameThai.trim() || null,
+          name_rumi: formValues.nameRumi.trim() || null,
+          name_jawi: formValues.nameJawi.trim() || null,
+          setting_id: selectedSettingId
+        }),
       });
       if (res.ok) {
         await loadClassrooms(selectedSettingId, token);
         if (selectedSettingId === selectedSubjectSettingId) {
           await loadSubjectClassrooms(selectedSettingId, token);
         }
-        Swal.fire({ icon: "success", title: "สำเร็จ", text: `เพิ่มชั้นเรียน ${name.trim()} เรียบร้อยแล้ว`, confirmButtonColor: "#4f46e5" });
+        Swal.fire({ icon: "success", title: "สำเร็จ", text: `เพิ่มชั้นเรียน ${formValues.name.trim()} เรียบร้อยแล้ว`, confirmButtonColor: "#4f46e5" });
       } else {
         Swal.fire("ข้อผิดพลาด", "เพิ่มไม่สำเร็จ กรุณาลองใหม่", "error");
       }
     }
   };
 
-  const handleEditClassroom = async (classroom: { id: string; name: string }) => {
+  const handleEditClassroom = async (classroom: any) => {
     if (!selectedSettingId || !token) return;
 
-    const { value: name } = await Swal.fire({
+    const { value: formValues } = await Swal.fire({
       title: "แก้ไขชื่อชั้นเรียน",
-      input: "text",
-      inputLabel: "ชื่อชั้นเรียน",
-      inputValue: classroom.name,
+      html: `
+        <div class="space-y-4 text-left mt-4">
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อชั้นเรียน (หลัก) <span class="text-red-500">*</span></label>
+            <input id="swal-classroom-name" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${classroom.name || ''}" placeholder="เช่น M.1/3, ม.4/2">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ชื่อภาษาไทย (Thai Name)</label>
+            <input id="swal-classroom-name-thai" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${classroom.name_thai || ''}" placeholder="เช่น มัธยมศึกษาปีที่ 1 ห้อง 3">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">Nama Melayu (Rumi)</label>
+            <input id="swal-classroom-name-rumi" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${classroom.name_rumi || ''}" placeholder="Contoh: Tingkatan 1 Kelas 3">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">Nama Melayu (جاوي/Jawi)</label>
+            <input id="swal-classroom-name-jawi" dir="rtl" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground placeholder-gray-400 shadow-sm" value="${classroom.name_jawi || ''}" placeholder="تيڠكتن ١ كلس ٣">
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: "บันทึก",
       cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#4f46e5",
-      inputValidator: (value) => (!value ? "กรุณากรอกชื่อชั้นเรียน!" : null),
+      buttonsStyling: false,
+      customClass: {
+        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        title: "text-2xl font-extrabold text-foreground mb-4",
+        confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
+        cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
+      },
+      preConfirm: () => {
+        const name = (document.getElementById("swal-classroom-name") as HTMLInputElement).value;
+        const nameThai = (document.getElementById("swal-classroom-name-thai") as HTMLInputElement).value;
+        const nameRumi = (document.getElementById("swal-classroom-name-rumi") as HTMLInputElement).value;
+        const nameJawi = (document.getElementById("swal-classroom-name-jawi") as HTMLInputElement).value;
+
+        if (!name) {
+          Swal.showValidationMessage("กรุณากรอกชื่อชั้นเรียน!");
+          return null;
+        }
+
+        return { name, nameThai, nameRumi, nameJawi };
+      }
     });
 
-    if (name) {
+    if (formValues) {
       const res = await fetch(`/api/classrooms/${classroom.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({
+          name: formValues.name.trim(),
+          name_thai: formValues.nameThai.trim() || null,
+          name_rumi: formValues.nameRumi.trim() || null,
+          name_jawi: formValues.nameJawi.trim() || null,
+        }),
       });
       if (res.ok) {
         await loadClassrooms(selectedSettingId, token);
@@ -2482,6 +2579,13 @@ function AdminPortalContent() {
     return sub.name || "";
   }
 
+  function getClassroomDisplayName(
+    classroom: any,
+    lang?: "th" | "ms-rumi" | "ms-jawi" | string
+  ): string {
+    return getClassroomName(classroom, (lang as any) || "th");
+  }
+
   const handleExportSchedule = (type: "overview" | "classroom" | "teacher") => {
     if (!selectedSubjectSettingId || schedulePeriods.length === 0) return;
     const setting = settingsList.find((s: any) => s.id === selectedSubjectSettingId);
@@ -2642,7 +2746,7 @@ function AdminPortalContent() {
             </td>`;
           }).join("");
           return `<tr>
-            <td dir="auto" style="padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;white-space:nowrap;">${c.name}</td>
+            <td dir="auto" style="padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:14px;font-weight:700;color:#0f172a;white-space:nowrap;">${getClassroomDisplayName(c, exportLanguage)}</td>
             ${cells}
           </tr>`;
         }).join("");
@@ -2661,7 +2765,9 @@ function AdminPortalContent() {
     } else if (type === "classroom") {
       docTitle = `${getLocalizedText("ตารางเรียนรายชั้น")} · ${settingTitle}`;
       body = sortedClassrooms.map((c, i) =>
-        i > 0 ? `<div style="page-break-before:always;">${buildClassroomTable(c.id, c.name)}</div>` : buildClassroomTable(c.id, c.name)
+        i > 0
+          ? `<div style="page-break-before:always;">${buildClassroomTable(c.id, getClassroomDisplayName(c, exportLanguage))}</div>`
+          : buildClassroomTable(c.id, getClassroomDisplayName(c, exportLanguage))
       ).join("");
     } else {
       docTitle = `${getLocalizedText("ตารางสอนรายครู")} · ${settingTitle}`;
@@ -2999,6 +3105,20 @@ function changeFontSize(dir) {
       return;
     }
 
+    // ดึงข้อมูลครูประจำชั้น
+    let homeroomTeacher: DBUser | null = null;
+    try {
+      const usersRes = await fetch("/api/users", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (usersRes.ok) {
+        const allUsers: DBUser[] = await usersRes.json();
+        homeroomTeacher = allUsers.find(u => u.homeroom_classroom_id === exportClassroomId && u.role === "teacher") || null;
+      }
+    } catch (err) {
+      console.error("Failed to fetch homeroom teacher:", err);
+    }
+
     const selectedSubjects = exportSubjectList.filter(s => exportSelectedSubjectIds.includes(s.id));
     if (selectedSubjects.length === 0) {
       Swal.fire("ข้อผิดพลาด", "กรุณาเลือกวิชาเรียนอย่างน้อย 1 วิชาที่ต้องการส่งออก", "warning");
@@ -3290,11 +3410,36 @@ function changeFontSize(dir) {
         `;
       }).join("");
 
+      // คำนวณคะแนนรวมของแต่ละวิชา
+      const subjectTotals: Record<string, number> = {};
+      selectedSubjects.forEach(s => {
+        subjectTotals[s.id] = 0;
+        studentRows.forEach(st => {
+          const sc = st.subjectScores[s.id];
+          if (sc && sc.total !== null && !sc.isActivity) {
+            subjectTotals[s.id] += sc.total;
+          }
+        });
+      });
+
+      const totalRowHTML = `
+        <tr style="background:#fef3c7;border-top:2px solid #f59e0b;">
+          <td colspan="3" style="padding:8px 10px;text-align:${alignLeftOrRight};border:1px solid #fbbf24;font-size:12px;font-weight:bold;color:#92400e;">${t("คะแนนรวมของแต่ละวิชา")}</td>
+          ${selectedSubjects.map(s => {
+            if (s.subject_type === "activity") {
+              return `<td style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:11px;color:#78716c;">—</td>`;
+            }
+            return `<td style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:12px;font-weight:bold;color:#b45309;">${subjectTotals[s.id]}</td>`;
+          }).join("")}
+          <td colspan="4" style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:11px;color:#78716c;">—</td>
+        </tr>
+      `;
+
       win.document.write(`
         <!DOCTYPE html>
         <html dir="${langDir}">
         <head>
-          <title>${exportType === "yearly" ? `${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} (${t("เฉลี่ยทั้งปี")})` : t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} - ${t("ชั้น")} ${classroom.name}</title>
+          <title>${exportType === "yearly" ? `${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} (${t("เฉลี่ยทั้งปี")})` : t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} - ${t("ชั้น")} ${getClassroomDisplayName(classroom, exportLanguage)}</title>
           <meta charset="utf-8" />
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap');
@@ -3320,7 +3465,7 @@ function changeFontSize(dir) {
           <button class="print-btn" onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
           <div class="header">
             <h1>${exportType === "yearly" ? `${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} (${t("เฉลี่ยทั้งปี")})` : t("รายงานสรุปผลการเรียนประจำชั้นเรียน")}</h1>
-            <h2>${exportType === "yearly" ? `${t("ชั้นเรียน")} ${classroom.name} — ${t("ปีการศึกษา")} ${setting.academic_year} (${t("เฉลี่ยทั้งปี")})` : `${t("ชั้นเรียน")} ${classroom.name} — ${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}`}</h2>
+            <h2>${exportType === "yearly" ? `${t("ชั้นเรียน")} ${getClassroomDisplayName(classroom, exportLanguage)} — ${t("ปีการศึกษา")} ${setting.academic_year} (${t("เฉลี่ยทั้งปี")})` : `${t("ชั้นเรียน")} ${getClassroomDisplayName(classroom, exportLanguage)} — ${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}`}</h2>
           </div>
           <div class="meta">
             <span>${t("จำนวนนักเรียนทั้งหมด:")} <b>${classStudents.length} ${t("คน")}</b> | ${t("จำนวนวิชาที่ส่งออก:")} <b>${selectedSubjects.length} ${t("วิชา")}</b></span>
@@ -3341,18 +3486,19 @@ function changeFontSize(dir) {
             </thead>
             <tbody>
               ${rowsHTML}
+              ${totalRowHTML}
             </tbody>
           </table>
 
           <div class="signatures">
             <div class="sig-box">
               <div class="sig-line"></div>
-              <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+              <div style="font-size:12px;font-weight:bold;">( ${homeroomTeacher?.username || "........................................................"} )</div>
               <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
             </div>
             <div class="sig-box">
               <div class="sig-line"></div>
-              <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+              <div style="font-size:12px;font-weight:bold;">( ${setting.academic_head || "........................................................"} )</div>
               <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
             </div>
           </div>
@@ -3404,7 +3550,7 @@ function changeFontSize(dir) {
             <div class="student-info-grid" style="text-align:${alignLeftOrRight};">
               <div class="info-item"><span>${t("ชื่อ - นามสกุล")}:</span> <b>${st.name}</b></div>
               <div class="info-item"><span>${t("รหัสประจำตัว")}:</span> <b style="font-family:monospace;color:#4f46e5;">${st.student_id}</b></div>
-              <div class="info-item"><span>${t("ชั้นเรียน")}:</span> <b>${t("ชั้น")} ${classroom.name}</b></div>
+              <div class="info-item"><span>${t("ชั้นเรียน")}:</span> <b>${t("ชั้น")} ${getClassroomDisplayName(classroom, exportLanguage)}</b></div>
               <div class="info-item"><span>${t("เลขที่")}:</span> <b>${st.student_number || "-"}</b></div>
             </div>
 
@@ -3450,12 +3596,12 @@ function changeFontSize(dir) {
             <div class="signatures">
               <div class="sig-box">
                 <div class="sig-line"></div>
-                <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+                <div style="font-size:12px;font-weight:bold;">( ${homeroomTeacher?.username || "........................................................"} )</div>
                 <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
               </div>
               <div class="sig-box">
                 <div class="sig-line"></div>
-                <div style="font-size:12px;font-weight:bold;">( ........................................................... )</div>
+                <div style="font-size:12px;font-weight:bold;">( ${setting.academic_head || "........................................................"} )</div>
                 <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
               </div>
             </div>

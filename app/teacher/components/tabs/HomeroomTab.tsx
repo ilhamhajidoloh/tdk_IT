@@ -71,7 +71,12 @@ export default function HomeroomTab({
       {/* Student Table */}
       <div className="card-modern overflow-hidden">
         <div className="px-5 py-4 border-b border-border/60">
-          <h3 className="font-bold text-foreground">รายชื่อนักเรียน · ห้อง {homeroomClass.name}</h3>
+          <h3 className="font-bold text-foreground">
+            รายชื่อนักเรียน · ห้อง {homeroomClass.name}
+            {homeroomClass.name_thai && homeroomClass.name_thai !== homeroomClass.name && (
+              <span className="text-xs text-muted-foreground font-normal ml-2">({homeroomClass.name_thai})</span>
+            )}
+          </h3>
           <p className="text-xs text-muted-foreground mt-0.5">เกรดเฉลี่ยสะสม (GPA) เฉพาะวิชาหลัก</p>
         </div>
 

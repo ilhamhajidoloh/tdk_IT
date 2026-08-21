@@ -6,6 +6,7 @@ export async function ensureStatusSchema() {
   if (migrationDone) return;
   try {
     // system_settings columns
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS academic_head VARCHAR");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS highest_grade_level VARCHAR");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS data_retention_years INT DEFAULT 5");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS auto_cleanup_enabled BOOLEAN DEFAULT true");

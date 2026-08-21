@@ -1,5 +1,6 @@
 import { type SystemSetting, type DBStudent, type DBSubject } from "../types";
 import SectionHeader from "../SectionHeader";
+import { getClassroomName } from "@/app/lib/classroom";
 
 interface ExportGradesTabProps {
   exportMode: "classroom" | "individual";
@@ -20,7 +21,14 @@ interface ExportGradesTabProps {
   exportSelectedSubjectIds: string[];
   setExportSelectedSubjectIds: React.Dispatch<React.SetStateAction<string[]>>;
   settingsList: SystemSetting[];
-  classrooms: { id: string; name: string; setting_id?: number | null }[];
+  classrooms: {
+    id: string;
+    name: string;
+    name_thai?: string | null;
+    name_rumi?: string | null;
+    name_jawi?: string | null;
+    setting_id?: number | null;
+  }[];
   students: DBStudent[];
   moveExportSubjectUp: (index: number) => void;
   moveExportSubjectDown: (index: number) => void;
@@ -249,11 +257,15 @@ export default function ExportGradesTab({
               <option value="">-- เลือกชั้นเรียน --</option>
               {classrooms
                 .filter((c) => exportType === "yearly" || !exportSettingId || c.setting_id === exportSettingId)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    ชั้น {c.name}
-                  </option>
-                ))}
+                .map((c) => {
+                  const prefix = exportLanguage === "ms-jawi" ? "كلس " : exportLanguage === "ms-rumi" ? "Kelas " : "ชั้น ";
+                  const cName = getClassroomName(c, exportLanguage);
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {prefix}{cName}{cName !== c.name ? ` (${c.name})` : ""}
+                    </option>
+                  );
+                })}
             </select>
           </div>
         </div>

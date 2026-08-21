@@ -11,7 +11,13 @@ interface EvaluationsTabProps {
   evalLoading: boolean;
   evalTopics: EvaluationTopic[];
   evalStudents: DBStudent[];
-  evalClassrooms: { id: string; name: string }[];
+  evalClassrooms: {
+    id: string;
+    name: string;
+    name_thai?: string | null;
+    name_rumi?: string | null;
+    name_jawi?: string | null;
+  }[];
   evalClassroomId: string;
   setEvalClassroomId: (id: string) => void;
   evalSummary: EvaluationSummaryRow[];
@@ -264,7 +270,7 @@ export default function EvaluationsTab({
                       : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
                   }`}
                 >
-                  {c.name}
+                  {c.name}{c.name_thai && c.name_thai !== c.name ? ` (${c.name_thai})` : ""}
                 </button>
               ))
             )}

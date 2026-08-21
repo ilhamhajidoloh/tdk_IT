@@ -159,7 +159,12 @@ export default function YearlyAverageTab({
         </div>
       ) : (
         (() => {
-          const classroomList = Array.from(new Set(yearlyAvgData.map((r) => r.classroom_name))).sort();
+          const classroomMap = new Map<string, { name: string; name_thai?: string | null }>();
+          yearlyAvgData.forEach((r) => {
+            if (r.classroom_name && !classroomMap.has(r.classroom_name)) {
+              classroomMap.set(r.classroom_name, { name: r.classroom_name, name_thai: r.classroom_name_thai });
+            }
+          });
           const filtered =
             yearlyAvgClassroomFilter === "all"
               ? yearlyAvgData
@@ -188,17 +193,17 @@ export default function YearlyAverageTab({
                 >
                   ทั้งหมด
                 </button>
-                {classroomList.map((cn) => (
+                {Array.from(classroomMap.values()).map((c) => (
                   <button
-                    key={cn}
-                    onClick={() => setYearlyAvgClassroomFilter(cn)}
+                    key={c.name}
+                    onClick={() => setYearlyAvgClassroomFilter(c.name)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                      yearlyAvgClassroomFilter === cn
+                      yearlyAvgClassroomFilter === c.name
                         ? "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-purple-600 shadow-md"
                         : "bg-card text-muted-foreground border-border hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/20"
                     }`}
                   >
-                    {cn}
+                    {c.name}{c.name_thai && c.name_thai !== c.name ? ` (${c.name_thai})` : ""}
                   </button>
                 ))}
               </div>

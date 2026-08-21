@@ -12,7 +12,13 @@ interface StudentScoresTabProps {
   scoresStudents: DBStudent[];
   scoresSubjects: DBSubject[];
   scoresGrades: DBGrade[];
-  scoresClassrooms: { id: string; name: string }[];
+  scoresClassrooms: {
+    id: string;
+    name: string;
+    name_thai?: string | null;
+    name_rumi?: string | null;
+    name_jawi?: string | null;
+  }[];
   scoresViewMode: "classroom" | "individual";
   setScoresViewMode: (mode: "classroom" | "individual") => void;
   scoresClassroomId: string;
@@ -312,7 +318,7 @@ export default function StudentScoresTab({
                       : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
                   }`}
                 >
-                  {c.name}
+                  {c.name}{c.name_thai && c.name_thai !== c.name ? ` (${c.name_thai})` : ""}
                 </button>
               ))
             )}

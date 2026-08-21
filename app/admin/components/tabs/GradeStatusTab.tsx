@@ -374,7 +374,14 @@ export default function GradeStatusTab({
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                                  {row.classroom_name || "-"}
+                                  {row.classroom_name ? (
+                                    <span>
+                                      {row.classroom_name}
+                                      {row.classroom_name_thai && row.classroom_name_thai !== row.classroom_name && (
+                                        <span className="text-xs text-subtle-foreground ml-1.5">({row.classroom_name_thai})</span>
+                                      )}
+                                    </span>
+                                  ) : "-"}
                                 </td>
                                 <td className="px-4 py-3 text-center text-sm font-bold text-foreground">
                                   {total}
@@ -498,7 +505,16 @@ export default function GradeStatusTab({
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <div>
                                 <div className="font-bold text-foreground text-sm">{row.subject_name}</div>
-                                <div className="text-xs text-subtle-foreground">{row.classroom_name || "-"}</div>
+                                <div className="text-xs text-subtle-foreground">
+                                  {row.classroom_name ? (
+                                    <span>
+                                      {row.classroom_name}
+                                      {row.classroom_name_thai && row.classroom_name_thai !== row.classroom_name && (
+                                        <span className="ml-1">({row.classroom_name_thai})</span>
+                                      )}
+                                    </span>
+                                  ) : "-"}
+                                </div>
                               </div>
                               {isDone ? (
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shrink-0">

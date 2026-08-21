@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
 
   const result = await pool.query(
     `SELECT cs.id, cs.classroom_id, c.name as classroom_name,
+            c.name_thai as classroom_name_thai, c.name_rumi as classroom_name_rumi, c.name_jawi as classroom_name_jawi,
             cs.subject_id, sub.name as subject_name,
             ${teacherOverrideCols}
             ${teacherNamesCols}

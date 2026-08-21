@@ -35,7 +35,8 @@ async function handleSingleTerm(settingId: string, termKey: string, defaultMidMa
       [settingId]
     ),
     pool.query(
-      `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, c.name AS classroom_name
+      `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id,
+              c.name AS classroom_name, c.name_thai AS classroom_name_thai, c.name_rumi AS classroom_name_rumi, c.name_jawi AS classroom_name_jawi
        FROM students st
        JOIN classroom_students cs ON cs.student_id = st.id
        JOIN classrooms c ON c.id = cs.classroom_id
@@ -94,7 +95,8 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
       [settingIds]
     ),
     pool.query(
-      `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, cs.setting_id, c.name AS classroom_name
+      `SELECT st.id, st.name, st.student_id, cs.student_number, cs.classroom_id, cs.setting_id,
+              c.name AS classroom_name, c.name_thai AS classroom_name_thai, c.name_rumi AS classroom_name_rumi, c.name_jawi AS classroom_name_jawi
        FROM students st
        JOIN classroom_students cs ON cs.student_id = st.id
        JOIN classrooms c ON c.id = cs.classroom_id
@@ -239,6 +241,9 @@ function calcStudentScores(
       student_number: st.student_number,
       classroom_id: st.classroom_id,
       classroom_name: st.classroom_name,
+      classroom_name_thai: st.classroom_name_thai || null,
+      classroom_name_rumi: st.classroom_name_rumi || null,
+      classroom_name_jawi: st.classroom_name_jawi || null,
       total_score: totalScore,
       max_possible: maxPossible,
       percentage: Math.round(percentage * 100) / 100,

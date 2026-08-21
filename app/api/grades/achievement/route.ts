@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     // 1. Fetch Classrooms, Subjects, Students, and Grades
     const [classroomsRes, subjectsRes, studentsRes, translationsRes] = await Promise.all([
       pool.query(
-        "SELECT id, name FROM classrooms WHERE setting_id = $1 ORDER BY name",
+        "SELECT id, name, name_thai, name_rumi, name_jawi FROM classrooms WHERE setting_id = $1 ORDER BY name",
         [settingId]
       ),
       pool.query(
@@ -187,6 +187,9 @@ export async function GET(req: NextRequest) {
       return {
         classroom_id: cls.id,
         classroom_name: cls.name,
+        classroom_name_thai: cls.name_thai || null,
+        classroom_name_rumi: cls.name_rumi || null,
+        classroom_name_jawi: cls.name_jawi || null,
         student_count: studentCount,
         subject_stats: subjectStats,
         total_all_subjects: rowAllSubjectsTotal,

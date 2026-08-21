@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
         UNION ALL
         SELECT id FROM fallback_setting WHERE NOT EXISTS (SELECT 1 FROM target_setting)
       )
-      SELECT c.id, c.name, c.setting_id
+      SELECT c.id, c.name, c.name_thai, c.name_rumi, c.name_jawi, c.setting_id
       FROM classrooms c
       JOIN final_setting fs ON c.setting_id = fs.id
       WHERE c.school_id = $1 OR c.school_id IS NULL
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
     if (result.rows.length === 0) {
       const fallback = await pool.query(
-        "SELECT id, name, setting_id FROM classrooms WHERE school_id = $1 OR school_id IS NULL ORDER BY name",
+        "SELECT id, name, name_thai, name_rumi, name_jawi, setting_id FROM classrooms WHERE school_id = $1 OR school_id IS NULL ORDER BY name",
         [schoolId]
       );
       return NextResponse.json(fallback.rows);

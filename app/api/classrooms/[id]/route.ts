@@ -11,14 +11,14 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { name } = await req.json();
+  const { name, name_thai, name_rumi, name_jawi } = await req.json();
   if (!name?.trim()) {
     return NextResponse.json({ error: "Missing name" }, { status: 400 });
   }
 
   const result = await pool.query(
-    "UPDATE classrooms SET name = $1 WHERE id = $2 RETURNING *",
-    [name.trim(), id]
+    "UPDATE classrooms SET name = $1, name_thai = $2, name_rumi = $3, name_jawi = $4 WHERE id = $5 RETURNING *",
+    [name.trim(), name_thai || null, name_rumi || null, name_jawi || null, id]
   );
   if (result.rows.length === 0) {
     return NextResponse.json({ error: "Classroom not found" }, { status: 404 });

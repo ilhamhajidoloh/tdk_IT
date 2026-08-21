@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   await ensureStatusSchema();
   const result = await pool.query(
-    "SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
+    "SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
     [schoolId]
   );
   return NextResponse.json(result.rows.map(formatRow));
@@ -63,6 +63,7 @@ export async function PUT(req: NextRequest) {
     term,
     start_date,
     end_date,
+    academic_head,
     midterm_max_score,
     final_max_score,
     schedule_days,
@@ -89,15 +90,16 @@ export async function PUT(req: NextRequest) {
   const autoCleanup = auto_cleanup_enabled !== false;
   const isReleased = is_grade_released !== false;
   const releaseDate = grade_release_date ? String(grade_release_date) : null;
+  const academicHeadValue = academic_head || null;
 
   if (id) {
     // Update
     const result = await pool.query(
       `UPDATE system_settings
-       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, midterm_max_score = $5, final_max_score = $6, schedule_days = $8, highest_grade_level = $9, data_retention_years = $10, auto_cleanup_enabled = $11, is_grade_released = $12, grade_release_date = $13
-       WHERE id = $7
+       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, academic_head = $5, midterm_max_score = $6, final_max_score = $7, schedule_days = $9, highest_grade_level = $10, data_retention_years = $11, auto_cleanup_enabled = $12, is_grade_released = $13, grade_release_date = $14
+       WHERE id = $8
        RETURNING *`,
-      [academic_year, term, start_date, end_date, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate]
+      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Setting not found" }, { status: 444 });
@@ -106,10 +108,10 @@ export async function PUT(req: NextRequest) {
   } else {
     // Create
     const result = await pool.query(
-      `INSERT INTO system_settings (academic_year, term, start_date, end_date, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date)
-       VALUES ($1, $2, $3, $4, $5, $6, false, $7, $8, $9, $10, $11, $12)
+      `INSERT INTO system_settings (academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
-      [academic_year, term, start_date, end_date, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate]
+      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate]
     );
     return NextResponse.json(formatRow(result.rows[0]));
   }
