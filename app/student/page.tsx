@@ -555,7 +555,7 @@ export default function StudentPortal() {
       <TabNav activeTab={activeTab} setActiveTab={setActiveTab} gradesCount={gradesCount} />
 
       {/* ── MAIN ── */}
-      <main className="flex-1 max-w-screen-lg mx-auto w-full px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-screen-lg mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 pb-24 sm:pb-8">
         {activeTab === "overview" && (
           <OverviewTab
             studentName={currentStudent.name}
