@@ -88,13 +88,24 @@ interface AnalyticsData {
     subject_type?: string;
     credit_hours?: number | null;
     avg_percentage: number;
+    raw_avg_score?: number;
+    max_possible_score?: number;
     highest_score: number;
     lowest_score: number;
     graded_students: number;
+    pass_rate?: number;
+    grade_distribution?: Array<{
+      grade: string;
+      count: number;
+      percentage: number;
+    }>;
     classroom_breakdown: Array<{
       classroom_id: string;
       classroom_name: string;
+      student_count?: number;
+      graded_count?: number;
       avg_percentage: number;
+      raw_avg_score?: number;
     }>;
   }>;
   grade_distribution: Array<{
@@ -156,9 +167,10 @@ export default function AnalyticsDashboardTab({
 }: AnalyticsDashboardTabProps) {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [activeView, setActiveView] = useState<"all" | "academic" | "evaluation">("all");
+  const [activeView, setActiveView] = useState<"all" | "academic" | "subjects" | "evaluation">("all");
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>("all");
   const [subjectSortOrder, setSubjectSortOrder] = useState<"desc" | "asc">("desc");
+  const [selectedSubject, setSelectedSubject] = useState<AnalyticsData["subjects"][number] | null>(null);
 
   useEffect(() => {
     if (!selectedSettingId && settingsList.length > 0) {
@@ -284,7 +296,17 @@ export default function AnalyticsDashboardTab({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            🎓 ผลการเรียนรายวิชา & ชั้นเรียน
+            🎓 ผลการเรียนชั้นเรียน
+          </button>
+          <button
+            onClick={() => setActiveView("subjects")}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeView === "subjects"
+                ? "bg-card text-indigo-600 dark:text-indigo-400 shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            📚 สถิติรายวิชาเชิงลึก
           </button>
           <button
             onClick={() => setActiveView("evaluation")}
@@ -294,7 +316,7 @@ export default function AnalyticsDashboardTab({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            🌟 ผลการประเมินคุณลักษณะ & RWT
+            🌟 คุณลักษณะ & RWT
           </button>
         </div>
 
@@ -615,6 +637,227 @@ export default function AnalyticsDashboardTab({
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Subject Detailed Breakdown Table & Cards */}
+              <div className="card-modern overflow-hidden">
+                <div className="p-5 border-b border-border/80 flex flex-wrap justify-between items-center gap-4">
+                  <div>
+                    <h4 className="font-extrabold text-foreground text-base">ตารางสถิติและผลสัมฤทธิ์รายวิชาเชิงลึก</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      แสดงคะแนนเฉลี่ย อัตราการผ่านเกณฑ์ คะแนนสูงสุด/ต่ำสุด และการกระจายระดับผลการเรียน (คลิกที่วิชาเพื่อดูรายห้อง)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-muted/60 text-muted-foreground text-xs uppercase font-bold border-b border-border">
+                      <tr>
+                        <th className="px-6 py-3.5">ชื่อรายวิชา</th>
+                        <th className="px-6 py-3.5 text-center">ประเมินแล้ว</th>
+                        <th className="px-6 py-3.5 text-right">คะแนนเฉลี่ย (%)</th>
+                        <th className="px-6 py-3.5 text-right">อัตราผ่านเกณฑ์</th>
+                        <th className="px-6 py-3.5 text-center">สูงสุด / ต่ำสุด</th>
+                        <th className="px-6 py-3.5 text-center">การกระจายเกรด (0-4)</th>
+                        <th className="px-6 py-3.5 text-center">การดำเนินการ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {sortedSubjects.map((sub) => {
+                        const isAbove = sub.avg_percentage >= data.kpi.school_avg_percentage;
+                        return (
+                          <tr
+                            key={sub.subject_id}
+                            className="hover:bg-muted/40 transition cursor-pointer"
+                            onClick={() => setSelectedSubject(sub)}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-foreground">{sub.subject_name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {sub.subject_type === "activity" ? "กิจกรรมพัฒนาผู้เรียน" : "วิชาพื้นฐาน/เพิ่มเติม"}
+                                {sub.credit_hours ? ` · ${sub.credit_hours} นก.` : ""}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-center font-medium text-muted-foreground">
+                              {sub.graded_students} คน
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="font-black text-foreground">{sub.avg_percentage}%</div>
+                              {sub.raw_avg_score !== undefined && (
+                                <div className="text-[11px] text-muted-foreground">
+                                  ดิบ {sub.raw_avg_score}/{sub.max_possible_score || 100}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                  (sub.pass_rate ?? 0) >= 80
+                                    ? "bg-emerald-500/10 text-emerald-600"
+                                    : (sub.pass_rate ?? 0) >= 50
+                                    ? "bg-amber-500/10 text-amber-600"
+                                    : "bg-rose-500/10 text-rose-600"
+                                }`}
+                              >
+                                {sub.pass_rate !== undefined ? `${sub.pass_rate}%` : "-"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center font-bold text-xs">
+                              <span className="text-emerald-600">{sub.highest_score}</span>
+                              <span className="text-muted-foreground mx-1">/</span>
+                              <span className="text-rose-600">{sub.lowest_score}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {sub.grade_distribution && sub.grade_distribution.length > 0 ? (
+                                <div className="w-32 h-2.5 bg-muted rounded-full overflow-hidden flex mx-auto">
+                                  {sub.grade_distribution.map((g) => (
+                                    <div
+                                      key={g.grade}
+                                      style={{
+                                        width: `${g.percentage}%`,
+                                        backgroundColor: GRADE_COLORS[g.grade] || "#6366f1",
+                                      }}
+                                      title={`เกรด ${g.grade}: ${g.count} คน (${g.percentage}%)`}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center text-xs text-muted-foreground">-</div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSubject(sub);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 transition"
+                              >
+                                ดูรายห้อง
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Subject Detail Modal */}
+          {selectedSubject && (
+            <div
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setSelectedSubject(null)}
+            >
+              <div
+                className="bg-card border border-border rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-scale-up"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-start border-b border-border pb-4">
+                  <div>
+                    <h3 className="text-xl font-black text-foreground flex items-center gap-2">
+                      <BookOpen className="w-6 h-6 text-indigo-600" />
+                      {selectedSubject.subject_name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedSubject.subject_type === "activity" ? "กิจกรรมพัฒนาผู้เรียน" : "วิชาพื้นฐาน/เพิ่มเติม"}
+                      {selectedSubject.credit_hours ? ` · หน่วยกิต: ${selectedSubject.credit_hours}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedSubject(null)}
+                    className="w-8 h-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Subject KPI Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
+                    <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">คะแนนเฉลี่ย</div>
+                    <div className="text-lg font-black text-foreground">{selectedSubject.avg_percentage}%</div>
+                    {selectedSubject.raw_avg_score !== undefined && (
+                      <div className="text-[10px] text-muted-foreground">ดิบ {selectedSubject.raw_avg_score} คะแนน</div>
+                    )}
+                  </div>
+                  <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
+                    <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">อัตราผ่านเกณฑ์</div>
+                    <div className="text-lg font-black text-foreground">{selectedSubject.pass_rate ?? "-"}%</div>
+                    <div className="text-[10px] text-muted-foreground">ประเมินแล้ว {selectedSubject.graded_students} คน</div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50">
+                    <div className="text-[11px] font-bold text-sky-600 dark:text-sky-400">คะแนนสูงสุด</div>
+                    <div className="text-lg font-black text-foreground">{selectedSubject.highest_score}</div>
+                    <div className="text-[10px] text-muted-foreground">เต็ม {selectedSubject.max_possible_score || 100}</div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
+                    <div className="text-[11px] font-bold text-rose-600 dark:text-rose-400">คะแนนต่ำสุด</div>
+                    <div className="text-lg font-black text-foreground">{selectedSubject.lowest_score}</div>
+                    <div className="text-[10px] text-muted-foreground">เต็ม {selectedSubject.max_possible_score || 100}</div>
+                  </div>
+                </div>
+
+                {/* Grade Distribution Breakdown for this Subject */}
+                {selectedSubject.grade_distribution && selectedSubject.grade_distribution.length > 0 && (
+                  <div className="space-y-3">
+                    <h5 className="text-xs font-extrabold uppercase text-muted-foreground tracking-wider">
+                      การกระจายระดับผลการเรียน (เกรด 0-4)
+                    </h5>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                      {selectedSubject.grade_distribution.map((g) => (
+                        <div
+                          key={g.grade}
+                          className="p-2 rounded-xl border border-border/80 text-center"
+                          style={{ borderTop: `3px solid ${GRADE_COLORS[g.grade] || "#6366f1"}` }}
+                        >
+                          <div className="text-xs font-bold text-foreground">เกรด {g.grade}</div>
+                          <div className="text-sm font-black text-foreground mt-0.5">{g.count} คน</div>
+                          <div className="text-[10px] text-muted-foreground">{g.percentage}%</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Breakdown by Classroom */}
+                <div className="space-y-3">
+                  <h5 className="text-xs font-extrabold uppercase text-muted-foreground tracking-wider">
+                    เปรียบเทียบผลสัมฤทธิ์แยกตามห้องเรียน
+                  </h5>
+                  <div className="border border-border rounded-2xl overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-muted/60 text-muted-foreground text-xs uppercase font-bold border-b border-border">
+                        <tr>
+                          <th className="px-4 py-2.5">ห้องเรียน</th>
+                          <th className="px-4 py-2.5 text-center">นักเรียน</th>
+                          <th className="px-4 py-2.5 text-right">คะแนนเฉลี่ย (%)</th>
+                          <th className="px-4 py-2.5 text-right">คะแนนดิบ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {selectedSubject.classroom_breakdown.map((cls) => (
+                          <tr key={cls.classroom_id} className="hover:bg-muted/30">
+                            <td className="px-4 py-2.5 font-bold text-foreground">{cls.classroom_name}</td>
+                            <td className="px-4 py-2.5 text-center text-muted-foreground">
+                              {cls.graded_count ?? 0} / {cls.student_count ?? "-"} คน
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-black text-indigo-600 dark:text-indigo-400">
+                              {cls.avg_percentage}%
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-muted-foreground text-xs">
+                              {cls.raw_avg_score !== undefined ? `${cls.raw_avg_score} คะแนน` : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

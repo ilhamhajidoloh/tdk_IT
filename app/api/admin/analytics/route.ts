@@ -262,23 +262,34 @@ export async function GET(req: NextRequest) {
       let gradedCount = 0;
       let highestScore = 0;
       let lowestScore = maxScorePerStudent;
+      let passingCount = 0;
+      const subjGradeCounts: Record<string, number> = {
+        "4.0": 0, "3.5": 0, "3.0": 0, "2.5": 0, "2.0": 0, "1.5": 0, "1.0": 0, "0.0": 0,
+      };
 
       const clsBreakdown = classrooms.map((cls: any) => {
         const clsStudents = classroomStudentsMap.get(cls.id) || [];
         let clsSubjScore = 0;
+        let clsGradedCount = 0;
 
         clsStudents.forEach((std: any) => {
           const scoreInfo = studentSubjectScores.get(std.student_id)?.get(subjKey);
           if (scoreInfo) {
             clsSubjScore += scoreInfo.total;
             gradedCount++;
+            clsGradedCount++;
             if (scoreInfo.total > highestScore) highestScore = scoreInfo.total;
             if (scoreInfo.total < lowestScore) lowestScore = scoreInfo.total;
+            if (scoreInfo.percentage >= 50) passingCount++;
+            if (subjGradeCounts[scoreInfo.grade] !== undefined) {
+              subjGradeCounts[scoreInfo.grade]++;
+            }
           }
         });
 
         const clsMaxScore = clsStudents.length * maxScorePerStudent;
         const clsAvgPercentage = clsMaxScore > 0 ? (clsSubjScore * 100) / clsMaxScore : 0;
+        const clsRawAvg = clsGradedCount > 0 ? (clsSubjScore / clsGradedCount) : 0;
 
         totalSubjectScore += clsSubjScore;
         totalMaxSubjectScore += clsMaxScore;
@@ -286,11 +297,22 @@ export async function GET(req: NextRequest) {
         return {
           classroom_id: cls.id,
           classroom_name: cls.name,
+          student_count: clsStudents.length,
+          graded_count: clsGradedCount,
           avg_percentage: parseFloat(clsAvgPercentage.toFixed(2)),
+          raw_avg_score: parseFloat(clsRawAvg.toFixed(2)),
         };
       });
 
       const avgPercentage = totalMaxSubjectScore > 0 ? (totalSubjectScore * 100) / totalMaxSubjectScore : 0;
+      const rawAvgScore = gradedCount > 0 ? (totalSubjectScore / gradedCount) : 0;
+      const passRate = gradedCount > 0 ? (passingCount * 100) / gradedCount : 0;
+
+      const subjGradeDistribution = Object.entries(subjGradeCounts).map(([grade, count]) => ({
+        grade,
+        count,
+        percentage: gradedCount > 0 ? parseFloat(((count * 100) / gradedCount).toFixed(1)) : 0,
+      }));
 
       return {
         subject_id: subj.id,
@@ -298,9 +320,13 @@ export async function GET(req: NextRequest) {
         subject_type: subj.subject_type,
         credit_hours: subj.credit_hours,
         avg_percentage: parseFloat(avgPercentage.toFixed(2)),
+        raw_avg_score: parseFloat(rawAvgScore.toFixed(2)),
+        max_possible_score: maxScorePerStudent,
         highest_score: highestScore,
         lowest_score: gradedCount > 0 ? lowestScore : 0,
         graded_students: gradedCount,
+        pass_rate: parseFloat(passRate.toFixed(1)),
+        grade_distribution: subjGradeDistribution,
         classroom_breakdown: clsBreakdown,
       };
     });
