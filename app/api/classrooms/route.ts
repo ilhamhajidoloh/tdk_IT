@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
   let result;
   if (settingId) {
     result = await pool.query(
-      `SELECT c.*, s.academic_year, s.term
+      `SELECT c.*, s.academic_year, s.term,
+        (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id) AS student_count
        FROM classrooms c
        LEFT JOIN system_settings s ON c.setting_id = s.id
        WHERE (c.school_id = $1 OR c.school_id IS NULL) AND c.setting_id = $2
@@ -32,7 +33,8 @@ export async function GET(req: NextRequest) {
     );
   } else {
     result = await pool.query(
-      `SELECT c.*, s.academic_year, s.term
+      `SELECT c.*, s.academic_year, s.term,
+        (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id) AS student_count
        FROM classrooms c
        LEFT JOIN system_settings s ON c.setting_id = s.id
        WHERE (c.school_id = $1 OR c.school_id IS NULL)

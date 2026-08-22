@@ -330,7 +330,7 @@ export default function AnalyticsDashboardTab({
             className="input-modern py-1.5 px-3 text-sm rounded-xl font-medium"
           >
             <option value="all">ทุกชั้นเรียน (รวมทั้งโรงเรียน)</option>
-            {data?.classrooms.map((c) => (
+            {data?.classrooms.filter((c) => c.student_count > 0).map((c) => (
               <option key={c.classroom_id} value={c.classroom_id}>
                 {getClassroomName(c)} ({c.student_count} คน)
               </option>

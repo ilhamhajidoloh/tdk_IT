@@ -16,6 +16,7 @@ interface ClassroomsTabProps {
     name_rumi?: string | null;
     name_jawi?: string | null;
     setting_id?: number | null;
+    student_count?: number | null;
   }[];
   selectedClassroomIds: string[];
   classroomFileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -163,79 +164,116 @@ export default function ClassroomsTab({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in-up">
-          {classrooms.map((c) => (
-            <div
-              key={c.id}
-              className={`bg-gradient-to-br p-5 rounded-2xl border flex flex-col justify-between hover:shadow-md transition-all relative ${
-                selectedClassroomIds.includes(c.id)
-                  ? "from-red-50/40 dark:from-red-500/10 to-orange-50/40 dark:to-orange-500/10 border-red-200 dark:border-red-500/30"
-                  : "from-indigo-50/40 dark:from-indigo-500/10 to-blue-50/40 dark:to-blue-500/10 border-indigo-100 dark:border-indigo-500/25"
-              }`}
-            >
-              <div className="absolute top-4 right-4">
-                <input
-                  type="checkbox"
-                  checked={selectedClassroomIds.includes(c.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedClassroomIds((prev) => [...prev, c.id]);
-                    } else {
-                      setSelectedClassroomIds((prev) => prev.filter((id) => id !== c.id));
-                    }
-                  }}
-                  className="w-5 h-5 rounded border-border text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 cursor-pointer"
-                />
-              </div>
-              <div className="pr-8 space-y-1">
-                <div className="font-extrabold text-lg text-indigo-700 dark:text-indigo-300">{c.name}</div>
-                {c.name_thai && (
-                  <div className="text-xs text-foreground/80 font-medium flex items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold">TH</span>
-                    <span>{c.name_thai}</span>
+          {classrooms.map((c) => {
+            const hasStudents = (c.student_count ?? 0) > 0;
+            return (
+              <div
+                key={c.id}
+                className={`bg-gradient-to-br p-5 rounded-2xl border flex flex-col justify-between hover:shadow-md transition-all relative ${
+                  selectedClassroomIds.includes(c.id)
+                    ? "from-red-50/40 dark:from-red-500/10 to-orange-50/40 dark:to-orange-500/10 border-red-200 dark:border-red-500/30"
+                    : "from-indigo-50/40 dark:from-indigo-500/10 to-blue-50/40 dark:to-blue-500/10 border-indigo-100 dark:border-indigo-500/25"
+                }`}
+              >
+                <div className="absolute top-4 right-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedClassroomIds.includes(c.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedClassroomIds((prev) => [...prev, c.id]);
+                      } else {
+                        setSelectedClassroomIds((prev) => prev.filter((id) => id !== c.id));
+                      }
+                    }}
+                    className="w-5 h-5 rounded border-border text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 cursor-pointer"
+                  />
+                </div>
+                <div className="pr-8 space-y-1">
+                  <div className="font-extrabold text-lg text-indigo-700 dark:text-indigo-300">{c.name}</div>
+                  {hasStudents ? (
+                    <>
+                      {c.name_thai && (
+                        <div className="text-xs text-foreground/80 font-medium flex items-center gap-1.5">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold">TH</span>
+                          <span>{c.name_thai}</span>
+                        </div>
+                      )}
+                      {c.name_rumi && (
+                        <div className="text-xs text-foreground/80 font-medium flex items-center gap-1.5">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold">RUMI</span>
+                          <span>{c.name_rumi}</span>
+                        </div>
+                      )}
+                      {c.name_jawi && (
+                        <div className="text-xs text-foreground/80 font-medium flex items-center gap-1.5" dir="rtl">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold" dir="ltr">JAWI</span>
+                          <span className="font-arabic">{c.name_jawi}</span>
+                        </div>
+                      )}
+                      <div className="text-muted-foreground text-[11px] font-semibold truncate pt-0.5">ID: {c.id}</div>
+                      <div className="text-indigo-600 dark:text-indigo-400 text-[11px] font-bold pt-1">
+                        👥 นักเรียน {c.student_count} คน
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-amber-600 dark:text-amber-400 text-[11px] font-semibold pt-1">
+                      ⚠️ ชั้นเรียนว่าง (ใช้สำหรับตารางเรียนเท่านั้น)
+                    </div>
+                  )}
+                </div>
+                {hasStudents ? (
+                  <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30 dark:border-indigo-500/25 flex-wrap">
+                    <button
+                      onClick={() => handleOpenExportScoreModal(c.id)}
+                      className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:bg-teal-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer flex items-center gap-1"
+                    >
+                      📊 ส่งออกคะแนน
+                    </button>
+                    <button
+                      onClick={() => handleOpenAssignModal(c)}
+                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                    >
+                      เพิ่มนักเรียน
+                    </button>
+                    <button
+                      onClick={() => handleEditClassroom(c)}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                    >
+                      แก้ไข
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClassroom(c.id, c.name)}
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                    >
+                      ลบ
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-amber-100/30 dark:border-amber-500/25 flex-wrap">
+                    <button
+                      onClick={() => handleOpenAssignModal(c)}
+                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                    >
+                      เพิ่มนักเรียน
+                    </button>
+                    <button
+                      onClick={() => handleEditClassroom(c)}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                    >
+                      แก้ไข
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClassroom(c.id, c.name)}
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                    >
+                      ลบ
+                    </button>
                   </div>
                 )}
-                {c.name_rumi && (
-                  <div className="text-xs text-foreground/80 font-medium flex items-center gap-1.5">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold">RUMI</span>
-                    <span>{c.name_rumi}</span>
-                  </div>
-                )}
-                {c.name_jawi && (
-                  <div className="text-xs text-foreground/80 font-medium flex items-center gap-1.5" dir="rtl">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold" dir="ltr">JAWI</span>
-                    <span className="font-arabic">{c.name_jawi}</span>
-                  </div>
-                )}
-                <div className="text-muted-foreground text-[11px] font-semibold truncate pt-0.5">ID: {c.id}</div>
               </div>
-              <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30 dark:border-indigo-500/25 flex-wrap">
-                <button
-                  onClick={() => handleOpenExportScoreModal(c.id)}
-                  className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:bg-teal-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer flex items-center gap-1"
-                >
-                  📊 ส่งออกคะแนน
-                </button>
-                <button
-                  onClick={() => handleOpenAssignModal(c)}
-                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                >
-                  เพิ่มนักเรียน
-                </button>
-                <button
-                  onClick={() => handleEditClassroom(c)}
-                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                >
-                  แก้ไข
-                </button>
-                <button
-                  onClick={() => handleDeleteClassroom(c.id, c.name)}
-                  className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                >
-                  ลบ
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
