@@ -4,7 +4,7 @@ import { getSchoolContext } from "@/app/lib/schoolContext";
 
 // Admin requests deletion of their own school
 export async function POST(req: NextRequest) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context || context.role !== "admin" || !context.schoolId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
 // Admin cancels their deletion request
 export async function DELETE(req: NextRequest) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context || context.role !== "admin" || !context.schoolId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

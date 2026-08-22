@@ -14,14 +14,14 @@ async function hasSubjectTeachersTable(): Promise<boolean> {
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const context = await getSchoolContext();
+    const context = await getSchoolContext(req);
     let schoolId = context?.schoolId;
+
+    const requestedSchoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id");
+
     if (context?.isSuperAdmin) {
-      schoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id") || schoolId;
-    } else if (req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id")) {
+      schoolId = requestedSchoolId || schoolId;
+    } else if (requestedSchoolId && requestedSchoolId !== schoolId) {
       // Non-super admin cannot request data from other schools
       return NextResponse.json({ error: "Forbidden: Cannot access other school's data" }, { status: 403 });
     }

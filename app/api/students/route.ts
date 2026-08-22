@@ -4,12 +4,14 @@ import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 
 export async function GET(req: NextRequest) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;
 
+  const requestedSchoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id");
+
   if (context?.isSuperAdmin) {
-    schoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id") || schoolId;
-  } else if (req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id")) {
+    schoolId = requestedSchoolId || schoolId;
+  } else if (requestedSchoolId && requestedSchoolId !== schoolId) {
     // Non-super admin cannot request data from other schools
     return NextResponse.json({ error: "Forbidden: Cannot access other school's data" }, { status: 403 });
   }

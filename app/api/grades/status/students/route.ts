@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import { verifyUser } from "@/app/lib/verifyUser";
 
 export async function GET(req: NextRequest) {
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await verifyUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const subjectName = req.nextUrl.searchParams.get("subjectName");
   const classroomId = req.nextUrl.searchParams.get("classroomId");

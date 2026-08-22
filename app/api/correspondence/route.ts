@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const startDate = searchParams.get("start_date");
   const endDate = searchParams.get("end_date");
 
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   let schoolId = context?.schoolId || (user as any)?.school_id;
   if (context?.isSuperAdmin) {
     schoolId = searchParams.get("schoolId") || searchParams.get("school_id") || schoolId;

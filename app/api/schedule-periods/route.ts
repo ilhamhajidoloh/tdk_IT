@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
+import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
 
 export async function GET(req: NextRequest) {
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await verifyUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const settingId = req.nextUrl.searchParams.get("settingId");
   if (!settingId) {

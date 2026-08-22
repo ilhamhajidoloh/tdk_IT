@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import { verifyUser } from "@/app/lib/verifyUser";
 
 function formatRow(row: any) {
   if (!row) return row;
@@ -11,8 +12,8 @@ function formatRow(row: any) {
 }
 
 export async function GET(req: NextRequest) {
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await verifyUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const studentId = req.nextUrl.searchParams.get("studentId");
   const term = req.nextUrl.searchParams.get("term");
@@ -35,8 +36,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await verifyUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { student_id, subject, midterm_score, final_score, term } = await req.json();
 
