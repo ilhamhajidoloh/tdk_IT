@@ -100,6 +100,7 @@ export interface ScheduleEntry {
 
 export type Tab =
   | "dashboard"
+  | "analytics"
   | "users"
   | "classrooms"
   | "students"

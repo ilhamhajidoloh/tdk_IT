@@ -25,6 +25,7 @@ import type { Tab } from "./types";
 
 const ICON_MAP: Record<Tab, React.ComponentType<{ className?: string }>> = {
   dashboard: Home,
+  analytics: BarChart3,
   users: Users,
   classrooms: Building2,
   students: GraduationCap,
@@ -86,6 +87,7 @@ export const ADMIN_NAV_CATEGORIES: NavCategoryDef[] = [
     color: "from-purple-500 to-pink-600",
     badgeBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-500/30",
     keys: [
+      "analytics",
       "grade-status",
       "student-scores",
       "rankings",
