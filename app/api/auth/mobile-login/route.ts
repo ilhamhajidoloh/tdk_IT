@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await pool.query(
-    "SELECT id, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical, COALESCE(status, 'active') AS status FROM users WHERE username = $1 OR student_id = $1",
+    "SELECT id, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical, school_id, COALESCE(status, 'active') AS status FROM users WHERE username = $1 OR student_id = $1",
     [username]
   );
   const user = result.rows[0];
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
     subjects: user.subjects,
     email: user.email,
     is_clerical: user.is_clerical,
+    school_id: user.school_id,
     status: user.status,
     is_read_only: isReadOnly,
   };
