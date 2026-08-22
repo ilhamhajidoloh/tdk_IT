@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
 import { RWT_TOPICS } from "@/app/lib/evaluation";
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.headers.get("Authorization")?.split("Bearer ")[1];
-    if (!token) {
+    const user = await verifyUser(req);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
