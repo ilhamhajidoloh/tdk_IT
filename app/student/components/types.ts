@@ -14,7 +14,19 @@ export interface DBUser {
   resignation_reason?: string | null;
 }
 
-export interface DBStudent { id: string; name: string; student_id: string; classroom_id: string | null; }
+export interface DBStudent {
+  id: string;
+  name: string;
+  student_id: string;
+  classroom_id: string | null;
+  student_number?: number | null;
+  status?: "active" | "graduated" | "resigned" | "expired";
+  graduation_year?: string | null;
+  status_updated_at?: string | null;
+  status_note?: string | null;
+  enrollment_date?: string | null;
+  graduation_date?: string | null;
+}
 export interface DBGrade { id: string; student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term: string; }
 export interface DBClassroom {
   id: string;
