@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 
-export async function GET() {
-  const context = await getSchoolContext();
+export async function GET(req: NextRequest) {
+  const context = await getSchoolContext(req);
   if (!context?.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }

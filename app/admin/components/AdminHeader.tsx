@@ -1,6 +1,7 @@
 "use client";
 
-import { Mail, Key, LogOut } from "lucide-react";
+import { Mail, Key, LogOut, User } from "lucide-react";
+import { useRouter } from "next/navigation";
 import ThemeToggle from "../../components/ThemeToggle";
 import { formatThaiDate } from "../../lib/format";
 import type { DBUser } from "./types";
@@ -26,6 +27,7 @@ export default function AdminHeader({
   handleLogout,
 }: AdminHeaderProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const isSuperAdmin = user?.role === "super_admin";
   const schoolKey = selectedSchoolId || adminUser?.school_id;
   const { school } = useSchoolBrand(schoolKey);
@@ -67,10 +69,18 @@ export default function AdminHeader({
           <ThemeToggle className="!h-9 !w-9" />
 
           <button
+            onClick={() => router.push("/admin/profile")}
+            title="โปรไฟล์"
+            className="flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:border-indigo-200 dark:border-indigo-500/30 transition-all shrink-0 border border-border"
+          >
+            <User className="w-4 h-4" />
+          </button>
+
+          <button
             onClick={handleConnectGoogle}
             title={
               adminUser?.email
-                ? `เชื่อมต่ออีเมล: ${adminUser.email}`
+                ? `เชื่อมต่อ���ีเมล: ${adminUser.email}`
                 : "เชื่อมต่ออีเมล Google"
             }
             className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all shrink-0 border ${

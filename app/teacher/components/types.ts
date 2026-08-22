@@ -1,3 +1,19 @@
+export interface DBUser {
+  id: string;
+  firebase_uid?: string;
+  username: string;
+  role: "super_admin" | "admin" | "teacher" | "student";
+  school_id?: string;
+  student_id?: string;
+  homeroom_classroom_id?: string;
+  subjects?: string[];
+  email?: string | null;
+  is_clerical?: boolean;
+  status?: "active" | "graduated" | "resigned" | "disabled" | "expired";
+  resigned_at?: string | null;
+  resignation_reason?: string | null;
+}
+
 export interface DBStudent { id: string; name: string; student_id: string; classroom_id: string | null; student_number?: number | null; }
 export interface DBGrade { id: string; student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term: string; }
 export interface DBClassroom {
@@ -8,7 +24,26 @@ export interface DBClassroom {
   name_jawi?: string | null;
   setting_id?: number;
 }
-export interface DBSubject { id: string; name: string; teacher_id?: string | null; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; classroom_ids?: string[]; }
+export interface DBSubject {
+  id: string;
+  name: string;
+  teacher_id?: string | null;
+  teacher_name?: string | null;
+  teacher_ids?: string[];
+  teacher_names?: string[];
+  classroom_ids?: string[];
+  classroom_names?: string[];
+  setting_id?: number | null;
+  midterm_max_score?: number | null;
+  final_max_score?: number | null;
+  subject_type?: "main" | "activity";
+  credit_hours?: number | null;
+  score_display_mode?: "separate" | "combined";
+  sort_order?: number | null;
+  name_thai?: string;
+  name_rumi?: string;
+  name_jawi?: string;
+}
 export interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; is_break?: boolean; }
 export interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;

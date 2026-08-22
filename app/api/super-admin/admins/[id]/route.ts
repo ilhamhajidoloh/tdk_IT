@@ -7,7 +7,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context?.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }
@@ -57,7 +57,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context?.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }

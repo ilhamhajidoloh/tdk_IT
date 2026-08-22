@@ -13,8 +13,8 @@ const DEFAULT_MODULES = {
   schedule: true,
 };
 
-export async function GET() {
-  const context = await getSchoolContext();
+export async function GET(req: NextRequest) {
+  const context = await getSchoolContext(req);
   if (!context || !context.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }
@@ -30,7 +30,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context || !context.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }

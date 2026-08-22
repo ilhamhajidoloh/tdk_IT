@@ -1,3 +1,19 @@
+export interface DBUser {
+  id: string;
+  firebase_uid?: string;
+  username: string;
+  role: "super_admin" | "admin" | "teacher" | "student";
+  school_id?: string;
+  student_id?: string;
+  homeroom_classroom_id?: string;
+  subjects?: string[];
+  email?: string | null;
+  is_clerical?: boolean;
+  status?: "active" | "graduated" | "resigned" | "disabled" | "expired";
+  resigned_at?: string | null;
+  resignation_reason?: string | null;
+}
+
 export interface DBStudent { id: string; name: string; student_id: string; classroom_id: string | null; }
 export interface DBGrade { id: string; student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term: string; }
 export interface DBClassroom {

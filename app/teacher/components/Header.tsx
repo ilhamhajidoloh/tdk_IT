@@ -1,6 +1,7 @@
 "use client";
 
-import { Mail, Key, LogOut } from "lucide-react";
+import { Mail, Key, LogOut, User } from "lucide-react";
+import { useRouter } from "next/navigation";
 import ThemeToggle from "../../components/ThemeToggle";
 import { SchoolLogo, useSchoolBrand } from "../../components/SchoolBrand";
 
@@ -28,6 +29,7 @@ export default function Header({
   schoolId,
 }: HeaderProps) {
   const { school } = useSchoolBrand(schoolId);
+  const router = useRouter();
 
   return (
     <header className="header-gradient border-b border-border sticky top-0 z-20">
@@ -68,6 +70,13 @@ export default function Header({
         {/* Right: Actions */}
         <div className="flex items-center gap-2 shrink-0">
           <ThemeToggle className="!h-9 !w-9" />
+          <button
+            onClick={() => router.push("/teacher/profile")}
+            title="โปรไฟล์"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border bg-card"
+          >
+            <User className="w-4 h-4" />
+          </button>
           <button
             onClick={onConnectGoogle}
             title={

@@ -73,7 +73,7 @@ async function uploadLogoToDrive(
 }
 
 export async function POST(req: NextRequest) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context || !context.isSuperAdmin) {
     return NextResponse.json(
       { error: "Forbidden: Super Admin only" },

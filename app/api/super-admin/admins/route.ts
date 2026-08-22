@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 
 export async function GET(req: NextRequest) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context?.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   if (!context?.isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }
