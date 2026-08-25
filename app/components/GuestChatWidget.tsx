@@ -139,7 +139,8 @@ export default function GuestChatWidget() {
       {/* Floating Chat Button */}
       <button
         onClick={() => isOpen ? handleClose() : setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center"
+        aria-label="เปิดแชทติดต่อแอดมิน"
       >
         {isOpen ? (
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -154,38 +155,49 @@ export default function GuestChatWidget() {
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[480px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden animate-fade-in-up">
+        <div className="fixed bottom-24 right-6 z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[480px] max-h-[calc(100vh-8rem)] bg-white dark:bg-[#14161f] text-slate-900 dark:text-slate-100 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col overflow-hidden animate-fade-in-up">
           {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-4 py-3 shrink-0">
-            <h3 className="font-bold text-sm">ติดต่อแอดมิน</h3>
-            <p className="text-xs text-white/70">แชทสำหรับสอบถามปัญหาการใช้งาน</p>
+          <div className="bg-gradient-to-r from-indigo-500 to-violet-600 dark:from-indigo-600 dark:to-violet-700 text-white px-4 py-3 shrink-0 shadow-sm flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-sm text-white">ติดต่อแอดมิน</h3>
+              <p className="text-xs text-white/80">แชทสำหรับสอบถามปัญหาการใช้งาน</p>
+            </div>
+            <button
+              onClick={handleClose}
+              className="p-1 hover:bg-white/20 text-white rounded-lg transition-colors"
+              aria-label="ปิดแชท"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Guest Name Form */}
           {showNameForm ? (
-            <div className="flex-1 flex items-center justify-center p-6">
+            <div className="flex-1 flex items-center justify-center p-6 bg-white dark:bg-[#14161f]">
               <form onSubmit={startGuestChat} className="w-full space-y-4">
                 <div className="text-center mb-4">
-                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800/40 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
-                  <p className="text-sm text-slate-600 font-medium">กรุณาใส่ชื่อของคุณเพื่อเริ่มแชท</p>
-                  <p className="text-xs text-slate-400 mt-1">ข้อความจะถูกลบเมื่อปิดหน้านี้</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 font-medium">กรุณาใส่ชื่อของคุณเพื่อเริ่มแชท</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">ข้อความจะถูกลบเมื่อปิดหน้านี้</p>
                 </div>
                 <input
                   type="text"
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
                   placeholder="ชื่อของคุณ"
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 outline-none"
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors"
                   maxLength={100}
                   required
                 />
                 <button
                   type="submit"
-                  className="w-full py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 hover:shadow-md transition-all"
+                  className="w-full py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   เริ่มแชท
                 </button>
@@ -194,12 +206,12 @@ export default function GuestChatWidget() {
           ) : (
             <>
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50 dark:bg-[#0e1017]">
                 {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-slate-400">
+                  <div className="flex items-center justify-center h-full text-slate-400 dark:text-slate-500">
                     <div className="text-center">
-                      <p className="text-sm font-medium">สวัสดีคุณ {guestName}!</p>
-                      <p className="text-xs mt-1">พิมพ์ข้อความเพื่อติดต่อแอดมิน</p>
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">สวัสดีคุณ {guestName}!</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">พิมพ์ข้อความเพื่อติดต่อแอดมิน</p>
                     </div>
                   </div>
                 ) : (
@@ -209,20 +221,20 @@ export default function GuestChatWidget() {
                       <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                         <div className="max-w-[75%]">
                           {!isMe && (
-                            <p className="text-[10px] text-slate-400 mb-0.5 ml-1 font-medium">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5 ml-1 font-medium">
                               {msg.sender_name || "แอดมิน"}
                             </p>
                           )}
                           <div
-                            className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+                            className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words shadow-sm ${
                               isMe
                                 ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-br-md"
-                                : "bg-slate-100 text-slate-800 rounded-bl-md"
+                                : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-md border border-slate-200/80 dark:border-slate-700/80"
                             }`}
                           >
                             {msg.content}
                           </div>
-                          <p className={`text-[10px] text-slate-400 mt-0.5 ${isMe ? "text-right mr-1" : "ml-1"}`}>
+                          <p className={`text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 ${isMe ? "text-right mr-1" : "ml-1"}`}>
                             {formatTime(msg.created_at)}
                           </p>
                         </div>
@@ -234,7 +246,7 @@ export default function GuestChatWidget() {
               </div>
 
               {/* Input */}
-              <div className="px-3 py-2 border-t border-slate-100 bg-white shrink-0">
+              <div className="px-3 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#14161f] shrink-0">
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -242,14 +254,15 @@ export default function GuestChatWidget() {
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="พิมพ์ข้อความ..."
-                    className="flex-1 px-3 py-2 text-sm rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-200 outline-none"
+                    className="flex-1 px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors"
                     maxLength={2000}
                     disabled={sending}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!newMessage.trim() || sending}
-                    className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white disabled:opacity-40 hover:shadow-md transition-all shrink-0"
+                    className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white disabled:opacity-40 hover:shadow-md hover:scale-105 active:scale-95 transition-all shrink-0"
+                    aria-label="ส่งข้อความ"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
