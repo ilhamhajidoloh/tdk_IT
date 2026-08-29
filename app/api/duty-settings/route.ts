@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
+import { verifyCoAdminOrAdmin } from "@/app/lib/verifyAdmin";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { NextRequest, NextResponse } from "next/server";
 
 function formatRow(row: Record<string, unknown> | undefined) {
   if (!row) {
@@ -25,7 +26,7 @@ function formatRow(row: Record<string, unknown> | undefined) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
+  if (!(await verifyCoAdminOrAdmin(req))) {
     return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
   }
 
@@ -44,9 +45,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "duties.manage");
+  if (permError) return permError;
 
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;

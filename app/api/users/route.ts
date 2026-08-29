@@ -13,9 +13,13 @@ async function hasSubjectTeachersTable(): Promise<boolean> {
   }
 }
 
+import { verifyCoAdminOrAdmin } from "@/app/lib/verifyAdmin";
+
 export async function GET(req: NextRequest) {
-  const permError = await requirePermission(req, "users.view");
-  if (permError) return permError;
+  if (!(await verifyCoAdminOrAdmin(req))) {
+    const permError = await requirePermission(req, "users.view");
+    if (permError) return permError;
+  }
 
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;

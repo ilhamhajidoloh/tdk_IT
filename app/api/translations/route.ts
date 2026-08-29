@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
+import { verifyUser } from "@/app/lib/verifyUser";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 import pool from "@/app/lib/db";
 
-// GET - Load all translations
+// GET - Load all translations (accessible to all verified users)
 export async function GET(req: NextRequest) {
   try {
-    if (!(await verifyAdmin(req))) {
+    if (!(await verifyUser(req))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -25,9 +26,8 @@ export async function GET(req: NextRequest) {
 // POST - Add new translation
 export async function POST(req: NextRequest) {
   try {
-    if (!(await verifyAdmin(req))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const permError = await requirePermission(req, "settings.translations");
+    if (permError) return permError;
 
     const { key, thai, malay_rumi, malay_jawi } = await req.json();
 

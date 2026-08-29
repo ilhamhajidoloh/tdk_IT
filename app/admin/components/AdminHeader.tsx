@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Key, LogOut, User } from "lucide-react";
+import { Mail, Key, LogOut, User, GraduationCap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "../../components/ThemeToggle";
 import { formatThaiDate } from "../../lib/format";
@@ -29,6 +29,7 @@ export default function AdminHeader({
   const { user } = useAuth();
   const router = useRouter();
   const isSuperAdmin = user?.role === "super_admin";
+  const isCoAdminTeacher = adminUser?.role === "teacher" || user?.role === "teacher" || Boolean(adminUser?.is_co_admin) || Boolean(user?.is_co_admin);
   const schoolKey = selectedSchoolId || adminUser?.school_id;
   const { school } = useSchoolBrand(schoolKey);
 
@@ -66,6 +67,17 @@ export default function AdminHeader({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {isCoAdminTeacher && (
+            <button
+              onClick={() => router.push("/teacher")}
+              title="สลับไปยังหน้าระบบครู (Teacher Portal)"
+              className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-2 rounded-xl transition-all border border-indigo-500/30 cursor-pointer shadow-2xs"
+            >
+              <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="hidden md:inline">หน้าระบบครู</span>
+            </button>
+          )}
+
           <ThemeToggle className="!h-9 !w-9" />
 
           <button

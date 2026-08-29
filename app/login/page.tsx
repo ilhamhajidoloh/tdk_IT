@@ -312,7 +312,7 @@ function LoginContent() {
       });
 
       if (user.role === "super_admin") router.push("/super-admin");
-      else if (user.role === "admin" || isCoAdminUser) router.push("/admin");
+      else if (user.role === "admin") router.push("/admin");
       else if (user.role === "teacher") router.push("/teacher");
       else router.push("/student");
 

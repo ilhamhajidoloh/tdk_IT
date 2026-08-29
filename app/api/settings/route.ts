@@ -3,6 +3,7 @@ import pool from "@/app/lib/db";
 import { ensureStatusSchema } from "@/app/lib/statusMigration";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { verifyUser } from "@/app/lib/verifyUser";
 
 function formatRow(row: Record<string, unknown>) {
   if (!row) return row;
@@ -26,8 +27,10 @@ function formatRow(row: Record<string, unknown>) {
 }
 
 export async function GET(req: NextRequest) {
-  const permError = await requirePermission(req, "settings.view");
-  if (permError) return permError;
+  const user = await verifyUser(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;

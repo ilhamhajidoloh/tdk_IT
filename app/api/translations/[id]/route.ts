@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 import pool from "@/app/lib/db";
 
 // PUT - Update translation
@@ -8,9 +8,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!(await verifyAdmin(req))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const permError = await requirePermission(req, "settings.translations");
+    if (permError) return permError;
 
     const { id } = await params;
     const { thai, malay_rumi, malay_jawi } = await req.json();
@@ -52,9 +51,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!(await verifyAdmin(req))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const permError = await requirePermission(req, "settings.translations");
+    if (permError) return permError;
 
     const { id } = await params;
 
