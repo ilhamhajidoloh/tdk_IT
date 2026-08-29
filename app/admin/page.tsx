@@ -634,7 +634,9 @@ function AdminPortalContent() {
 
   const loadData = (authToken: string) => {
     fetch(`/api/users${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
-      .then(r => r.json()).then(setUsers);
+      .then(r => r.ok ? r.json() : [])
+      .then(setUsers)
+      .catch(err => console.error("loadData users error:", err));
     if (selectedSettingId) {
       loadStudents(selectedSettingId, authToken);
     }
@@ -646,13 +648,16 @@ function AdminPortalContent() {
   const loadEvalTopics = (authToken: string) => {
     fetch(`/api/evaluations/topics${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.ok ? r.json() : [])
-      .then(setEvalTopics);
+      .then(setEvalTopics)
+      .catch(err => console.error("loadEvalTopics error:", err));
   };
 
   // นักเรียนต้องโหลดตามเทอม (selectedSettingId) เพราะห้องเรียน/การลงทะเบียนของนักเรียนแยกกันตามเทอม
   const loadStudents = (settingId: number, authToken: string) => {
     fetch(`/api/students?settingId=${settingId}${getSchoolParam("&")}`, { headers: { Authorization: `Bearer ${authToken}` } })
-      .then(r => r.json()).then(setStudents);
+      .then(r => r.ok ? r.json() : [])
+      .then(setStudents)
+      .catch(err => console.error("loadStudents error:", err));
   };
 
   useEffect(() => {
@@ -662,31 +667,47 @@ function AdminPortalContent() {
   }, [selectedSettingId, token]);
 
   const loadSubjects = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/subjects?settingId=${settingId}${getSchoolParam("&")}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    if (res.ok) setSubjectsList(await res.json());
+    try {
+      const res = await fetch(`/api/subjects?settingId=${settingId}${getSchoolParam("&")}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) setSubjectsList(await res.json());
+    } catch (err) {
+      console.error("loadSubjects error:", err);
+    }
   };
 
   const loadSubjectClassrooms = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/classrooms?settingId=${settingId}${getSchoolParam("&")}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    if (res.ok) setSubjectClassrooms(await res.json());
+    try {
+      const res = await fetch(`/api/classrooms?settingId=${settingId}${getSchoolParam("&")}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) setSubjectClassrooms(await res.json());
+    } catch (err) {
+      console.error("loadSubjectClassrooms error:", err);
+    }
   };
 
   const loadSchedulePeriods = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/schedule-periods?settingId=${settingId}${getSchoolParam("&")}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    if (res.ok) setSchedulePeriods(await res.json());
+    try {
+      const res = await fetch(`/api/schedule-periods?settingId=${settingId}${getSchoolParam("&")}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) setSchedulePeriods(await res.json());
+    } catch (err) {
+      console.error("loadSchedulePeriods error:", err);
+    }
   };
 
   const loadScheduleEntries = async (settingId: number, authToken: string) => {
-    const res = await fetch(`/api/schedules?settingId=${settingId}${getSchoolParam("&")}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    if (res.ok) setScheduleEntries(await res.json());
+    try {
+      const res = await fetch(`/api/schedules?settingId=${settingId}${getSchoolParam("&")}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) setScheduleEntries(await res.json());
+    } catch (err) {
+      console.error("loadScheduleEntries error:", err);
+    }
   };
 
   const loadRankings = async (settingId: number, authToken: string) => {
@@ -696,6 +717,8 @@ function AdminPortalContent() {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) setRankingsData(await res.json());
+    } catch (err) {
+      console.error("loadRankings error:", err);
     } finally {
       setRankingsLoading(false);
     }
@@ -725,6 +748,8 @@ function AdminPortalContent() {
       setScoresSubjects(subjectsRes.ok ? await subjectsRes.json() : []);
       setScoresClassrooms(classroomsRes.ok ? await classroomsRes.json() : []);
       setScoresGrades(gradesRes && gradesRes.ok ? await gradesRes.json() : []);
+    } catch (err) {
+      console.error("loadStudentScores error:", err);
     } finally {
       setScoresLoading(false);
     }
@@ -749,6 +774,8 @@ function AdminPortalContent() {
       setEvalStudents(studentsRes.ok ? await studentsRes.json() : []);
       setEvalClassrooms(classroomsRes.ok ? await classroomsRes.json() : []);
       setEvalSummary(summaryRes.ok ? await summaryRes.json() : []);
+    } catch (err) {
+      console.error("loadEvalData error:", err);
     } finally {
       setEvalLoading(false);
     }
@@ -876,13 +903,18 @@ function AdminPortalContent() {
       midtermMax: Number(row.midterm_max_score) || 50, finalMax: Number(row.final_max_score) || 50,
       students: [], loading: true,
     });
-    const res = await fetch(`/api/grades/status/students?subjectName=${encodeURIComponent(row.subject_name)}&classroomId=${row.classroom_id}&term=${encodeURIComponent(termKey)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setStudentDetailModal(prev => ({ ...prev, students: data, loading: false }));
-    } else {
+    try {
+      const res = await fetch(`/api/grades/status/students?subjectName=${encodeURIComponent(row.subject_name)}&classroomId=${row.classroom_id}&term=${encodeURIComponent(termKey)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStudentDetailModal(prev => ({ ...prev, students: data, loading: false }));
+      } else {
+        setStudentDetailModal(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      console.error("openStudentDetail error:", err);
       setStudentDetailModal(prev => ({ ...prev, loading: false }));
     }
   };
@@ -903,49 +935,64 @@ function AdminPortalContent() {
   };
 
   const loadClassrooms = async (settingId: number, authToken: string) => {
-    const schoolParam = selectedSchoolId ? `&school_id=${selectedSchoolId}` : "";
-    const res = await fetch(`/api/classrooms?settingId=${settingId}${schoolParam}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    if (res.ok) setClassrooms(await res.json());
+    try {
+      const schoolParam = selectedSchoolId ? `&school_id=${selectedSchoolId}` : "";
+      const res = await fetch(`/api/classrooms?settingId=${settingId}${schoolParam}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) setClassrooms(await res.json());
+    } catch (err) {
+      console.error("loadClassrooms error:", err);
+    }
   };
 
   const loadSettings = async (authToken: string) => {
-    const res = await fetch(`/api/settings${getSchoolParam("?")}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    if (!res.ok) return;
-    const list = await res.json();
-    setSettingsList(list);
+    try {
+      const res = await fetch(`/api/settings${getSchoolParam("?")}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) return;
+      const list = await res.json();
+      setSettingsList(list);
 
-    const activeSetting = list.find((s: any) => s.is_active);
-    if (activeSetting) {
-      setAdminYear(activeSetting.academic_year ?? "2568");
-      setAdminTerm(activeSetting.term ?? "1");
-      setStartDate(activeSetting.start_date ?? "");
-      setEndDate(activeSetting.end_date ?? "");
-      const todayStr = new Date().toISOString().split("T")[0];
-      setIsGradingActive(todayStr >= (activeSetting.start_date ?? "") && todayStr <= (activeSetting.end_date ?? ""));
-      // โหลด classrooms ของ active setting เป็นค่าเริ่มต้น
-      setSelectedSettingId(activeSetting.id);
-      loadClassrooms(activeSetting.id, authToken);
-      // โหลด subjects ของ active setting เป็นค่าเริ่มต้น
-      setSelectedSubjectSettingId(activeSetting.id);
-      loadSubjects(activeSetting.id, authToken);
-      loadSubjectClassrooms(activeSetting.id, authToken);
-      loadSchedulePeriods(activeSetting.id, authToken);
-      loadScheduleEntries(activeSetting.id, authToken);
-      // โหลด grade status
-      setGradeStatusSettingId(activeSetting.id);
-      loadGradeStatus(activeSetting.id, authToken);
-      // โหลด rankings
-      setRankingsSettingId(activeSetting.id);
-      loadRankings(activeSetting.id, authToken);
-      // โหลด yearly average
-      setYearlyAvgSettingId(activeSetting.id);
-      loadYearlyAverage(activeSetting.id, authToken);
-    } else {
-      setIsGradingActive(false);
+      const activeSetting = list.find((s: any) => s.is_active);
+      if (activeSetting) {
+        setAdminYear(activeSetting.academic_year ?? "2568");
+        setAdminTerm(activeSetting.term ?? "1");
+        setStartDate(activeSetting.start_date ?? "");
+        setEndDate(activeSetting.end_date ?? "");
+        const todayStr = new Date().toISOString().split("T")[0];
+        setIsGradingActive(todayStr >= (activeSetting.start_date ?? "") && todayStr <= (activeSetting.end_date ?? ""));
+        // โหลด classrooms ของ active setting เป็นค่าเริ่มต้น
+        setSelectedSettingId(activeSetting.id);
+        loadClassrooms(activeSetting.id, authToken);
+        // โหลด subjects ของ active setting เป็นค่าเริ่มต้น
+        setSelectedSubjectSettingId(activeSetting.id);
+
+        // โหลดข้อมูลทั้งหมดพร้อมกันด้วย Promise.allSettled เพื่อให้แต่ละ request ไม่กระทบกัน
+        await Promise.allSettled([
+          loadSubjects(activeSetting.id, authToken),
+          loadSubjectClassrooms(activeSetting.id, authToken),
+          loadSchedulePeriods(activeSetting.id, authToken),
+          loadScheduleEntries(activeSetting.id, authToken),
+        ]);
+
+        // โหลด grade status
+        setGradeStatusSettingId(activeSetting.id);
+        await loadGradeStatus(activeSetting.id, authToken);
+
+        // โหลด rankings
+        setRankingsSettingId(activeSetting.id);
+        await loadRankings(activeSetting.id, authToken);
+
+        // โหลด yearly average
+        setYearlyAvgSettingId(activeSetting.id);
+        await loadYearlyAverage(activeSetting.id, authToken);
+      } else {
+        setIsGradingActive(false);
+      }
+    } catch (err) {
+      console.error("loadSettings error:", err);
     }
   };
 
@@ -2396,7 +2443,12 @@ function AdminPortalContent() {
     }
 
     setIsSubjectModalOpen(false);
-    if (token && selectedSubjectSettingId) loadSubjects(selectedSubjectSettingId, token);
+    if (token && selectedSubjectSettingId) {
+      await Promise.all([
+        loadSubjects(selectedSubjectSettingId, token),
+        loadScheduleEntries(selectedSubjectSettingId, token),
+      ]);
+    }
     Swal.fire({
       icon: "success",
       title: subjectModalMode === "add" ? "เพิ่มวิชาสำเร็จ" : "แก้ไขวิชาสำเร็จ",
@@ -2417,7 +2469,12 @@ function AdminPortalContent() {
     });
     if (res.isConfirmed) {
       await fetch(`/api/subjects/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      if (token && selectedSubjectSettingId) loadSubjects(selectedSubjectSettingId, token);
+      if (token && selectedSubjectSettingId) {
+        await Promise.all([
+          loadSubjects(selectedSubjectSettingId, token),
+          loadScheduleEntries(selectedSubjectSettingId, token),
+        ]);
+      }
       Swal.fire("ลบสำเร็จ", `ลบวิชาเรียน ${name} เรียบร้อยแล้ว`, "success");
     }
   };

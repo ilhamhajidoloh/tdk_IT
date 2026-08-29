@@ -35,8 +35,28 @@ export async function GET(req: NextRequest) {
     hasSubjectTeachersTable(),
   ]);
 
+  const validTeacherOverrideCondition = hasSTTable
+    ? `cs.teacher_id IS NOT NULL AND (
+         EXISTS (
+           SELECT 1
+           FROM subject_teachers st_valid
+           WHERE st_valid.subject_id = cs.subject_id
+             AND st_valid.user_id = cs.teacher_id
+         )
+         OR (
+           sub.teacher_id = cs.teacher_id
+           AND NOT EXISTS (
+             SELECT 1
+             FROM subject_teachers st_any
+             WHERE st_any.subject_id = cs.subject_id
+           )
+         )
+       )`
+    : `cs.teacher_id IS NOT NULL AND sub.teacher_id = cs.teacher_id`;
+
   const teacherOverrideCols = hasTeacherCol
-    ? `cs.teacher_id as teacher_id, u_cs.username as teacher_name,`
+    ? `CASE WHEN ${validTeacherOverrideCondition} THEN cs.teacher_id ELSE NULL END as teacher_id,
+       CASE WHEN ${validTeacherOverrideCondition} THEN u_cs.username ELSE NULL END as teacher_name,`
     : `NULL as teacher_id, NULL as teacher_name,`;
 
   const teacherNamesCols = hasSTTable

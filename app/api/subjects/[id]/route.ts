@@ -11,6 +11,15 @@ async function hasSubjectTeachersTable(): Promise<boolean> {
   }
 }
 
+async function hasScheduleTeacherColumn(): Promise<boolean> {
+  try {
+    await pool.query("SELECT teacher_id FROM class_schedules LIMIT 0");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await verifyAdmin(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,7 +32,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Missing name" }, { status: 400 });
   }
 
-  const primaryTeacherId = Array.isArray(teacher_ids) && teacher_ids.length > 0 ? teacher_ids[0] : null;
+  const cleanedTeacherIds = Array.isArray(teacher_ids)
+    ? Array.from(new Set(
+        teacher_ids
+          .filter((teacherId): teacherId is string => typeof teacherId === "string" && teacherId.trim().length > 0)
+          .map((teacherId) => teacherId.trim())
+      ))
+    : [];
+  const primaryTeacherId = cleanedTeacherIds.length > 0 ? cleanedTeacherIds[0] : null;
 
   const client = await pool.connect();
   try {
@@ -51,17 +67,44 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const multiTeacherReady = await hasSubjectTeachersTable();
     if (multiTeacherReady) {
       await client.query("DELETE FROM subject_teachers WHERE subject_id = $1", [id]);
-      if (Array.isArray(teacher_ids) && teacher_ids.length > 0) {
-        const values = teacher_ids.map((_: string, i: number) => `($1, $${i + 2})`).join(", ");
+      if (cleanedTeacherIds.length > 0) {
+        const values = cleanedTeacherIds.map((_: string, i: number) => `($1, $${i + 2})`).join(", ");
         await client.query(
           `INSERT INTO subject_teachers (subject_id, user_id) VALUES ${values} ON CONFLICT DO NOTHING`,
-          [id, ...teacher_ids]
+          [id, ...cleanedTeacherIds]
+        );
+      }
+    }
+
+    const scheduleTeacherReady = await hasScheduleTeacherColumn();
+    if (scheduleTeacherReady) {
+      if (cleanedTeacherIds.length === 1) {
+        await client.query(
+          `UPDATE class_schedules
+           SET teacher_id = $2
+           WHERE subject_id = $1
+             AND (teacher_id IS NULL OR teacher_id::text <> ALL($3::text[]))`,
+          [id, cleanedTeacherIds[0], cleanedTeacherIds]
+        );
+      } else if (cleanedTeacherIds.length > 1) {
+        await client.query(
+          `UPDATE class_schedules
+           SET teacher_id = NULL
+           WHERE subject_id = $1
+             AND teacher_id IS NOT NULL
+             AND NOT (teacher_id::text = ANY($2::text[]))`,
+          [id, cleanedTeacherIds]
+        );
+      } else {
+        await client.query(
+          "UPDATE class_schedules SET teacher_id = NULL WHERE subject_id = $1 AND teacher_id IS NOT NULL",
+          [id]
         );
       }
     }
 
     await client.query("COMMIT");
-    return NextResponse.json({ ...result.rows[0], classroom_ids: classroom_ids || [], teacher_ids: teacher_ids || [] });
+    return NextResponse.json({ ...result.rows[0], classroom_ids: classroom_ids || [], teacher_ids: cleanedTeacherIds });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("PUT /api/subjects/[id] error:", error);
