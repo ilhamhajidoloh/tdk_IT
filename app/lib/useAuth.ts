@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
+import type { AdminPermissions } from "./permissions/types";
 
 export interface DBUser {
   id: string;
@@ -11,6 +12,8 @@ export interface DBUser {
   subjects?: string[];
   email?: string | null;
   is_clerical?: boolean;
+  is_co_admin?: boolean;
+  admin_permissions?: AdminPermissions | null;
 }
 
 export function useAuth() {
@@ -31,6 +34,8 @@ export function useAuth() {
       subjects: su.subjects,
       email: su.email,
       is_clerical: su.is_clerical,
+      is_co_admin: su.is_co_admin ?? false,
+      admin_permissions: su.admin_permissions ?? null,
     };
   }, [session]);
 
@@ -40,3 +45,4 @@ export function useAuth() {
 
   return { user, token: "next-auth-cookie", loading, logout, update };
 }
+

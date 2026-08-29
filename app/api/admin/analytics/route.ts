@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
 import { RWT_TOPICS } from "@/app/lib/evaluation";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 export async function GET(req: NextRequest) {
   try {
+    const permError = await requirePermission(req, "analytics.view");
+    if (permError) return permError;
+
     const user = await verifyUser(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

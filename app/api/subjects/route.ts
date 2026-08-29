@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -89,11 +89,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "subjects.create");
+  if (permError) return permError;
 
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   const { name, teacher_ids, classroom_ids, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours } = await req.json();

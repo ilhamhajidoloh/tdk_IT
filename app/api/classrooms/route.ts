@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { requirePermission, requireAnyPermission } from "@/app/lib/permissions/middleware";
 
 export async function GET(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requireAnyPermission(
+    req,
+    "classrooms.view",
+    "students.view",
+    "subjects.view",
+    "schedules.view",
+    "scores.view",
+    "attendance.view"
+  );
+  if (permError) return permError;
 
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;
@@ -50,11 +57,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "classrooms.create");
+  if (permError) return permError;
 
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   const { name, name_thai, name_rumi, name_jawi, setting_id } = await req.json();

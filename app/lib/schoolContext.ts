@@ -4,12 +4,16 @@ import { NextRequest } from "next/server";
 import { getAuthToken } from "@/app/lib/getAuthToken";
 import { headers } from "next/headers";
 import { decode } from "next-auth/jwt";
+import type { AdminPermissions } from "./permissions/types";
 
 export interface SchoolContext {
   isSuperAdmin: boolean;
   schoolId: string | null;
   userId: string;
   role: string;
+  isCoAdmin: boolean;
+  adminPermissions: AdminPermissions | null;
+  canAccessAdmin: boolean;
 }
 
 export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext | null> {
@@ -18,11 +22,16 @@ export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext
     const token = await getAuthToken(req);
     if (token?.id) {
       const isSuperAdmin = token.role === "super_admin";
+      const isCoAdmin = Boolean(token.is_co_admin);
+      const canAccessAdmin = isSuperAdmin || token.role === "admin" || isCoAdmin;
       return {
         isSuperAdmin,
         schoolId: (token.school_id as string | undefined) || null,
         userId: String(token.id),
         role: String(token.role),
+        isCoAdmin,
+        adminPermissions: (token.admin_permissions as AdminPermissions) || null,
+        canAccessAdmin,
       };
     }
   }
@@ -38,11 +47,16 @@ export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext
         const token = await decode({ token: raw, secret });
         if (token?.id) {
           const isSuperAdmin = token.role === "super_admin";
+          const isCoAdmin = Boolean(token.is_co_admin);
+          const canAccessAdmin = isSuperAdmin || token.role === "admin" || isCoAdmin;
           return {
             isSuperAdmin,
             schoolId: (token.school_id as string | undefined) || null,
             userId: String(token.id),
             role: String(token.role),
+            isCoAdmin,
+            adminPermissions: (token.admin_permissions as AdminPermissions) || null,
+            canAccessAdmin,
           };
         }
       }
@@ -56,13 +70,19 @@ export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext
   if (!session?.user) return null;
 
   const user = session.user as any;
+  const isSuperAdmin = user.role === "super_admin";
+  const isCoAdmin = Boolean(user.is_co_admin);
+  const canAccessAdmin = isSuperAdmin || user.role === "admin" || isCoAdmin;
 
-  if (user.role === "super_admin") {
+  if (isSuperAdmin) {
     return {
       isSuperAdmin: true,
       schoolId: null,
       userId: String(user.id),
       role: String(user.role),
+      isCoAdmin: false,
+      adminPermissions: null,
+      canAccessAdmin: true,
     };
   }
 
@@ -71,5 +91,8 @@ export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext
     schoolId: user.school_id || null,
     userId: String(user.id),
     role: String(user.role),
+    isCoAdmin,
+    adminPermissions: user.admin_permissions || null,
+    canAccessAdmin,
   };
 }

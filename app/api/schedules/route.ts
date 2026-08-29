@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
 
@@ -94,9 +94,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "schedules.create");
+  if (permError) return permError;
 
   const { setting_id, classroom_id, subject_id, day_of_week, period_id, teacher_id } = await req.json();
   if (!setting_id || !classroom_id || !subject_id || day_of_week === undefined || day_of_week === null || !period_id) {

@@ -1,3 +1,5 @@
+import type { AdminPermissions } from "@/app/lib/permissions/types";
+
 export interface DBUser {
   id: string;
   firebase_uid?: string;
@@ -9,6 +11,8 @@ export interface DBUser {
   subjects?: string[];
   email?: string | null;
   is_clerical?: boolean;
+  is_co_admin?: boolean;
+  admin_permissions?: AdminPermissions | null;
   status?: "active" | "graduated" | "resigned" | "disabled" | "expired";
   resigned_at?: string | null;
   resignation_reason?: string | null;
@@ -115,7 +119,8 @@ export type Tab =
   | "duty"
   | "evaluations"
   | "books"
-  | "achievement";
+  | "achievement"
+  | "co-admins";
 
 export interface EvaluationTopic {
   id: string;

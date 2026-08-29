@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 import bcrypt from "bcrypt";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -14,9 +14,8 @@ async function hasSubjectTeachersTable(): Promise<boolean> {
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "users.view");
+  if (permError) return permError;
 
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
   if (context?.isSuperAdmin) {
     schoolId = requestedSchoolId || schoolId;
   } else if (requestedSchoolId && requestedSchoolId !== schoolId) {
-    // Non-super admin cannot request data from other schools
+    // Non-super admin cannot access other school's data
     return NextResponse.json({ error: "Forbidden: Cannot access other school's data" }, { status: 403 });
   }
 
@@ -95,11 +94,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await verifyAdmin(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "users.create");
+  if (permError) return permError;
 
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   const { name, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical } = await req.json();

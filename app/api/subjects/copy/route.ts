@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 export async function POST(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "subjects.create");
+  if (permError) return permError;
 
   const { source_setting_id, target_setting_id, subjects } = await req.json();
 

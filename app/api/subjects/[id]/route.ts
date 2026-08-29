@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -21,9 +21,8 @@ async function hasScheduleTeacherColumn(): Promise<boolean> {
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "subjects.edit");
+  if (permError) return permError;
 
   const { id } = await params;
   const { name, teacher_ids, classroom_ids, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours } = await req.json();
@@ -115,9 +114,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "subjects.delete");
+  if (permError) return permError;
 
   const { id } = await params;
 

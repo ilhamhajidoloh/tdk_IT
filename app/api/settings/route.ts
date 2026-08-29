@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 import { ensureStatusSchema } from "@/app/lib/statusMigration";
 import { getSchoolContext } from "@/app/lib/schoolContext";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 function formatRow(row: Record<string, unknown>) {
   if (!row) return row;
@@ -26,9 +26,8 @@ function formatRow(row: Record<string, unknown>) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "settings.view");
+  if (permError) return permError;
 
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;
@@ -54,9 +53,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "settings.edit");
+  if (permError) return permError;
 
   await ensureStatusSchema();
   const {
@@ -120,9 +118,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized / Forbidden" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "settings.academic_year");
+  if (permError) return permError;
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");

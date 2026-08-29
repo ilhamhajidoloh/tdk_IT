@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
 import bcrypt from "bcrypt";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "users.edit");
+  if (permError) return permError;
 
   const { id } = await params;
   const {
@@ -114,9 +113,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "users.delete");
+  if (permError) return permError;
 
   const { id } = await params;
 

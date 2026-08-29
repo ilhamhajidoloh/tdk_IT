@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "schedules.edit");
+  if (permError) return permError;
 
   const { id } = await params;
   const { period_no, start_time, end_time, label, is_break } = await req.json();
@@ -24,9 +23,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "schedules.delete");
+  if (permError) return permError;
 
   const { id } = await params;
 

@@ -288,10 +288,13 @@ function LoginContent() {
       const user = await res.json();
 
       setIsRedirecting(true);
+      const isCoAdminUser = user.role === "teacher" && Boolean(user.is_co_admin);
       const roleLabel = (user.role === "admin" || user.role === "super_admin") 
         ? (user.role === "super_admin" ? "ผู้ดูแลระบบสูงสุด (Super Admin)" : "บุคลากร") 
+        : isCoAdminUser
+        ? "คุณครู (Co-admin)"
         : user.role === "teacher" ? "คุณครู" : "นักเรียน";
-      const roleGradient = (user.role === "admin" || user.role === "super_admin") ? "from-amber-500 to-orange-600" : user.role === "teacher" ? "from-indigo-500 to-blue-600" : "from-violet-500 to-purple-600";
+      const roleGradient = (user.role === "admin" || user.role === "super_admin" || isCoAdminUser) ? "from-amber-500 to-orange-600" : user.role === "teacher" ? "from-indigo-500 to-blue-600" : "from-violet-500 to-purple-600";
 
       Swal.fire({
         icon: "success",
@@ -299,7 +302,7 @@ function LoginContent() {
         html: `
           <div class="flex flex-col items-center gap-3 mt-2">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-br ${roleGradient} flex items-center justify-center text-white shadow-lg">
-              ${(user.role === "admin" || user.role === "super_admin") ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>' : user.role === "teacher" ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>' : '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>'}
+              ${(user.role === "admin" || user.role === "super_admin" || isCoAdminUser) ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>' : user.role === "teacher" ? '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>' : '<svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>'}
             </div>
             <span class="text-sm font-bold text-muted-foreground">กำลังเข้าสู่ระบบในฐานะ <span class="text-foreground">${roleLabel}</span></span>
           </div>
@@ -309,7 +312,7 @@ function LoginContent() {
       });
 
       if (user.role === "super_admin") router.push("/super-admin");
-      else if (user.role === "admin") router.push("/admin");
+      else if (user.role === "admin" || isCoAdminUser) router.push("/admin");
       else if (user.role === "teacher") router.push("/teacher");
       else router.push("/student");
 

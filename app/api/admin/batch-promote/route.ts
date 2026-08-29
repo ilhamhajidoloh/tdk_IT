@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import pool from "@/app/lib/db";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 export async function POST(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "students.promote");
+  if (permError) return permError;
 
   try {
     const { current_setting_id, new_setting_id, graduation_date, graduation_year, student_ids } = await req.json();

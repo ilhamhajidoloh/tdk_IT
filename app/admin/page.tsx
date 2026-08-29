@@ -50,6 +50,9 @@ import EvaluationsTab from "./components/tabs/EvaluationsTab";
 import CorrespondenceTab from "../components/CorrespondenceTab";
 import AchievementTab from "./components/tabs/AchievementTab";
 import AnalyticsDashboardTab from "./components/tabs/AnalyticsDashboardTab";
+import CoAdminsTab from "./components/tabs/CoAdminsTab";
+import PermissionBanner from "./components/PermissionBanner";
+import { usePermissions } from "../lib/hooks/usePermissions";
 import AdminSidebar from "./components/AdminSidebar";
 import AdminHeader from "./components/AdminHeader";
 import SchoolSelector from "./components/SchoolSelector";
@@ -73,6 +76,7 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "duty", label: "หน้าแรก & เวรประจำวัน", sub: "Home & Duty", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2" },
   { key: "books", label: "หนังสือรับ-ส่ง", sub: "Correspondence", icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
   { key: "achievement", label: "รายงานผลสัมฤทธิ์", sub: "Achievement Matrix", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+  { key: "co-admins", label: "จัดการ Co-admin", sub: "Co-admins", icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" },
 ];
 
 
@@ -186,6 +190,7 @@ function AdminPortalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: adminUser, loading, logout, token, update } = useAuth();
+  const { isFullAdmin, isCoAdmin, canAccessAdmin, hasPermission, hasAnyPermission } = usePermissions();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [schoolEnabledModules, setSchoolEnabledModules] = useState<{
@@ -233,19 +238,44 @@ function AdminPortalContent() {
       .catch(() => {});
   }, [searchParams, adminUser, selectedSchoolId]);
 
-  useEffect(() => {
-    const isCurrentTabDisabled =
-      (activeTab === "schedule" && schoolEnabledModules.schedule === false) ||
-      (activeTab === "evaluations" && schoolEnabledModules.evaluations === false) ||
-      // "duty" tab covers both news and duty sub-features — only disable if BOTH are off
-      (activeTab === "duty" && schoolEnabledModules.duty === false && schoolEnabledModules.news === false) ||
-      (activeTab === "books" && schoolEnabledModules.correspondence === false) ||
-      (["grade-status", "student-scores", "rankings", "yearly-average", "export-grades", "achievement"].includes(activeTab) && schoolEnabledModules.grades === false);
-
-    if (isCurrentTabDisabled) {
-      setActiveTab("dashboard");
+  const isTabPermitted = (tabKey: Tab): boolean => {
+    if (isFullAdmin) return true;
+    switch (tabKey) {
+      case "dashboard":
+        return hasPermission("analytics.view") || canAccessAdmin;
+      case "analytics":
+        return hasPermission("analytics.view");
+      case "users":
+        return hasPermission("users.view");
+      case "classrooms":
+        return hasPermission("classrooms.view");
+      case "students":
+        return hasPermission("students.view");
+      case "subjects":
+        return hasPermission("subjects.view");
+      case "schedule":
+        return hasPermission("schedules.view");
+      case "grade-status":
+      case "student-scores":
+      case "evaluations":
+        return hasPermission("scores.view");
+      case "rankings":
+      case "yearly-average":
+      case "export-grades":
+      case "achievement":
+        return hasPermission("scores.reports") || hasPermission("scores.view");
+      case "duty":
+        return hasAnyPermission("duties.view", "news.view");
+      case "books":
+        return hasPermission("correspondence.view");
+      case "settings":
+        return hasPermission("settings.view");
+      case "co-admins":
+        return isFullAdmin;
+      default:
+        return false;
     }
-  }, [activeTab, schoolEnabledModules]);
+  };
 
   const filteredNavItems = NAV_ITEMS.map((item) => {
     if (item.key === "duty") {
@@ -258,6 +288,7 @@ function AdminPortalContent() {
     }
     return item;
   }).filter((item) => {
+    if (!isTabPermitted(item.key)) return false;
     if (item.key === "schedule" && schoolEnabledModules.schedule === false) return false;
     if (
       ["grade-status", "student-scores", "rankings", "yearly-average", "export-grades", "achievement"].includes(item.key) &&
@@ -270,6 +301,20 @@ function AdminPortalContent() {
     if (item.key === "books" && schoolEnabledModules.correspondence === false) return false;
     return true;
   });
+
+  useEffect(() => {
+    const isCurrentTabDisabled =
+      !isTabPermitted(activeTab) ||
+      (activeTab === "schedule" && schoolEnabledModules.schedule === false) ||
+      (activeTab === "evaluations" && schoolEnabledModules.evaluations === false) ||
+      (activeTab === "duty" && schoolEnabledModules.duty === false && schoolEnabledModules.news === false) ||
+      (activeTab === "books" && schoolEnabledModules.correspondence === false) ||
+      (["grade-status", "student-scores", "rankings", "yearly-average", "export-grades", "achievement"].includes(activeTab) && schoolEnabledModules.grades === false);
+
+    if (isCurrentTabDisabled && filteredNavItems.length > 0) {
+      setActiveTab(filteredNavItems[0].key);
+    }
+  }, [activeTab, schoolEnabledModules, isFullAdmin, isCoAdmin, filteredNavItems]);
 
   // Modal State
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -607,9 +652,11 @@ function AdminPortalContent() {
 
   useEffect(() => {
     if (loading) return;
-    if (!adminUser || adminUser.role !== "admin") {
+    if (!adminUser || !canAccessAdmin) {
       if (adminUser?.role === "super_admin") {
         router.push("/super-admin");
+      } else if (adminUser?.role === "teacher") {
+        router.push("/teacher");
       } else {
         router.push("/login");
       }
@@ -618,7 +665,7 @@ function AdminPortalContent() {
     if (token) loadData(token);
     if (token) loadSettings(token);
     if (token) loadEvalTopics(token);
-  }, [loading, adminUser, token, router]);
+  }, [loading, adminUser, canAccessAdmin, token, router]);
 
   useEffect(() => {
     if (token && selectedSchoolId) {
@@ -3823,6 +3870,7 @@ function changeFontSize(dir) {
       />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+        <PermissionBanner />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Sidebar Tabs */}
           <div className="lg:col-span-3">
@@ -4134,6 +4182,9 @@ function changeFontSize(dir) {
                 setSelectedSettingId={setSelectedSettingId}
                 token={token}
               />
+            )}
+            {activeTab === "co-admins" && isFullAdmin && token && (
+              <CoAdminsTab token={token} selectedSchoolId={selectedSchoolId} />
             )}
           </div>
         </div>

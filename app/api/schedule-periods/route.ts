@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAdmin } from "@/app/lib/verifyAdmin";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
+import { requirePermission } from "@/app/lib/permissions/middleware";
 
 export async function GET(req: NextRequest) {
   const user = await verifyUser(req);
@@ -20,9 +20,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const permError = await requirePermission(req, "schedules.create");
+  if (permError) return permError;
 
   const { setting_id, period_no, start_time, end_time, label, is_break } = await req.json();
   if (!setting_id || !start_time || !end_time) {

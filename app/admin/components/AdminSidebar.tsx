@@ -20,6 +20,7 @@ import {
   ChevronDown,
   LayoutGrid,
   Sparkles,
+  Shield,
 } from "lucide-react";
 import type { Tab } from "./types";
 
@@ -41,6 +42,7 @@ const ICON_MAP: Record<Tab, React.ComponentType<{ className?: string }>> = {
   duty: Home,
   books: BookMarked,
   achievement: BarChart3,
+  "co-admins": Shield,
 };
 
 export interface NavItem {
@@ -104,7 +106,7 @@ export const ADMIN_NAV_CATEGORIES: NavCategoryDef[] = [
     icon: Settings,
     color: "from-slate-600 to-slate-800",
     badgeBg: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/30",
-    keys: ["settings"],
+    keys: ["settings", "co-admins"],
   },
 ];
 
