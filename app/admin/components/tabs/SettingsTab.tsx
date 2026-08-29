@@ -3,6 +3,7 @@ import Swal from "sweetalert2";
 import { type SystemSetting } from "../types";
 import { formatThaiDateRange } from "../../../lib/format";
 import SectionHeader from "../SectionHeader";
+import PermissionGate from "@/app/components/PermissionGate";
 
 interface SettingsTabProps {
   settingsList: SystemSetting[];
@@ -163,15 +164,17 @@ export default function SettingsTab({
         subtitle="จัดการปีการศึกษา กำหนดช่วงเวลากรอกคะแนน และคำแปลภาษาในระบบ"
       >
         {subTab === "general" && (
-          <button
-            onClick={handleAddSetting}
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            เพิ่มปีการศึกษา / เทอม
-          </button>
+          <PermissionGate permission="settings.academic_year">
+            <button
+              onClick={handleAddSetting}
+              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              เพิ่มปีการศึกษา / เทอม
+            </button>
+          </PermissionGate>
         )}
       </SectionHeader>
 
@@ -361,21 +364,25 @@ export default function SettingsTab({
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => handleEditSetting(s)}
-                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                            >
-                              แก้ไข
-                            </button>
-                            {!s.is_active && (
+                            <PermissionGate permission="settings.edit">
                               <button
-                                onClick={() =>
-                                  handleDeleteSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)
-                                }
-                                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                onClick={() => handleEditSetting(s)}
+                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                               >
-                                ลบ
+                                แก้ไข
                               </button>
+                            </PermissionGate>
+                            {!s.is_active && (
+                              <PermissionGate permission="settings.academic_year">
+                                <button
+                                  onClick={() =>
+                                    handleDeleteSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)
+                                  }
+                                  className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                >
+                                  ลบ
+                                </button>
+                              </PermissionGate>
                             )}
                           </div>
                         </td>
@@ -513,67 +520,69 @@ export default function SettingsTab({
           </div>
 
           {/* ⚠️ Danger Zone: Request School Deletion */}
-          <div className="mt-10 p-6 rounded-2xl border-2 border-red-500/30 bg-red-500/5 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <PermissionGate requireFullAdmin>
+            <div className="mt-10 p-6 rounded-2xl border-2 border-red-500/30 bg-red-500/5 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-red-600 dark:text-red-400">
+                    ⚠️ โซนอันตราย: ส่งคำขอลบโรงเรียน
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    เมื่อส่งคำขอแล้ว Super Admin จะสามารถลบข้อมูลโรงเรียนและข้อมูลทั้งหมดออกจากระบบได้อย่างถาวร
+                    กรุณาแน่ใจก่อนดำเนินการ
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  const { isConfirmed } = await Swal.fire({
+                    title: "ส่งคำขอลบโรงเรียน?",
+                    text: "Super Admin จะได้รับแจ้งและสามารถดำเนินการลบข้อมูลโรงเรียนทั้งหมดได้ ต้องการดำเนินการต่อหรือไม่?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "ส่งคำขอลบ",
+                    cancelButtonText: "ยกเลิก",
+                    confirmButtonColor: "#dc2626",
+                  });
+                  if (!isConfirmed) return;
+                  const res = await fetch("/api/admin/request-deletion", { method: "POST" });
+                  if (res.ok) {
+                    Swal.fire({
+                      icon: "success",
+                      title: "ส่งคำขอเรียบร้อย",
+                      text: "Super Admin จะดำเนินการลบข้อมูลโรงเรียนต่อไป",
+                      timer: 2000,
+                      showConfirmButton: false,
+                    });
+                  } else {
+                    const d = await res.json();
+                    Swal.fire("ข้อผิดพลาด", d.error || "ไม่สามารถส่งคำขอได้", "error");
+                  }
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border-0"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
                   />
                 </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-red-600 dark:text-red-400">
-                  ⚠️ โซนอันตราย: ส่งคำขอลบโรงเรียน
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  เมื่อส่งคำขอแล้ว Super Admin จะสามารถลบข้อมูลโรงเรียนและข้อมูลทั้งหมดออกจากระบบได้อย่างถาวร
-                  กรุณาแน่ใจก่อนดำเนินการ
-                </p>
-              </div>
+                ส่งคำขอลบโรงเรียนนี้ออกจากระบบ
+              </button>
             </div>
-            <button
-              onClick={async () => {
-                const { isConfirmed } = await Swal.fire({
-                  title: "ส่งคำขอลบโรงเรียน?",
-                  text: "Super Admin จะได้รับแจ้งและสามารถดำเนินการลบข้อมูลโรงเรียนทั้งหมดได้ ต้องการดำเนินการต่อหรือไม่?",
-                  icon: "warning",
-                  showCancelButton: true,
-                  confirmButtonText: "ส่งคำขอลบ",
-                  cancelButtonText: "ยกเลิก",
-                  confirmButtonColor: "#dc2626",
-                });
-                if (!isConfirmed) return;
-                const res = await fetch("/api/admin/request-deletion", { method: "POST" });
-                if (res.ok) {
-                  Swal.fire({
-                    icon: "success",
-                    title: "ส่งคำขอเรียบร้อย",
-                    text: "Super Admin จะดำเนินการลบข้อมูลโรงเรียนต่อไป",
-                    timer: 2000,
-                    showConfirmButton: false,
-                  });
-                } else {
-                  const d = await res.json();
-                  Swal.fire("ข้อผิดพลาด", d.error || "ไม่สามารถส่งคำขอได้", "error");
-                }
-              }}
-              className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border-0"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                />
-              </svg>
-              ส่งคำขอลบโรงเรียนนี้ออกจากระบบ
-            </button>
-          </div>
+          </PermissionGate>
         </div>
       )}
 
@@ -855,23 +864,25 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
             คำศัพท์ทั่วไปสำหรับเอกสาร ใบ ปพ. ตารางเรียน และข้อความแสดงผลหลายภาษา (ยกเว้นชื่อวิชาเรียน)
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleInitDefaultTerms}
-            className="px-3.5 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            <span>📥 นำเข้าคำศัพท์ระบบเริ่มต้น</span>
-          </button>
-          <button
-            onClick={handleAddNew}
-            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer border-0 flex items-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>เพิ่มคำศัพท์ใหม่</span>
-          </button>
-        </div>
+        <PermissionGate permission="settings.translations">
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleInitDefaultTerms}
+              className="px-3.5 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>📥 นำเข้าคำศัพท์ระบบเริ่มต้น</span>
+            </button>
+            <button
+              onClick={handleAddNew}
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer border-0 flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>เพิ่มคำศัพท์ใหม่</span>
+            </button>
+          </div>
+        </PermissionGate>
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -968,18 +979,20 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => handleEdit(entry)}
-                          className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg text-xs font-bold transition-colors border-0 cursor-pointer"
-                        >
-                          แก้ไข
-                        </button>
-                        <button
-                          onClick={() => handleDelete(entry.id, entry.key)}
-                          className="px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg text-xs font-bold transition-colors border-0 cursor-pointer"
-                        >
-                          ลบ
-                        </button>
+                        <PermissionGate permission="settings.translations">
+                          <button
+                            onClick={() => handleEdit(entry)}
+                            className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg text-xs font-bold transition-colors border-0 cursor-pointer"
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            onClick={() => handleDelete(entry.id, entry.key)}
+                            className="px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg text-xs font-bold transition-colors border-0 cursor-pointer"
+                          >
+                            ลบ
+                          </button>
+                        </PermissionGate>
                       </div>
                     )}
                   </td>

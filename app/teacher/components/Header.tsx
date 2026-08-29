@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Key, LogOut, User } from "lucide-react";
+import { Mail, Key, LogOut, User, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "../../components/ThemeToggle";
 import { SchoolLogo, useSchoolBrand } from "../../components/SchoolBrand";
@@ -15,6 +15,7 @@ interface HeaderProps {
   onChangePassword: () => void;
   onLogout: () => void;
   schoolId?: string | null;
+  isCoAdmin?: boolean;
 }
 
 export default function Header({
@@ -27,6 +28,7 @@ export default function Header({
   onChangePassword,
   onLogout,
   schoolId,
+  isCoAdmin,
 }: HeaderProps) {
   const { school } = useSchoolBrand(schoolId);
   const router = useRouter();
@@ -69,6 +71,16 @@ export default function Header({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2 shrink-0">
+          {isCoAdmin && (
+            <button
+              onClick={() => router.push("/admin")}
+              title="สลับไปยังหน้าระบบแอดมิน (Co-admin Portal)"
+              className="flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-2 rounded-xl transition-all border border-amber-500/30 cursor-pointer shadow-2xs"
+            >
+              <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="hidden md:inline">หน้าระบบแอดมิน</span>
+            </button>
+          )}
           <ThemeToggle className="!h-9 !w-9" />
           <button
             onClick={() => router.push("/teacher/profile")}

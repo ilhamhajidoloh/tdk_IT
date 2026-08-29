@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Shield, ExternalLink } from "lucide-react";
 import { useAuth } from "../lib/useAuth";
 import ChatWidget from "../components/ChatWidget";
 import Swal from "sweetalert2";
@@ -1016,6 +1017,7 @@ export default function TeacherPortal() {
         onChangePassword={handleChangePassword}
         onLogout={handleLogout}
         schoolId={teacherUser?.school_id}
+        isCoAdmin={Boolean(teacherUser?.is_co_admin)}
       />
 
       <TabNav
@@ -1028,6 +1030,30 @@ export default function TeacherPortal() {
 
       {/* ===== MAIN CONTENT ===== */}
       <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6 animate-fade-in-up">
+        {Boolean(teacherUser?.is_co_admin) && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs font-extrabold text-amber-800 dark:text-amber-300">
+                  คุณได้รับแต่งตั้งเป็นผู้ช่วยผู้ดูแลระบบ (Co-admin)
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  คุณสามารถเข้าถึงและจัดการข้อมูลระบบแอดมินตามสิทธิ์ที่ได้รับมอบหมายได้
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push("/admin")}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-md shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+            >
+              <span>ไปหน้าระบบแอดมิน</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {activeTab === "dashboard" && (
           <DashboardTab

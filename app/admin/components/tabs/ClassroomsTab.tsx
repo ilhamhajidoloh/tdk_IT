@@ -1,6 +1,7 @@
 import { type SystemSetting } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
+import PermissionGate from "@/app/components/PermissionGate";
 
 interface ClassroomsTabProps {
   settingsList: SystemSetting[];
@@ -61,85 +62,95 @@ export default function ClassroomsTab({
         count={classrooms.length}
         countLabel="ห้อง"
       >
-        <input
-          type="file"
-          ref={classroomFileInputRef}
-          className="hidden"
-          accept=".xlsx, .xls, .csv"
-          onChange={handleImportClassrooms}
-        />
-        <button
-          onClick={handleDownloadClassroomTemplate}
-          className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          โหลดเทมเพลต
-        </button>
-        <button
-          onClick={() => classroomFileInputRef.current?.click()}
-          className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
-          นำเข้า (Excel)
-        </button>
-        <button
-          onClick={() => handleOpenExportScoreModal()}
-          className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          ส่งออกคะแนนชั้นเรียน
-        </button>
-        <button
-          onClick={handleOpenCopyModal}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
-            />
-          </svg>
-          คัดลอกชั้นเรียน
-        </button>
-        {selectedClassroomIds.length > 0 && (
+        <PermissionGate permission="classrooms.import">
+          <input
+            type="file"
+            ref={classroomFileInputRef}
+            className="hidden"
+            accept=".xlsx, .xls, .csv"
+            onChange={handleImportClassrooms}
+          />
           <button
-            onClick={handleBulkDeleteClassrooms}
-            className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+            onClick={handleDownloadClassroomTemplate}
+            className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            โหลดเทมเพลต
+          </button>
+          <button
+            onClick={() => classroomFileInputRef.current?.click()}
+            className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            นำเข้า (Excel)
+          </button>
+        </PermissionGate>
+        <PermissionGate permission="scores.reports">
+          <button
+            onClick={() => handleOpenExportScoreModal()}
+            className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            ลบที่เลือก ({selectedClassroomIds.length})
+            ส่งออกคะแนนชั้นเรียน
           </button>
+        </PermissionGate>
+        <PermissionGate permission="classrooms.create">
+          <button
+            onClick={handleOpenCopyModal}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+              />
+            </svg>
+            คัดลอกชั้นเรียน
+          </button>
+        </PermissionGate>
+        {selectedClassroomIds.length > 0 && (
+          <PermissionGate permission="classrooms.delete">
+            <button
+              onClick={handleBulkDeleteClassrooms}
+              className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              ลบที่เลือก ({selectedClassroomIds.length})
+            </button>
+          </PermissionGate>
         )}
-        <button
-          onClick={handleAddClassroom}
-          disabled={!selectedSettingId}
-          className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          เพิ่มชั้นเรียนใหม่
-        </button>
+        <PermissionGate permission="classrooms.create">
+          <button
+            onClick={handleAddClassroom}
+            disabled={!selectedSettingId}
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            เพิ่มชั้นเรียนใหม่
+          </button>
+        </PermissionGate>
       </SectionHeader>
 
       {/* Term Selector */}
@@ -224,51 +235,65 @@ export default function ClassroomsTab({
                 </div>
                 {hasStudents ? (
                   <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-indigo-100/30 dark:border-indigo-500/25 flex-wrap">
-                    <button
-                      onClick={() => handleOpenExportScoreModal(c.id)}
-                      className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:bg-teal-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer flex items-center gap-1"
-                    >
-                      📊 ส่งออกคะแนน
-                    </button>
-                    <button
-                      onClick={() => handleOpenAssignModal(c)}
-                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                    >
-                      เพิ่มนักเรียน
-                    </button>
-                    <button
-                      onClick={() => handleEditClassroom(c)}
-                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                    >
-                      แก้ไข
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClassroom(c.id, c.name)}
-                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                    >
-                      ลบ
-                    </button>
+                    <PermissionGate permission="scores.reports">
+                      <button
+                        onClick={() => handleOpenExportScoreModal(c.id)}
+                        className="text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 px-3 py-1.5 bg-teal-50 dark:bg-teal-500/10 hover:bg-teal-100 dark:bg-teal-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer flex items-center gap-1"
+                      >
+                        📊 ส่งออกคะแนน
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="classrooms.manage_students">
+                      <button
+                        onClick={() => handleOpenAssignModal(c)}
+                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        เพิ่มนักเรียน
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="classrooms.edit">
+                      <button
+                        onClick={() => handleEditClassroom(c)}
+                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        แก้ไข
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="classrooms.delete">
+                      <button
+                        onClick={() => handleDeleteClassroom(c.id, c.name)}
+                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        ลบ
+                      </button>
+                    </PermissionGate>
                   </div>
                 ) : (
                   <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-amber-100/30 dark:border-amber-500/25 flex-wrap">
-                    <button
-                      onClick={() => handleOpenAssignModal(c)}
-                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                    >
-                      เพิ่มนักเรียน
-                    </button>
-                    <button
-                      onClick={() => handleEditClassroom(c)}
-                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                    >
-                      แก้ไข
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClassroom(c.id, c.name)}
-                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                    >
-                      ลบ
-                    </button>
+                    <PermissionGate permission="classrooms.manage_students">
+                      <button
+                        onClick={() => handleOpenAssignModal(c)}
+                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        เพิ่มนักเรียน
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="classrooms.edit">
+                      <button
+                        onClick={() => handleEditClassroom(c)}
+                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        แก้ไข
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="classrooms.delete">
+                      <button
+                        onClick={() => handleDeleteClassroom(c.id, c.name)}
+                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        ลบ
+                      </button>
+                    </PermissionGate>
                   </div>
                 )}
               </div>

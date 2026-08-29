@@ -257,13 +257,15 @@ function AdminPortalContent() {
         return hasPermission("schedules.view");
       case "grade-status":
       case "student-scores":
-      case "evaluations":
         return hasPermission("scores.view");
+      case "evaluations":
+        return hasAnyPermission("scores.evaluations", "scores.view");
       case "rankings":
       case "yearly-average":
-      case "export-grades":
       case "achievement":
-        return hasPermission("scores.reports") || hasPermission("scores.view");
+        return hasAnyPermission("scores.rankings", "scores.reports", "scores.view");
+      case "export-grades":
+        return hasAnyPermission("scores.reports", "scores.view");
       case "duty":
         return hasAnyPermission("duties.view", "news.view");
       case "books":

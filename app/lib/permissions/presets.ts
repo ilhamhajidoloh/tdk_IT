@@ -8,10 +8,10 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
     description: "จัดการวิชาเรียน โครงสร้างชั้นเรียน ตารางเรียน และคะแนนผลการเรียน",
     icon: "GraduationCap",
     permissions: {
-      subjects: { view: true, create: true, edit: true, assign_teachers: true },
+      subjects: { view: true, create: true, edit: true, assign_teachers: true, reorder: true, translations: true },
       classrooms: { view: true, create: true, edit: true, manage_students: true },
-      schedules: { view: true, create: true, edit: true },
-      scores: { view: true, edit: true, import: true, reports: true },
+      schedules: { view: true, create: true, edit: true, export: true },
+      scores: { view: true, edit: true, import: true, reports: true, rankings: true, evaluations: true },
       analytics: { view: true },
     },
   },
@@ -19,10 +19,10 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
     id: "student_manager",
     name: "ผู้ดูแลนักเรียน",
     nameEn: "Student Affairs",
-    description: "จัดการข้อมูลนักเรียน ทะเบียนประวัติ นำเข้า และการเลื่อนชั้น",
+    description: "จัดการข้อมูลนักเรียน ทะเบียนประวัติ นำเข้า ส่งออก และการเลื่อนชั้น",
     icon: "Users",
     permissions: {
-      students: { view: true, create: true, edit: true, import: true, promote: true },
+      students: { view: true, create: true, edit: true, import: true, export: true, promote: true },
       classrooms: { view: true, manage_students: true },
       users: { view: true },
     },
@@ -34,7 +34,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
     description: "จัดตารางสอนประจำคาบ กำหนดเวลาเรียน และดูข้อมูลห้องเรียน/วิชา",
     icon: "CalendarDays",
     permissions: {
-      schedules: { view: true, create: true, edit: true, delete: true },
+      schedules: { view: true, create: true, edit: true, delete: true, export: true },
       classrooms: { view: true },
       subjects: { view: true },
     },
@@ -46,7 +46,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
     description: "ตรวจสอบคะแนน สถานะส่งคะแนน การประเมินคุณลักษณะ และพิมพ์รายงาน",
     icon: "TrendingUp",
     permissions: {
-      scores: { view: true, edit: true, import: true, reports: true },
+      scores: { view: true, edit: true, import: true, reports: true, rankings: true, evaluations: true },
       analytics: { view: true, export: true },
       subjects: { view: true },
       classrooms: { view: true },
@@ -73,7 +73,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
     icon: "Newspaper",
     permissions: {
       news: { view: true, create: true, edit: true, delete: true },
-      duties: { view: true, edit: true },
+      duties: { view: true, create: true, edit: true, manage: true },
     },
   },
   {

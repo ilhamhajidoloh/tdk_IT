@@ -20,62 +20,91 @@ export type PermissionAction =
   | "delete"
   | "manage_roles"
   | "import"
+  | "export"
   | "promote"
   | "manage_students"
   | "assign_teachers"
+  | "reorder"
+  | "translations"
   | "reports"
-  | "export"
+  | "rankings"
+  | "evaluations"
   | "academic_year"
   | "manage";
 
 export type Permission =
+  // Users
   | "users.view"
   | "users.create"
   | "users.edit"
   | "users.delete"
+  | "users.import"
   | "users.manage_roles"
+  // Students
   | "students.view"
   | "students.create"
   | "students.edit"
   | "students.delete"
   | "students.import"
+  | "students.export"
   | "students.promote"
+  // Classrooms
   | "classrooms.view"
   | "classrooms.create"
   | "classrooms.edit"
   | "classrooms.delete"
+  | "classrooms.import"
   | "classrooms.manage_students"
+  // Subjects
   | "subjects.view"
   | "subjects.create"
   | "subjects.edit"
   | "subjects.delete"
   | "subjects.assign_teachers"
+  | "subjects.reorder"
+  | "subjects.translations"
+  // Schedules
   | "schedules.view"
   | "schedules.create"
   | "schedules.edit"
   | "schedules.delete"
+  | "schedules.export"
+  // Attendance
   | "attendance.view"
   | "attendance.edit"
   | "attendance.reports"
+  // Scores
   | "scores.view"
   | "scores.edit"
   | "scores.import"
   | "scores.reports"
+  | "scores.rankings"
+  | "scores.evaluations"
+  // News
   | "news.view"
   | "news.create"
   | "news.edit"
   | "news.delete"
+  // Correspondence
   | "correspondence.view"
   | "correspondence.create"
   | "correspondence.edit"
   | "correspondence.delete"
+  // Duties
   | "duties.view"
+  | "duties.create"
   | "duties.edit"
+  | "duties.delete"
+  | "duties.manage"
+  // Analytics
   | "analytics.view"
   | "analytics.export"
+  // Settings
   | "settings.view"
   | "settings.edit"
   | "settings.academic_year"
+  | "settings.translations"
+  // Co-admins (Full Admin only)
   | "co_admins.manage";
 
 export type AdminPermissions = Partial<Record<PermissionCategory, Partial<Record<PermissionAction, boolean>>>>;

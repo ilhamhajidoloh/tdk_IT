@@ -1,6 +1,7 @@
 import { type SchedulePeriod, type ScheduleEntry, type SystemSetting, type DBSubject, type DBUser, ALL_DAYS } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
+import PermissionGate from "@/app/components/PermissionGate";
 
 interface ScheduleTabProps {
   settingsList: SystemSetting[];
@@ -151,18 +152,22 @@ export default function ScheduleTab({
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => handleSavePeriod(p)}
-                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                          >
-                            บันทึก
-                          </button>
-                          <button
-                            onClick={() => handleDeletePeriod(p.id)}
-                            className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                          >
-                            ลบ
-                          </button>
+                          <PermissionGate permission="schedules.edit">
+                            <button
+                              onClick={() => handleSavePeriod(p)}
+                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                            >
+                              บันทึก
+                            </button>
+                          </PermissionGate>
+                          <PermissionGate permission="schedules.delete">
+                            <button
+                              onClick={() => handleDeletePeriod(p.id)}
+                              className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                            >
+                              ลบ
+                            </button>
+                          </PermissionGate>
                         </div>
                       </td>
                     </tr>
@@ -253,15 +258,17 @@ export default function ScheduleTab({
               )}
             </div>
 
-            <button
-              onClick={handleAddPeriod}
-              className="mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              เพิ่มคาบเรียน
-            </button>
+            <PermissionGate permission="schedules.create">
+              <button
+                onClick={handleAddPeriod}
+                className="mt-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                เพิ่มคาบเรียน
+              </button>
+            </PermissionGate>
           </div>
 
           {/* Export Schedule */}

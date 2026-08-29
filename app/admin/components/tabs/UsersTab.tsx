@@ -1,5 +1,6 @@
 import { type DBUser, type DBStudent } from "../types";
 import SectionHeader from "../SectionHeader";
+import PermissionGate from "@/app/components/PermissionGate";
 
 interface UsersTabProps {
   users: DBUser[];
@@ -66,50 +67,56 @@ export default function UsersTab({
         count={users.length}
         countLabel="บัญชี"
       >
-        <input
-          type="file"
-          accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-          className="hidden"
-          ref={fileInputRef}
-          onChange={handleImportUsers}
-        />
-        <button
-          onClick={handleDownloadTemplate}
-          className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          โหลดเทมเพลต
-        </button>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
-          นำเข้า (CSV/Excel)
-        </button>
-        <button
-          onClick={handleAddUser}
-          className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          เพิ่มผู้ใช้ใหม่
-        </button>
-        {selectedUserIds.length > 0 && (
+        <PermissionGate permission="users.import">
+          <input
+            type="file"
+            accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleImportUsers}
+          />
           <button
-            onClick={handleBulkDeleteUsers}
-            className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+            onClick={handleDownloadTemplate}
+            className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            โหลดเทมเพลต
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            ลบที่เลือก ({selectedUserIds.length})
+            นำเข้า (CSV/Excel)
           </button>
+        </PermissionGate>
+        <PermissionGate permission="users.create">
+          <button
+            onClick={handleAddUser}
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            เพิ่มผู้ใช้ใหม่
+          </button>
+        </PermissionGate>
+        {selectedUserIds.length > 0 && (
+          <PermissionGate permission="users.delete">
+            <button
+              onClick={handleBulkDeleteUsers}
+              className="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              ลบที่เลือก ({selectedUserIds.length})
+            </button>
+          </PermissionGate>
         )}
       </SectionHeader>
 
@@ -281,18 +288,22 @@ export default function UsersTab({
                 <td className="px-6 py-4 text-muted-foreground">{u.student_id || "-"}</td>
                 <td className="px-6 py-4 text-center">
                   <div className="flex items-center justify-center gap-1.5">
-                    <button
-                      onClick={() => handleEditUser(u)}
-                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
-                    >
-                      แก้ไข
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(u.id)}
-                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
-                    >
-                      ลบ
-                    </button>
+                    <PermissionGate permission="users.edit">
+                      <button
+                        onClick={() => handleEditUser(u)}
+                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                      >
+                        แก้ไข
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="users.delete">
+                      <button
+                        onClick={() => handleDeleteUser(u.id)}
+                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                      >
+                        ลบ
+                      </button>
+                    </PermissionGate>
                   </div>
                 </td>
               </tr>
@@ -364,18 +375,22 @@ export default function UsersTab({
                     📄 ใบรายงาน
                   </button>
                 )}
-                <button
-                  onClick={() => handleEditUser(u)}
-                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
-                >
-                  แก้ไข
-                </button>
-                <button
-                  onClick={() => handleDeleteUser(u.id)}
-                  className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
-                >
-                  ลบ
-                </button>
+                <PermissionGate permission="users.edit">
+                  <button
+                    onClick={() => handleEditUser(u)}
+                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                  >
+                    แก้ไข
+                  </button>
+                </PermissionGate>
+                <PermissionGate permission="users.delete">
+                  <button
+                    onClick={() => handleDeleteUser(u.id)}
+                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                  >
+                    ลบ
+                  </button>
+                </PermissionGate>
               </div>
             </div>
             {u.student_id && (

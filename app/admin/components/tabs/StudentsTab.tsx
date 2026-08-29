@@ -167,62 +167,66 @@ export default function StudentsTab({
       />
 
       {/* Export Students Section */}
-      <div className="mb-6 p-5 rounded-2xl border border-amber-100 dark:border-amber-500/25 bg-amber-50 dark:bg-amber-500/10 flex gap-3 items-end flex-wrap">
-        <div className="flex-1 min-w-xs">
-          <label className="block text-xs font-semibold text-amber-700 dark:text-amber-300 mb-2">
-            📄 ภาษาการส่งออก
-          </label>
-          <select
-            value={exportLanguage}
-            onChange={(e) => setExportLanguage(e.target.value as any)}
-            className="w-full px-3 py-2.5 text-sm bg-card border border-amber-200 dark:border-amber-500/30 rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:border-amber-300 transition-colors"
+      <PermissionGate permission="students.export">
+        <div className="mb-6 p-5 rounded-2xl border border-amber-100 dark:border-amber-500/25 bg-amber-50 dark:bg-amber-500/10 flex gap-3 items-end flex-wrap">
+          <div className="flex-1 min-w-xs">
+            <label className="block text-xs font-semibold text-amber-700 dark:text-amber-300 mb-2">
+              📄 ภาษาการส่งออก
+            </label>
+            <select
+              value={exportLanguage}
+              onChange={(e) => setExportLanguage(e.target.value as any)}
+              className="w-full px-3 py-2.5 text-sm bg-card border border-amber-200 dark:border-amber-500/30 rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent hover:border-amber-300 transition-colors"
+            >
+              <option value="th">🇹🇭 ภาษาไทย</option>
+              <option value="ms-rumi">🇲🇾 Bahasa Melayu (Rumi)</option>
+              <option value="ms-jawi">🇲🇾 Bahasa Melayu (Jawi)</option>
+            </select>
+          </div>
+          <button
+            onClick={handleExportStudents}
+            className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
           >
-            <option value="th">🇹🇭 ภาษาไทย</option>
-            <option value="ms-rumi">🇲🇾 Bahasa Melayu (Rumi)</option>
-            <option value="ms-jawi">🇲🇾 Bahasa Melayu (Jawi)</option>
-          </select>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 19l9 2-9-18-9 18 9-2m0 0v-8m0 8H3m16-8h3m-6-4l-4-4m0 0l-4 4m4-4v12"
+              />
+            </svg>
+            ส่งออกรายชื่อนักเรียน
+          </button>
+          <button
+            onClick={handleExportStudentsExcel}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 13h6m-6 4h6m2 5H7a2 2 0 01-2-2V4a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V20a2 2 0 01-2 2z"
+              />
+            </svg>
+            ส่งออก Excel
+          </button>
         </div>
-        <button
-          onClick={handleExportStudents}
-          className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 19l9 2-9-18-9 18 9-2m0 0v-8m0 8H3m16-8h3m-6-4l-4-4m0 0l-4 4m4-4v12"
-            />
-          </svg>
-          ส่งออกรายชื่อนักเรียน
-        </button>
-        <button
-          onClick={handleExportStudentsExcel}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 13h6m-6 4h6m2 5H7a2 2 0 01-2-2V4a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V20a2 2 0 01-2 2z"
-            />
-          </svg>
-          ส่งออก Excel
-        </button>
-      </div>
+      </PermissionGate>
 
       {/* Desktop Table */}
       <div className="hidden md:block animate-fade-in-up">
-        <div className="flex justify-end mb-2">
-          <button
-            onClick={handleRandomStudentNumbers}
-            title="กำหนดเลขที่แบบสุ่ม"
-            className="px-3 py-1.5 rounded-lg bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-500/25 text-xs font-bold transition-all cursor-pointer border-0"
-          >
-            Random เลขที่
-          </button>
-        </div>
+        <PermissionGate permission="students.edit">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleRandomStudentNumbers}
+              title="กำหนดเลขที่แบบสุ่ม"
+              className="px-3 py-1.5 rounded-lg bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-500/25 text-xs font-bold transition-all cursor-pointer border-0"
+            >
+              Random เลขที่
+            </button>
+          </div>
+        </PermissionGate>
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-left">
             <thead className="bg-muted text-muted-foreground">
@@ -291,12 +295,14 @@ export default function StudentsTab({
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => handleEditStudent(s)}
-                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                        >
-                          แก้ไขข้อมูล
-                        </button>
+                        <PermissionGate permission="students.edit">
+                          <button
+                            onClick={() => handleEditStudent(s)}
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                          >
+                            แก้ไขข้อมูล
+                          </button>
+                        </PermissionGate>
                       </div>
                     </td>
                   </tr>
@@ -309,14 +315,16 @@ export default function StudentsTab({
 
       {/* Mobile Cards */}
       <div className="md:hidden space-y-3 animate-fade-in-up">
-        <div className="flex justify-end mb-2">
-          <button
-            onClick={handleRandomStudentNumbers}
-            className="px-3 py-2 rounded-xl bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-500/25 text-xs font-bold transition-all cursor-pointer border-0 shadow-sm"
-          >
-            Random เลขที่
-          </button>
-        </div>
+        <PermissionGate permission="students.edit">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleRandomStudentNumbers}
+              className="px-3 py-2 rounded-xl bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-500/25 text-xs font-bold transition-all cursor-pointer border-0 shadow-sm"
+            >
+              Random เลขที่
+            </button>
+          </div>
+        </PermissionGate>
         {filteredStudents.map((s) => (
           <div key={s.id} className="card-modern p-4">
             <div className="flex items-start justify-between gap-3">
@@ -350,12 +358,14 @@ export default function StudentsTab({
               </div>
             </div>
             <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
-              <button
-                onClick={() => handleEditStudent(s)}
-                className="flex-1 text-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-              >
-                แก้ไขข้อมูล / จัดห้องเรียน
-              </button>
+              <PermissionGate permission="students.edit">
+                <button
+                  onClick={() => handleEditStudent(s)}
+                  className="flex-1 text-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                >
+                  แก้ไขข้อมูล / จัดห้องเรียน
+                </button>
+              </PermissionGate>
             </div>
           </div>
         ))}

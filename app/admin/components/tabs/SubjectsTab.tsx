@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { type DBSubject, type SystemSetting } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
+import PermissionGate from "@/app/components/PermissionGate";
 
 interface SubjectsTabProps {
   settingsList: SystemSetting[];
@@ -42,30 +43,32 @@ export default function SubjectsTab({
       >
         {subTab === "list" && (
           <>
-            <button
-              onClick={handleAddSubject}
-              disabled={!selectedSubjectSettingId}
-              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              เพิ่มวิชาเรียนใหม่
-            </button>
-            <button
-              onClick={handleOpenCopySubjectsModal}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium border border-border bg-card hover:bg-muted text-foreground shadow-sm transition-all cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-              คัดลอกวิชาเรียน
-            </button>
+            <PermissionGate permission="subjects.create">
+              <button
+                onClick={handleAddSubject}
+                disabled={!selectedSubjectSettingId}
+                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                เพิ่มวิชาเรียนใหม่
+              </button>
+              <button
+                onClick={handleOpenCopySubjectsModal}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium border border-border bg-card hover:bg-muted text-foreground shadow-sm transition-all cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                คัดลอกวิชาเรียน
+              </button>
+            </PermissionGate>
           </>
         )}
       </SectionHeader>
@@ -191,18 +194,22 @@ export default function SubjectsTab({
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => handleEditSubject(sub)}
-                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                            >
-                              แก้ไขชื่อวิชา
-                            </button>
-                            <button
-                              onClick={() => handleDeleteSubject(sub.id, sub.name)}
-                              className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                            >
-                              ลบ
-                            </button>
+                            <PermissionGate permission="subjects.edit">
+                              <button
+                                onClick={() => handleEditSubject(sub)}
+                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                              >
+                                แก้ไขชื่อวิชา
+                              </button>
+                            </PermissionGate>
+                            <PermissionGate permission="subjects.delete">
+                              <button
+                                onClick={() => handleDeleteSubject(sub.id, sub.name)}
+                                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                              >
+                                ลบ
+                              </button>
+                            </PermissionGate>
                           </div>
                         </td>
                       </tr>
@@ -252,18 +259,22 @@ export default function SubjectsTab({
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
-                      <button
-                        onClick={() => handleEditSubject(sub)}
-                        className="flex-1 text-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                      >
-                        แก้ไขชื่อวิชา
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSubject(sub.id, sub.name)}
-                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                      >
-                        ลบ
-                      </button>
+                      <PermissionGate permission="subjects.edit">
+                        <button
+                          onClick={() => handleEditSubject(sub)}
+                          className="flex-1 text-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                        >
+                          แก้ไขชื่อวิชา
+                        </button>
+                      </PermissionGate>
+                      <PermissionGate permission="subjects.delete">
+                        <button
+                          onClick={() => handleDeleteSubject(sub.id, sub.name)}
+                          className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                        >
+                          ลบ
+                        </button>
+                      </PermissionGate>
                     </div>
                   </div>
                 ))}
@@ -391,13 +402,15 @@ function SubjectOrderingSection({ selectedSubjectSettingId, subjectsList, token 
             ลำดับนี้จะใช้ในการแสดงผลใบรายงาน คะแนน และเอกสารต่างๆ ทั่วทั้งระบบ
           </div>
         </div>
-        <button
-          onClick={saveOrder}
-          disabled={isSaving}
-          className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-md transition-all cursor-pointer border-0 flex items-center gap-2"
-        >
-          {isSaving ? "กำลังบันทึก..." : "💾 บันทึกลำดับ"}
-        </button>
+        <PermissionGate permission="subjects.reorder">
+          <button
+            onClick={saveOrder}
+            disabled={isSaving}
+            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-md transition-all cursor-pointer border-0 flex items-center gap-2"
+          >
+            {isSaving ? "กำลังบันทึก..." : "💾 บันทึกลำดับ"}
+          </button>
+        </PermissionGate>
       </div>
 
       <div className="space-y-2">
@@ -722,12 +735,14 @@ function SubjectLanguageSection({
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => handleStartEdit(sub.name)}
-                          className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg text-xs font-bold transition-colors border-0 cursor-pointer"
-                        >
-                          แก้ไขคำแปล
-                        </button>
+                        <PermissionGate permission="subjects.translations">
+                          <button
+                            onClick={() => handleStartEdit(sub.name)}
+                            className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg text-xs font-bold transition-colors border-0 cursor-pointer"
+                          >
+                            แก้ไขคำแปล
+                          </button>
+                        </PermissionGate>
                       )}
                     </td>
                   </tr>

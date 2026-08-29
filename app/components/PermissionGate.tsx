@@ -8,6 +8,7 @@ interface PermissionGateProps {
   permission?: Permission;
   anyOf?: Permission[];
   allOf?: Permission[];
+  requireFullAdmin?: boolean;
   fallback?: ReactNode;
   children: ReactNode;
 }
@@ -16,10 +17,15 @@ export default function PermissionGate({
   permission,
   anyOf,
   allOf,
+  requireFullAdmin,
   fallback = null,
   children,
 }: PermissionGateProps) {
   const { hasPermission, hasAnyPermission, hasAllPermissions, isFullAdmin } = usePermissions();
+
+  if (requireFullAdmin) {
+    return isFullAdmin ? <>{children}</> : <>{fallback}</>;
+  }
 
   if (isFullAdmin) {
     return <>{children}</>;
