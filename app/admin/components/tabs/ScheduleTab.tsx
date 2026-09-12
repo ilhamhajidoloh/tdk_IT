@@ -335,7 +335,7 @@ export default function ScheduleTab({
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                คลิกปุ่ม &quot;พิมพ์ / บันทึก PDF&quot; ในหน้าที่เปิดขึ้นมา เพื่อพิมพ์หรือบันทึกเป็น PDF
+                คลิกปุ่ม &quot;พิมพ์ / บันทึก PDF&quot; ในหน้าที่เปิดขึ้นมา เพื่อพิมพ์หรือบันทึกเป็น PDF — เมื่อขยายตัวอักษร ตารางจะต่อเป็นหลายหน้าอัตโนมัติ
               </p>
             </div>
           )}

@@ -24,7 +24,6 @@ import {
   EvaluationTopic,
   EvaluationSummaryRow,
   ALL_DAYS,
-  TEACHER_PALETTE,
 } from "./components/types";
 import { RWT_TOPICS, isEvaluationTermOpen, getTopicNameLabel, getRwtTopicLabel, getRatingLabel } from "../lib/evaluation";
 import CopySubjectsModal from "./components/modals/CopySubjectsModal";
@@ -2735,31 +2734,65 @@ function AdminPortalContent() {
 
     const settingTitle = setting ? `${getLocalizedText("เทอม")} ${setting.term}/${setting.academic_year}` : "";
 
-    // Assign colors to each unique effective teacher name
-    const colorMap = new Map<string, typeof TEACHER_PALETTE[0]>();
+    // Use one clearly different base colour per teacher. After the curated
+    // colours are used, the golden-angle sequence keeps new colours apart.
+    const teacherColors = [
+      { bg: "#1d4ed8", text: "#eff6ff", border: "#1e40af" }, // น้ำเงิน
+      { bg: "#c2410c", text: "#fff7ed", border: "#9a3412" }, // ส้ม
+      { bg: "#047857", text: "#ecfdf5", border: "#065f46" }, // เขียว
+      { bg: "#7e22ce", text: "#faf5ff", border: "#6b21a8" }, // ม่วง
+      { bg: "#a16207", text: "#fefce8", border: "#854d0e" }, // เหลืองทอง
+      { bg: "#0369a1", text: "#f0f9ff", border: "#075985" }, // ฟ้า
+      { bg: "#a21caf", text: "#fdf4ff", border: "#86198f" }, // ฟูเชีย
+      { bg: "#3f6212", text: "#f7fee7", border: "#365314" }, // มะกอก
+      { bg: "#b91c1c", text: "#fef2f2", border: "#991b1b" }, // แดง
+      { bg: "#0f766e", text: "#f0fdfa", border: "#115e59" }, // เทอร์ควอยซ์
+      { bg: "#78350f", text: "#fffbeb", border: "#451a03" }, // น้ำตาล
+      { bg: "#3730a3", text: "#eef2ff", border: "#312e81" }, // คราม
+      { bg: "#9f1239", text: "#fff1f2", border: "#881337" }, // กุหลาบเข้ม
+      { bg: "#334155", text: "#f8fafc", border: "#1e293b" }, // เทาเข้ม
+      { bg: "#be123c", text: "#fff1f2", border: "#9f1239" }, // แดงเชอร์รี่
+      { bg: "#155e75", text: "#ecfeff", border: "#164e63" }, // น้ำทะเลเข้ม
+    ];
+    const getTeacherColor = (index: number) => {
+      if (teacherColors[index]) return teacherColors[index];
+      const hue = Math.round(((index - teacherColors.length) * 137.508 + 15) % 360);
+      return { bg: `hsl(${hue} 70% 32%)`, text: "#ffffff", border: `hsl(${hue} 72% 23%)` };
+    };
+    const colorMap = new Map<string, { bg: string; text: string; border: string }>();
+    const teacherLabels = new Map<string, string>();
+    const getTeacherIdentity = (entry: ScheduleEntry | undefined) => {
+      if (!entry) return null;
+      const teacherName = entry.teacher_name || (entry.teacher_names?.length === 1 ? entry.teacher_names[0] : "");
+      if (entry.teacher_id) {
+        return { key: `id:${entry.teacher_id}`, label: teacherName || entry.teacher_id };
+      }
+      if (teacherName) {
+        const matchedTeacher = users.find((user: DBUser) => user.role === "teacher" && user.username === teacherName);
+        return matchedTeacher
+          ? { key: `id:${matchedTeacher.id}`, label: teacherName }
+          : { key: `name:${teacherName}`, label: teacherName };
+      }
+      return null;
+    };
     let ci = 0;
     scheduleEntries.forEach(e => {
-      const name = e.teacher_id
-        ? (e.teacher_name || null)
-        : (e.teacher_names?.length === 1 ? e.teacher_names[0] : null);
-      if (name && !colorMap.has(name)) {
-        colorMap.set(name, TEACHER_PALETTE[ci++ % TEACHER_PALETTE.length]);
+      const teacher = getTeacherIdentity(e);
+      if (teacher && !colorMap.has(teacher.key)) {
+        colorMap.set(teacher.key, getTeacherColor(ci++));
+        teacherLabels.set(teacher.key, teacher.label);
       }
     });
 
     const cellStyle = (entry: ScheduleEntry | undefined) => {
       if (!entry) return "";
-      const name = entry.teacher_id
-        ? (entry.teacher_name || null)
-        : (entry.teacher_names?.length === 1 ? entry.teacher_names[0] : null);
-      const c = name ? colorMap.get(name) : null;
+      const teacher = getTeacherIdentity(entry);
+      const c = teacher ? colorMap.get(teacher.key) : null;
       return c ? `background:${c.bg};border-color:${c.border};` : "background:#f9fafb;border-color:#e5e7eb;";
     };
     const cellTextColor = (entry: ScheduleEntry | undefined) => {
-      const name = entry?.teacher_id
-        ? (entry.teacher_name || null)
-        : (entry?.teacher_names?.length === 1 ? entry.teacher_names[0] : null);
-      return (name ? colorMap.get(name)?.text : null) || "#374151";
+      const teacher = getTeacherIdentity(entry);
+      return (teacher ? colorMap.get(teacher.key)?.text : null) || "#374151";
     };
 
     const thStyle = "padding:8px 12px;background:#0f172a;color:#f8fafc;font-size:14px;font-weight:700;text-align:center;";
@@ -2790,7 +2823,7 @@ function AdminPortalContent() {
         }).join("");
         return `<tr>${pCell}${cells}</tr>`;
       }).join("");
-      return `<div style="margin-bottom:24px;break-inside:avoid;">
+      return `<div style="margin-bottom:24px;">
         <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;">${getLocalizedText("ห้อง")} ${cname}</div>
         <table style="width:100%;border-collapse:collapse;font-family:inherit;">
           <thead><tr>${periodHeader}${dayHeaders}</tr></thead>
@@ -2801,9 +2834,9 @@ function AdminPortalContent() {
 
     const legend = colorMap.size > 0 ? `<div style="margin-bottom:16px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
       <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">${getLocalizedText("สีครูผู้สอน")}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">${Array.from(colorMap.entries()).map(([name, c]) =>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">${Array.from(colorMap.entries()).map(([teacherKey, c]) =>
       `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:13px;font-weight:600;">
-          <span style="width:10px;height:10px;border-radius:50%;background:${c.text};flex-shrink:0;"></span>${name}
+          <span style="width:10px;height:10px;border-radius:50%;background:${c.text};flex-shrink:0;"></span>${teacherLabels.get(teacherKey) || "-"}
         </span>`).join("")}
       </div>
     </div>` : "";
@@ -2858,7 +2891,7 @@ function AdminPortalContent() {
             ${cells}
           </tr>`;
         }).join("");
-        return `<div style="margin-bottom:28px;break-inside:avoid;">
+        return `<div style="margin-bottom:28px;">
           <div dir="auto" style="padding:8px 14px;background:#0f172a;color:#f8fafc;font-size:16px;font-weight:800;border-radius:6px 6px 0 0;text-align:${alignLeftOrRight};">${getLocalizedText("วัน")}${getLocalizedDay(day.value)}</div>
           <table style="width:100%;border-collapse:collapse;">
             <thead><tr>
@@ -2934,36 +2967,118 @@ function AdminPortalContent() {
   .font-controls .font-size-val{min-width:28px;text-align:center;font-weight:700;color:#4f46e5;}
   .font-controls button{padding:4px 10px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;color:#475569;line-height:1;}
   .font-controls button:hover{background:#eef2ff;border-color:#a5b4fc;color:#4f46e5;}
-  @media print{.print-btn,.font-controls{display:none;} @page{margin:1cm;size:A4 landscape;}}
+  /* Keep the table in normal document flow.  This is important when the font
+     is enlarged: the browser can then create additional print pages instead
+     of clipping the transformed content on one page. */
+  #schedule-content table{break-inside:auto;}
+  #schedule-content thead{display:table-header-group;}
+  #schedule-content tr{break-inside:avoid;break-after:auto;}
+  #poster-pages{display:none;}
+  @media print{
+    @page{margin:5mm;size:A4 landscape;}
+    .print-btn,.font-controls{display:none;}
+    body.poster-print > :not(#poster-pages){display:none !important;}
+    body.poster-print #poster-pages{display:block;}
+    .poster-page{width:1050px;height:700px;position:relative;overflow:hidden;break-after:page;page-break-after:always;}
+    .poster-page:last-child{break-after:auto;page-break-after:auto;}
+    .poster-label{height:20px;font:600 11px/20px 'Inter','Sarabun',sans-serif;color:#64748b;border-bottom:1px dashed #cbd5e1;}
+    .poster-viewport{height:680px;position:relative;overflow:hidden;}
+    .poster-canvas{position:absolute;top:0;left:0;transform-origin:top left;}
+    #poster-pages *{break-before:auto !important;page-break-before:auto !important;}
+  }
 </style>
 </head><body>
 <div class="font-controls">
   <label>🔤 ${getLocalizedText("ขนาดตัวอักษร:")}</label>
   <button onclick="changeFontSize(-1)">A-</button>
-  <input type="range" id="fontSlider" min="60" max="160" value="100" oninput="applyFontSize(this.value)">
+  <input type="range" id="fontSlider" min="60" max="300" value="100" oninput="applyFontSize(this.value)">
   <button onclick="changeFontSize(1)">A+</button>
   <span class="font-size-val" id="fontVal">100%</span>
 </div>
-<button class="print-btn" onclick="window.print()">🖨️ ${getLocalizedText("พิมพ์ / บันทึก PDF")}</button>
+<button class="print-btn" onclick="printSchedule()">🖨️ ${getLocalizedText("พิมพ์ / บันทึก PDF")}</button>
 <h1 dir="auto">${docTitle}</h1>
 <div class="meta" dir="auto">${getLocalizedText("ออกรายงาน ณ")} ${dateStr}</div>
 <div id="schedule-content">
 ${body}
 </div>
+<div id="poster-pages"></div>
 <script>
 function applyFontSize(val) {
   var content = document.getElementById('schedule-content');
-  content.style.transform = 'scale(' + (val / 100) + ')';
-  content.style.transformOrigin = '${exportLanguage === "ms-jawi" ? "top right" : "top left"}';
-  content.style.width = (10000 / val) + '%';
+  content.style.zoom = val + '%';
+  content.style.width = '1050px';
   document.getElementById('fontVal').textContent = val + '%';
   document.getElementById('fontSlider').value = val;
 }
 function changeFontSize(dir) {
   var slider = document.getElementById('fontSlider');
-  var newVal = Math.min(160, Math.max(60, parseInt(slider.value) + dir * 10));
+  var newVal = Math.min(300, Math.max(60, parseInt(slider.value) + dir * 10));
   applyFontSize(newVal);
 }
+function printSchedule() {
+  var source = document.getElementById('schedule-content');
+  var pages = document.getElementById('poster-pages');
+  var tileWidth = 1050;
+  var tileHeight = 680;
+  var scale = Number(document.getElementById('fontSlider').value) / 100;
+  function getBreaks(section, selector, dimension, limit, base) {
+    var edges = [0, Math.ceil(dimension)];
+    section.querySelectorAll(selector).forEach(function (element) {
+      var elementRect = element.getBoundingClientRect();
+      edges.push(Math.round((selector === 'tr' ? elementRect.bottom : elementRect.right) - base));
+    });
+    edges = Array.from(new Set(edges)).filter(function (edge) { return edge >= 0 && edge <= Math.ceil(dimension); }).sort(function (a, b) { return a - b; });
+    var breaks = [0];
+    while (breaks[breaks.length - 1] < dimension) {
+      var start = breaks[breaks.length - 1];
+      var allowed = edges.filter(function (edge) { return edge > start + 1 && edge <= start + limit; });
+      var next = allowed.length ? allowed[allowed.length - 1] : Math.min(Math.ceil(dimension), start + limit);
+      if (next <= start) next = Math.ceil(dimension);
+      breaks.push(next);
+    }
+    return breaks;
+  }
+  pages.innerHTML = '';
+
+  Array.from(source.children).forEach(function (section, sectionIndex) {
+    var rect = section.getBoundingClientRect();
+    var xBreaks = getBreaks(section, 'th, td', rect.width, tileWidth, rect.left);
+    var yBreaks = getBreaks(section, 'tr', rect.height, tileHeight, rect.top);
+    var columns = xBreaks.length - 1;
+    var rows = yBreaks.length - 1;
+
+    for (var row = 0; row < rows; row++) {
+      for (var column = 0; column < columns; column++) {
+        var page = document.createElement('section');
+        page.className = 'poster-page';
+        var label = document.createElement('div');
+        label.className = 'poster-label';
+        label.textContent = 'ตารางชุด ' + (sectionIndex + 1) + ' · แถว ' + (row + 1) + '/' + rows + ' · คอลัมน์ ' + (column + 1) + '/' + columns;
+        var viewport = document.createElement('div');
+        viewport.className = 'poster-viewport';
+        viewport.style.height = (yBreaks[row + 1] - yBreaks[row]) + 'px';
+        var canvas = section.cloneNode(true);
+        canvas.className = 'poster-canvas';
+        canvas.style.zoom = '100%';
+        canvas.style.width = '1050px';
+        canvas.style.transform = 'scale(' + scale + ') translate(' + (-xBreaks[column] / scale) + 'px,' + (-yBreaks[row] / scale) + 'px)';
+        viewport.appendChild(canvas);
+        page.appendChild(label);
+        page.appendChild(viewport);
+        pages.appendChild(page);
+      }
+    }
+  });
+
+  document.body.classList.add('poster-print');
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () { window.print(); });
+  });
+}
+window.addEventListener('afterprint', function () {
+  document.body.classList.remove('poster-print');
+  document.getElementById('poster-pages').innerHTML = '';
+});
 </script>
 </body></html>`;
 
