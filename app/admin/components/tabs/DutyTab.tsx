@@ -365,7 +365,14 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
     const res = await fetch(url, {
       method: existing ? "PUT" : "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ title: value.title, content: value.content, is_published: value.isPublished, expires_at: value.expiresAt || null }),
+      body: JSON.stringify({
+        title: value.title,
+        content: value.content,
+        is_published: value.isPublished,
+        // datetime-local has no timezone. Convert it in the browser so the
+        // selected local time is persisted as an unambiguous instant.
+        expires_at: value.expiresAt ? new Date(value.expiresAt).toISOString() : null,
+      }),
     });
     if (res.ok) {
       Swal.fire({ icon: "success", title: "บันทึกสำเร็จ", timer: 1200, showConfirmButton: false });
