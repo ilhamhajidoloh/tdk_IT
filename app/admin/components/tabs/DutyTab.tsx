@@ -18,6 +18,7 @@ interface NewsItem {
   title: string;
   content: string;
   is_published: boolean;
+  expires_at: string | null;
   created_at: string;
 }
 
@@ -79,6 +80,17 @@ const swalPopupClasses = {
   confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
   cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer",
 };
+
+function toDateTimeLocalValue(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function isNewsExpired(expiresAt?: string | null): boolean {
+  return Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now());
+}
 
 function Chips({ items }: { items: string[] }) {
   if (items.length === 0) return <span className="text-xs text-subtle-foreground">ยังไม่มีสมาชิก</span>;
@@ -322,6 +334,11 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
             <input type="checkbox" id="swal-published" class="w-4 h-4" ${existing?.is_published !== false ? "checked" : ""}>
             เผยแพร่บนหน้าแรกทันที
           </label>
+          <div>
+            <label class="${labelClass}">วัน–เวลาหมดอายุ <span class="normal-case font-medium">(ไม่บังคับ)</span></label>
+            <input id="swal-expires-at" type="datetime-local" class="${inputClass}" value="${toDateTimeLocalValue(existing?.expires_at)}">
+            <p class="text-xs text-muted-foreground mt-1.5">เมื่อถึงเวลานี้ ข่าวจะไม่แสดงบนหน้าหลัก แต่ยังจัดการได้ที่นี่</p>
+          </div>
         </div>
       `,
       focusConfirm: false,
@@ -334,11 +351,12 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
         const title = (document.getElementById("swal-title") as HTMLInputElement).value.trim();
         const content = (document.getElementById("swal-content") as HTMLTextAreaElement).value.trim();
         const isPublished = (document.getElementById("swal-published") as HTMLInputElement).checked;
+        const expiresAt = (document.getElementById("swal-expires-at") as HTMLInputElement).value;
         if (!title || !content) {
           Swal.showValidationMessage("กรุณากรอกหัวข้อและรายละเอียดข่าว");
           return null;
         }
-        return { title, content, isPublished };
+        return { title, content, isPublished, expiresAt };
       },
     });
 
@@ -347,7 +365,7 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
     const res = await fetch(url, {
       method: existing ? "PUT" : "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ title: value.title, content: value.content, is_published: value.isPublished }),
+      body: JSON.stringify({ title: value.title, content: value.content, is_published: value.isPublished, expires_at: value.expiresAt || null }),
     });
     if (res.ok) {
       Swal.fire({ icon: "success", title: "บันทึกสำเร็จ", timer: 1200, showConfirmButton: false });
@@ -1134,8 +1152,16 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
                               ) : (
                                 <span className="ui-chip ui-chip-warning">ฉบับร่าง</span>
                               )}
+                              {isNewsExpired(n.expires_at) && (
+                                <span className="ui-chip ui-chip-warning">หมดอายุแล้ว</span>
+                              )}
                             </div>
                             <p className="text-xs text-subtle-foreground mt-0.5">{formatThaiDate(n.created_at)}</p>
+                            {n.expires_at && (
+                              <p className="text-xs text-subtle-foreground mt-0.5">
+                                หมดอายุ: {new Date(n.expires_at).toLocaleString("th-TH")}
+                              </p>
+                            )}
                             <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">{n.content}</p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">

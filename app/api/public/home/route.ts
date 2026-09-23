@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
   const [newsRes, teacherGroupsRes, cookGroupsRes, dutySettingsRes, scheduleDaysRes, holidaysRes] =
     await Promise.all([
       pool.query(
-        "SELECT id, title, content, created_at FROM public.news WHERE is_published = true AND (school_id = $1 OR school_id IS NULL) ORDER BY created_at DESC LIMIT 10",
+        "SELECT id, title, content, created_at FROM public.news WHERE is_published = true AND (expires_at IS NULL OR expires_at > NOW()) AND (school_id = $1 OR school_id IS NULL) ORDER BY created_at DESC LIMIT 10",
         [schoolId]
       ),
       pool.query(

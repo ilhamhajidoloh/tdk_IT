@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await pool.query(
-    "SELECT id, title, content, is_published, created_at FROM news WHERE school_id = $1 ORDER BY created_at DESC",
+    "SELECT id, title, content, is_published, expires_at, created_at FROM news WHERE school_id = $1 ORDER BY created_at DESC",
     [schoolId]
   );
   return NextResponse.json(result.rows);
@@ -48,13 +48,17 @@ export async function POST(req: NextRequest) {
     schoolId = "00000000-0000-0000-0000-000000000001";
   }
 
-  const { title, content, is_published } = await req.json();
+  const { title, content, is_published, expires_at } = await req.json();
   if (!title || !content) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+  const expiresAt = expires_at ? new Date(expires_at) : null;
+  if (expiresAt && Number.isNaN(expiresAt.getTime())) {
+    return NextResponse.json({ error: "Invalid expiration date" }, { status: 400 });
+  }
   const result = await pool.query(
-    "INSERT INTO news (title, content, is_published, school_id) VALUES ($1, $2, $3, $4) RETURNING *",
-    [title, content, is_published ?? true, schoolId]
+    "INSERT INTO news (title, content, is_published, expires_at, school_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+    [title, content, is_published ?? true, expiresAt, schoolId]
   );
   return NextResponse.json(result.rows[0]);
 }
