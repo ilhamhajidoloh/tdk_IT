@@ -157,6 +157,12 @@ export default function GradesTab({
     isGradeReleased = isManualReleased;
   }
 
+  const orderedGrades = [...filteredGrades].sort((a, b) => {
+    const aOrder = subjectsList.find(s => s.name?.trim().toLowerCase() === a.subject?.trim().toLowerCase() && s.setting_id === activeSettingId)?.sort_order ?? 999;
+    const bOrder = subjectsList.find(s => s.name?.trim().toLowerCase() === b.subject?.trim().toLowerCase() && s.setting_id === activeSettingId)?.sort_order ?? 999;
+    return aOrder - bOrder || a.subject.localeCompare(b.subject, "th");
+  });
+
   return (
     <div className="space-y-5 animate-fade-in-up">
       {/* Term selector */}
@@ -249,7 +255,7 @@ export default function GradesTab({
                   </div>
                 );
               })()}
-              {filteredGrades.map(grade => {
+              {orderedGrades.map(grade => {
                 const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                 const mMax = Number(subject?.midterm_max_score) || midtermMax;
                 const fMax = Number(subject?.final_max_score) || finalMax;

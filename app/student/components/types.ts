@@ -35,7 +35,7 @@ export interface DBClassroom {
   name_rumi?: string | null;
   name_jawi?: string | null;
 }
-export interface DBSubject { id: string; name: string; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; }
+export interface DBSubject { id: string; name: string; setting_id?: number | null; midterm_max_score?: number | null; final_max_score?: number | null; subject_type?: "main" | "activity"; credit_hours?: number | null; score_display_mode?: "separate" | "combined"; sort_order?: number | null; }
 export interface SchedulePeriod { id: string; setting_id: number | string; period_no: number | string; start_time: string; end_time: string; label?: string | null; is_break?: boolean; }
 export interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;

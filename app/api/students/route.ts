@@ -177,7 +177,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const context = await getSchoolContext();
+  const context = await getSchoolContext(req);
   let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   const { id, classroom_id, student_number, setting_id } = await req.json();
@@ -206,6 +206,19 @@ export async function PUT(req: NextRequest) {
          DO UPDATE SET classroom_id = EXCLUDED.classroom_id, student_number = EXCLUDED.student_number, school_id = EXCLUDED.school_id`,
         [id, classroom_id, targetSettingId, student_number || null, schoolId]
       );
+    } else if (targetSettingId) {
+      // Editing or randomising a number does not resend classroom_id. Update the
+      // existing enrollment for the selected term instead of only changing UI state.
+      const result = await pool.query(
+        `UPDATE classroom_students
+         SET student_number = $1, school_id = $2
+         WHERE student_id = $3 AND setting_id = $4 AND (school_id = $2 OR school_id IS NULL)
+         RETURNING id`,
+        [student_number === "" || student_number === undefined ? null : student_number, schoolId, id, targetSettingId]
+      );
+      if (result.rows.length === 0) {
+        return NextResponse.json({ error: "Student is not assigned to a classroom for this term" }, { status: 400 });
+      }
     }
 
     return NextResponse.json({ message: "Student classroom updated successfully" });

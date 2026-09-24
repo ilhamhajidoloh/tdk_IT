@@ -827,7 +827,9 @@ export default function TeacherPortal() {
   const mySubjects = (teacherUser?.role === "admin"
     ? subjectsList.filter(s => s.setting_id === activeSettingId)
     : subjectsList.filter(s => s.teacher_id === teacherUser?.id && s.setting_id === activeSettingId)
-  ).filter(s => (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0);
+  )
+    .filter(s => (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0)
+    .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999) || a.name.localeCompare(b.name, "th"));
 
   const evalActiveTopics = evalTopics.filter(t => t.is_active).sort((a, b) => a.sort_order - b.sort_order);
   const evalClassroomOptions = classrooms.filter(c => mySubjects.find(s => s.id === evalSubjectId)?.classroom_ids?.includes(c.id));
