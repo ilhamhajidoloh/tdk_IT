@@ -32,6 +32,8 @@ export default function GradeStatusTab({
   token,
   loadGradeStatus,
 }: GradeStatusTabProps) {
+  const subjectIds = Array.from(new Set(gradeStatusData.map((row) => row.subject_id)));
+
   return (
     <div className="p-8 animate-fade-in-up">
       <SectionHeader
@@ -90,7 +92,12 @@ export default function GradeStatusTab({
               สรุปภาพรวม
             </button>
             <button
-              onClick={() => setGradeStatusSubTab("detail")}
+              onClick={() => {
+                setGradeStatusSubTab("detail");
+                if (!selectedGradeStatusSubject && subjectIds[0]) {
+                  setSelectedGradeStatusSubject(subjectIds[0]);
+                }
+              }}
               className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border cursor-pointer ${
                 gradeStatusSubTab === "detail"
                   ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md"
@@ -313,8 +320,7 @@ export default function GradeStatusTab({
                         onChange={(e) => setSelectedGradeStatusSubject(e.target.value)}
                         className="w-full px-3 py-2.5 text-sm bg-card border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-border transition-colors"
                       >
-                        <option value="">ทั้งหมด</option>
-                        {Array.from(new Set(gradeStatusData.map((row) => row.subject_id))).map((subjectId) => {
+                        {subjectIds.map((subjectId) => {
                           const subjectName =
                             gradeStatusData.find((row) => row.subject_id === subjectId)?.subject_name || subjectId;
                           return (
@@ -344,8 +350,7 @@ export default function GradeStatusTab({
                       <tbody className="divide-y divide-border">
                         {gradeStatusData
                           .filter(
-                            (row) =>
-                              !selectedGradeStatusSubject || row.subject_id === selectedGradeStatusSubject
+                            (row) => row.subject_id === selectedGradeStatusSubject
                           )
                           .map((row, i) => {
                             const total = Number(row.total_students);
@@ -484,8 +489,7 @@ export default function GradeStatusTab({
                   <div className="md:hidden space-y-3">
                     {gradeStatusData
                       .filter(
-                        (row) =>
-                          !selectedGradeStatusSubject || row.subject_id === selectedGradeStatusSubject
+                        (row) => row.subject_id === selectedGradeStatusSubject
                       )
                       .map((row, i) => {
                         const total = Number(row.total_students);
