@@ -670,6 +670,78 @@ export default function AchievementTab({
     document.body.removeChild(link);
   };
 
+  // Excel Export - use an HTML workbook so the downloaded file keeps the report layout in Excel.
+  const handleExportExcel = () => {
+    if (!data || filteredMatrixRows.length === 0) {
+      Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนอย่างน้อย 1 ห้องเพื่อส่งออกข้อมูล", "warning");
+      return;
+    }
+
+    const escapeHtml = (value: string | number) => String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+    const formatPercent = (value: number) => `${Number(value || 0).toFixed(2)}%`;
+    const columns = ["ที่", "ระดับชั้น", "จำนวนนักเรียน (คน)"];
+    data.subjects.forEach((subject) => {
+      const subjectName = getSubjectName(subject);
+      columns.push(`${subjectName} (คะแนนรวม)`, `${subjectName} (เฉลี่ย %)`);
+    });
+    columns.push("คะแนนรวมทุกวิชา", "เฉลี่ยรวม (%)");
+
+    const tableHead = columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+    const tableRows = filteredMatrixRows.map((row, index) => {
+      const cells = [
+        index + 1,
+        getClassroomName(row, globalActiveLang),
+        row.student_count,
+        ...row.subject_stats.flatMap((stat) => [stat.total_score, formatPercent(stat.avg_percentage)]),
+        row.total_all_subjects,
+        formatPercent(row.overall_avg_percentage),
+      ];
+      return `<tr>${cells.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`;
+    }).join("");
+    const summaryCells = [
+      "รวมทั้งหมด",
+      `${filteredMatrixRows.length} ห้องเรียน`,
+      filteredSchoolSummary.total_students,
+      ...filteredSchoolSummary.subject_stats.flatMap((stat) => [stat.total_score, formatPercent(stat.avg_percentage)]),
+      filteredSchoolSummary.total_all_subjects,
+      formatPercent(filteredSchoolSummary.overall_avg_percentage),
+    ];
+
+    const reportSubtitle = `ภาคเรียนที่ ${data.term} ประจำปีการศึกษา ${data.academic_year}`;
+    const excelHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+  @page { size: landscape; margin: 0.45in; }
+  body { font-family: Tahoma, Arial, sans-serif; color: #172033; }
+  .title { font-size: 20pt; font-weight: 700; color: #312e81; text-align: center; padding: 16px 8px 4px; }
+  .subtitle { font-size: 12pt; color: #475569; text-align: center; padding: 4px 8px 18px; }
+  table { border-collapse: collapse; width: 100%; table-layout: auto; }
+  th { background: #4338ca; color: #ffffff; border: 1px solid #312e81; padding: 10px 8px; text-align: center; vertical-align: middle; font-weight: 700; white-space: normal; }
+  td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; }
+  td:nth-child(2) { text-align: left; min-width: 150px; font-weight: 600; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .summary td { background: #e0e7ff !important; border-color: #818cf8; color: #312e81; font-weight: 700; }
+</style></head><body>
+  <div class="title">${escapeHtml(reportTitle)}</div>
+  <div class="subtitle">${escapeHtml(reportSubtitle)}</div>
+  <table><thead><tr>${tableHead}</tr></thead><tbody>${tableRows}<tr class="summary">${summaryCells.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr></tbody></table>
+</body></html>`;
+
+    const blob = new Blob(["\ufeff", excelHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `รายงานผลสัมฤทธิ์_${data.term}_${data.academic_year}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-6 animate-fade-in-up">
       {/* Page Header */}
@@ -739,7 +811,17 @@ export default function AchievementTab({
             <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            ส่งออก CSV / Excel
+            ส่งออก CSV
+          </button>
+          <button
+            onClick={handleExportExcel}
+            disabled={!data || loading || filteredMatrixRows.length === 0}
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            ส่งออก Excel
           </button>
           <button
             onClick={handlePrintReport}
