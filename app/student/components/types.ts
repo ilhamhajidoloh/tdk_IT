@@ -64,7 +64,7 @@ export const ALL_DAYS: DaySetting[] = [
 
 export type Tab = "overview" | "grades" | "yearly-average" | "schedule" | "evaluation" | "news";
 
-export const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
+const NAV_TAB_ITEMS: { key: Tab; label: string; icon: string }[] = [
   { key: "overview", label: "ข้อมูลของฉัน", icon: "M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
   { key: "grades", label: "ผลการเรียน", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
   { key: "yearly-average", label: "เฉลี่ยรวมทั้งปี", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
@@ -72,6 +72,19 @@ export const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "evaluation", label: "ผลการประเมิน", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
   { key: "news", label: "ประกาศข่าว", icon: "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" },
 ];
+
+const NAV_TAB_ORDER: Tab[] = [
+  "overview",
+  "news",
+  "schedule",
+  "grades",
+  "evaluation",
+  "yearly-average",
+];
+
+export const NAV_TABS = [...NAV_TAB_ITEMS].sort(
+  (left, right) => NAV_TAB_ORDER.indexOf(left.key) - NAV_TAB_ORDER.indexOf(right.key),
+);
 
 export interface EvaluationTopic {
   id: string;
