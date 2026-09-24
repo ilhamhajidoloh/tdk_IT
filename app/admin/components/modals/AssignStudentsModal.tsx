@@ -1,4 +1,5 @@
 import { type DBStudent } from "../types";
+import ModalPortal from "@/app/components/ModalPortal";
 
 interface AssignStudentsModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export default function AssignStudentsModal({
   if (!isOpen || !targetClassroom) return null;
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4 animate-fade-in overflow-y-auto"
       onClick={onClose}
@@ -211,5 +213,6 @@ export default function AssignStudentsModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

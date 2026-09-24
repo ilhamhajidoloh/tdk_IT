@@ -1,4 +1,5 @@
 import { type DBUser, type DBStudent } from "../types";
+import ModalPortal from "@/app/components/ModalPortal";
 
 interface UserModalProps {
   isOpen: boolean;
@@ -56,6 +57,7 @@ export default function UserModal({
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md transition-opacity duration-300 animate-fade-in-up overflow-y-auto"
       onClick={onClose}
@@ -451,5 +453,6 @@ export default function UserModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

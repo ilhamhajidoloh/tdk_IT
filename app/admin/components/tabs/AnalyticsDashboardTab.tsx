@@ -43,6 +43,7 @@ import { type SystemSetting } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
 import { getClassroomName } from "@/app/lib/classroom";
+import ModalPortal from "@/app/components/ModalPortal";
 
 interface AnalyticsData {
   academic_year: string;
@@ -1431,8 +1432,9 @@ export default function AnalyticsDashboardTab({
           {/* MODAL 1: รายละเอียดวิชาเชิงลึกและผลสัมฤทธิ์แยกตามห้องเรียน (Subject Modal)  */}
           {/* ========================================================================= */}
           {selectedSubject && (
+            <ModalPortal>
             <div
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+              className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
               onClick={() => setSelectedSubject(null)}
             >
               <div
@@ -1543,14 +1545,16 @@ export default function AnalyticsDashboardTab({
                 </div>
               </div>
             </div>
+            </ModalPortal>
           )}
 
           {/* ========================================================================= */}
           {/* MODAL 2: รายละเอียดผลสัมฤทธิ์รายวิชาภายในห้องเรียน (Classroom Modal)         */}
           {/* ========================================================================= */}
           {inspectClassroom && (
+            <ModalPortal>
             <div
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+              className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
               onClick={() => setInspectClassroom(null)}
             >
               <div
@@ -1655,6 +1659,7 @@ export default function AnalyticsDashboardTab({
                 </div>
               </div>
             </div>
+            </ModalPortal>
           )}
         </div>
       )}

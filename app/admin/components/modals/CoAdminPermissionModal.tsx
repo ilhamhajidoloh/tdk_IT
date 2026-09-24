@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ModalPortal from "@/app/components/ModalPortal";
 import {
   X,
   Shield,
@@ -215,6 +216,7 @@ export default function CoAdminPermissionModal({
   const editableCategories = PERMISSION_CATEGORIES.filter((c) => c.key !== "co_admins");
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div className="bg-card text-card-foreground border border-border rounded-3xl shadow-2xl max-w-4xl w-full flex flex-col max-h-[90vh] overflow-hidden my-auto animate-scale-in">
         {/* Header */}
@@ -435,6 +437,6 @@ export default function CoAdminPermissionModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
-

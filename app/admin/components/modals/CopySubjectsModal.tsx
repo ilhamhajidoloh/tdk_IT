@@ -1,4 +1,5 @@
 import { type DBSubject, type SystemSetting } from "../types";
+import ModalPortal from "@/app/components/ModalPortal";
 
 interface CopySubjectsModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export default function CopySubjectsModal({
   const selectedCount = sourceSubjects.filter((s) => copySubjectsSelected[s.id]).length;
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4 animate-fade-in overflow-y-auto"
       onClick={onClose}
@@ -264,5 +266,6 @@ export default function CopySubjectsModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

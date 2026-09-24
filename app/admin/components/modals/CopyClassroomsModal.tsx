@@ -1,4 +1,5 @@
 import { type SystemSetting } from "../types";
+import ModalPortal from "@/app/components/ModalPortal";
 
 interface CopyClassroomsModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function CopyClassroomsModal({
   const selectedCount = sourceClassrooms.filter((c) => copyClassroomsMap[c.id]?.selected).length;
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4 animate-fade-in overflow-y-auto"
       onClick={onClose}
@@ -281,5 +283,6 @@ export default function CopyClassroomsModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

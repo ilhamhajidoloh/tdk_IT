@@ -1,4 +1,5 @@
 import { type SystemSetting, type DBUser } from "../types";
+import ModalPortal from "@/app/components/ModalPortal";
 
 interface SubjectModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export default function SubjectModal({
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in overflow-y-auto"
       onClick={onClose}
@@ -374,5 +376,6 @@ export default function SubjectModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }

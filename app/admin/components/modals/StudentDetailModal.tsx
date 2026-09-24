@@ -1,3 +1,5 @@
+import ModalPortal from "@/app/components/ModalPortal";
+
 interface StudentGradeDetail {
   id: string;
   student_id: string;
@@ -25,6 +27,7 @@ export default function StudentDetailModal({ modalState, onClose }: StudentDetai
   if (!modalState.open) return null;
 
   return (
+    <ModalPortal>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in-up overflow-y-auto"
       onClick={onClose}
@@ -316,5 +319,6 @@ export default function StudentDetailModal({ modalState, onClose }: StudentDetai
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
