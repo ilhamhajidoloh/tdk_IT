@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Bell,
   Calendar,
@@ -86,6 +87,11 @@ export default function ModernNewsFeedTab({ role }: ModernNewsFeedTabProps) {
   const [filterAudience, setFilterAudience] = useState<"all" | "targeted" | "general">("all");
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isTeacher = role === "teacher";
 
@@ -512,10 +518,10 @@ export default function ModernNewsFeedTab({ role }: ModernNewsFeedTabProps) {
         </div>
       )}
 
-      {/* ── FULL ANNOUNCEMENT MODAL ── */}
-      {selectedNews && (
+      {/* ── FULL ANNOUNCEMENT MODAL (Rendered in document.body to ensure 100% full screen coverage) ── */}
+      {selectedNews && mounted && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setSelectedNews(null)}
         >
           <div
@@ -591,7 +597,8 @@ export default function ModernNewsFeedTab({ role }: ModernNewsFeedTabProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
