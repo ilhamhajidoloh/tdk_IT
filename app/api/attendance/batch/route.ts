@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 async function ownsSubject(userId: string, subjectId: string): Promise<boolean> {
   const result = await pool.query(
@@ -20,6 +23,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { subjectId, classroomId, date, term, records } = await req.json();
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
 
   if (!subjectId || !classroomId || !date || !term || !Array.isArray(records)) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -41,13 +45,13 @@ export async function POST(req: NextRequest) {
     const saved = [];
     for (const r of records) {
       const result = await client.query(
-        `INSERT INTO attendance_records (student_id, subject_id, classroom_id, date, status, note, term, recorded_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO attendance_records (student_id, subject_id, classroom_id, date, status, note, term, recorded_by, school_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT ON CONSTRAINT unique_attendance_record
          DO UPDATE SET status = EXCLUDED.status, note = EXCLUDED.note, classroom_id = EXCLUDED.classroom_id,
-           term = EXCLUDED.term, recorded_by = EXCLUDED.recorded_by, updated_at = now()
+           term = EXCLUDED.term, recorded_by = EXCLUDED.recorded_by, school_id = EXCLUDED.school_id, updated_at = now()
          RETURNING id, student_id, subject_id, classroom_id, date, status, note, term`,
-        [r.studentId, subjectId, classroomId, date, r.status, r.note ?? null, term, user.id]
+        [r.studentId, subjectId, classroomId, date, r.status, r.note ?? null, term, user.id, schoolId]
       );
       saved.push(result.rows[0]);
     }

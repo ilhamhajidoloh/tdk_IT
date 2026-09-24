@@ -3,9 +3,11 @@ import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
 import { verifyAdmin } from "@/app/lib/verifyAdmin";
+import { verifyUser } from "@/app/lib/verifyUser";
 
 export async function GET(req: NextRequest) {
   const context = await getSchoolContext(req);
+  const user = await verifyUser(req);
   let schoolId = context?.schoolId;
 
   const requestedSchoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id");
@@ -41,9 +43,16 @@ export async function GET(req: NextRequest) {
   let statusClause = "";
   const params: any[] = [schoolId];
 
+  if (context?.role === "student") {
+    const studentCode = user?.student_id;
+    if (!studentCode) return NextResponse.json([], { status: 200 });
+    params.push(studentCode);
+    statusClause = `AND s.student_id = $${params.length}`;
+  }
+
   if (statusParam && statusParam !== "all") {
     params.push(statusParam);
-    statusClause = `AND COALESCE(s.status, 'active') = $${params.length}`;
+    statusClause += ` AND COALESCE(s.status, 'active') = $${params.length}`;
   }
 
   let result;

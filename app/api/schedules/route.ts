@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/app/lib/permissions/middleware";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 async function hasScheduleTeacherColumn(): Promise<boolean> {
   try {
@@ -26,6 +29,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const settingId = req.nextUrl.searchParams.get("settingId");
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
   if (!settingId) {
     return NextResponse.json({ error: "Missing settingId" }, { status: 400 });
   }
@@ -86,9 +90,9 @@ export async function GET(req: NextRequest) {
      LEFT JOIN users u_sub ON u_sub.id = sub.teacher_id
      ${overrideJoin}
      JOIN schedule_periods sp ON sp.id = cs.period_id
-     WHERE cs.setting_id = $1
+     WHERE cs.setting_id = $1 AND (cs.school_id = $2 OR cs.school_id IS NULL)
      ORDER BY cs.day_of_week, sp.period_no`,
-    [settingId]
+    [settingId, schoolId]
   );
   return NextResponse.json(result.rows);
 }
@@ -98,6 +102,7 @@ export async function POST(req: NextRequest) {
   if (permError) return permError;
 
   const { setting_id, classroom_id, subject_id, day_of_week, period_id, teacher_id } = await req.json();
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
   if (!setting_id || !classroom_id || !subject_id || day_of_week === undefined || day_of_week === null || !period_id) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
@@ -106,23 +111,23 @@ export async function POST(req: NextRequest) {
 
   if (hasTeacherCol) {
     const result = await pool.query(
-      `INSERT INTO class_schedules (setting_id, classroom_id, subject_id, day_of_week, period_id, teacher_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO class_schedules (setting_id, classroom_id, subject_id, day_of_week, period_id, teacher_id, school_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (classroom_id, day_of_week, period_id)
-       DO UPDATE SET subject_id = EXCLUDED.subject_id, teacher_id = EXCLUDED.teacher_id
+       DO UPDATE SET subject_id = EXCLUDED.subject_id, teacher_id = EXCLUDED.teacher_id, school_id = EXCLUDED.school_id
        RETURNING *`,
-      [setting_id, classroom_id, subject_id, day_of_week, period_id, teacher_id || null]
+      [setting_id, classroom_id, subject_id, day_of_week, period_id, teacher_id || null, schoolId]
     );
     return NextResponse.json(result.rows[0], { status: 201 });
   }
 
   const result = await pool.query(
-    `INSERT INTO class_schedules (setting_id, classroom_id, subject_id, day_of_week, period_id)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO class_schedules (setting_id, classroom_id, subject_id, day_of_week, period_id, school_id)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (classroom_id, day_of_week, period_id)
-     DO UPDATE SET subject_id = EXCLUDED.subject_id
+     DO UPDATE SET subject_id = EXCLUDED.subject_id, school_id = EXCLUDED.school_id
      RETURNING *`,
-    [setting_id, classroom_id, subject_id, day_of_week, period_id]
+    [setting_id, classroom_id, subject_id, day_of_week, period_id, schoolId]
   );
   return NextResponse.json(result.rows[0], { status: 201 });
 }

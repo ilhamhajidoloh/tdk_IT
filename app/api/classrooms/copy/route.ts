@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 export async function POST(req: NextRequest) {
   const permError = await requirePermission(req, "classrooms.create");
   if (permError) return permError;
 
   const { target_setting_id, classrooms } = await req.json();
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
 
   if (!target_setting_id || !Array.isArray(classrooms) || classrooms.length === 0) {
     return NextResponse.json({ error: "Missing required fields or empty classrooms" }, { status: 400 });
@@ -21,8 +25,8 @@ export async function POST(req: NextRequest) {
 
       // Create new classroom
       const insertResult = await client.query(
-        "INSERT INTO classrooms (name, setting_id) VALUES ($1, $2) RETURNING id",
-        [c.new_name.trim(), target_setting_id]
+        "INSERT INTO classrooms (name, setting_id, school_id) VALUES ($1, $2, $3) RETURNING id",
+        [c.new_name.trim(), target_setting_id, schoolId]
       );
       const newClassroomId = insertResult.rows[0].id;
 
@@ -38,11 +42,11 @@ export async function POST(req: NextRequest) {
         );
         for (const r of roster.rows) {
           await client.query(
-            `INSERT INTO classroom_students (student_id, classroom_id, setting_id, student_number)
-             VALUES ($1, $2, $3, $4)
+            `INSERT INTO classroom_students (student_id, classroom_id, setting_id, student_number, school_id)
+             VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (student_id, setting_id)
-             DO UPDATE SET classroom_id = excluded.classroom_id, student_number = excluded.student_number`,
-            [r.student_id, newClassroomId, target_setting_id, r.student_number]
+             DO UPDATE SET classroom_id = excluded.classroom_id, student_number = excluded.student_number, school_id = excluded.school_id`,
+            [r.student_id, newClassroomId, target_setting_id, r.student_number, schoolId]
           );
         }
       }

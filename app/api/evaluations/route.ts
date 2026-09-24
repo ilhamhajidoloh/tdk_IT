@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 async function ownsSubject(userId: string, subjectId: string): Promise<boolean> {
   const result = await pool.query(
@@ -18,6 +21,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const subjectId = req.nextUrl.searchParams.get("subjectId");
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
   if (!subjectId) {
     return NextResponse.json({ error: "Missing subjectId" }, { status: 400 });
   }
@@ -27,8 +31,8 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await pool.query(
-    "SELECT id, student_id, subject_id, category, topic_key, rating, term FROM evaluation_records WHERE subject_id = $1",
-    [subjectId]
+    "SELECT id, student_id, subject_id, category, topic_key, rating, term FROM evaluation_records WHERE subject_id = $1 AND (school_id = $2 OR school_id IS NULL)",
+    [subjectId, schoolId]
   );
   return NextResponse.json(result.rows);
 }
@@ -40,6 +44,7 @@ export async function DELETE(req: NextRequest) {
   const studentId = req.nextUrl.searchParams.get("studentId");
   const subjectId = req.nextUrl.searchParams.get("subjectId");
   const term = req.nextUrl.searchParams.get("term");
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
 
   if (!studentId || !subjectId || !term) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -50,8 +55,8 @@ export async function DELETE(req: NextRequest) {
   }
 
   await pool.query(
-    "DELETE FROM evaluation_records WHERE student_id = $1 AND subject_id = $2 AND term = $3",
-    [studentId, subjectId, term]
+    "DELETE FROM evaluation_records WHERE student_id = $1 AND subject_id = $2 AND term = $3 AND (school_id = $4 OR school_id IS NULL)",
+    [studentId, subjectId, term, schoolId]
   );
 
   return NextResponse.json({ success: true });

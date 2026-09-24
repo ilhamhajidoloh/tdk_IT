@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 export async function POST(req: NextRequest) {
   const permError = await requirePermission(req, "subjects.create");
   if (permError) return permError;
 
   const { source_setting_id, target_setting_id, subjects } = await req.json();
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
 
   if (!source_setting_id || !target_setting_id || !Array.isArray(subjects) || subjects.length === 0) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -14,16 +18,16 @@ export async function POST(req: NextRequest) {
 
   // Load classrooms in source term (old id → name)
   const srcClassrooms = await pool.query(
-    "SELECT id, name FROM classrooms WHERE setting_id = $1",
-    [source_setting_id]
+    "SELECT id, name FROM classrooms WHERE setting_id = $1 AND (school_id = $2 OR school_id IS NULL)",
+    [source_setting_id, schoolId]
   );
   const srcClassroomMap: Record<string, string> = {};
   srcClassrooms.rows.forEach((c: any) => { srcClassroomMap[c.id] = c.name; });
 
   // Load classrooms in target term (name → new id)
   const tgtClassrooms = await pool.query(
-    "SELECT id, name FROM classrooms WHERE setting_id = $1",
-    [target_setting_id]
+    "SELECT id, name FROM classrooms WHERE setting_id = $1 AND (school_id = $2 OR school_id IS NULL)",
+    [target_setting_id, schoolId]
   );
   const tgtClassroomByName: Record<string, string> = {};
   tgtClassrooms.rows.forEach((c: any) => { tgtClassroomByName[c.name] = c.id; });
@@ -50,8 +54,8 @@ export async function POST(req: NextRequest) {
 
       // Insert subject
       const inserted = await client.query(
-        `INSERT INTO subjects (name, teacher_id, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours, score_display_mode)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        `INSERT INTO subjects (name, teacher_id, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours, score_display_mode, school_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
         [
           sub.name.trim(),
           sub.teacher_ids?.[0] || null,
@@ -60,7 +64,8 @@ export async function POST(req: NextRequest) {
           sub.final_max_score ?? 50,
           sub.subject_type ?? "main",
           sub.credit_hours ?? 1,
-          sub.score_display_mode ?? "separate"
+          sub.score_display_mode ?? "separate",
+          schoolId
         ]
       );
       const newSubjectId = inserted.rows[0].id;
@@ -68,20 +73,20 @@ export async function POST(req: NextRequest) {
 
       // Link classrooms
       if (newClassroomIds.length > 0) {
-        const vals = newClassroomIds.map((_, i) => `($1, $${i + 2})`).join(", ");
+        const vals = newClassroomIds.map((_, i) => `($1, $${i + 2}, $${newClassroomIds.length + 2})`).join(", ");
         await client.query(
-          `INSERT INTO subject_classrooms (subject_id, classroom_id) VALUES ${vals} ON CONFLICT DO NOTHING`,
-          [newSubjectId, ...newClassroomIds]
+          `INSERT INTO subject_classrooms (subject_id, classroom_id, school_id) VALUES ${vals} ON CONFLICT DO NOTHING`,
+          [newSubjectId, ...newClassroomIds, schoolId]
         );
       }
 
       // Link teachers (subject_teachers table)
       const teacherIds: string[] = sub.teacher_ids || (sub.teacher_id ? [sub.teacher_id] : []);
       if (teacherIds.length > 0) {
-        const vals = teacherIds.map((_, i) => `($1, $${i + 2})`).join(", ");
+        const vals = teacherIds.map((_, i) => `($1, $${i + 2}, $${teacherIds.length + 2})`).join(", ");
         await client.query(
-          `INSERT INTO subject_teachers (subject_id, user_id) VALUES ${vals} ON CONFLICT DO NOTHING`,
-          [newSubjectId, ...teacherIds]
+          `INSERT INTO subject_teachers (subject_id, user_id, school_id) VALUES ${vals} ON CONFLICT DO NOTHING`,
+          [newSubjectId, ...teacherIds, schoolId]
         );
       }
     }

@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
   const schoolContext = await getSchoolContext(req);
   const schoolId = schoolContext?.schoolId || DEFAULT_SCHOOL_ID;
 
-  const studentId = req.nextUrl.searchParams.get("studentId");
+  let studentId = req.nextUrl.searchParams.get("studentId");
+  if (user.role === "student") {
+    if (!user.student_id || (studentId && studentId !== user.student_id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    studentId = user.student_id;
+  }
   const term = req.nextUrl.searchParams.get("term");
 
   let query = "SELECT * FROM grades WHERE school_id = $1";
@@ -44,6 +50,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await verifyUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (user.role === "student") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const schoolContext = await getSchoolContext(req);
   const schoolId = schoolContext?.schoolId || DEFAULT_SCHOOL_ID;

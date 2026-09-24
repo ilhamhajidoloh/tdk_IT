@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 export async function PUT(
   req: NextRequest,
@@ -10,6 +13,8 @@ export async function PUT(
   if (permError) return permError;
 
   const { id } = await params;
+  const schoolContext = await getSchoolContext(req);
+  const schoolId = schoolContext?.schoolId || DEFAULT_SCHOOL_ID;
   const { name, student_id, classroom_id, setting_id, status, graduation_year, status_note, enrollment_date, graduation_date } = await req.json();
 
   if (!name?.trim() || !student_id?.trim() || (classroom_id === undefined && !status) || (!setting_id && !status)) {
@@ -57,10 +62,11 @@ export async function PUT(
   if (setting_id) {
     if (classroom_id && statusVal === 'active') {
       await pool.query(
-        `INSERT INTO classroom_students (student_id, classroom_id, setting_id)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (student_id, setting_id) DO UPDATE SET classroom_id = excluded.classroom_id`,
-        [id, classroom_id, setting_id]
+        `INSERT INTO classroom_students (student_id, classroom_id, setting_id, school_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (student_id, setting_id)
+         DO UPDATE SET classroom_id = excluded.classroom_id, school_id = excluded.school_id`,
+        [id, classroom_id, setting_id, schoolId]
       );
     } else {
       await pool.query("DELETE FROM classroom_students WHERE student_id = $1 AND setting_id = $2", [id, setting_id]);

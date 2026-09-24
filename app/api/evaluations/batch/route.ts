@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
 import { RWT_TOPICS } from "@/app/lib/evaluation";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 async function ownsSubject(userId: string, subjectId: string): Promise<boolean> {
   const result = await pool.query(
@@ -21,6 +24,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { studentId, subjectId, term, records } = await req.json();
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
 
   if (!studentId || !subjectId || !term || !Array.isArray(records)) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -48,12 +52,12 @@ export async function POST(req: NextRequest) {
     const saved = [];
     for (const r of records) {
       const result = await client.query(
-        `INSERT INTO evaluation_records (student_id, subject_id, category, topic_key, rating, term)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO evaluation_records (student_id, subject_id, category, topic_key, rating, term, school_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT ON CONSTRAINT unique_evaluation_record
-         DO UPDATE SET rating = EXCLUDED.rating, updated_at = now()
+         DO UPDATE SET rating = EXCLUDED.rating, school_id = EXCLUDED.school_id, updated_at = now()
          RETURNING id, student_id, subject_id, category, topic_key, rating, term`,
-        [studentId, subjectId, r.category, r.topicKey, r.rating, term]
+        [studentId, subjectId, r.category, r.topicKey, r.rating, term, schoolId]
       );
       saved.push(result.rows[0]);
     }

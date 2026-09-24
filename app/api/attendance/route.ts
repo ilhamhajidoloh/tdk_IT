@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 async function ownsSubject(userId: string, subjectId: string): Promise<boolean> {
   const result = await pool.query(
@@ -18,6 +21,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const subjectId = req.nextUrl.searchParams.get("subjectId");
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
   const date = req.nextUrl.searchParams.get("date");
   if (!subjectId || !date) {
     return NextResponse.json({ error: "Missing subjectId or date" }, { status: 400 });
@@ -29,8 +33,8 @@ export async function GET(req: NextRequest) {
 
   const result = await pool.query(
     `SELECT id, student_id, subject_id, classroom_id, date, status, note, term
-     FROM attendance_records WHERE subject_id = $1 AND date = $2`,
-    [subjectId, date]
+     FROM attendance_records WHERE subject_id = $1 AND date = $2 AND school_id = $3`,
+    [subjectId, date, schoolId]
   );
   return NextResponse.json(result.rows);
 }
@@ -42,6 +46,7 @@ export async function DELETE(req: NextRequest) {
   const subjectId = req.nextUrl.searchParams.get("subjectId");
   const classroomId = req.nextUrl.searchParams.get("classroomId");
   const date = req.nextUrl.searchParams.get("date");
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
 
   if (!subjectId || !classroomId || !date) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -52,8 +57,8 @@ export async function DELETE(req: NextRequest) {
   }
 
   await pool.query(
-    "DELETE FROM attendance_records WHERE subject_id = $1 AND classroom_id = $2 AND date = $3",
-    [subjectId, classroomId, date]
+    "DELETE FROM attendance_records WHERE subject_id = $1 AND classroom_id = $2 AND date = $3 AND school_id = $4",
+    [subjectId, classroomId, date, schoolId]
   );
 
   return NextResponse.json({ success: true });

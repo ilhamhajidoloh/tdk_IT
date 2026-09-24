@@ -61,6 +61,8 @@ export async function PUT(req: NextRequest) {
   if (permError) return permError;
 
   await ensureStatusSchema();
+  const schoolContext = await getSchoolContext(req);
+  const schoolId = schoolContext?.schoolId || "00000000-0000-0000-0000-000000000001";
   const {
     id,
     academic_year,
@@ -103,9 +105,9 @@ export async function PUT(req: NextRequest) {
     const result = await pool.query(
       `UPDATE system_settings
        SET academic_year = $1, term = $2, start_date = $3, end_date = $4, academic_head = $5, midterm_max_score = $6, final_max_score = $7, schedule_days = $9, highest_grade_level = $10, data_retention_years = $11, auto_cleanup_enabled = $12, is_grade_released = $13, grade_release_date = $14, is_ranking_released = $15
-       WHERE id = $8
+       WHERE id = $8 AND (school_id = $16 OR school_id IS NULL)
        RETURNING *`,
-      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased]
+      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased, schoolId]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Setting not found" }, { status: 444 });
@@ -114,10 +116,10 @@ export async function PUT(req: NextRequest) {
   } else {
     // Create
     const result = await pool.query(
-      `INSERT INTO system_settings (academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9, $10, $11, $12, $13, $14)
+      `INSERT INTO system_settings (academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, school_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
-      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased]
+      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased, schoolId]
     );
     return NextResponse.json(formatRow(result.rows[0]));
   }
@@ -129,33 +131,35 @@ export async function DELETE(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
+  const schoolContext = await getSchoolContext(req);
+  const schoolId = schoolContext?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   if (!id) {
     return NextResponse.json({ error: "Missing id parameter" }, { status: 400 });
   }
 
   // ตรวจสอบว่ากำลังลบปีการศึกษาที่ใช้อยู่หรือไม่
-  const checkActive = await pool.query("SELECT (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE id = $1", [id]);
+  const checkActive = await pool.query("SELECT (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE id = $1 AND (school_id = $2 OR school_id IS NULL)", [id, schoolId]);
   if (checkActive.rows.length > 0 && checkActive.rows[0].is_active) {
     return NextResponse.json({ error: "Cannot delete the active academic year" }, { status: 400 });
   }
 
   // ห้ามลบถ้ายังมีห้องเรียน/วิชา/คาบเรียนผูกอยู่กับปีการศึกษานี้
-  const classroomCheck = await pool.query("SELECT 1 FROM classrooms WHERE setting_id = $1 LIMIT 1", [id]);
+  const classroomCheck = await pool.query("SELECT 1 FROM classrooms WHERE setting_id = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1", [id, schoolId]);
   if (classroomCheck.rows.length > 0) {
     return NextResponse.json({ error: "Cannot delete an academic year that still has classrooms" }, { status: 400 });
   }
 
-  const subjectCheck = await pool.query("SELECT 1 FROM subjects WHERE setting_id = $1 LIMIT 1", [id]);
+  const subjectCheck = await pool.query("SELECT 1 FROM subjects WHERE setting_id = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1", [id, schoolId]);
   if (subjectCheck.rows.length > 0) {
     return NextResponse.json({ error: "Cannot delete an academic year that still has subjects" }, { status: 400 });
   }
 
-  const periodCheck = await pool.query("SELECT 1 FROM schedule_periods WHERE setting_id = $1 LIMIT 1", [id]);
+  const periodCheck = await pool.query("SELECT 1 FROM schedule_periods WHERE setting_id = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1", [id, schoolId]);
   if (periodCheck.rows.length > 0) {
     return NextResponse.json({ error: "Cannot delete an academic year that still has schedule periods" }, { status: 400 });
   }
 
-  await pool.query("DELETE FROM system_settings WHERE id = $1", [id]);
+  await pool.query("DELETE FROM system_settings WHERE id = $1 AND (school_id = $2 OR school_id IS NULL)", [id, schoolId]);
   return NextResponse.json({ success: true });
 }

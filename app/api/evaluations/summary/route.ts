@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
+import { getSchoolContext } from "@/app/lib/schoolContext";
+
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
 
 // ผลสรุปต่อ (นักเรียน, หมวด, หัวข้อ) = ผลที่ดีที่สุด (MAX rating) จากทุกวิชา/ครูที่เคยประเมิน
 export async function GET(req: NextRequest) {
@@ -8,6 +11,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const settingId = req.nextUrl.searchParams.get("settingId");
+  const schoolId = (await getSchoolContext(req))?.schoolId || DEFAULT_SCHOOL_ID;
   const classroomId = req.nextUrl.searchParams.get("classroomId");
   let studentId = req.nextUrl.searchParams.get("studentId");
 
@@ -20,8 +24,8 @@ export async function GET(req: NextRequest) {
     if (!studentId) return NextResponse.json([], { status: 200 });
   }
 
-  const conditions = ["sub.setting_id = $1"];
-  const params: (string | number)[] = [Number(settingId)];
+  const conditions = ["sub.setting_id = $1", "(sub.school_id = $2 OR sub.school_id IS NULL)", "(er.school_id = $2 OR er.school_id IS NULL)"];
+  const params: (string | number)[] = [Number(settingId), schoolId];
 
   if (studentId) {
     params.push(studentId);
