@@ -48,6 +48,7 @@ export default function StudentPortal() {
   const [evalTopics, setEvalTopics] = useState<EvaluationTopic[]>([]);
   const [evalSummary, setEvalSummary] = useState<EvaluationSummaryRow[]>([]);
   const [evalLoading, setEvalLoading] = useState(false);
+  const [myRanking, setMyRanking] = useState<{ school_rank: number; school_total: number; classroom_rank: number; classroom_total: number } | null>(null);
   const router = useRouter();
   const { user, loading, logout, token, update } = useAuth();
 
@@ -138,6 +139,20 @@ export default function StudentPortal() {
       .then(setEvalSummary)
       .catch(console.error)
       .finally(() => setEvalLoading(false));
+  }, [token, activeSettingId, settingsList]);
+
+  useEffect(() => {
+    if (!token || !activeSettingId) return;
+    const setting = settingsList.find(s => s.id === activeSettingId);
+    if (setting?.is_ranking_released !== true) {
+      setMyRanking(null);
+      return;
+    }
+    setMyRanking(null);
+    fetch(`/api/grades/rankings?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null))
+      .catch(() => setMyRanking(null));
   }, [token, activeSettingId, settingsList]);
 
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
@@ -595,6 +610,7 @@ export default function StudentPortal() {
             subjectsList={subjectsList}
             midtermMax={midtermMax}
             finalMax={finalMax}
+            ranking={myRanking}
           />
         )}
 

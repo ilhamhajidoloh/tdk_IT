@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { verifyUser } from "@/app/lib/verifyUser";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function GET(req: NextRequest) {
   const user = await verifyUser(req);
@@ -10,25 +11,33 @@ export async function GET(req: NextRequest) {
   if (!settingId) return NextResponse.json({ error: "settingId required" }, { status: 400 });
 
   const mode = req.nextUrl.searchParams.get("mode") || "single";
+  await ensureStatusSchema();
 
   const settingRes = await pool.query(
-    "SELECT academic_year, term, midterm_max_score, final_max_score FROM system_settings WHERE id = $1",
+    "SELECT academic_year, term, midterm_max_score, final_max_score, is_ranking_released FROM system_settings WHERE id = $1",
     [settingId]
   );
   if (settingRes.rows.length === 0) {
     return NextResponse.json({ error: "Setting not found" }, { status: 404 });
   }
-  const { academic_year, term: settingTerm, midterm_max_score: defaultMidMax, final_max_score: defaultFinMax } = settingRes.rows[0];
+  const { academic_year, term: settingTerm, midterm_max_score: defaultMidMax, final_max_score: defaultFinMax, is_ranking_released: isRankingReleased } = settingRes.rows[0];
+
+  // Students may only retrieve their own rank, and only after the admin
+  // explicitly publishes rankings for this term.
+  const studentId = user.role === "student" ? user.student_id : null;
+  if (user.role === "student" && (!studentId || isRankingReleased !== true)) {
+    return NextResponse.json({ error: "Rankings are not published" }, { status: 403 });
+  }
 
   if (mode === "combined") {
-    return handleCombined(settingId, academic_year, defaultMidMax, defaultFinMax);
+    return handleCombined(settingId, academic_year, defaultMidMax, defaultFinMax, studentId);
   }
 
   const termKey = `${settingTerm}/${academic_year}`;
-  return handleSingleTerm(settingId, termKey, defaultMidMax, defaultFinMax);
+  return handleSingleTerm(settingId, termKey, defaultMidMax, defaultFinMax, studentId);
 }
 
-async function handleSingleTerm(settingId: string, termKey: string, defaultMidMax: number, defaultFinMax: number) {
+async function handleSingleTerm(settingId: string, termKey: string, defaultMidMax: number, defaultFinMax: number, studentId: string | null) {
   const [subjectsRes, studentsRes] = await Promise.all([
     pool.query(
       `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, sort_order
@@ -73,10 +82,10 @@ async function handleSingleTerm(settingId: string, termKey: string, defaultMidMa
 
   const studentScores = calcStudentScores(studentsRes.rows, gradeMap, subjectMap, defaultMidMax, defaultFinMax);
   const result = assignRanks(studentScores);
-  return NextResponse.json(result);
+  return NextResponse.json(studentId ? result.filter((row: any) => row.student_id === studentId) : result);
 }
 
-async function handleCombined(settingId: string, academicYear: string, defaultMidMax: number, defaultFinMax: number) {
+async function handleCombined(settingId: string, academicYear: string, defaultMidMax: number, defaultFinMax: number, studentId: string | null) {
   const bothSettingsRes = await pool.query(
     `SELECT id, term, midterm_max_score, final_max_score FROM system_settings WHERE academic_year = $1 ORDER BY term`,
     [academicYear]
@@ -189,7 +198,7 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
 
   const studentScores = calcStudentScores(students, gradeMap, combinedSubjectMap, combinedDefaultMidMax, combinedDefaultFinMax);
   const result = assignRanks(studentScores);
-  return NextResponse.json(result);
+  return NextResponse.json(studentId ? result.filter((row: any) => row.student_id === studentId) : result);
 }
 
 function calcStudentScores(

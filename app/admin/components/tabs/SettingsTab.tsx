@@ -22,6 +22,14 @@ interface SettingsTabProps {
 
 type SettingsSubTab = "general" | "translations";
 
+function toDateTimeLocalValue(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (number: number) => String(number).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function SettingsTab({
   settingsList,
   isGradingActive,
@@ -62,7 +70,9 @@ export default function SettingsTab({
 
   const handleOpenReleaseModal = async (setting: any) => {
     const isReleasedChecked = setting.is_grade_released !== false ? "checked" : "";
-    const releaseDateVal = setting.grade_release_date || "";
+    const isRankingReleasedChecked = setting.is_ranking_released === true ? "checked" : "";
+    // datetime-local does not accept an ISO value with timezone (e.g. ...Z).
+    const releaseDateVal = toDateTimeLocalValue(setting.grade_release_date);
 
     const { value: formValues } = await Swal.fire({
       title: `📢 ตั้งเวลาประกาศผลการเรียน`,
@@ -92,6 +102,15 @@ export default function SettingsTab({
               💡 หากระบุวัน-เวลาไว้ เกรดจะถูกล็อกและแสดงตัวนับเวลาถอยหลังให้นักเรียนเห็นจนกว่าจะถึงกำหนด
             </p>
           </div>
+
+          <div class="space-y-2 pt-2 border-t border-border">
+            <label class="block text-xs font-bold text-foreground">3. การแสดงอันดับ (แยกจากผลการเรียน)</label>
+            <label class="flex items-center gap-3 p-3 rounded-xl border border-border bg-card cursor-pointer hover:bg-muted/40 transition-colors">
+              <input id="swal-modal-is-ranking-released" type="checkbox" class="w-4 h-4 text-violet-600 rounded border-border" ${isRankingReleasedChecked}>
+              <span class="text-xs font-bold text-foreground">แสดงอันดับในหน้า “ผลการเรียน” ของนักเรียน</span>
+            </label>
+            <p class="text-[11px] text-muted-foreground font-medium">เปิดหรือปิดได้โดยไม่กระทบการประกาศเกรด</p>
+          </div>
         </div>
       `,
       focusConfirm: false,
@@ -109,10 +128,12 @@ export default function SettingsTab({
       },
       preConfirm: () => {
         const isReleased = (document.getElementById("swal-modal-is-released") as HTMLInputElement).checked;
+        const isRankingReleased = (document.getElementById("swal-modal-is-ranking-released") as HTMLInputElement).checked;
         const releaseDate = (document.getElementById("swal-modal-release-date") as HTMLInputElement).value;
         return {
           is_grade_released: isReleased,
           grade_release_date: releaseDate ? new Date(releaseDate).toISOString() : null,
+          is_ranking_released: isRankingReleased,
         };
       },
     });
@@ -140,6 +161,7 @@ export default function SettingsTab({
             auto_cleanup_enabled: setting.auto_cleanup_enabled,
             is_grade_released: formValues.is_grade_released,
             grade_release_date: formValues.grade_release_date,
+            is_ranking_released: formValues.is_ranking_released,
           }),
         });
 

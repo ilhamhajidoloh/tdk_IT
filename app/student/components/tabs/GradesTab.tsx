@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Trophy } from "lucide-react";
 import { type DBGrade, type DBSubject, type CombinedActivityResult, getGradeInfo } from "../types";
 
 interface GradesTabProps {
@@ -18,6 +18,7 @@ interface GradesTabProps {
   subjectsList: DBSubject[];
   midtermMax: number;
   finalMax: number;
+  ranking: { school_rank: number; school_total: number; classroom_rank: number; classroom_total: number } | null;
 }
 
 function ReleaseCountdownTimer({ targetDateStr, settingName }: { targetDateStr: string | null; settingName: string }) {
@@ -139,6 +140,7 @@ export default function GradesTab({
   subjectsList,
   midtermMax,
   finalMax,
+  ranking,
 }: GradesTabProps) {
   // Check release status for active setting
   const activeSetting = settingsList.find((s: any) => s.id === activeSettingId);
@@ -184,16 +186,33 @@ export default function GradesTab({
         <>
           {/* GPA Summary bar */}
           {filteredGrades.length > 0 && (
-            <div className="ui-card px-6 py-5 flex items-center gap-5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
-              <div className={`text-3xl font-extrabold ${gpaColor}`}>{gpaValue}</div>
-              <div className="flex-1">
-                <div className="text-xs font-bold text-muted-foreground mb-1.5">เกรดเฉลี่ยสะสม (GPA) · {gpaCredits} หน่วยกิต</div>
-                <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500" style={{ width: `${(gpaNum / 4) * 100}%` }} />
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="ui-card px-6 py-5 flex items-center gap-5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
+                <div className={`text-3xl font-extrabold ${gpaColor}`}>{gpaValue}</div>
+                <div className="flex-1">
+                  <div className="text-xs font-bold text-muted-foreground mb-1.5">เกรดเฉลี่ยสะสม (GPA) · {gpaCredits} หน่วยกิต</div>
+                  <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500" style={{ width: `${(gpaNum / 4) * 100}%` }} />
+                  </div>
                 </div>
+                <div className="text-xs font-bold text-subtle-foreground">/ 4.00</div>
               </div>
-              <div className="text-xs font-bold text-subtle-foreground">/ 4.00</div>
+              {activeSetting?.is_ranking_released === true && ranking && (
+                <div className="ui-card px-6 py-5 flex items-center gap-4 relative overflow-hidden bg-gradient-to-br from-amber-500/10 via-card to-orange-500/5 border-amber-500/25">
+                  <Trophy className="w-9 h-9 text-amber-500 shrink-0" />
+                  <div className="grid grid-cols-2 gap-5 flex-1 text-center">
+                    <div>
+                      <div className="text-[11px] font-bold text-muted-foreground">อันดับในห้อง</div>
+                      <div className="text-2xl font-extrabold text-foreground mt-0.5">{ranking.classroom_rank}<span className="text-xs text-muted-foreground"> / {ranking.classroom_total}</span></div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-bold text-muted-foreground">อันดับในโรงเรียน</div>
+                      <div className="text-2xl font-extrabold text-foreground mt-0.5">{ranking.school_rank}<span className="text-xs text-muted-foreground"> / {ranking.school_total}</span></div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

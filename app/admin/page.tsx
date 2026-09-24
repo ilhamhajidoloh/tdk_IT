@@ -1291,6 +1291,7 @@ function AdminPortalContent() {
           schedule_days: formValues.scheduleDays,
           is_grade_released: setting.is_grade_released,
           grade_release_date: setting.grade_release_date,
+          is_ranking_released: setting.is_ranking_released,
         }),
       });
 

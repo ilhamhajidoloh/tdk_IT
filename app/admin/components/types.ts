@@ -191,6 +191,7 @@ export interface SystemSetting {
   auto_cleanup_enabled?: boolean;
   is_grade_released?: boolean;
   grade_release_date?: string | null;
+  is_ranking_released?: boolean;
   academic_head?: string | null;
 }
 

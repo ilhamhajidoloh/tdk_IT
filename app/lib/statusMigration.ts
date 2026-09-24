@@ -12,6 +12,8 @@ export async function ensureStatusSchema() {
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS auto_cleanup_enabled BOOLEAN DEFAULT true");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS is_grade_released BOOLEAN DEFAULT true");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS grade_release_date VARCHAR DEFAULT NULL");
+    // Ranking visibility is deliberately separate from grade publication.
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS is_ranking_released BOOLEAN DEFAULT false");
 
     // students columns
     await pool.query("ALTER TABLE students ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'");
