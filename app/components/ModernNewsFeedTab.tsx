@@ -347,6 +347,9 @@ export default function ModernNewsFeedTab({ role }: ModernNewsFeedTabProps) {
             <Bell className="w-8 h-8 opacity-80" />
           </div>
           <div className="max-w-md">
+            {!searchQuery && filterAudience === "targeted" && (
+              <p className="mb-2 text-sm font-bold text-primary">ไม่มีข่าวสารเฉพาะสำหรับคุณ</p>
+            )}
             <h3 className="text-lg font-bold text-foreground">
               {searchQuery ? "ไม่พบประกาศที่ตรงกับการค้นหา" : "ยังไม่มีประกาศข่าวสารในขณะนี้"}
             </h3>
@@ -603,4 +606,3 @@ export default function ModernNewsFeedTab({ role }: ModernNewsFeedTabProps) {
     </div>
   );
 }
-

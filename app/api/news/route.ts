@@ -35,9 +35,17 @@ export async function GET(req: NextRequest) {
     query = "SELECT id, title, content, is_published, expires_at, created_at, target_audience FROM news WHERE school_id = $1 ORDER BY created_at DESC";
     params = [schoolId];
   } else {
-    // Teachers and students only see published, non-expired news
-    query = "SELECT id, title, content, created_at, target_audience FROM news WHERE school_id = $1 AND is_published = true AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY created_at DESC";
-    params = [schoolId];
+    // A teacher or student may only receive public announcements and those addressed to their own role.
+    // Keeping this filter on the server also keeps the count in every client view accurate.
+    const audience = context.role === "teacher" ? "teacher" : "student";
+    query = `SELECT id, title, content, created_at, target_audience
+      FROM news
+      WHERE school_id = $1
+        AND is_published = true
+        AND COALESCE(target_audience, 'all') = ANY($2)
+        AND (expires_at IS NULL OR expires_at > NOW())
+      ORDER BY created_at DESC`;
+    params = [schoolId, ["all", audience]];
   }
 
   const result = await pool.query(query, params);

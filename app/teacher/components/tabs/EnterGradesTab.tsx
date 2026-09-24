@@ -97,8 +97,42 @@ export default function EnterGradesTab({
         </div>
       )}
 
+      {enterSubject && (
+        <div className="flex items-center justify-between gap-3 flex-wrap animate-fade-in-up">
+          <button
+            type="button"
+            onClick={() => enterClassroom ? setEnterClassroom("") : setEnterSubject("")}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card text-sm font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <span aria-hidden="true">←</span>
+            {enterClassroom ? "เปลี่ยนห้องเรียน" : "เปลี่ยนรายวิชา"}
+          </button>
+
+          {currentSubjectType === "activity" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground">รูปแบบกรอกคะแนน:</span>
+              {(["separate", "combined"] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onChangeDisplayMode(mode)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    currentDisplayMode === mode
+                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500"
+                      : "bg-card text-foreground border-border hover:border-indigo-300"
+                  }`}
+                >
+                  {mode === "separate" ? "แยกคะแนนเก็บ/สอบ" : "คะแนนรวมช่องเดียว"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Step 1: Select Subject */}
-      <div className="card-modern overflow-hidden">
+      {!enterSubject && (
+      <div className="card-modern overflow-hidden animate-fade-in-up">
         <div className="px-5 py-4 border-b border-border/60 flex items-center gap-3">
           <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200/40">1</span>
           <div>
@@ -163,9 +197,10 @@ export default function EnterGradesTab({
           )}
         </div>
       </div>
+      )}
 
       {/* Step 2: Select Classroom */}
-      {enterSubject && (
+      {enterSubject && !enterClassroom && (
         <div className="card-modern overflow-hidden animate-fade-in-up">
           <div className="px-5 py-4 border-b border-border/60 flex items-center gap-3">
             <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200/40">2</span>
