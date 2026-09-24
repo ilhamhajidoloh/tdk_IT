@@ -34,6 +34,7 @@ interface NewsItem {
   title: string;
   content: string;
   created_at: string;
+  target_audience?: 'all' | 'admin' | 'teacher' | 'student';
 }
 
 interface HolidayItem {
@@ -461,15 +462,19 @@ function SchoolHomeContent() {
 
                     {data?.news && data.news.length > 0 ? (
                       <div className="space-y-4">
-                        {data.news.map((item) => (
+                        {data.news
+                          .filter((item) => !item.target_audience || item.target_audience === 'all')
+                          .map((item) => (
                           <article
                             key={item.id}
                             className="p-6 rounded-3xl bg-card border border-border shadow-sm space-y-3 hover:shadow-md hover:border-primary/40 transition-all group"
                           >
                             <div className="flex items-start justify-between gap-3">
-                              <h3 className="font-extrabold text-base text-foreground group-hover:text-primary transition-colors">
-                                {item.title}
-                              </h3>
+                              <div className="flex-1">
+                                <h3 className="font-extrabold text-base text-foreground group-hover:text-primary transition-colors">
+                                  {item.title}
+                                </h3>
+                              </div>
                               <span className="text-xs text-muted-foreground whitespace-nowrap font-bold bg-muted px-2.5 py-1 rounded-full border border-border shrink-0">
                                 {formatThaiDate(item.created_at)}
                               </span>

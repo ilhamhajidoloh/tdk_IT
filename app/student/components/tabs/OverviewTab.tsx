@@ -7,6 +7,8 @@ import {
   Star,
   CircleCheck,
   AlertTriangle,
+  CalendarDays,
+  Clock3,
 } from "lucide-react";
 import { type DBGrade, type DBSubject, type ScheduleEntry, type Tab, getGradeInfo } from "../types";
 
@@ -87,6 +89,8 @@ export default function OverviewTab({
         </div>
       </div>
 
+      {isGradeReleased && (
+        <>
       {/* Term Selector */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="font-bold text-foreground text-sm">สรุปผลการเรียน</h3>
@@ -189,9 +193,65 @@ export default function OverviewTab({
           </div>
         </div>
       </div>
+        </>
+      )}
 
-      {/* Today's schedule quick view */}
-      {myScheduleToday.length > 0 && (
+      {/* Today's schedule timeline */}
+      <div className="ui-card overflow-hidden animate-fade-in-up">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <CalendarDays className="w-4.5 h-4.5" />
+            </span>
+            <div>
+              <span className="block font-bold text-foreground text-sm">ตารางเรียนวันนี้</span>
+              <span className="block text-[11px] text-muted-foreground">เรียงตามเวลาเรียน</span>
+            </div>
+          </div>
+          <button onClick={() => setActiveTab("schedule")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูตารางทั้งหมด →</button>
+        </div>
+        {myScheduleToday.length === 0 ? (
+          <div className="px-5 py-10 text-center">
+            <CalendarDays className="w-8 h-8 text-subtle-foreground mx-auto mb-2" />
+            <p className="text-sm font-semibold text-foreground">วันนี้ไม่มีคาบเรียน</p>
+            <p className="text-xs text-muted-foreground mt-1">ตรวจสอบตารางเรียนประจำสัปดาห์ได้ที่เมนูตารางเรียน</p>
+          </div>
+        ) : (
+          <div className="px-5 py-5">
+            <div className="relative space-y-1">
+              <div className="absolute left-[2.35rem] top-5 bottom-5 w-px bg-border" />
+              {myScheduleToday.sort((a, b) => Number(a.period_no) - Number(b.period_no)).map((entry) => {
+                const teacher = entry.teacher_name || (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
+                return (
+                  <div key={entry.id} className="relative grid grid-cols-[3.5rem_1fr] gap-4 py-2.5 group">
+                    <div className="pt-2 text-right">
+                      <div className="text-xs font-extrabold text-foreground">{entry.start_time}</div>
+                      <div className="text-[10px] text-subtle-foreground">{entry.end_time}</div>
+                    </div>
+                    <div className="relative pl-4">
+                      <span className="absolute -left-[0.31rem] top-4 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-card group-hover:scale-125 transition-transform" />
+                      <div className="rounded-xl border border-border bg-muted/35 px-4 py-3 hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-foreground truncate">{entry.subject_name}</p>
+                            {teacher && <p className="text-xs text-muted-foreground mt-1">อ.{teacher}</p>}
+                          </div>
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
+                            <Clock3 className="w-3 h-3" /> คาบ {entry.period_no}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Legacy schedule preview retained temporarily, hidden from the dashboard. */}
+      {false && myScheduleToday.length > 0 && (
         <div className="ui-card overflow-hidden animate-fade-in-up">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -221,7 +281,7 @@ export default function OverviewTab({
       )}
 
       {/* Quick Grades Preview */}
-      <div className="ui-card overflow-hidden animate-fade-in-up">
+      <div className="ui-card overflow-hidden animate-fade-in-up hidden">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <span className="font-bold text-foreground text-sm">คะแนนล่าสุด</span>
           <button onClick={() => setActiveTab("grades")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>

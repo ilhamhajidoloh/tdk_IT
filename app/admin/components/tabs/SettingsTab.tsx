@@ -119,20 +119,25 @@ export default function SettingsTab({
 
     if (formValues) {
       try {
-        const res = await fetch(`/api/system-settings/${setting.id}`, {
+        const res = await fetch("/api/settings", {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            id: setting.id,
             academic_year: setting.academic_year,
             term: setting.term,
             start_date: setting.start_date,
             end_date: setting.end_date,
+            academic_head: setting.academic_head,
             midterm_max_score: setting.midterm_max_score,
             final_max_score: setting.final_max_score,
-            is_active: setting.is_active,
+            schedule_days: setting.schedule_days,
+            highest_grade_level: setting.highest_grade_level,
+            data_retention_years: setting.data_retention_years,
+            auto_cleanup_enabled: setting.auto_cleanup_enabled,
             is_grade_released: formValues.is_grade_released,
             grade_release_date: formValues.grade_release_date,
           }),

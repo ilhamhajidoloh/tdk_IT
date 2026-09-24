@@ -1104,17 +1104,6 @@ function AdminPortalContent() {
               <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="0" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border"> อาทิตย์</label>
             </div>
           </div>
-          <div class="pt-3 border-t border-border mt-3 space-y-2">
-            <label class="block text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">📢 การเปิดประกาศผลการเรียนแก่นักเรียน</label>
-            <label class="flex items-center gap-2 text-xs text-foreground font-bold cursor-pointer p-2 bg-muted/30 rounded-xl border border-border">
-              <input id="swal-is-released" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-border" checked>
-              <span>เปิดประกาศผลการเรียนให้นักเรียนเห็นทันที (Manual Release)</span>
-            </label>
-            <div>
-              <label class="block text-[11px] font-bold text-muted-foreground mb-1">กำหนดวัน-เวลาเปิดประกาศผลอัตโนมัติล่วงหน้า (ถ้ามี):</label>
-              <input id="swal-release-date" type="datetime-local" class="w-full px-3 py-2 rounded-xl border border-border bg-card text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400">
-            </div>
-          </div>
         </div>
       `,
       focusConfirm: false,
@@ -1136,8 +1125,6 @@ function AdminPortalContent() {
         const academicHead = (document.getElementById("swal-academic-head") as HTMLInputElement).value;
         const midtermMax = (document.getElementById("swal-midterm-max") as HTMLInputElement).value;
         const finalMax = (document.getElementById("swal-final-max") as HTMLInputElement).value;
-        const isReleased = (document.getElementById("swal-is-released") as HTMLInputElement).checked;
-        const releaseDate = (document.getElementById("swal-release-date") as HTMLInputElement).value;
         const scheduleDays = Array.from(document.querySelectorAll('.swal-day-checkbox:checked')).map(cb => Number((cb as HTMLInputElement).value));
 
         if (!year || !term || !startDate || !endDate || !midtermMax || !finalMax) {
@@ -1155,7 +1142,7 @@ function AdminPortalContent() {
           return null;
         }
 
-        return { year, term, startDate, endDate, academicHead, midtermMax, finalMax, scheduleDays, isReleased, releaseDate };
+        return { year, term, startDate, endDate, academicHead, midtermMax, finalMax, scheduleDays };
       }
     });
 
@@ -1175,8 +1162,6 @@ function AdminPortalContent() {
           midterm_max_score: Number(formValues.midtermMax),
           final_max_score: Number(formValues.finalMax),
           schedule_days: formValues.scheduleDays,
-          is_grade_released: formValues.isReleased,
-          grade_release_date: formValues.releaseDate || null,
         }),
       });
 
@@ -1198,7 +1183,6 @@ function AdminPortalContent() {
   const handleEditSetting = async (setting: any) => {
     const activeDays = Array.isArray(setting.schedule_days) ? setting.schedule_days : [1, 2, 3, 4, 5];
     const isChecked = (day: number) => activeDays.includes(day) ? "checked" : "";
-    const isReleasedChecked = setting.is_grade_released !== false ? "checked" : "";
 
     const { value: formValues } = await Swal.fire({
       title: "แก้ไขปีการศึกษา/เทอม",
@@ -1246,17 +1230,6 @@ function AdminPortalContent() {
               <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer"><input type="checkbox" value="0" class="swal-day-checkbox w-4 h-4 text-indigo-600 dark:text-indigo-400 rounded border-border" ${isChecked(0)}> อาทิตย์</label>
             </div>
           </div>
-          <div class="pt-3 border-t border-border mt-3 space-y-2">
-            <label class="block text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">📢 การเปิดประกาศผลการเรียนแก่นักเรียน</label>
-            <label class="flex items-center gap-2 text-xs text-foreground font-bold cursor-pointer p-2 bg-muted/30 rounded-xl border border-border">
-              <input id="swal-is-released" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-border" ${isReleasedChecked}>
-              <span>เปิดประกาศผลการเรียนให้นักเรียนเห็นทันที (Manual Release)</span>
-            </label>
-            <div>
-              <label class="block text-[11px] font-bold text-muted-foreground mb-1">กำหนดวัน-เวลาเปิดประกาศผลอัตโนมัติล่วงหน้า (ถ้ามี):</label>
-              <input id="swal-release-date" type="datetime-local" class="w-full px-3 py-2 rounded-xl border border-border bg-card text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400" value="${setting.grade_release_date || ''}">
-            </div>
-          </div>
         </div>
       `,
       focusConfirm: false,
@@ -1278,8 +1251,6 @@ function AdminPortalContent() {
         const academicHead = (document.getElementById("swal-academic-head") as HTMLInputElement).value;
         const midtermMax = (document.getElementById("swal-midterm-max") as HTMLInputElement).value;
         const finalMax = (document.getElementById("swal-final-max") as HTMLInputElement).value;
-        const isReleased = (document.getElementById("swal-is-released") as HTMLInputElement).checked;
-        const releaseDate = (document.getElementById("swal-release-date") as HTMLInputElement).value;
         const scheduleDays = Array.from(document.querySelectorAll('.swal-day-checkbox:checked')).map(cb => Number((cb as HTMLInputElement).value));
 
         if (!year || !term || !startDate || !endDate || !midtermMax || !finalMax) {
@@ -1297,7 +1268,7 @@ function AdminPortalContent() {
           return null;
         }
 
-        return { year, term, startDate, endDate, academicHead, midtermMax, finalMax, scheduleDays, isReleased, releaseDate };
+        return { year, term, startDate, endDate, academicHead, midtermMax, finalMax, scheduleDays };
       }
     });
 
@@ -1318,8 +1289,8 @@ function AdminPortalContent() {
           midterm_max_score: Number(formValues.midtermMax),
           final_max_score: Number(formValues.finalMax),
           schedule_days: formValues.scheduleDays,
-          is_grade_released: formValues.isReleased,
-          grade_release_date: formValues.releaseDate || null,
+          is_grade_released: setting.is_grade_released,
+          grade_release_date: setting.grade_release_date,
         }),
       });
 

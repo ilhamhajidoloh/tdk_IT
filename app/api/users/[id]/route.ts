@@ -57,14 +57,14 @@ export async function PUT(
     if (password?.trim()) {
       const hashedPassword = await bcrypt.hash(password.trim(), 10);
       result = await pool.query(
-        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7, is_clerical = $8, status = $10, resigned_at = CASE WHEN $10 = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $11
+        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7, is_clerical = $8, status = $10::varchar, resigned_at = CASE WHEN $10::varchar = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $11
          WHERE id = $9
          RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason`,
         [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null]
       );
     } else {
       result = await pool.query(
-        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6, is_clerical = $7, status = $9, resigned_at = CASE WHEN $9 = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $10
+        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6, is_clerical = $7, status = $9::varchar, resigned_at = CASE WHEN $9::varchar = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $10
          WHERE id = $8
          RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason`,
         [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null]

@@ -20,6 +20,7 @@ interface NewsItem {
   is_published: boolean;
   expires_at: string | null;
   created_at: string;
+  target_audience: 'all' | 'admin' | 'teacher' | 'student';
 }
 
 interface TeacherOption {
@@ -330,6 +331,15 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
             <label class="${labelClass}">รายละเอียด <span class="text-red-500">*</span></label>
             <textarea id="swal-content" rows="5" class="${inputClass}">${existing?.content ?? ""}</textarea>
           </div>
+          <div>
+            <label class="${labelClass}">กลุ่มเป้าหมาย <span class="text-red-500">*</span></label>
+            <select id="swal-target-audience" class="${inputClass}">
+              <option value="all" ${!existing || existing.target_audience === 'all' ? 'selected' : ''}>ทุกคน (ผู้ดูแลระบบ, ครู, นักเรียน)</option>
+              <option value="admin" ${existing?.target_audience === 'admin' ? 'selected' : ''}>ผู้ดูแลระบบเท่านั้น</option>
+              <option value="teacher" ${existing?.target_audience === 'teacher' ? 'selected' : ''}>ครูเท่านั้น</option>
+              <option value="student" ${existing?.target_audience === 'student' ? 'selected' : ''}>นักเรียนเท่านั้น</option>
+            </select>
+          </div>
           <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer">
             <input type="checkbox" id="swal-published" class="w-4 h-4" ${existing?.is_published !== false ? "checked" : ""}>
             เผยแพร่บนหน้าแรกทันที
@@ -350,13 +360,14 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
       preConfirm: () => {
         const title = (document.getElementById("swal-title") as HTMLInputElement).value.trim();
         const content = (document.getElementById("swal-content") as HTMLTextAreaElement).value.trim();
+        const targetAudience = (document.getElementById("swal-target-audience") as HTMLSelectElement).value;
         const isPublished = (document.getElementById("swal-published") as HTMLInputElement).checked;
         const expiresAt = (document.getElementById("swal-expires-at") as HTMLInputElement).value;
         if (!title || !content) {
           Swal.showValidationMessage("กรุณากรอกหัวข้อและรายละเอียดข่าว");
           return null;
         }
-        return { title, content, isPublished, expiresAt };
+        return { title, content, targetAudience, isPublished, expiresAt };
       },
     });
 
@@ -368,6 +379,7 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
       body: JSON.stringify({
         title: value.title,
         content: value.content,
+        target_audience: value.targetAudience,
         is_published: value.isPublished,
         // datetime-local has no timezone. Convert it in the browser so the
         // selected local time is persisted as an unambiguous instant.
@@ -1152,8 +1164,17 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
                       <div key={n.id} className="card-modern p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-bold text-foreground">{n.title}</h3>
+                              {n.target_audience === 'all' ? (
+                                <span className="ui-chip ui-chip-info">ทุกคน</span>
+                              ) : n.target_audience === 'admin' ? (
+                                <span className="ui-chip ui-chip-danger">ผู้ดูแลระบบ</span>
+                              ) : n.target_audience === 'teacher' ? (
+                                <span className="ui-chip ui-chip-primary">ครู</span>
+                              ) : (
+                                <span className="ui-chip ui-chip-success">นักเรียน</span>
+                              )}
                               {n.is_published ? (
                                 <span className="ui-chip ui-chip-success">เผยแพร่แล้ว</span>
                               ) : (

@@ -57,7 +57,7 @@ export interface RowScore {
   final: string;
 }
 
-export type Tab = "dashboard" | "enter" | "status" | "homeroom" | "yearly-average" | "schedule" | "evaluate" | "attendance" | "books";
+export type Tab = "dashboard" | "enter" | "status" | "homeroom" | "schedule" | "attendance" | "evaluate" | "yearly-average" | "news" | "books";
 
 export interface EvaluationTopic {
   id: string;
@@ -150,14 +150,14 @@ export const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
     icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
   },
   {
+    key: "attendance",
+    label: "เช็คชื่อ",
+    icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
+  {
     key: "homeroom",
     label: "ห้องประจำชั้น",
     icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
-  },
-  {
-    key: "yearly-average",
-    label: "เฉลี่ยรวมทั้งปี",
-    icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
   },
   {
     key: "schedule",
@@ -170,9 +170,14 @@ export const NAV_TABS: { key: Tab; label: string; icon: string }[] = [
     icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z",
   },
   {
-    key: "attendance",
-    label: "เช็คชื่อ",
-    icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+    key: "yearly-average",
+    label: "เฉลี่ยรวมทั้งปี",
+    icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
+  {
+    key: "news",
+    label: "ประกาศข่าว",
+    icon: "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
   },
 ];
 

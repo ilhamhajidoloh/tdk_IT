@@ -28,6 +28,7 @@ import GradesTab from "./components/tabs/GradesTab";
 import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import ScheduleTab from "./components/tabs/ScheduleTab";
 import EvaluationTab from "./components/tabs/EvaluationTab";
+import NewsTab from "./components/tabs/NewsTab";
 
 export default function StudentPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -622,6 +623,8 @@ export default function StudentPortal() {
             evalLoading={evalLoading}
           />
         )}
+
+        {activeTab === "news" && <NewsTab />}
       </main>
       {user && <ChatWidget userId={user.id} userRole="student" />}
     </div>

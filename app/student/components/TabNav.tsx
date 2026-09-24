@@ -6,6 +6,7 @@ import {
   Clock,
   CalendarDays,
   Award,
+  Bell,
 } from "lucide-react";
 import { NAV_TABS, type Tab } from "./types";
 
@@ -15,6 +16,7 @@ const TAB_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> 
   "yearly-average": Clock,
   schedule: CalendarDays,
   evaluation: Award,
+  news: Bell,
 };
 
 const SHORT_LABELS: Record<string, string> = {
@@ -23,6 +25,7 @@ const SHORT_LABELS: Record<string, string> = {
   "yearly-average": "เฉลี่ยปี",
   schedule: "ตาราง",
   evaluation: "ประเมิน",
+  news: "ข่าว",
 };
 
 interface TabNavProps {

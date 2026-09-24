@@ -301,6 +301,9 @@ select.ui-input {
 }
 .ui-chip-warning { background: var(--warning-soft); color: var(--warning); }
 .ui-chip-success { background: var(--success-soft); color: var(--success); }
+.ui-chip-danger { background: var(--destructive-soft); color: var(--destructive); }
+.ui-chip-primary { background: var(--primary-soft); color: var(--primary); }
+.ui-chip-info { background: var(--muted); color: var(--muted-foreground); }
 
 /* Brand text */
 .brand-text {

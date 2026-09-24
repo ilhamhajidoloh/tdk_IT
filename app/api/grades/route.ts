@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { verifyUser } from "@/app/lib/verifyUser";
+import { getSchoolContext } from "@/app/lib/schoolContext";
 
-function formatRow(row: any) {
+const DEFAULT_SCHOOL_ID = "00000000-0000-0000-0000-000000000001";
+
+function formatRow(row: Record<string, unknown> | null | undefined) {
   if (!row) return row;
   return {
     ...row,
@@ -15,11 +18,14 @@ export async function GET(req: NextRequest) {
   const user = await verifyUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const schoolContext = await getSchoolContext(req);
+  const schoolId = schoolContext?.schoolId || DEFAULT_SCHOOL_ID;
+
   const studentId = req.nextUrl.searchParams.get("studentId");
   const term = req.nextUrl.searchParams.get("term");
 
-  let query = "SELECT * FROM grades WHERE 1=1";
-  const params: string[] = [];
+  let query = "SELECT * FROM grades WHERE school_id = $1";
+  const params: string[] = [schoolId];
 
   if (studentId) {
     params.push(studentId);
@@ -39,6 +45,9 @@ export async function POST(req: NextRequest) {
   const user = await verifyUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const schoolContext = await getSchoolContext(req);
+  const schoolId = schoolContext?.schoolId || DEFAULT_SCHOOL_ID;
+
   const { student_id, subject, midterm_score, final_score, term } = await req.json();
 
   if (!student_id || !subject || !term) {
@@ -47,12 +56,12 @@ export async function POST(req: NextRequest) {
 
   // Upsert — ถ้ามีอยู่แล้ว (student+subject+term) ให้ update แทน insert
   const result = await pool.query(
-    `INSERT INTO grades (student_id, subject, midterm_score, final_score, term)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO grades (student_id, subject, midterm_score, final_score, term, school_id)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT ON CONSTRAINT unique_student_subject_term
      DO UPDATE SET midterm_score = EXCLUDED.midterm_score, final_score = EXCLUDED.final_score
      RETURNING *`,
-    [student_id, subject, midterm_score ?? null, final_score ?? null, term]
+    [student_id, subject, midterm_score ?? null, final_score ?? null, term, schoolId]
   );
 
   return NextResponse.json(formatRow(result.rows[0]), { status: 201 });

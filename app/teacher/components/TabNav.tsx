@@ -10,6 +10,7 @@ import {
   Award,
   CircleCheck,
   BookOpen,
+  Bell,
 } from "lucide-react";
 import { NAV_TABS, type Tab } from "./types";
 
@@ -23,6 +24,7 @@ const TAB_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> 
   evaluate: Award,
   attendance: CircleCheck,
   books: BookOpen,
+  news: Bell,
 };
 
 interface TabNavProps {

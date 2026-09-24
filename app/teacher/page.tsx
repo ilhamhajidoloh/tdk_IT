@@ -37,6 +37,7 @@ import EvaluateStudentModal from "./components/modals/EvaluateStudentModal";
 import AttendanceTab from "./components/tabs/AttendanceTab";
 import DashboardTab from "./components/tabs/DashboardTab";
 import CorrespondenceTab from "../components/CorrespondenceTab";
+import NewsTab from "./components/tabs/NewsTab";
 
 export default function TeacherPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -1213,6 +1214,8 @@ export default function TeacherPortal() {
         )}
 
         {activeTab === "books" && <CorrespondenceTab />}
+
+        {activeTab === "news" && <NewsTab />}
 
       </main>
 
