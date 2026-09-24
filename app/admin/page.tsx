@@ -180,6 +180,7 @@ function AdminPortalContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const classroomFileInputRef = useRef<HTMLInputElement>(null);
   const autoFixedScheduleEntries = useRef<Set<string>>(new Set());
+  const hasHandledAccessFailure = useRef(false);
   const [adminYear, setAdminYear] = useState("2568");
   const [adminTerm, setAdminTerm] = useState("1");
   const [startDate, setStartDate] = useState("2026-05-01");
@@ -653,20 +654,32 @@ function AdminPortalContent() {
 
   useEffect(() => {
     if (loading) return;
-    if (!adminUser || !canAccessAdmin) {
-      if (adminUser?.role === "super_admin") {
-        router.push("/super-admin");
-      } else if (adminUser?.role === "teacher") {
-        router.push("/teacher");
-      } else {
-        router.push("/login");
-      }
+    if (!adminUser || !canAccessAdmin || filteredNavItems.length === 0) {
+      if (hasHandledAccessFailure.current) return;
+      hasHandledAccessFailure.current = true;
+
+      const destination = adminUser?.role === "super_admin"
+        ? "/super-admin"
+        : adminUser?.role === "teacher"
+          ? "/teacher"
+          : "/login";
+
+      void Swal.fire({
+        icon: "warning",
+        title: "ไม่สามารถเข้าใช้งานหน้านี้ได้",
+        text: !adminUser
+          ? "ไม่พบข้อมูลการเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่อีกครั้ง"
+          : "สิทธิ์การใช้งานหรือข้อมูล session ไม่พร้อมใช้งาน ระบบจะพาคุณกลับไปยังหน้าที่เหมาะสม",
+        confirmButtonText: "ตกลง",
+        confirmButtonColor: "#4f46e5",
+        allowOutsideClick: false,
+      }).then(() => router.replace(destination));
       return;
     }
     if (token) loadData(token);
     if (token) loadSettings(token);
     if (token) loadEvalTopics(token);
-  }, [loading, adminUser, canAccessAdmin, token, router]);
+  }, [loading, adminUser, canAccessAdmin, filteredNavItems.length, token, router]);
 
   useEffect(() => {
     if (token && selectedSchoolId) {
@@ -3970,6 +3983,11 @@ function changeFontSize(dir) {
 
   if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบจัดการโรงเรียน" />;
   if (!isClient || loading) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การเข้าใช้งาน" />;
+
+  // Do not render permission-dependent components while the redirect alert is open.
+  if (!adminUser || !canAccessAdmin || filteredNavItems.length === 0) {
+    return <LoadingScreen title="กำลังตรวจสอบสิทธิ์..." subtitle="โปรดรอสักครู่ ระบบกำลังพาคุณกลับไปยังหน้าที่เหมาะสม" />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col relative">

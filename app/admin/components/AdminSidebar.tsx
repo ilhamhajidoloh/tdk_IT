@@ -130,6 +130,7 @@ export default function AdminSidebar({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
 
   const activeItem = navItems.find((i) => i.key === activeTab) || navItems[0];
+  if (!activeItem) return null;
   const ActiveIcon = ICON_MAP[activeItem.key] || Home;
 
   // Group nav items by category
