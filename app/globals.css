@@ -835,3 +835,29 @@ div:where(.swal2-container) select:where(.swal2-select):focus {
 /* Divider */
 .ui-divider { display: flex; align-items: center; gap: var(--space-4); color: var(--subtle-foreground); font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 .ui-divider::before, .ui-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* Profile pages: a calm, elevated personal workspace. */
+.profile-page {
+  --profile-accent: #5b6b8a;
+  --profile-accent-deep: #35445f;
+  background: radial-gradient(700px 420px at 0% -5%, color-mix(in srgb, var(--profile-accent) 10%, transparent), transparent 70%), radial-gradient(650px 400px at 100% 5%, color-mix(in srgb, var(--profile-accent) 7%, transparent), transparent 72%), var(--background) !important;
+}
+.profile-page-student { --profile-accent: #4f7a70; --profile-accent-deep: #2f5b54; }
+.profile-page-teacher { --profile-accent: #5d7187; --profile-accent-deep: #3e5268; }
+.profile-page-admin { --profile-accent: #60728c; --profile-accent-deep: #3d5068; }
+.profile-page header { background: color-mix(in srgb, var(--card) 86%, transparent) !important; border-color: color-mix(in srgb, var(--border) 85%, transparent) !important; backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); }
+.profile-page main { max-width: 68rem !important; padding-top: 2rem !important; }
+.profile-page main > div[class*="bg-white"], .profile-page main .max-w-4xl > div[class*="bg-white"] { border-color: color-mix(in srgb, var(--profile-accent) 17%, var(--border)) !important; border-radius: 1.35rem !important; box-shadow: 0 14px 35px -25px color-mix(in srgb, var(--profile-accent-deep) 45%, transparent), var(--shadow-sm) !important; transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.profile-page main > div[class*="bg-white"]:not(:first-child):hover, .profile-page main .max-w-4xl > div[class*="bg-white"]:not(:first-child):hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--profile-accent) 35%, var(--border)) !important; box-shadow: 0 18px 40px -26px color-mix(in srgb, var(--profile-accent-deep) 55%, transparent), var(--shadow-md) !important; }
+.profile-page .profile-hero { position: relative; isolation: isolate; min-height: 10.5rem; display: flex; align-items: center; background: linear-gradient(125deg, var(--profile-accent-deep), var(--profile-accent)) !important; }
+.profile-page .profile-hero::after { content: ''; position: absolute; z-index: -1; width: 17rem; height: 17rem; right: -4rem; top: -10rem; border: 1px solid rgba(255,255,255,.16); border-radius: 50%; box-shadow: 0 0 0 2.5rem rgba(255,255,255,.05), 0 0 0 5rem rgba(255,255,255,.035); }
+.profile-page .profile-hero > div > div:first-child { width: 5.5rem; height: 5.5rem; border: 4px solid rgba(255,255,255,.4); box-shadow: 0 10px 24px rgba(20,35,50,.2); color: var(--profile-accent-deep) !important; }
+.profile-page .profile-hero h2 { letter-spacing: -.02em; }
+.profile-page .profile-hero p { color: rgba(255,255,255,.75) !important; }
+.profile-page label { letter-spacing: .025em; }
+.profile-page input { border-radius: .85rem !important; border-color: color-mix(in srgb, var(--profile-accent) 20%, var(--border)) !important; padding: .75rem 1rem !important; }
+.profile-page input:focus { border-color: var(--profile-accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--profile-accent) 18%, transparent) !important; }
+.profile-page button[class*="bg-purple-"], .profile-page button[class*="bg-green-"], .profile-page button[class*="bg-blue-"] { background: var(--profile-accent-deep) !important; border-radius: .8rem !important; box-shadow: 0 7px 16px -9px color-mix(in srgb, var(--profile-accent-deep) 80%, transparent); }
+.profile-page button[class*="bg-purple-"]:hover, .profile-page button[class*="bg-green-"]:hover, .profile-page button[class*="bg-blue-"]:hover { background: var(--profile-accent) !important; transform: translateY(-1px); }
+.profile-page .profile-danger { border-radius: 1.35rem !important; border-color: color-mix(in srgb, var(--destructive) 28%, var(--border)) !important; background: color-mix(in srgb, var(--destructive-soft) 52%, var(--card)) !important; }
+@media (max-width: 640px) { .profile-page main { padding-top: 1rem !important; } .profile-page .profile-hero { min-height: 9.25rem; } .profile-page .profile-hero > div { gap: 1rem !important; } .profile-page .profile-hero > div > div:first-child { width: 4.5rem; height: 4.5rem; font-size: 1.6rem; } }

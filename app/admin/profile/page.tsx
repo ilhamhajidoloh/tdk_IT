@@ -141,7 +141,7 @@ export default function AdminProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="profile-page profile-page-admin min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Simple Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
         <div className="px-4 py-4 flex items-center justify-between">
@@ -172,8 +172,8 @@ export default function AdminProfilePage() {
             </div>
 
             {/* Profile Info Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8">
+            <div className="profile-card bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
+              <div className="profile-hero bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8">
                 <div className="flex items-center gap-6">
                   <div className="w-20 h-20 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {user.username?.charAt(0).toUpperCase() || "A"}
@@ -298,7 +298,7 @@ export default function AdminProfilePage() {
             </div>
 
             {/* Danger Zone */}
-            <div className="bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-800 p-6">
+            <div className="profile-danger bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-800 p-6">
               <h3 className="text-lg font-semibold text-red-900 dark:text-red-400 mb-2">
                 เขตอันตราย
               </h3>
