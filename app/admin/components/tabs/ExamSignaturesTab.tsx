@@ -11,7 +11,7 @@ const COPY = {
   th: {
     title: "ใบเซ็นชื่อเข้าห้องสอบ", subtitle: "พิมพ์รายชื่อสำหรับให้นักเรียนลงลายมือชื่อก่อนเข้าสอบ",
     term: "ปีการศึกษา / ภาคเรียน", room: "ห้องเรียน", allRooms: "ทุกห้องเรียน", school: "ชื่อโรงเรียน",
-    subjects: "เลือกวิชา", noSubjects: "ไม่พบรายวิชาในเทอมนี้", date: "วันที่สอบ", print: "เปิดเอกสารเพื่อพิมพ์", loading: "กำลังโหลดข้อมูล...",
+    subjects: "เลือกวิชา", selectAll: "เลือกทั้งหมด", clearSelection: "ล้างการเลือก", noSubjects: "ไม่พบรายวิชาในเทอมนี้", date: "วันที่สอบ", print: "เปิดเอกสารเพื่อพิมพ์", loading: "กำลังโหลดข้อมูล...",
     no: "ลำดับ", id: "รหัสนักเรียน", name: "ชื่อ - สกุล", coursework: "คะแนนเก็บ", examScore: "สอบ", scoreTotal: "รวม", signature: "ลายมือชื่อ", total: "รวม",
     students: "คน", examSheet: "ใบเซ็นชื่อเข้าห้องสอบ", class: "ชั้นเรียน", examName: "วิชา / การสอบ", invigilator: "ครูผู้คุมสอบ", teacher: "ครูผู้สอน",
     examDate: "วันที่สอบ", printPdf: "พิมพ์ / บันทึก PDF", noStudents: "ไม่พบรายชื่อนักเรียนในห้องนี้",
@@ -19,7 +19,7 @@ const COPY = {
   "ms-rumi": {
     title: "Borang Tandatangan Bilik Peperiksaan", subtitle: "Cetak senarai untuk pelajar menandatangani sebelum memasuki bilik peperiksaan",
     term: "Tahun Akademik / Penggal", room: "Kelas", allRooms: "Semua Kelas", school: "Nama Sekolah",
-    subjects: "Pilih Subjek", noSubjects: "Tiada subjek dalam penggal ini", date: "Tarikh Peperiksaan", print: "Buka dokumen untuk cetakan", loading: "Memuatkan data...",
+    subjects: "Pilih Subjek", selectAll: "Pilih Semua", clearSelection: "Kosongkan Pilihan", noSubjects: "Tiada subjek dalam penggal ini", date: "Tarikh Peperiksaan", print: "Buka dokumen untuk cetakan", loading: "Memuatkan data...",
     no: "Bil.", id: "ID Pelajar", name: "Nama Penuh", coursework: "Markah Kursus", examScore: "Peperiksaan", scoreTotal: "Jumlah", signature: "Tandatangan", total: "Jumlah",
     students: "orang", examSheet: "Borang Tandatangan Bilik Peperiksaan", class: "Kelas", examName: "Subjek / Peperiksaan", invigilator: "Guru Pengawas", teacher: "Guru Pengajar",
     examDate: "Tarikh", printPdf: "Cetak / Simpan PDF", noStudents: "Tiada pelajar dalam kelas ini",
@@ -27,7 +27,7 @@ const COPY = {
   "ms-jawi": {
     title: "بورڠ تندا تاڠن بيليق ڤڤريقساءن", subtitle: "چتق سناراي اونتوق ڤلاجر مننداتڠاني سبلوم ماسوق بيليق ڤڤريقساءن",
     term: "تاهون اكدميک / ڤڠݢل", room: "کلس", allRooms: "سموا کلس", school: "نام سکوله",
-    subjects: "ڤيليه ڤلاجران", noSubjects: "تياد ڤلاجران دالم ڤڠݢل اين", date: "تاريخ ڤڤريقساءن", print: "بوک دوکومن اونتوق چتق", loading: "ممواݢ داتا...",
+    subjects: "ڤيليه ڤلاجران", selectAll: "ڤيليه سموا", clearSelection: "کوسوڠکن ڤيليهن", noSubjects: "تياد ڤلاجران دالم ڤڠݢل اين", date: "تاريخ ڤڤريقساءن", print: "بوک دوکومن اونتوق چتق", loading: "ممواݢ داتا...",
     no: "بيل.", id: "ايدي ڤلاجر", name: "نام ڤنوه", coursework: "مركة كڬياتن", examScore: "مركة ففريقسأن", scoreTotal: "مركة سموا", signature: "تندا تاڠن", total: "جومله",
     students: "اورڠ", examSheet: "بورڠ تندا تاڠن بيليق ڤڤريقساءن", class: "کلس", examName: "ڤلاجران / ڤڤريقساءن", invigilator: "ݢورو ڤڠاوس", teacher: "ݢورو ڤڠاجر",
     examDate: "تاريخ", printPdf: "چتق / سيمڤن PDF", noStudents: "تياد ڤلاجر دالم کلس اين",
@@ -160,7 +160,7 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
         <label className="text-sm font-bold text-foreground">{text.date}<input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium" /></label>
       </div>
       <div>
-        <div className="mb-2 flex items-center justify-between gap-3"><label className="text-sm font-bold text-foreground">{text.subjects}</label><span className="text-xs text-muted-foreground">{selectedSubjectIds.length} / {subjects.length}</span></div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><label className="text-sm font-bold text-foreground">{text.subjects}</label><div className="flex items-center gap-2"><button type="button" onClick={() => setSelectedSubjectIds(subjects.map((subject) => subject.id))} disabled={subjects.length === 0 || selectedSubjectIds.length === subjects.length} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 disabled:opacity-50 cursor-pointer">{text.selectAll}</button><button type="button" onClick={() => setSelectedSubjectIds([])} disabled={selectedSubjectIds.length === 0} className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-bold text-muted-foreground disabled:opacity-50 cursor-pointer">{text.clearSelection}</button><span className="text-xs text-muted-foreground">{selectedSubjectIds.length} / {subjects.length}</span></div></div>
         {subjects.length === 0 ? <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{loading ? text.loading : text.noSubjects}</p> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
           {subjects.map((subject) => <label key={subject.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium cursor-pointer"><input type="checkbox" checked={selectedSubjectIds.includes(subject.id)} onChange={(event) => setSelectedSubjectIds((previous) => event.target.checked ? [...previous, subject.id] : previous.filter((id) => id !== subject.id))} className="h-4 w-4 accent-indigo-600" /><span dir={language === "ms-jawi" ? "rtl" : "ltr"}>{getSubjectName(subject)}</span></label>)}
         </div>}
