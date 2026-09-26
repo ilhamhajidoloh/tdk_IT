@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { deleteFileFromDrive } from "@/app/lib/googleDrive";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function PUT(
   req: NextRequest,
@@ -15,8 +16,9 @@ export async function PUT(
   const { id } = await params;
 
   try {
+    await ensureStatusSchema();
     const body = await req.json();
-    const { name, name_en, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules } = body;
+    const { name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules } = body;
 
     const modulesJson = enabled_modules !== undefined ? JSON.stringify(enabled_modules) : null;
 
@@ -48,20 +50,22 @@ export async function PUT(
       `UPDATE public.schools
        SET name = COALESCE($1, name),
            name_en = $2,
-           subdomain = COALESCE($3, subdomain),
-           logo_url = $4,
-           logo_drive_file_id = $5,
-           address = $6,
-           phone = $7,
-           email = $8,
-           is_active = COALESCE($9, is_active),
-           enabled_modules = COALESCE($10::jsonb, enabled_modules),
+           name_jawi = $3,
+           subdomain = COALESCE($4, subdomain),
+           logo_url = $5,
+           logo_drive_file_id = $6,
+           address = $7,
+           phone = $8,
+           email = $9,
+           is_active = COALESCE($10, is_active),
+           enabled_modules = COALESCE($11::jsonb, enabled_modules),
            updated_at = NOW()
-       WHERE id = $11
+       WHERE id = $12
        RETURNING *`,
       [
         name,
         name_en || null,
+        name_jawi || null,
         subdomain ? subdomain.trim().toLowerCase() : null,
         finalLogoUrl,
         logo_drive_file_id || null,

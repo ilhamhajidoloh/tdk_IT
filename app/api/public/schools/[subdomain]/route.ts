@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 const DEFAULT_MAIN_SCHOOL = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -30,14 +31,15 @@ export async function GET(
   const isMain = param.toLowerCase() === "main" || param === "00000000-0000-0000-0000-000000000001";
 
   try {
+    await ensureStatusSchema();
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
     let query = "";
     let queryParams = [param];
 
     if (isUuid) {
-      query = "SELECT id, name, name_en, subdomain, logo_url, address, phone, email, enabled_modules FROM public.schools WHERE id = $1 AND is_active = true";
+      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, address, phone, email, enabled_modules FROM public.schools WHERE id = $1 AND is_active = true";
     } else {
-      query = "SELECT id, name, name_en, subdomain, logo_url, address, phone, email, enabled_modules FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true";
+      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, address, phone, email, enabled_modules FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true";
     }
 
     let result = await pool.query(query, queryParams);

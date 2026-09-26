@@ -34,6 +34,7 @@ export async function ensureStatusSchema() {
 
     // Subject ordering was added after the initial schema. Keep older schools compatible.
     await pool.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS sort_order INTEGER");
+    await pool.query("ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS name_jawi TEXT");
 
     // student_gpa_digests table for long-term retention
     await pool.query(`

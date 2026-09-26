@@ -47,6 +47,7 @@ interface School {
   id: string;
   name: string;
   name_en?: string | null;
+  name_jawi?: string | null;
   subdomain: string;
   logo_url?: string | null;
   logo_drive_file_id?: string | null;
@@ -107,6 +108,7 @@ export default function SuperAdminPage() {
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [schoolName, setSchoolName] = useState("");
   const [schoolNameEn, setSchoolNameEn] = useState("");
+  const [schoolNameJawi, setSchoolNameJawi] = useState("");
   const [schoolSubdomain, setSchoolSubdomain] = useState("");
   const [schoolLogoUrl, setSchoolLogoUrl] = useState("");
   const [schoolLogoDriveFileId, setSchoolLogoDriveFileId] = useState("");
@@ -200,6 +202,7 @@ export default function SuperAdminPage() {
     setEditingSchool(null);
     setSchoolName("");
     setSchoolNameEn("");
+    setSchoolNameJawi("");
     setSchoolSubdomain("");
     setSchoolLogoUrl("");
     setSchoolLogoDriveFileId("");
@@ -215,6 +218,7 @@ export default function SuperAdminPage() {
     setEditingSchool(school);
     setSchoolName(school.name || "");
     setSchoolNameEn(school.name_en || "");
+    setSchoolNameJawi(school.name_jawi || "");
     setSchoolSubdomain(school.subdomain || "");
     setSchoolLogoUrl(school.logo_url || "");
     setSchoolLogoDriveFileId(school.logo_drive_file_id || "");
@@ -339,6 +343,7 @@ export default function SuperAdminPage() {
       const payload = {
         name: schoolName.trim(),
         name_en: schoolNameEn.trim() || null,
+        name_jawi: schoolNameJawi.trim() || null,
         subdomain: finalSubdomain,
         logo_url: currentLogoUrl,
         logo_drive_file_id: currentDriveId,
@@ -1287,12 +1292,24 @@ export default function SuperAdminPage() {
               </div>
 
               <div>
-                <label className="block text-foreground font-bold mb-1">ชื่อโรงเรียน (ภาษาอังกฤษ)</label>
+                <label className="block text-foreground font-bold mb-1">ชื่อโรงเรียน (ภาษามลายูรูมี)</label>
                 <input
                   type="text"
                   value={schoolNameEn}
                   onChange={(e) => handleSchoolNameEnChange(e.target.value)}
-                  placeholder="เช่น Bannawittaya School"
+                  placeholder="Contoh: Sekolah Bannawittaya"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-foreground font-bold mb-1">ชื่อโรงเรียน (ภาษามลายูยาวี)</label>
+                <input
+                  type="text"
+                  dir="rtl"
+                  value={schoolNameJawi}
+                  onChange={(e) => setSchoolNameJawi(e.target.value)}
+                  placeholder="چونتوه: سکوله بناويتايا"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
                 />
               </div>

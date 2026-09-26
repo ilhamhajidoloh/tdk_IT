@@ -52,7 +52,7 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
   const [students, setStudents] = useState<DBStudent[]>([]);
   const [subjects, setSubjects] = useState<DBSubject[]>([]);
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
-  const [schoolName, setSchoolName] = useState("");
+  const [schoolNames, setSchoolNames] = useState({ th: "", rumi: "", jawi: "" });
   const [examDate, setExamDate] = useState("");
   const [loading, setLoading] = useState(false);
   const text = COPY[language];
@@ -81,7 +81,7 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
         setStudents(nextStudents);
         setSubjects(nextSubjects);
         setSelectedSubjectIds((previous) => previous.filter((id) => nextSubjects.some((subject: DBSubject) => subject.id === id)));
-        setSchoolName(school?.name || "");
+        setSchoolNames({ th: school?.name || "", rumi: school?.name_en || school?.name || "", jawi: school?.name_jawi || school?.name || "" });
       })
       .catch((error: unknown) => { if ((error as { name?: string }).name !== "AbortError") console.error("Unable to load exam signature data", error); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -105,6 +105,8 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
     if (language === "ms-rumi") return subject.name_rumi?.trim() || subject.name;
     return subject.name_jawi?.trim() || subject.name;
   };
+
+  const schoolName = language === "th" ? schoolNames.th : language === "ms-rumi" ? schoolNames.rumi : schoolNames.jawi;
 
   const handleSettingChange = (value: string) => {
     if (!value) return;
