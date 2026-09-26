@@ -32,6 +32,9 @@ export async function ensureStatusSchema() {
     await pool.query("CREATE INDEX IF NOT EXISTS idx_users_is_co_admin ON users(is_co_admin) WHERE is_co_admin = TRUE");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_users_permissions ON users USING GIN (admin_permissions)");
 
+    // Subject ordering was added after the initial schema. Keep older schools compatible.
+    await pool.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS sort_order INTEGER");
+
     // student_gpa_digests table for long-term retention
     await pool.query(`
       CREATE TABLE IF NOT EXISTS student_gpa_digests (

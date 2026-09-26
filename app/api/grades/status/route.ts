@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { verifyUser } from "@/app/lib/verifyUser";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function GET(req: NextRequest) {
   const user = await verifyUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  await ensureStatusSchema();
 
   const settingId = req.nextUrl.searchParams.get("settingId");
   if (!settingId) return NextResponse.json({ error: "settingId required" }, { status: 400 });

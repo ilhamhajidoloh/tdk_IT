@@ -42,6 +42,7 @@ import StudentScoresTab from "./components/tabs/StudentScoresTab";
 import RankingsTab from "./components/tabs/RankingsTab";
 import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import ExportGradesTab from "./components/tabs/ExportGradesTab";
+import ExamSignaturesTab from "./components/tabs/ExamSignaturesTab";
 import SettingsTab from "./components/tabs/SettingsTab";
 import DashboardTab from "./components/tabs/DashboardTab";
 import DutyTab from "./components/tabs/DutyTab";
@@ -70,6 +71,7 @@ const NAV_ITEMS: { key: Tab; label: string; sub: string; icon: string }[] = [
   { key: "rankings", label: "อันดับผลการเรียน", sub: "Rankings", icon: "M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" },
   { key: "yearly-average", label: "เฉลี่ยรวมทั้งปี", sub: "Yearly Average", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
   { key: "export-grades", label: "ส่งออกไฟล์เกรด", sub: "Export Grades", icon: "M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" },
+  { key: "exam-signatures", label: "ใบเซ็นชื่อห้องสอบ", sub: "Exam Signatures", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 01-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" },
   { key: "evaluations", label: "ประเมินคุณลักษณะ", sub: "Evaluations", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
   { key: "settings", label: "ตั้งค่าระบบ", sub: "Settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" },
   { key: "duty", label: "หน้าแรก & เวรประจำวัน", sub: "Home & Duty", icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2" },
@@ -99,8 +101,8 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "ภาคเรียนที่": { th: "ภาคเรียนที่", rumi: "Penggal", jawi: "ڤڠگل" },
     "จำนวนนักเรียนทั้งหมด:": { th: "จำนวนนักเรียนทั้งหมด:", rumi: "Jumlah Murid:", jawi: "جومله موريد:" },
     "คน": { th: "คน", rumi: "orang", jawi: "اورڠ" },
-    "จำนวนวิชาที่ส่งออก:": { th: "จำนวนวิชาที่ส่งออก:", rumi: "Jumlah Subjek:", jawi: "جومله سوبجيك:" },
-    "วิชา": { th: "วิชา", rumi: "subjek", jawi: "سوبجيك" },
+    "จำนวนวิชาที่ส่งออก:": { th: "จำนวนวิชาที่ส่งออก:", rumi: "Jumlah Subjek:", jawi: "جومله ڤلاجران:" },
+    "วิชา": { th: "วิชา", rumi: "subjek", jawi: "ڤلاجران" },
     "วันที่ออกรายงาน:": { th: "วันที่ออกรายงาน:", rumi: "Tarikh Dikeluarkan:", jawi: "تاريخ دكلواركن:" },
     "ลำดับ": { th: "ลำดับ", rumi: "Bil.", jawi: "بيل." },
     "รหัสประจำตัว": { th: "รหัสประจำตัว", rumi: "No. ID", jawi: "نومبور اءي-دي" },
@@ -109,10 +111,10 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "ประเภท": { th: "ประเภท", rumi: "Kategori", jawi: "كاتڬوري" },
     "หน่วยกิต": { th: "หน่วยกิต", rumi: "Jam Kredit", jawi: "جام ك ريديت" },
     "นก.": { th: "นก.", rumi: "kredit", jawi: "ك ريديت" },
-    "คะแนนเก็บ": { th: "คะแนนเก็บ", rumi: "Kerja Kursus", jawi: "كرج كورسوس" },
-    "คะแนนสอบ": { th: "คะแนนสอบ", rumi: "Peperiksaan", jawi: "ڤڤريقسان" },
-    "คะแนนรวม": { th: "คะแนนรวม", rumi: "Jumlah Markah", jawi: "جومله مركه" },
-    "รวมคะแนน": { th: "รวมคะแนน", rumi: "Jumlah Markah", jawi: "جومله مركه" },
+    "คะแนนเก็บ": { th: "คะแนนเก็บ", rumi: "Kerja Kursus", jawi: "مركة كڬياتن" },
+    "คะแนนสอบ": { th: "คะแนนสอบ", rumi: "Peperiksaan", jawi: "مركة ففريقسأن" },
+    "คะแนนรวม": { th: "คะแนนรวม", rumi: "Jumlah Markah", jawi: "مركة سموا" },
+    "รวมคะแนน": { th: "รวมคะแนน", rumi: "Jumlah Markah", jawi: "مركة سموا" },
     "เกรด": { th: "เกรด", rumi: "Gred", jawi: "ڬريد" },
     "เฉลี่ย %": { th: "เฉลี่ย %", rumi: "Peratus %", jawi: "ڤراتوس %" },
     "เกรดเฉลี่ย (GPA)": { th: "เกรดเฉลี่ย (GPA)", rumi: "Purata Gred (GPA)", jawi: "ڤوراتا ڬريد (GPA)" },
@@ -120,14 +122,14 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "อันดับ": { th: "อันดับ", rumi: "Kedudukan", jawi: "كدودوقن" },
     "อันดับในห้องเรียน": { th: "อันดับในห้องเรียน", rumi: "Kedudukan Dalam Kelas", jawi: "كدودوقن دالم كلس" },
     "อันดับที่": { th: "อันดับที่", rumi: "Ke-", jawi: "ك-" },
-    "วิชาหลัก": { th: "วิชาหลัก", rumi: "Subjek Teras", jawi: "سوبجيك ت رس" },
+    "วิชาหลัก": { th: "วิชาหลัก", rumi: "Subjek Teras", jawi: "ڤلاجران ت رس" },
     "กิจกรรม": { th: "กิจกรรม", rumi: "Aktiviti", jawi: "اكتيۏيتي" },
     "ผ.": { th: "ผ.", rumi: "L", jawi: "ل" },
     "มผ.": { th: "มผ.", rumi: "G", jawi: "ڬ" },
     "ผ่าน": { th: "ผ่าน", rumi: "Lulus", jawi: "لولوس" },
     "ไม่ผ่าน": { th: "ไม่ผ่าน", rumi: "Gagal", jawi: "ڬاڬل" },
-    "คะแนนรวมวิชาหลัก": { th: "คะแนนรวมวิชาหลัก", rumi: "Jumlah Markah Teras", jawi: "جومله مركه ت رس" },
-    "คะแนนรวมของแต่ละวิชา": { th: "คะแนนรวมของแต่ละวิชา", rumi: "Jumlah Markah Setiap Subjek", jawi: "جومله مركه ستياڤ سوبجيك" },
+    "คะแนนรวมวิชาหลัก": { th: "คะแนนรวมวิชาหลัก", rumi: "Jumlah Markah Teras", jawi: "مركة سموا ت رس" },
+    "คะแนนรวมของแต่ละวิชา": { th: "คะแนนรวมของแต่ละวิชา", rumi: "Jumlah Markah Setiap Subjek", jawi: "مركة سموا ستياڤ ڤلاجران" },
     "คะแนนรวมทั้งหมด": {
       th: "คะแนนรวมทั้งหมด",
       rumi: "Jumlah Keseluruhan",
@@ -266,6 +268,8 @@ function AdminPortalContent() {
         return hasAnyPermission("scores.rankings", "scores.reports", "scores.view");
       case "export-grades":
         return hasAnyPermission("scores.reports", "scores.view");
+      case "exam-signatures":
+        return hasAnyPermission("students.view", "classrooms.view");
       case "duty":
         return hasAnyPermission("duties.view", "news.view");
       case "books":
@@ -3766,7 +3770,7 @@ function changeFontSize(dir) {
               <thead>
                 <tr style="background:#f1f5f9;">
                   <th style="padding:10px 8px;border:1px solid #cbd5e1;width:40px;font-size:12px;">${t("ลำดับ")}</th>
-                  <th style="padding:10px 12px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;font-size:12px;">${exportLanguage === "th" ? "ชื่อวิชาเรียน" : exportLanguage === "ms-rumi" ? "Nama Subjek" : "نام سوبجيك"}</th>
+                  <th style="padding:10px 12px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;font-size:12px;">${exportLanguage === "th" ? "ชื่อวิชาเรียน" : exportLanguage === "ms-rumi" ? "Nama Subjek" : "نام ڤلاجران"}</th>
                   <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("ประเภท")}</th>
                   <th style="padding:10px 8px;border:1px solid #cbd5e1;width:70px;font-size:12px;">${t("หน่วยกิต")}</th>
                   <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("คะแนนเก็บ")}</th>
@@ -4182,6 +4186,14 @@ function changeFontSize(dir) {
                 exportType={exportType}
                 setExportType={setExportType}
                 exportDataLoading={exportDataLoading}
+              />
+            )}
+
+            {activeTab === "exam-signatures" && (
+              <ExamSignaturesTab
+                settingsList={settingsList}
+                token={token}
+                schoolId={selectedSchoolId || (adminUser as { school_id?: string } | null)?.school_id || "main"}
               />
             )}
 

@@ -630,14 +630,14 @@ interface TranslationEntry {
 
 const DEFAULT_SYSTEM_TERMS = [
   { key: "grade", thai: "เกรด", malay_rumi: "Gred", malay_jawi: "ڬريد" },
-  { key: "subject", thai: "วิชา", malay_rumi: "Subjek", malay_jawi: "سوبجيك" },
+  { key: "subject", thai: "วิชา", malay_rumi: "Subjek", malay_jawi: "ڤلاجران" },
   { key: "student", thai: "นักเรียน", malay_rumi: "Murid", malay_jawi: "موريد" },
   { key: "teacher", thai: "ครูผู้สอน", malay_rumi: "Guru", malay_jawi: "ڬورو" },
   { key: "classroom", thai: "ชั้นเรียน/ห้อง", malay_rumi: "Kelas", malay_jawi: "كلس" },
   { key: "score", thai: "คะแนน", malay_rumi: "Markah", malay_jawi: "مركه" },
-  { key: "midterm", thai: "คะแนนเก็บ", malay_rumi: "Kerja Kursus", malay_jawi: "كرج كورسوس" },
-  { key: "final", thai: "คะแนนสอบ", malay_rumi: "Peperiksaan", malay_jawi: "ڤڤريقسان" },
-  { key: "total", thai: "รวม", malay_rumi: "Jumlah", malay_jawi: "جومله" },
+  { key: "midterm", thai: "คะแนนเก็บ", malay_rumi: "Kerja Kursus", malay_jawi: "مركة كڬياتن" },
+  { key: "final", thai: "คะแนนสอบ", malay_rumi: "Peperiksaan", malay_jawi: "مركة ففريقسأن" },
+  { key: "total", thai: "รวม", malay_rumi: "Jumlah", malay_jawi: "مركة سموا" },
   { key: "average", thai: "เฉลี่ย", malay_rumi: "Purata", malay_jawi: "ڤوراة" },
   { key: "pass", thai: "ผ่าน", malay_rumi: "Lulus", malay_jawi: "لولوس" },
   { key: "fail", thai: "ไม่ผ่าน", malay_rumi: "Gagal", malay_jawi: "ڬاڬل" },

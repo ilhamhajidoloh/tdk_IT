@@ -37,6 +37,7 @@ const ICON_MAP: Record<Tab, React.ComponentType<{ className?: string }>> = {
   rankings: TrendingUp,
   "yearly-average": Clock,
   "export-grades": Printer,
+  "exam-signatures": ClipboardCheck,
   evaluations: Award,
   settings: Settings,
   duty: Home,
@@ -97,6 +98,7 @@ export const ADMIN_NAV_CATEGORIES: NavCategoryDef[] = [
       "achievement",
       "evaluations",
       "export-grades",
+      "exam-signatures",
     ],
   },
   {

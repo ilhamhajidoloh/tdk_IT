@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -12,8 +13,18 @@ async function hasSubjectTeachersTable(): Promise<boolean> {
   }
 }
 
+async function hasTranslationsTable(): Promise<boolean> {
+  try {
+    await pool.query("SELECT 1 FROM translations LIMIT 0");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
+    await ensureStatusSchema();
     const context = await getSchoolContext(req);
     let schoolId = context?.schoolId;
 
@@ -38,6 +49,7 @@ export async function GET(req: NextRequest) {
     }
 
     const multiTeacherReady = await hasSubjectTeachersTable();
+    const translationsReady = await hasTranslationsTable();
 
     const teacherCols = multiTeacherReady
       ? `COALESCE(
@@ -56,6 +68,24 @@ export async function GET(req: NextRequest) {
       : `CASE WHEN s.teacher_id IS NOT NULL THEN ARRAY[s.teacher_id::text] ELSE '{}' END as teacher_ids,
          CASE WHEN u.username IS NOT NULL THEN ARRAY[u.username] ELSE '{}' END as teacher_names,`;
 
+    const translationCols = translationsReady
+      ? `MAX(t.thai) as name_thai,
+             MAX(t.malay_rumi) as name_rumi,
+             MAX(t.malay_jawi) as name_jawi`
+      : `NULL::text as name_thai,
+             NULL::text as name_rumi,
+             NULL::text as name_jawi`;
+
+    const translationJoin = translationsReady
+      ? `LEFT JOIN translations t ON (
+        t.key = s.name
+        OR t.key = 'subj_' || s.id
+        OR LOWER(t.thai) = LOWER(s.name)
+        OR LOWER(t.malay_rumi) = LOWER(s.name)
+        OR LOWER(t.malay_jawi) = LOWER(s.name)
+      )`
+      : "";
+
     const result = await pool.query(`
       SELECT s.id, s.name, s.teacher_id, s.setting_id, s.midterm_max_score, s.final_max_score,
              s.subject_type, s.credit_hours, s.score_display_mode, s.sort_order,
@@ -63,20 +93,12 @@ export async function GET(req: NextRequest) {
              ${teacherCols}
              COALESCE(array_agg(sc.classroom_id) FILTER (WHERE sc.classroom_id IS NOT NULL), '{}') as classroom_ids,
              COALESCE(array_agg(c.name) FILTER (WHERE c.name IS NOT NULL), '{}') as classroom_names,
-             MAX(t.thai) as name_thai,
-             MAX(t.malay_rumi) as name_rumi,
-             MAX(t.malay_jawi) as name_jawi
+             ${translationCols}
       FROM subjects s
       LEFT JOIN users u ON s.teacher_id = u.id
       LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
       LEFT JOIN classrooms c ON c.id = sc.classroom_id
-      LEFT JOIN translations t ON (
-        t.key = s.name 
-        OR t.key = 'subj_' || s.id 
-        OR LOWER(t.thai) = LOWER(s.name) 
-        OR LOWER(t.malay_rumi) = LOWER(s.name) 
-        OR LOWER(t.malay_jawi) = LOWER(s.name)
-      )
+      ${translationJoin}
       ${whereClause}
       GROUP BY s.id, s.name, s.teacher_id, s.setting_id, s.subject_type, s.credit_hours, s.score_display_mode, s.sort_order, u.username
       ORDER BY COALESCE(s.sort_order, 999) ASC, s.name ASC

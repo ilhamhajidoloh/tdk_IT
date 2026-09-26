@@ -116,6 +116,7 @@ export type Tab =
   | "rankings"
   | "yearly-average"
   | "export-grades"
+  | "exam-signatures"
   | "duty"
   | "evaluations"
   | "books"
