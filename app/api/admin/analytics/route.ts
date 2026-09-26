@@ -69,6 +69,14 @@ export async function GET(req: NextRequest) {
     const students = studentsRes.rows;
     const evalTopics = evalTopicsRes.rows;
 
+    // Grade analytics must only include subjects with configured score fields.
+    // This excludes scoreless activities from empty charts and averages.
+    const scoreSubjects = subjects.filter((subject: any) => {
+      const midMax = subject.midterm_max_score !== null ? Number(subject.midterm_max_score) : Number(defaultMidMax) || 50;
+      const finalMax = subject.final_max_score !== null ? Number(subject.final_max_score) : Number(defaultFinMax) || 50;
+      return midMax + finalMax > 0;
+    });
+
     const studentIds = students.map((s: any) => s.student_id);
 
     // 3. Fetch Grades
@@ -191,7 +199,7 @@ export async function GET(req: NextRequest) {
       let totalGpaPoints = 0;
       let studentWithGpaCount = 0;
 
-      const subjectBreakdown = subjects.map((subj: any) => {
+      const subjectBreakdown = scoreSubjects.map((subj: any) => {
         const subjKey = subj.name.trim().toLowerCase();
         const maxScorePerStudent = subjectMaxMap.get(subjKey) || 100;
 
@@ -254,10 +262,10 @@ export async function GET(req: NextRequest) {
         gpa_avg: parseFloat(gpaAvg.toFixed(2)),
         subjects: subjectBreakdown,
       };
-    });
+    }).filter((classroom) => classroom.student_count > 0 && scoreSubjects.length > 0);
 
     // Subject Comparisons
-    const subjectStats = subjects.map((subj: any) => {
+    const subjectStats = scoreSubjects.map((subj: any) => {
       const subjKey = subj.name.trim().toLowerCase();
       const maxScorePerStudent = subjectMaxMap.get(subjKey) || 100;
 
@@ -427,8 +435,8 @@ export async function GET(req: NextRequest) {
     const kpiSummary = {
       school_avg_percentage: schoolAvgPercentage,
       total_students: students.length,
-      total_classrooms: classrooms.length,
-      total_subjects: subjects.length,
+      total_classrooms: classroomStats.length,
+      total_subjects: scoreSubjects.length,
       top_classroom: sortedClassrooms[0] || null,
       lowest_classroom: sortedClassrooms[sortedClassrooms.length - 1] || null,
       top_subject: sortedSubjects[0] || null,
@@ -454,4 +462,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
-

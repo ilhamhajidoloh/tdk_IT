@@ -26,7 +26,7 @@ import { SchoolLogo, type SchoolInfo, updateSchoolDocumentMeta } from "../compon
 
 type LoginTab = "staff" | "teacher" | "student";
 
-interface Classroom { id: string; name: string; }
+interface Classroom { id: string; name: string; student_count?: number | string; }
 interface Teacher { id: string; username: string; }
 interface Student { id: string; name: string; student_id: string; student_number?: number | null; }
 
@@ -120,8 +120,9 @@ function LoginContent() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Classroom[]) => {
         if (Array.isArray(data)) {
-          setClassrooms(data);
-          if (data.length > 0) setStudentClassroom(data[0].id);
+          const populatedClassrooms = data.filter((classroom) => Number(classroom.student_count ?? 0) > 0);
+          setClassrooms(populatedClassrooms);
+          if (populatedClassrooms.length > 0) setStudentClassroom(populatedClassrooms[0].id);
         }
       })
       .catch(() => setClassrooms([]));

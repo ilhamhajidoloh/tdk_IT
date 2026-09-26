@@ -809,9 +809,22 @@ function AdminPortalContent() {
           ? fetch(`/api/grades?term=${encodeURIComponent(termKey)}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } })
           : Promise.resolve(null),
       ]);
-      setScoresStudents(studentsRes.ok ? await studentsRes.json() : []);
-      setScoresSubjects(subjectsRes.ok ? await subjectsRes.json() : []);
-      setScoresClassrooms(classroomsRes.ok ? await classroomsRes.json() : []);
+      const students = studentsRes.ok ? await studentsRes.json() : [];
+      const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
+      const classrooms = classroomsRes.ok ? await classroomsRes.json() : [];
+      const populatedClassroomIds = new Set(students.map((student: DBStudent) => student.classroom_id));
+      const scoreSubjects = subjects.filter((subject: DBSubject) =>
+        (Number(subject.midterm_max_score) || 0) + (Number(subject.final_max_score) || 0) > 0
+      );
+      const availableClassroomIds = new Set(
+        scoreSubjects.flatMap((subject: DBSubject) => subject.classroom_ids || [])
+      );
+
+      setScoresStudents(students);
+      setScoresSubjects(subjects);
+      setScoresClassrooms(classrooms.filter((classroom: { id: string }) =>
+        populatedClassroomIds.has(classroom.id) && availableClassroomIds.has(classroom.id)
+      ));
       setScoresGrades(gradesRes && gradesRes.ok ? await gradesRes.json() : []);
     } catch (err) {
       console.error("loadStudentScores error:", err);

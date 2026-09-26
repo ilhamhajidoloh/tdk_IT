@@ -340,7 +340,7 @@ export default function AnalyticsDashboardTab({
             <span>ภาพรวมทั้งหมด</span>
           </button>
 
-          <button
+          {data?.classrooms.length ? <button
             onClick={() => setActiveView("classrooms")}
             className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
               activeView === "classrooms"
@@ -357,9 +357,9 @@ export default function AnalyticsDashboardTab({
                 {data.classrooms.length}
               </span>
             )}
-          </button>
+          </button> : null}
 
-          <button
+          {data?.subjects.length ? <button
             onClick={() => setActiveView("subjects")}
             className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
               activeView === "subjects"
@@ -376,7 +376,7 @@ export default function AnalyticsDashboardTab({
                 {data.subjects.length}
               </span>
             )}
-          </button>
+          </button> : null}
 
           <button
             onClick={() => setActiveView("evaluation")}
@@ -392,7 +392,7 @@ export default function AnalyticsDashboardTab({
         </div>
 
         {/* Global Classroom Filter if on Overview or Classroom tabs */}
-        {(activeView === "all" || activeView === "classrooms") && (
+        {data?.classrooms.length && (activeView === "all" || activeView === "classrooms") && (
           <div className="flex items-center gap-2 px-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">ตัวกรองห้องเรียน:</span>
@@ -594,7 +594,7 @@ export default function AnalyticsDashboardTab({
           {/* ========================================================================= */}
           {/* SECTION BLOCK A: 🏫 สถิติและผลการเรียนรายห้องเรียน (Classroom Block)        */}
           {/* ========================================================================= */}
-          {(activeView === "all" || activeView === "classrooms") && (
+          {data.classrooms.length > 0 && (activeView === "all" || activeView === "classrooms") && (
             <div className="space-y-6 pt-2">
               {/* Section Header Banner */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-indigo-500/20 pb-3">
@@ -961,7 +961,7 @@ export default function AnalyticsDashboardTab({
           {/* ========================================================================= */}
           {/* SECTION BLOCK B: 📚 สถิติและผลการเรียนรายวิชา (Subject Block)              */}
           {/* ========================================================================= */}
-          {(activeView === "all" || activeView === "subjects") && (
+          {data.subjects.length > 0 && (activeView === "all" || activeView === "subjects") && (
             <div className="space-y-6 pt-6">
               {/* Section Header Banner */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-emerald-500/20 pb-3">

@@ -32,7 +32,11 @@ export async function GET(req: NextRequest) {
         (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id) AS student_count
       FROM classrooms c
       JOIN final_setting fs ON c.setting_id = fs.id
-      WHERE c.school_id = $1 OR c.school_id IS NULL
+      WHERE (c.school_id = $1 OR c.school_id IS NULL)
+        AND EXISTS (
+          SELECT 1 FROM classroom_students cs
+          WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id
+        )
       ORDER BY c.name
     `, [schoolId]);
 
@@ -40,7 +44,13 @@ export async function GET(req: NextRequest) {
       const fallback = await pool.query(
         `SELECT id, name, name_thai, name_rumi, name_jawi, setting_id,
           (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = classrooms.id AND cs.setting_id = classrooms.setting_id) AS student_count
-         FROM classrooms WHERE school_id = $1 OR school_id IS NULL ORDER BY name`,
+         FROM classrooms
+         WHERE (school_id = $1 OR school_id IS NULL)
+           AND EXISTS (
+             SELECT 1 FROM classroom_students cs
+             WHERE cs.classroom_id = classrooms.id AND cs.setting_id = classrooms.setting_id
+           )
+         ORDER BY name`,
         [schoolId]
       );
       return NextResponse.json(fallback.rows);

@@ -59,15 +59,15 @@ export async function GET(req: NextRequest) {
     const includeActivity = req.nextUrl.searchParams.get("includeActivity") === "true";
 
     const classrooms = classroomsRes.rows;
-    let subjects = subjectsRes.rows;
+    // Include only subjects with configured scores. Scoreless activities and
+    // scoreless subjects must not appear in the achievement report.
+    let subjects = subjectsRes.rows.filter((subject: any) => {
+      const midMax = subject.midterm_max_score !== null ? Number(subject.midterm_max_score) : Number(defaultMidMax) || 50;
+      const finalMax = subject.final_max_score !== null ? Number(subject.final_max_score) : Number(defaultFinMax) || 50;
+      return midMax + finalMax > 0;
+    });
     if (!includeActivity) {
-      subjects = subjects.filter((s: any) => s.subject_type !== "activity");
-    } else {
-      // Only include activity subjects that have scores (midterm_max_score + final_max_score > 0)
-      subjects = subjects.filter((s: any) =>
-        s.subject_type !== "activity" ||
-        ((Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0)
-      );
+      subjects = subjects.filter((subject: any) => subject.subject_type !== "activity");
     }
 
     const mergedDisplayNames: Record<string, any> = { ...(subject_display_names || {}) };
@@ -197,10 +197,10 @@ export async function GET(req: NextRequest) {
         max_possible_all_subjects: rowAllSubjectsMaxTotal,
         overall_avg_percentage: parseFloat(overallAvgPercentage.toFixed(2)),
       };
-    });
+    }).filter((classroom) => classroom.student_count > 0 && subjects.length > 0);
 
     // Calculate School-wide totals (รวมทุกระดับชั้น)
-    const schoolTotalStudents = students.length;
+    const schoolTotalStudents = matrixRows.reduce((total, classroom) => total + classroom.student_count, 0);
     let schoolAllSubjectsTotal = 0;
     let schoolAllSubjectsMaxTotal = 0;
 

@@ -946,7 +946,7 @@ export default function AchievementTab({
       </div>
 
       {/* KPI Cards */}
-      {data && (
+      {data && data.matrix_rows.length > 0 && data.subjects.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
             <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shrink-0">
