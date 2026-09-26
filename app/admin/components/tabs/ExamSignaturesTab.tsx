@@ -104,6 +104,15 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
     return subject.name_jawi?.trim() || subject.name;
   };
 
+  const handleSettingChange = (value: string) => {
+    const nextSettingId = Number(value);
+    if (!Number.isFinite(nextSettingId)) return;
+    // Clear term-specific choices before loading the new term's records.
+    setSettingId(nextSettingId);
+    setClassroomId("all");
+    setSelectedSubjectIds([]);
+  };
+
   const printDocument = () => {
     if (!selectedClassrooms.length || !selectedSubjects.length) return;
     const pages = selectedSubjects.flatMap((subject) => selectedClassrooms
@@ -145,7 +154,7 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label className="text-sm font-bold text-foreground">{text.school}<input value={schoolName} readOnly className="mt-1.5 w-full rounded-xl border border-border bg-muted px-3 py-2.5 font-medium cursor-not-allowed" /></label>
-        <label className="text-sm font-bold text-foreground">{text.term}<select value={activeSettingId ?? ""} onChange={(event) => setSettingId(Number(event.target.value))} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium"><option value="" disabled>--</option>{settingsList.map((setting) => <option key={setting.id} value={setting.id}>{setting.academic_year} / {setting.term}</option>)}</select></label>
+        <label className="text-sm font-bold text-foreground">{text.term}<select value={activeSettingId ?? ""} onChange={(event) => handleSettingChange(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium"><option value="" disabled>--</option>{settingsList.map((setting) => <option key={setting.id} value={setting.id}>{setting.academic_year} / {setting.term}</option>)}</select></label>
         <label className="text-sm font-bold text-foreground">{text.room}<select value={classroomId} onChange={(event) => setClassroomId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium"><option value="all">{text.allRooms}</option>{classrooms.map((classroom) => <option key={classroom.id} value={classroom.id}>{getClassroomName(classroom, language)}</option>)}</select></label>
         <label className="text-sm font-bold text-foreground">{text.date}<input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium" /></label>
       </div>
