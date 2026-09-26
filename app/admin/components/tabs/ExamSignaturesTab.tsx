@@ -44,7 +44,9 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
   schoolId: string;
 }) {
   const [language, setLanguage] = useState<Language>("th");
-  const [settingId, setSettingId] = useState<number | null>(null);
+  // Native <select> values are strings. Keep the selected term as a string too,
+  // otherwise some browsers can retain the previously selected numeric option.
+  const [settingId, setSettingId] = useState("");
   const [classroomId, setClassroomId] = useState("all");
   const [classrooms, setClassrooms] = useState<DBClassroom[]>([]);
   const [students, setStudents] = useState<DBStudent[]>([]);
@@ -56,7 +58,7 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
   const text = COPY[language];
   const direction = language === "ms-jawi" ? "rtl" : "ltr";
 
-  const activeSettingId = settingId ?? settingsList[0]?.id ?? null;
+  const activeSettingId = settingId || (settingsList[0]?.id ? String(settingsList[0].id) : "");
 
   useEffect(() => {
     if (!activeSettingId || !token) return;
@@ -105,10 +107,9 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
   };
 
   const handleSettingChange = (value: string) => {
-    const nextSettingId = Number(value);
-    if (!Number.isFinite(nextSettingId)) return;
+    if (!value) return;
     // Clear term-specific choices before loading the new term's records.
-    setSettingId(nextSettingId);
+    setSettingId(value);
     setClassroomId("all");
     setSelectedSubjectIds([]);
   };
@@ -154,7 +155,7 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label className="text-sm font-bold text-foreground">{text.school}<input value={schoolName} readOnly className="mt-1.5 w-full rounded-xl border border-border bg-muted px-3 py-2.5 font-medium cursor-not-allowed" /></label>
-        <label className="text-sm font-bold text-foreground">{text.term}<select value={activeSettingId ?? ""} onChange={(event) => handleSettingChange(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium"><option value="" disabled>--</option>{settingsList.map((setting) => <option key={setting.id} value={setting.id}>{setting.academic_year} / {setting.term}</option>)}</select></label>
+        <label className="text-sm font-bold text-foreground">{text.term}<select value={activeSettingId} onChange={(event) => handleSettingChange(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium"><option value="" disabled>--</option>{settingsList.map((setting) => <option key={setting.id} value={String(setting.id)}>{setting.academic_year} / {setting.term}</option>)}</select></label>
         <label className="text-sm font-bold text-foreground">{text.room}<select value={classroomId} onChange={(event) => setClassroomId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium"><option value="all">{text.allRooms}</option>{classrooms.map((classroom) => <option key={classroom.id} value={classroom.id}>{getClassroomName(classroom, language)}</option>)}</select></label>
         <label className="text-sm font-bold text-foreground">{text.date}<input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium" /></label>
       </div>
