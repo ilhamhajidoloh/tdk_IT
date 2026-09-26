@@ -68,6 +68,66 @@ export default function SettingsTab({
     )
   ).sort();
 
+  const handleAttendanceWeeks = async () => {
+    const years = Array.from(new Set(settingsList.map((setting) => String(setting.academic_year))));
+    if (years.length === 0) {
+      Swal.fire("ยังไม่มีปีการศึกษา", "กรุณาเพิ่มปีการศึกษาก่อนตั้งจำนวนสัปดาห์", "info");
+      return;
+    }
+    const options = years.map((year) => `<option value="${year}">${year}</option>`).join("");
+    const { value } = await Swal.fire({
+      title: "กำหนดจำนวนสัปดาห์การมาเรียน",
+      html: `<div class="text-left space-y-3 mt-3">
+        <div><label class="block text-xs font-bold mb-1.5">ปีการศึกษา</label><select id="swal-weeks-year" class="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm">${options}</select></div>
+        <div><label class="block text-xs font-bold mb-1.5">จำนวนสัปดาห์ทั้งหมดของปีการศึกษา</label><input id="swal-weeks-value" type="number" min="1" value="${settingsList.find((s) => String(s.academic_year) === years[0])?.attendance_total_weeks || 40}" class="w-full px-3 py-2.5 rounded-xl border border-border bg-card text-sm" /></div>
+        <p class="text-[11px] text-muted-foreground">ค่านี้ใช้ร่วมกันทั้งเทอม 1 และเทอม 2 ของปีการศึกษาที่เลือก</p>
+      </div>`,
+      showCancelButton: true,
+      confirmButtonText: "บันทึก",
+      cancelButtonText: "ยกเลิก",
+      preConfirm: () => {
+        const year = (document.getElementById("swal-weeks-year") as HTMLSelectElement).value;
+        const weeks = Number((document.getElementById("swal-weeks-value") as HTMLInputElement).value);
+        if (!Number.isInteger(weeks) || weeks < 1) {
+          Swal.showValidationMessage("กรุณาระบุจำนวนสัปดาห์ตั้งแต่ 1 ขึ้นไป");
+          return null;
+        }
+        return { year, weeks };
+      },
+    });
+    if (!value) return;
+    const setting = settingsList.find((s) => String(s.academic_year) === value.year);
+    if (!setting) return;
+    const response = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({
+        id: setting.id,
+        academic_year: setting.academic_year,
+        term: setting.term,
+        start_date: setting.start_date,
+        end_date: setting.end_date,
+        academic_head: setting.academic_head,
+        midterm_max_score: (setting as any).midterm_max_score,
+        final_max_score: (setting as any).final_max_score,
+        schedule_days: setting.schedule_days,
+        highest_grade_level: setting.highest_grade_level,
+        data_retention_years: setting.data_retention_years,
+        auto_cleanup_enabled: setting.auto_cleanup_enabled,
+        is_grade_released: setting.is_grade_released,
+        grade_release_date: setting.grade_release_date,
+        is_ranking_released: setting.is_ranking_released,
+        attendance_total_weeks: value.weeks,
+      }),
+    });
+    if (!response.ok) {
+      Swal.fire("บันทึกไม่สำเร็จ", "ไม่สามารถบันทึกจำนวนสัปดาห์ได้", "error");
+      return;
+    }
+    Swal.fire({ icon: "success", title: "บันทึกสำเร็จ", timer: 1200, showConfirmButton: false });
+    onSettingsUpdated?.();
+  };
+
   const handleOpenReleaseModal = async (setting: any) => {
     const isReleasedChecked = setting.is_grade_released !== false ? "checked" : "";
     const isRankingReleasedChecked = setting.is_ranking_released === true ? "checked" : "";
@@ -162,6 +222,7 @@ export default function SettingsTab({
             is_grade_released: formValues.is_grade_released,
             grade_release_date: formValues.grade_release_date,
             is_ranking_released: formValues.is_ranking_released,
+            attendance_total_weeks: setting.attendance_total_weeks,
           }),
         });
 
@@ -269,6 +330,16 @@ export default function SettingsTab({
               </div>
             </div>
           </div>
+
+          <PermissionGate permission="settings.academic_year">
+            <div className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-amber-200/80 bg-amber-50/60 dark:bg-amber-500/10 dark:border-amber-500/30">
+              <div>
+                <div className="font-bold text-sm text-foreground">จำนวนสัปดาห์การมาเรียนรายปี</div>
+                <div className="text-xs text-muted-foreground mt-1">กำหนดครั้งเดียว ใช้ร่วมกันทั้งเทอม 1 และเทอม 2</div>
+              </div>
+              <button onClick={handleAttendanceWeeks} className="shrink-0 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm">ตั้งค่าจำนวนสัปดาห์</button>
+            </div>
+          </PermissionGate>
 
           {/* Settings List */}
           {/* Desktop Table */}

@@ -100,6 +100,13 @@ export interface AttendanceSummaryRow {
   total: number;
 }
 
+export interface AttendanceYearlyRow {
+  student_id: string;
+  present_days: number;
+  sick_leave_days: number;
+  personal_leave_days: number;
+}
+
 export const ATTENDANCE_STATUSES: { value: AttendanceStatus; label: string; color: string }[] = [
   { value: "present", label: "มา", color: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30" },
   { value: "late", label: "สาย", color: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30" },

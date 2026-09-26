@@ -18,8 +18,7 @@ import {
   type Tab,
   type EvaluationTopic,
   type EvaluationRecord,
-  type AttendanceStatus,
-  type AttendanceSummaryRow,
+  type AttendanceYearlyRow,
   ALL_DAYS,
 } from "./components/types";
 import { isEvaluationTermOpen } from "../lib/evaluation";
@@ -99,13 +98,10 @@ export default function TeacherPortal() {
   // Attendance State (เช็คชื่อการมาเรียนของแต่ละวิชา)
   const [attendanceSubjectId, setAttendanceSubjectId] = useState("");
   const [attendanceClassroomId, setAttendanceClassroomId] = useState("");
-  const [attendanceView, setAttendanceView] = useState<"record" | "summary">("record");
-  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [attendanceStatusMap, setAttendanceStatusMap] = useState<Record<string, AttendanceStatus>>({});
+  const [attendanceRows, setAttendanceRows] = useState<Record<string, AttendanceYearlyRow>>({});
+  const [attendanceTotalWeeks, setAttendanceTotalWeeks] = useState(0);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceSaving, setAttendanceSaving] = useState(false);
-  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummaryRow[]>([]);
-  const [attendanceSummaryLoading, setAttendanceSummaryLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -643,71 +639,64 @@ export default function TeacherPortal() {
     }
   };
 
-  const loadAttendanceRecords = async (subjectId: string, date: string, authToken: string) => {
+  const loadAttendanceRecords = async (subjectId: string, classroomId: string, academicYear: string, authToken: string) => {
     setAttendanceLoading(true);
     try {
-      const res = await fetch(`/api/attendance?subjectId=${subjectId}&date=${date}`, { headers: { Authorization: `Bearer ${authToken}` } });
-      const rows = res.ok ? await res.json() : [];
-      const map: Record<string, AttendanceStatus> = {};
-      for (const r of rows) map[r.student_id] = r.status;
-      setAttendanceStatusMap(map);
+      const res = await fetch(`/api/attendance/yearly?subjectId=${subjectId}&classroomId=${classroomId}&academicYear=${encodeURIComponent(academicYear)}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const data = res.ok ? await res.json() : { total_weeks: 0, records: [] };
+      const map: Record<string, AttendanceYearlyRow> = {};
+      for (const row of data.records) map[row.student_id] = row;
+      setAttendanceRows(map);
+      setAttendanceTotalWeeks(Number(data.total_weeks ?? 0));
     } finally {
       setAttendanceLoading(false);
-    }
-  };
-
-  const loadAttendanceSummary = async (subjectId: string, term: string, classroomId: string, authToken: string) => {
-    setAttendanceSummaryLoading(true);
-    try {
-      const res = await fetch(
-        `/api/attendance/summary?subjectId=${subjectId}&term=${encodeURIComponent(term)}&classroomId=${classroomId}`,
-        { headers: { Authorization: `Bearer ${authToken}` } }
-      );
-      setAttendanceSummary(res.ok ? await res.json() : []);
-    } finally {
-      setAttendanceSummaryLoading(false);
     }
   };
 
   const handleSelectAttendanceSubject = (subjectId: string) => {
     setAttendanceSubjectId(subjectId);
     setAttendanceClassroomId("");
-    setAttendanceStatusMap({});
-    setAttendanceSummary([]);
+    setAttendanceRows({});
+    setAttendanceTotalWeeks(0);
   };
 
   useEffect(() => {
     if (!token || !attendanceSubjectId || !attendanceClassroomId) return;
-    if (attendanceView === "record") {
-      loadAttendanceRecords(attendanceSubjectId, attendanceDate, token);
-    } else {
-      loadAttendanceSummary(attendanceSubjectId, enterTerm, attendanceClassroomId, token);
-    }
-  }, [attendanceSubjectId, attendanceClassroomId, attendanceDate, attendanceView, token, enterTerm]);
+    loadAttendanceRecords(attendanceSubjectId, attendanceClassroomId, enterTerm.split("/")[1] || "", token);
+  }, [attendanceSubjectId, attendanceClassroomId, token, enterTerm]);
 
-  const handleSetAttendanceStatus = (studentId: string, status: AttendanceStatus) => {
-    setAttendanceStatusMap(prev => ({ ...prev, [studentId]: status }));
+  const handleSetAttendanceDays = (studentId: string, field: keyof Omit<AttendanceYearlyRow, "student_id">, value: string) => {
+    const parsed = Math.max(0, Number.parseInt(value || "0", 10) || 0);
+    setAttendanceRows(prev => ({
+      ...prev,
+      [studentId]: (() => {
+        const current = prev[studentId] ?? { student_id: studentId, present_days: 0, sick_leave_days: 0, personal_leave_days: 0 };
+        const otherDays = current.present_days + current.sick_leave_days + current.personal_leave_days - (current[field] || 0);
+        return { ...current, [field]: attendanceTotalWeeks > 0 ? Math.min(parsed, Math.max(0, attendanceTotalWeeks - otherDays)) : parsed };
+      })(),
+    }));
   };
 
   const handleSaveAllAttendance = async () => {
     if (!attendanceSubjectId || !attendanceClassroomId || !token) return;
-    const records = attendanceClassroomStudents
-      .filter(s => attendanceStatusMap[s.student_id])
-      .map(s => ({ studentId: s.student_id, status: attendanceStatusMap[s.student_id] }));
-    if (records.length === 0) {
-      Swal.fire({ icon: "warning", title: "กรุณาเลือกสถานะอย่างน้อย 1 คน", confirmButtonColor: "#4f46e5" });
+    if (attendanceTotalWeeks <= 0) return;
+    const records = attendanceClassroomStudents.map(s => {
+      const row = attendanceRows[s.student_id] ?? { present_days: 0, sick_leave_days: 0, personal_leave_days: 0 };
+      return { studentId: s.student_id, presentDays: row.present_days, sickLeaveDays: row.sick_leave_days, personalLeaveDays: row.personal_leave_days };
+    });
+    if (records.some(r => r.presentDays + r.sickLeaveDays + r.personalLeaveDays > attendanceTotalWeeks)) {
+      Swal.fire({ icon: "warning", title: "จำนวนวันรวมของนักเรียนต้องไม่เกินจำนวนสัปดาห์ทั้งหมด", confirmButtonColor: "#4f46e5" });
       return;
     }
     setAttendanceSaving(true);
     try {
-      const res = await fetch("/api/attendance/batch", {
+      const res = await fetch("/api/attendance/yearly", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           subjectId: attendanceSubjectId,
           classroomId: attendanceClassroomId,
-          date: attendanceDate,
-          term: enterTerm,
+          academicYear: enterTerm.split("/")[1] || "",
           records,
         }),
       });
@@ -721,7 +710,34 @@ export default function TeacherPortal() {
     }
   };
 
-  const handleCancelAttendance = async () => {
+  const handleSaveAttendanceRow = async (student: DBStudent) => {
+    if (!attendanceSubjectId || !attendanceClassroomId || !token || attendanceTotalWeeks <= 0) return;
+    const row = attendanceRows[student.student_id] ?? { present_days: 0, sick_leave_days: 0, personal_leave_days: 0 };
+    const total = row.present_days + row.sick_leave_days + row.personal_leave_days;
+    if (total > attendanceTotalWeeks) return;
+    setAttendanceSaving(true);
+    try {
+      const res = await fetch("/api/attendance/yearly", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          subjectId: attendanceSubjectId,
+          classroomId: attendanceClassroomId,
+          academicYear: enterTerm.split("/")[1] || "",
+          records: [{ studentId: student.student_id, presentDays: row.present_days, sickLeaveDays: row.sick_leave_days, personalLeaveDays: row.personal_leave_days }],
+        }),
+      });
+      if (!res.ok) {
+        Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ", confirmButtonColor: "#4f46e5" });
+        return;
+      }
+      Swal.fire({ title: "บันทึกสำเร็จ", text: `บันทึกข้อมูล ${student.name} เรียบร้อยแล้ว`, icon: "success", timer: 1200, showConfirmButton: false });
+    } finally {
+      setAttendanceSaving(false);
+    }
+  };
+
+  /*const handleCancelAttendance = async () => {
     if (!attendanceSubjectId || !attendanceClassroomId || !attendanceDate || !token) return;
 
     const result = await Swal.fire({
@@ -755,7 +771,7 @@ export default function TeacherPortal() {
         setAttendanceSaving(false);
       }
     }
-  };
+  };*/
 
   const handleChangeDisplayMode = async (mode: "separate" | "combined") => {
     if (!currentSubjectObj) return;
@@ -1060,6 +1076,9 @@ export default function TeacherPortal() {
 
         {activeTab === "dashboard" && (
           <DashboardTab
+            isGradingActive={isGradingActive}
+            settingsStartDate={settingsStartDate}
+            settingsEndDate={settingsEndDate}
             teacherName={teacherUser?.username || "ครู"}
             homeroomClass={homeroomClass}
             homeroomStudents={homeroomStudents}
@@ -1068,9 +1087,6 @@ export default function TeacherPortal() {
             classrooms={classrooms}
             grades={grades}
             term={enterTerm}
-            isGradingActive={isGradingActive}
-            settingsStartDate={settingsStartDate}
-            settingsEndDate={settingsEndDate}
             myScheduleEntries={myScheduleEntries}
             setActiveTab={setActiveTab}
             setEnterSubject={setEnterSubject}
@@ -1190,9 +1206,6 @@ export default function TeacherPortal() {
 
         {activeTab === "attendance" && (
           <AttendanceTab
-            isGradingActive={isGradingActive}
-            settingsStartDate={settingsStartDate}
-            settingsEndDate={settingsEndDate}
             mySubjects={mySubjects}
             attendanceSubjectId={attendanceSubjectId}
             onSelectSubject={handleSelectAttendanceSubject}
@@ -1200,18 +1213,13 @@ export default function TeacherPortal() {
             setAttendanceClassroomId={setAttendanceClassroomId}
             attendanceClassroomOptions={attendanceClassroomOptions}
             attendanceClassroomStudents={attendanceClassroomStudents}
-            attendanceView={attendanceView}
-            setAttendanceView={setAttendanceView}
-            attendanceDate={attendanceDate}
-            setAttendanceDate={setAttendanceDate}
-            attendanceStatusMap={attendanceStatusMap}
-            onSetStatus={handleSetAttendanceStatus}
+            attendanceRows={attendanceRows}
+            totalWeeks={attendanceTotalWeeks}
+            onSetDays={handleSetAttendanceDays}
             attendanceLoading={attendanceLoading}
             attendanceSaving={attendanceSaving}
             onSaveAll={handleSaveAllAttendance}
-            onCancelAttendance={handleCancelAttendance}
-            attendanceSummary={attendanceSummary}
-            attendanceSummaryLoading={attendanceSummaryLoading}
+            onSaveRow={handleSaveAttendanceRow}
           />
         )}
 

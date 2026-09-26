@@ -14,6 +14,28 @@ export async function ensureStatusSchema() {
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS grade_release_date VARCHAR DEFAULT NULL");
     // Ranking visibility is deliberately separate from grade publication.
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS is_ranking_released BOOLEAN DEFAULT false");
+    // Attendance is recorded as yearly totals, not a daily log.  This value is
+    // deliberately shared by every term in the same academic year.
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS attendance_total_weeks INTEGER DEFAULT 0");
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS attendance_yearly_summaries (
+        id BIGSERIAL PRIMARY KEY,
+        school_id UUID NOT NULL,
+        academic_year VARCHAR NOT NULL,
+        subject_id TEXT NOT NULL,
+        classroom_id TEXT NOT NULL,
+        student_id VARCHAR NOT NULL,
+        present_days INTEGER NOT NULL DEFAULT 0 CHECK (present_days >= 0),
+        sick_leave_days INTEGER NOT NULL DEFAULT 0 CHECK (sick_leave_days >= 0),
+        personal_leave_days INTEGER NOT NULL DEFAULT 0 CHECK (personal_leave_days >= 0),
+        recorded_by TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        CONSTRAINT unique_yearly_attendance_summary
+          UNIQUE (school_id, academic_year, subject_id, classroom_id, student_id)
+      );
+    `);
 
     // students columns
     await pool.query("ALTER TABLE students ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'");

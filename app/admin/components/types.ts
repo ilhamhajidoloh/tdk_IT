@@ -194,6 +194,7 @@ export interface SystemSetting {
   grade_release_date?: string | null;
   is_ranking_released?: boolean;
   academic_head?: string | null;
+  attendance_total_weeks?: number;
 }
 
 export const ALL_DAYS = [

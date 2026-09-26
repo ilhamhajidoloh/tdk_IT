@@ -24,6 +24,7 @@ function formatRow(row: Record<string, unknown>) {
     is_grade_released: row.is_grade_released !== false,
     grade_release_date: row.grade_release_date ? String(row.grade_release_date) : null,
     is_ranking_released: row.is_ranking_released === true,
+    attendance_total_weeks: Number(row.attendance_total_weeks ?? 0),
   };
 }
 
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   await ensureStatusSchema();
   const result = await pool.query(
-    "SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
+    "SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, attendance_total_weeks, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
     [schoolId]
   );
   return NextResponse.json(result.rows.map(formatRow));
@@ -79,6 +80,7 @@ export async function PUT(req: NextRequest) {
     is_grade_released,
     grade_release_date,
     is_ranking_released,
+    attendance_total_weeks,
   } = await req.json();
 
   if (!academic_year || !term || !start_date || !end_date) {
@@ -98,28 +100,46 @@ export async function PUT(req: NextRequest) {
   const isReleased = is_grade_released !== false;
   const releaseDate = grade_release_date ? String(grade_release_date) : null;
   const isRankingReleased = is_ranking_released === true;
+  // Older clients do not yet send this field when editing another setting.
+  // Preserve their previously configured yearly value instead of resetting it.
+  let attendanceWeeks = Number(attendance_total_weeks ?? 0);
+  if (id && attendance_total_weeks === undefined) {
+    const existing = await pool.query(
+      "SELECT attendance_total_weeks FROM system_settings WHERE id = $1 AND (school_id = $2 OR school_id IS NULL)",
+      [id, schoolId]
+    );
+    attendanceWeeks = Number(existing.rows[0]?.attendance_total_weeks ?? 0);
+  }
+  if (!Number.isInteger(attendanceWeeks) || attendanceWeeks < 0) {
+    return NextResponse.json({ error: "attendance_total_weeks must be a non-negative integer" }, { status: 400 });
+  }
   const academicHeadValue = academic_head || null;
 
   if (id) {
     // Update
     const result = await pool.query(
       `UPDATE system_settings
-       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, academic_head = $5, midterm_max_score = $6, final_max_score = $7, schedule_days = $9, highest_grade_level = $10, data_retention_years = $11, auto_cleanup_enabled = $12, is_grade_released = $13, grade_release_date = $14, is_ranking_released = $15
-       WHERE id = $8 AND (school_id = $16 OR school_id IS NULL)
+       SET academic_year = $1, term = $2, start_date = $3, end_date = $4, academic_head = $5, midterm_max_score = $6, final_max_score = $7, schedule_days = $9, highest_grade_level = $10, data_retention_years = $11, auto_cleanup_enabled = $12, is_grade_released = $13, grade_release_date = $14, is_ranking_released = $15, attendance_total_weeks = $16
+       WHERE id = $8 AND (school_id = $17 OR school_id IS NULL)
        RETURNING *`,
-      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased, schoolId]
+      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, id, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased, attendanceWeeks, schoolId]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Setting not found" }, { status: 444 });
     }
-    return NextResponse.json(formatRow(result.rows[0]));
+    // A year has one attendance denominator even though its other settings are per term.
+    await pool.query(
+      "UPDATE system_settings SET attendance_total_weeks = $1 WHERE academic_year = $2 AND (school_id = $3 OR school_id IS NULL)",
+      [attendanceWeeks, academic_year, schoolId]
+    );
+    return NextResponse.json(formatRow({ ...result.rows[0], attendance_total_weeks: attendanceWeeks }));
   } else {
     // Create
     const result = await pool.query(
-      `INSERT INTO system_settings (academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, school_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO system_settings (academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, is_active, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, attendance_total_weeks, school_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
-      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased, schoolId]
+      [academic_year, term, start_date, end_date, academicHeadValue, midtermMax, finalMax, JSON.stringify(days), highestLevel, retentionYears, autoCleanup, isReleased, releaseDate, isRankingReleased, attendanceWeeks, schoolId]
     );
     return NextResponse.json(formatRow(result.rows[0]));
   }
