@@ -32,6 +32,7 @@ const ICON_MAP: Record<Tab, React.ComponentType<{ className?: string }>> = {
   students: GraduationCap,
   subjects: BookOpen,
   schedule: CalendarDays,
+  calendar: CalendarDays,
   "grade-status": ClipboardCheck,
   "student-scores": Eye,
   rankings: TrendingUp,
@@ -80,7 +81,7 @@ export const ADMIN_NAV_CATEGORIES: NavCategoryDef[] = [
     icon: GraduationCap,
     color: "from-indigo-500 to-violet-600",
     badgeBg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30",
-    keys: ["users", "students", "classrooms", "subjects", "schedule"],
+    keys: ["users", "students", "classrooms", "subjects", "schedule", "calendar"],
   },
   {
     id: "grades",

@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolFromUrl } from "@/app/lib/getSchoolByParam";
 import { ensureStatusSchema } from "@/app/lib/statusMigration";
+import { normalizeScheduleDays } from "@/app/lib/duty";
 
 function formatRow(row: Record<string, unknown>) {
   return {
     ...row,
     midterm_max_score: Number(row.midterm_max_score ?? 50),
     final_max_score: Number(row.final_max_score ?? 50),
-    schedule_days: Array.isArray(row.schedule_days) ? row.schedule_days : [1, 2, 3, 4, 5],
+    schedule_days: normalizeScheduleDays(row.schedule_days),
     is_grade_released: row.is_grade_released !== false,
     grade_release_date: row.grade_release_date ? String(row.grade_release_date) : null,
     is_ranking_released: row.is_ranking_released === true,

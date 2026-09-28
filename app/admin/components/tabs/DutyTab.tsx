@@ -1220,8 +1220,8 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
               {/* Divider */}
               <div className="border-t border-border" />
 
-              {/* Section 2: School Holidays */}
-              <div>
+              {/* School holidays are managed from the annual calendar. */}
+              <div className="hidden">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="font-bold text-foreground flex items-center gap-2">

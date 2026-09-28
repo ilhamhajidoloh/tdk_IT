@@ -58,6 +58,15 @@ export function isScheduleDay(dateStr: string, scheduleDays: number[]): boolean 
   return scheduleDays.includes(toUTCDate(dateStr).getUTCDay());
 }
 
+/** Normalize school-day settings while preserving each school's configured
+ * teaching days, including schools that open on weekends. */
+export function normalizeScheduleDays(value: unknown): number[] {
+  const days = Array.isArray(value)
+    ? Array.from(new Set(value.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)))
+    : [];
+  return days.length > 0 ? days : [1, 2, 3, 4, 5];
+}
+
 /** Returns true if a date is an effective school day (schedule day AND not a holiday). */
 export function isEffectiveSchoolDay(
   dateStr: string,

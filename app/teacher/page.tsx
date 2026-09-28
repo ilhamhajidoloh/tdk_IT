@@ -37,6 +37,7 @@ import AttendanceTab from "./components/tabs/AttendanceTab";
 import DashboardTab from "./components/tabs/DashboardTab";
 import CorrespondenceTab from "../components/CorrespondenceTab";
 import NewsTab from "./components/tabs/NewsTab";
+import CalendarTimeline from "../components/CalendarTimeline";
 
 export default function TeacherPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -425,8 +426,8 @@ export default function TeacherPortal() {
       Swal.fire({ icon: "warning", title: "กรุณากรอกชื่อวิชา", confirmButtonColor: "#4f46e5" });
       return;
     }
-    if (!row?.midterm || (!isCombined && !row?.final)) {
-      Swal.fire({ icon: "warning", title: "กรุณากรอกคะแนนให้ครบ", confirmButtonColor: "#4f46e5" });
+    if (!row || (row.midterm === "" && row.final === "")) {
+      Swal.fire({ icon: "warning", title: "กรุณากรอกคะแนนอย่างน้อย 1 ช่อง", confirmButtonColor: "#4f46e5" });
       return;
     }
 
@@ -436,8 +437,8 @@ export default function TeacherPortal() {
       body: JSON.stringify({
         student_id: student.student_id,
         subject: enterSubject.trim(),
-        midterm_score: Number(row.midterm),
-        final_score: isCombined ? 0 : Number(row.final),
+        midterm_score: row.midterm === "" ? null : Number(row.midterm),
+        final_score: isCombined || row.final === "" ? null : Number(row.final),
         term: enterTerm,
       }),
     });
@@ -466,7 +467,7 @@ export default function TeacherPortal() {
     const classStudents = students.filter(s => s.classroom_id === enterClassroom);
     const toSave = classStudents.filter(s => {
       const r = rowScores[s.student_id];
-      return r?.midterm !== "" && (isCombined || r?.final !== "");
+      return r?.midterm !== "" || r?.final !== "";
     });
 
     if (toSave.length === 0) {
@@ -495,8 +496,8 @@ export default function TeacherPortal() {
         body: JSON.stringify({
           student_id: s.student_id,
           subject: enterSubject.trim(),
-          midterm_score: Number(row.midterm),
-          final_score: isCombined ? 0 : Number(row.final),
+          midterm_score: row.midterm === "" ? null : Number(row.midterm),
+          final_score: isCombined || row.final === "" ? null : Number(row.final),
           term: enterTerm,
         }),
       });
@@ -1075,27 +1076,33 @@ export default function TeacherPortal() {
         )}
 
         {activeTab === "dashboard" && (
-          <DashboardTab
-            isGradingActive={isGradingActive}
-            settingsStartDate={settingsStartDate}
-            settingsEndDate={settingsEndDate}
-            teacherName={teacherUser?.username || "ครู"}
-            homeroomClass={homeroomClass}
-            homeroomStudents={homeroomStudents}
-            mySubjects={mySubjects}
-            students={students}
-            classrooms={classrooms}
-            grades={grades}
-            term={enterTerm}
-            myScheduleEntries={myScheduleEntries}
-            setActiveTab={setActiveTab}
-            setEnterSubject={setEnterSubject}
-            setEnterClassroom={setEnterClassroom}
-            setEvaluateSubjectId={setEvalSubjectId}
-            setEvaluateClassroomId={setEvalClassroomId}
-            setAttendanceSubjectId={setAttendanceSubjectId}
-            setAttendanceClassroomId={setAttendanceClassroomId}
-          />
+          <>
+            <CalendarTimeline
+              schoolId={teacherUser?.school_id}
+              academicYear={enterTerm.split("/")[1]}
+            />
+            <DashboardTab
+              isGradingActive={isGradingActive}
+              settingsStartDate={settingsStartDate}
+              settingsEndDate={settingsEndDate}
+              teacherName={teacherUser?.username || "ครู"}
+              homeroomClass={homeroomClass}
+              homeroomStudents={homeroomStudents}
+              mySubjects={mySubjects}
+              students={students}
+              classrooms={classrooms}
+              grades={grades}
+              term={enterTerm}
+              myScheduleEntries={myScheduleEntries}
+              setActiveTab={setActiveTab}
+              setEnterSubject={setEnterSubject}
+              setEnterClassroom={setEnterClassroom}
+              setEvaluateSubjectId={setEvalSubjectId}
+              setEvaluateClassroomId={setEvalClassroomId}
+              setAttendanceSubjectId={setAttendanceSubjectId}
+              setAttendanceClassroomId={setAttendanceClassroomId}
+            />
+          </>
         )}
 
         {activeTab === "enter" && (

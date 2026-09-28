@@ -29,6 +29,7 @@ import YearlyAverageTab from "./components/tabs/YearlyAverageTab";
 import ScheduleTab from "./components/tabs/ScheduleTab";
 import EvaluationTab from "./components/tabs/EvaluationTab";
 import NewsTab from "./components/tabs/NewsTab";
+import CalendarTimeline from "../components/CalendarTimeline";
 
 export default function StudentPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -573,24 +574,30 @@ export default function StudentPortal() {
       {/* ── MAIN ── */}
       <main className="flex-1 max-w-screen-lg mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 pb-24 sm:pb-8">
         {activeTab === "overview" && (
-          <OverviewTab
-            studentName={currentStudent.name}
-            studentCode={currentStudent.student_id}
-            classroomName={formatClassroomOption(classroom)}
-            settingsList={settingsList}
-            activeSettingId={activeSettingId}
-            onChangeSetting={handleChangeSetting}
-            gpaValue={gpaData.value}
-            gpaCredits={gpaData.credits}
-            gpaColor={gpaColor}
-            gpaRingColor={gpaRingColor}
-            filteredGrades={filteredGrades}
-            subjectsList={subjectsList}
-            midtermMax={midtermMax}
-            finalMax={finalMax}
-            myScheduleToday={myScheduleToday}
-            setActiveTab={setActiveTab}
-          />
+          <>
+            <CalendarTimeline
+              schoolId={user?.school_id}
+              academicYear={activeSetting?.academic_year}
+            />
+            <OverviewTab
+              studentName={currentStudent.name}
+              studentCode={currentStudent.student_id}
+              classroomName={formatClassroomOption(classroom)}
+              settingsList={settingsList}
+              activeSettingId={activeSettingId}
+              onChangeSetting={handleChangeSetting}
+              gpaValue={gpaData.value}
+              gpaCredits={gpaData.credits}
+              gpaColor={gpaColor}
+              gpaRingColor={gpaRingColor}
+              filteredGrades={filteredGrades}
+              subjectsList={subjectsList}
+              midtermMax={midtermMax}
+              finalMax={finalMax}
+              myScheduleToday={myScheduleToday}
+              setActiveTab={setActiveTab}
+            />
+          </>
         )}
 
         {activeTab === "grades" && (

@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       s.id AS subject_id,
       s.name AS subject_name,
       s.subject_type,
+      s.score_display_mode,
       s.midterm_max_score,
       s.final_max_score,
       s.credit_hours,
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
     LEFT JOIN grades g ON g.student_id = st.student_id AND g.subject = s.name AND g.term = $2
     WHERE s.setting_id = $1
       AND (COALESCE(s.midterm_max_score, 0) + COALESCE(s.final_max_score, 0)) > 0
-    GROUP BY s.id, s.name, s.subject_type, s.midterm_max_score, s.final_max_score, s.credit_hours, s.sort_order,
+    GROUP BY s.id, s.name, s.subject_type, s.score_display_mode, s.midterm_max_score, s.final_max_score, s.credit_hours, s.sort_order,
              u.id, u.username, sc.classroom_id, c.name, c.name_thai, c.name_rumi, c.name_jawi
     ORDER BY COALESCE(s.sort_order, 999) ASC, u.username NULLS LAST, s.name, c.name
   `, [settingId, termKey]);

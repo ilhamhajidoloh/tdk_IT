@@ -121,7 +121,8 @@ export type Tab =
   | "evaluations"
   | "books"
   | "achievement"
-  | "co-admins";
+  | "co-admins"
+  | "calendar";
 
 export interface EvaluationTopic {
   id: string;
@@ -163,6 +164,7 @@ export interface GradeStatusRow {
   subject_id: string;
   subject_name: string;
   subject_type: string;
+  score_display_mode?: "separate" | "combined" | null;
   midterm_max_score: number | null;
   final_max_score: number | null;
   credit_hours: number | null;

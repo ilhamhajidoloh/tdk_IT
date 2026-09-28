@@ -28,6 +28,7 @@ import GuestChatWidget from "../components/GuestChatWidget";
 import ThemeToggle from "../components/ThemeToggle";
 import { SchoolLogo, updateSchoolDocumentMeta } from "../components/SchoolBrand";
 import { formatThaiDate, formatThaiDateRange } from "../lib/format";
+import CalendarTimeline from "../components/CalendarTimeline";
 
 interface NewsItem {
   id: string;
@@ -382,6 +383,9 @@ function SchoolHomeContent() {
           </div>
         ) : (
           <>
+            {/* Calendar Timeline */}
+            <CalendarTimeline schoolId={schoolInfo?.id} academicYear={undefined} />
+
             {/* Sub-Tab Navigation Bar */}
             <div className="flex flex-wrap items-center gap-2 p-1.5 bg-muted/60 dark:bg-muted/40 rounded-2xl border border-border">
               {/* Tab 1: News & Events */}

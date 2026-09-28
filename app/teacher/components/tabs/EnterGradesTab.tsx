@@ -148,7 +148,7 @@ export default function EnterGradesTab({
               {mySubjects.map(s => {
                 const isSelected = enterSubject === s.name;
                 const savedForSubject = students.filter(st => grades.some(g => g.student_id === st.student_id && g.subject.trim().toLowerCase() === s.name.trim().toLowerCase() && g.term === enterTerm)).length;
-                const totalInSubjectClassrooms = students.filter(st => (s as any).classroom_ids?.includes(st.classroom_id)).length;
+                const totalInSubjectClassrooms = students.filter(st => s.classroom_ids?.includes(st.classroom_id ?? "")).length;
                 return (
                   <button
                     key={s.id}
@@ -213,13 +213,17 @@ export default function EnterGradesTab({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 stagger-children">
               {classrooms.filter(c => mySubjects.find(s => s.name === enterSubject)?.classroom_ids?.includes(c.id)).map(c => {
                 const total = students.filter(s => s.classroom_id === c.id).length;
-                const saved = students.filter(s => s.classroom_id === c.id).filter(s =>
-                  grades.some(g =>
+                const saved = students.filter(s => s.classroom_id === c.id).filter(s => {
+                  const grade = grades.find(g =>
                     g.student_id === s.student_id &&
                     g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
                     g.term === enterTerm
-                  )
-                ).length;
+                  );
+                  if (!grade || grade.midterm_score == null) return false;
+                  // Combined activity subjects store the total in midterm and
+                  // intentionally do not require a separate exam score.
+                  return isCombined || grade.final_score != null;
+                }).length;
                 const isComplete = saved > 0 && saved === total;
                 const isActive = enterClassroom === c.id;
                 return (
@@ -279,7 +283,18 @@ export default function EnterGradesTab({
                 <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
                   <span>{currentClassroomStudents.length} คน</span>
                   <span className="text-subtle-foreground">·</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{savedCount} บันทึกแล้ว</span>
+                  {(() => {
+                    const currentGrades = currentClassroomStudents.map((student) => grades.find((grade) =>
+                      grade.student_id === student.student_id &&
+                      grade.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
+                      grade.term === enterTerm
+                    ));
+                    const midtermCount = currentGrades.filter((grade) => grade?.midterm_score != null).length;
+                    const finalCount = currentGrades.filter((grade) => grade?.final_score != null).length;
+                    return isCombined
+                      ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold">คะแนนรวม {midtermCount}/{currentClassroomStudents.length}</span>
+                      : <span className="text-emerald-600 dark:text-emerald-400 font-semibold">เก็บ {midtermCount}/{currentClassroomStudents.length} | สอบ {finalCount}/{currentClassroomStudents.length}</span>;
+                  })()}
                   {currentSubjectType !== "activity" && (
                     <>
                       <span className="text-subtle-foreground">·</span>
@@ -387,7 +402,9 @@ export default function EnterGradesTab({
                         g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
                         g.term === enterTerm
                     );
-                    const isSaved = !!existingGrade;
+                    const hasMidterm = existingGrade?.midterm_score != null;
+                    const hasFinal = existingGrade?.final_score != null;
+                    const isSaved = isCombined ? hasMidterm : hasMidterm || hasFinal;
 
                     return (
                       <tr
@@ -399,13 +416,7 @@ export default function EnterGradesTab({
                         <td className="px-4 py-3 text-foreground font-medium">
                           <div className="flex items-center gap-2">
                             {s.name}
-                            {isSaved && (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              </span>
-                            )}
+                            {isSaved && <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">{isCombined ? "คะแนนรวมแล้ว" : `${hasMidterm ? "เก็บแล้ว" : "เก็บยังไม่กรอก"} | ${hasFinal ? "สอบแล้ว" : "สอบยังไม่กรอก"}`}</span>}
                           </div>
                         </td>
                         {isCombined ? (
@@ -509,7 +520,7 @@ export default function EnterGradesTab({
             {currentClassroomStudents.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm">ไม่มีนักเรียนในชั้นเรียนนี้</div>
             ) : (
-              currentClassroomStudents.map((s, idx) => {
+              currentClassroomStudents.map((s) => {
                 const row = rowScores[s.student_id] || { midterm: "", final: "" };
                 const midNum = Number(row.midterm) || 0;
                 const finalNum = Number(row.final) || 0;

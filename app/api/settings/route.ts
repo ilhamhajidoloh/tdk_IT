@@ -4,6 +4,7 @@ import { ensureStatusSchema } from "@/app/lib/statusMigration";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
 import { verifyUser } from "@/app/lib/verifyUser";
+import { normalizeScheduleDays } from "@/app/lib/duty";
 
 function formatRow(row: Record<string, unknown>) {
   if (!row) return row;
@@ -17,7 +18,7 @@ function formatRow(row: Record<string, unknown>) {
       : row.end_date ?? null,
     midterm_max_score: Number(row.midterm_max_score ?? 50),
     final_max_score: Number(row.final_max_score ?? 50),
-    schedule_days: Array.isArray(row.schedule_days) ? row.schedule_days : [1, 2, 3, 4, 5],
+    schedule_days: normalizeScheduleDays(row.schedule_days),
     highest_grade_level: row.highest_grade_level ?? "",
     data_retention_years: Number(row.data_retention_years ?? 5),
     auto_cleanup_enabled: row.auto_cleanup_enabled !== false,

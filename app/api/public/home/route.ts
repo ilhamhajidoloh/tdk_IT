@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
-import { addDays, buildCookSchedule, buildTeacherForecast, mondayOf, todayStr } from "@/app/lib/duty";
+import { addDays, buildCookSchedule, buildTeacherForecast, mondayOf, normalizeScheduleDays, todayStr } from "@/app/lib/duty";
 import { getSchoolFromUrl } from "@/app/lib/getSchoolByParam";
 
 const TEACHER_FORECAST_WEEKS = 5;
@@ -27,6 +27,13 @@ interface CookGroupRow {
   id: string;
   name: string;
   order_no: number;
+  members: { id: string; name: string }[];
+}
+
+interface CookDisplayEntry {
+  date: string;
+  id: string;
+  name: string;
   members: { id: string; name: string }[];
 }
 
@@ -78,8 +85,13 @@ export async function GET(req: NextRequest) {
       ),
       pool.query(
         `SELECT schedule_days FROM public.system_settings
-        WHERE (school_id = $1 OR school_id IS NULL) AND end_date >= CURRENT_DATE
-        ORDER BY start_date ASC LIMIT 1`,
+        WHERE (school_id = $1 OR school_id IS NULL)
+        ORDER BY
+          (CURRENT_DATE BETWEEN start_date AND end_date) DESC,
+          school_id NULLS LAST,
+          start_date DESC,
+          term DESC
+        LIMIT 1`,
         [schoolId]
       ),
       pool.query(
@@ -104,7 +116,19 @@ export async function GET(req: NextRequest) {
   const cookOffset = Number(dutySettings.cook_anchor_offset ?? 0);
 
   const rawScheduleDays = scheduleDaysRes.rows[0]?.schedule_days;
-  const scheduleDays: number[] = Array.isArray(rawScheduleDays) ? rawScheduleDays : [1, 2, 3, 4, 5];
+  const scheduleDays: number[] = normalizeScheduleDays(rawScheduleDays);
+
+  // Calendar holidays are the canonical school-calendar input. Merge them
+  // into the duty view so older entries created before the holiday link was
+  // added still pause teacher/cook rotations.
+  const calendarHolidayRes = await pool.query(
+    `SELECT id, event_date AS date, title AS reason
+     FROM public.calendar_events
+     WHERE event_type = 'holiday'
+       AND (school_id = $1 OR school_id IS NULL)
+       AND event_date >= $2 AND event_date <= $3`,
+    [schoolId, addDays(today, -7), holidayWindowEnd]
+  );
 
   // Determine if we have passed the last school day of the current week for cooks (Monday to Sunday)
   const baseWeekStart = mondayOf(today);
@@ -137,12 +161,20 @@ export async function GET(req: NextRequest) {
   const teacherHasPassedLastSchoolDay = today > teacherLastSchoolDay;
 
   // Normalize holiday dates to YYYY-MM-DD strings
-  const holidays: { id: string; date: string; reason: string; applies_to: string }[] = holidaysRes.rows.map((r) => ({
+  const holidays: { id: string; date: string; reason: string; applies_to: string }[] = [
+    ...holidaysRes.rows.map((r) => ({
     id: r.id,
     date: r.date instanceof Date ? r.date.toISOString().split("T")[0] : String(r.date).split("T")[0],
     reason: r.reason,
     applies_to: r.applies_to || 'all',
-  }));
+    })),
+    ...calendarHolidayRes.rows.map((r) => ({
+      id: `calendar-${r.id}`,
+      date: r.date instanceof Date ? r.date.toISOString().split("T")[0] : String(r.date).split("T")[0],
+      reason: r.reason,
+      applies_to: 'all',
+    })),
+  ];
   
   const teacherHolidayDates: string[] = holidays
     .filter((h) => h.applies_to === "all" || h.applies_to === "teachers")
@@ -151,6 +183,21 @@ export async function GET(req: NextRequest) {
   const cookHolidayDates: string[] = holidays
     .filter((h) => h.applies_to === "all" || h.applies_to === "cooks")
     .map((h) => h.date);
+
+  // The duty engine keeps every holiday source above so that rotations remain
+  // correct. For the home-page list, show only dates the school normally opens
+  // and collapse the same holiday imported from both calendar tables.
+  const visibleHolidayMap = new Map<string, (typeof holidays)[number]>();
+  for (const holiday of holidays) {
+    const dayOfWeek = new Date(`${holiday.date}T00:00:00Z`).getUTCDay();
+    if (!scheduleDays.includes(dayOfWeek)) continue;
+    const key = `${holiday.date}|${holiday.reason.trim().toLocaleLowerCase()}`;
+    const existing = visibleHolidayMap.get(key);
+    if (!existing || (existing.applies_to !== "all" && holiday.applies_to === "all")) {
+      visibleHolidayMap.set(key, holiday);
+    }
+  }
+  const visibleHolidays = Array.from(visibleHolidayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 
   const teacherGroups: TeacherGroupRow[] = teacherGroupsRes.rows;
   const cookGroups: CookGroupRow[] = cookGroupsRes.rows;
@@ -166,7 +213,7 @@ export async function GET(req: NextRequest) {
     teacherHolidayDates,
     teacherOffset
   );
-  const teacherCurrent = teacherForecast[0]
+  const teacherCurrent = teacherForecast[0] && !teacherForecast[0].allDaysClosed
     ? {
         ...teacherForecast[0].item,
         weekStart: teacherForecast[0].weekStart,
@@ -196,7 +243,7 @@ export async function GET(req: NextRequest) {
   });
 
   // Construct cookThisWeek representing all schedule days for this week
-  const cookThisWeek: any[] = [];
+  const cookThisWeek: CookDisplayEntry[] = [];
   let curDate = weekStart;
   while (curDate <= weekEnd) {
     const dayOfWeek = new Date(Date.UTC(
@@ -229,10 +276,10 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     news: newsRes.rows,
-    holidays,
+    holidays: visibleHolidays,
     teacherDuty: {
       current: teacherCurrent,
-      forecast: teacherForecast.slice(1).map((f) => ({
+      forecast: teacherForecast.slice(1).filter((f) => !f.allDaysClosed).map((f) => ({
         weekStart: f.weekStart,
         weekEnd: f.weekEnd,
         id: f.item.id,

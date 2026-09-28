@@ -117,7 +117,7 @@ export default function GradeStatusTab({
                 string,
                 {
                   name: string;
-                  subjects: Map<string, { total: number; midterm: number; final: number; classrooms: string[] }>;
+                  subjects: Map<string, { total: number; midterm: number; final: number; classrooms: string[]; requiresFinal: boolean }>;
                 }
               >();
               gradeStatusData.forEach((row) => {
@@ -126,12 +126,19 @@ export default function GradeStatusTab({
                 if (!teacherMap.has(tid)) teacherMap.set(tid, { name: tname, subjects: new Map() });
                 const teacher = teacherMap.get(tid)!;
                 if (!teacher.subjects.has(row.subject_id)) {
-                  teacher.subjects.set(row.subject_id, { total: 0, midterm: 0, final: 0, classrooms: [] });
+                  teacher.subjects.set(row.subject_id, {
+                    total: 0,
+                    midterm: 0,
+                    final: 0,
+                    classrooms: [],
+                    requiresFinal: !(row.subject_type === "activity" && row.score_display_mode === "combined"),
+                  });
                 }
                 const subj = teacher.subjects.get(row.subject_id)!;
                 subj.total += Number(row.total_students);
                 subj.midterm += Number(row.midterm_entered);
                 subj.final += Number(row.final_entered);
+                subj.requiresFinal = subj.requiresFinal || !(row.subject_type === "activity" && row.score_display_mode === "combined");
                 if (row.classroom_name) subj.classrooms.push(row.classroom_name);
               });
 
@@ -139,14 +146,14 @@ export default function GradeStatusTab({
               const totalTeachers = teachers.length;
               const completedTeachers = teachers.filter(([, t]) =>
                 Array.from(t.subjects.values()).every(
-                  (s) => s.total > 0 && s.midterm >= s.total && s.final >= s.total
+                  (s) => s.total > 0 && s.midterm >= s.total && (!s.requiresFinal || s.final >= s.total)
                 )
               ).length;
               const inProgressTeachers = teachers.filter(([, t]) => {
                 const subs = Array.from(t.subjects.values());
                 const hasAny = subs.some((s) => s.midterm > 0 || s.final > 0);
                 const allDone = subs.every(
-                  (s) => s.total > 0 && s.midterm >= s.total && s.final >= s.total
+                  (s) => s.total > 0 && s.midterm >= s.total && (!s.requiresFinal || s.final >= s.total)
                 );
                 return hasAny && !allDone;
               }).length;
@@ -196,7 +203,7 @@ export default function GradeStatusTab({
                         const allMidterm = subs.reduce((a, [, s]) => a + s.midterm, 0);
                         const allFinal = subs.reduce((a, [, s]) => a + s.final, 0);
                         const allDone = subs.every(
-                          ([, s]) => s.total > 0 && s.midterm >= s.total && s.final >= s.total
+                          ([, s]) => s.total > 0 && s.midterm >= s.total && (!s.requiresFinal || s.final >= s.total)
                         );
                         const hasAny = subs.some(([, s]) => s.midterm > 0 || s.final > 0);
                         const overallPct =
@@ -358,8 +365,15 @@ export default function GradeStatusTab({
                             const fin = Number(row.final_entered);
                             const midPct = total > 0 ? Math.round((mid / total) * 100) : 0;
                             const finPct = total > 0 ? Math.round((fin / total) * 100) : 0;
-                            const isDone = total > 0 && mid >= total && fin >= total;
+                            const isDone = total > 0 && mid >= total &&
+                              ((row.subject_type === "activity" && row.score_display_mode === "combined") || fin >= total);
                             const hasAny = mid > 0 || fin > 0;
+                            const isCombined = row.subject_type === "activity" && row.score_display_mode === "combined";
+                            const statusText = isCombined
+                              ? (isDone ? "คะแนนรวมครบ" : `คะแนนรวม ${mid}/${total}`)
+                              : isDone
+                              ? "เก็บครบ | สอบครบ"
+                              : `เก็บ ${mid}/${total} | สอบ ${fin}/${total}`;
 
                             return (
                               <tr
@@ -453,7 +467,7 @@ export default function GradeStatusTab({
                                           d="M5 13l4 4L19 7"
                                         />
                                       </svg>
-                                      ครบ
+                                      {statusText}
                                     </span>
                                   ) : hasAny ? (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
@@ -470,11 +484,11 @@ export default function GradeStatusTab({
                                           d="M12 8v4l3 3"
                                         />
                                       </svg>
-                                      กำลังกรอก
+                                      {statusText}
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border">
-                                      ยังไม่เริ่ม
+                                      {statusText}
                                     </span>
                                   )}
                                 </td>
@@ -497,8 +511,15 @@ export default function GradeStatusTab({
                         const fin = Number(row.final_entered);
                         const midPct = total > 0 ? Math.round((mid / total) * 100) : 0;
                         const finPct = total > 0 ? Math.round((fin / total) * 100) : 0;
-                        const isDone = total > 0 && mid >= total && fin >= total;
+                        const isDone = total > 0 && mid >= total &&
+                          ((row.subject_type === "activity" && row.score_display_mode === "combined") || fin >= total);
                         const hasAny = mid > 0 || fin > 0;
+                        const isCombined = row.subject_type === "activity" && row.score_display_mode === "combined";
+                        const statusText = isCombined
+                          ? (isDone ? "คะแนนรวมครบ" : `คะแนนรวม ${mid}/${total}`)
+                          : isDone
+                          ? "เก็บครบ | สอบครบ"
+                          : `เก็บ ${mid}/${total} | สอบ ${fin}/${total}`;
 
                         return (
                           <div
@@ -522,15 +543,15 @@ export default function GradeStatusTab({
                               </div>
                               {isDone ? (
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shrink-0">
-                                  ครบ
+                                  {statusText}
                                 </span>
                               ) : hasAny ? (
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shrink-0">
-                                  กำลังกรอก
+                                  {statusText}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border shrink-0">
-                                  ยังไม่เริ่ม
+                                  {statusText}
                                 </span>
                               )}
                             </div>

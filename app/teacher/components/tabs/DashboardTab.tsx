@@ -505,14 +505,16 @@ export default function DashboardTab({
                           (st) => st.classroom_id === c.id
                         );
                         const totalCount = classStudents.length;
-                        const gradedCount = classStudents.filter((st) =>
-                          grades.some(
-                            (g) =>
-                              g.student_id === st.student_id &&
-                              g.subject.trim().toLowerCase() ===
-                                subj.name.trim().toLowerCase() &&
-                              g.term === term
-                          )
+                        const subjectGrades = classStudents.map((st) => grades.find(
+                          (g) => g.student_id === st.student_id &&
+                            g.subject.trim().toLowerCase() === subj.name.trim().toLowerCase() &&
+                            g.term === term
+                        ));
+                        const midtermCount = subjectGrades.filter((g) => g?.midterm_score != null).length;
+                        const finalCount = subjectGrades.filter((g) => g?.final_score != null).length;
+                        const requiresFinal = !(subj.subject_type === "activity" && subj.score_display_mode === "combined");
+                        const gradedCount = subjectGrades.filter((g) =>
+                          g?.midterm_score != null && (!requiresFinal || g.final_score != null)
                         ).length;
 
                         const pct =
@@ -537,7 +539,10 @@ export default function DashboardTab({
                                   }`}
                                 >
                                   กรอกแล้ว {gradedCount} / {totalCount} คน (
-                                  {pct.toFixed(0)}%)
+                                  {requiresFinal
+                                    ? `เก็บ ${midtermCount}/${totalCount} | สอบ ${finalCount}/${totalCount}`
+                                    : `คะแนนรวม ${midtermCount}/${totalCount}`}
+                                  {` (${pct.toFixed(0)}%)`}
                                 </span>
                               </div>
                               <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
