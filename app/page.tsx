@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { School as SchoolIcon, ArrowRight, Building2, Sparkles, ShieldCheck, MapPin, Phone } from "lucide-react";
+import { School as SchoolIcon, ArrowRight, Building2, Sparkles, MapPin, Phone } from "lucide-react";
 import ThemeToggle from "./components/ThemeToggle";
 import { SchoolLogo } from "./components/SchoolBrand";
 
@@ -174,10 +174,6 @@ function LandingPageContent() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-card py-6 text-center text-xs text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} ระบบบริหารจัดการโรงเรียน TDK IT Multi-School Platform</p>
-      </footer>
     </div>
   );
 }

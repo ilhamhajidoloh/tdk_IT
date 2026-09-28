@@ -7,6 +7,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import { ToastProvider } from "./components/ToastProvider";
 import { CommandPalette } from "./components/CommandPalette";
 import SchoolDocumentMeta from "./components/SchoolDocumentMeta";
+import AppFooter from "./components/AppFooter";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -77,6 +78,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground selection:bg-primary selection:text-primary-foreground antialiased">
         <Providers>
           {children}
+          <AppFooter />
           <Suspense fallback={null}>
             <SchoolDocumentMeta />
           </Suspense>
