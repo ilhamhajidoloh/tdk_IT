@@ -121,6 +121,7 @@
 
   --font-sans: var(--font-inter), var(--font-sarabun), var(--font-arabic-sans), var(--font-arabic),
     'Inter', 'Sarabun', 'Noto Sans Arabic', 'Noto Naskh Arabic', ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: var(--font-arabic), var(--font-arabic-sans), 'Noto Naskh Arabic', 'Noto Sans Arabic', sans-serif;
 }
 
 /* =========================================================================

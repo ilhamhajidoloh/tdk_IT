@@ -12,30 +12,32 @@ import AppFooter from "./components/AppFooter";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const sarabun = Sarabun({
   variable: "--font-sarabun",
   subsets: ["thai"],
   weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 const arabic = Noto_Naskh_Arabic({
   variable: "--font-arabic",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 const arabicSans = Noto_Sans_Arabic({
   variable: "--font-arabic-sans",
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
