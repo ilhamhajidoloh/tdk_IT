@@ -149,6 +149,7 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "การอ่าน คิดวิเคราะห์ และเขียน": { th: "การอ่าน คิดวิเคราะห์ และเขียน", rumi: "Membaca, Pemikiran Analitikal dan Menulis", jawi: "ممباچا، ڤميکيرن اناليتيکل دان منوليس" },
     "หัวข้อ": { th: "หัวข้อ", rumi: "Topik", jawi: "توڤيق" },
     "ผลการประเมิน": { th: "ผลการประเมิน", rumi: "Keputusan Penilaian", jawi: "کڤوتوسن ڤنيلاين" },
+    "ขนาดตัวอักษร": { th: "ขนาดตัวอักษร", rumi: "Saiz Fon", jawi: "سايز فون" },
   };
 
   if (lang === "ms-rumi") return dict[key]?.rumi || key;
@@ -3614,7 +3615,7 @@ function changeFontSize(dir) {
 
     if (exportMode === "classroom") {
       const subjectsHeaderHTML = selectedSubjects.map(s => `
-        <th style="padding:8px 6px;text-align:center;border:1px solid #cbd5e1;background:#f8fafc;font-size:11px;">
+        <th style="padding:8px 6px;text-align:center;border:1px solid #cbd5e1;background:#f8fafc;font-size:calc(11px * var(--fs));">
           <div dir="auto">${getSubjectDisplayName(s, exportLanguage)}</div>
         </th>
       `).join("");
@@ -3623,29 +3624,29 @@ function changeFontSize(dir) {
         const scoresCellsHTML = selectedSubjects.map(s => {
           const sc = st.subjectScores[s.id];
           if (!sc || sc.total === null) {
-            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;color:#94a3b8;font-size:11px;">—</td>`;
+            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;color:#94a3b8;font-size:calc(11px * var(--fs));">—</td>`;
           }
           if (sc.isActivity) {
             const badgeBg = sc.passed ? "#dcfce7" : "#ffe4e6";
             const badgeFg = sc.passed ? "#166534" : "#991b1b";
-            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;"><span style="background:${badgeBg};color:${badgeFg};padding:2px 6px;border-radius:4px;font-weight:bold;">${sc.gradeStr}</span></td>`;
+            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(11px * var(--fs));"><span style="background:${badgeBg};color:${badgeFg};padding:2px 6px;border-radius:4px;font-weight:bold;">${sc.gradeStr}</span></td>`;
           }
-          return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;">
-            <div style="font-size:14px;font-weight:800;color:#0f172a;line-height:1.2;">${sc.total}</div>
-            <div style="font-size:9px;color:#94a3b8;">${t("เกรด")} ${sc.gradeStr}</div>
+          return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(11px * var(--fs));">
+            <div style="font-size:calc(14px * var(--fs));font-weight:800;color:#0f172a;line-height:1.2;">${sc.total}</div>
+            <div style="font-size:calc(9px * var(--fs));color:#94a3b8;">${t("เกรด")} ${sc.gradeStr}</div>
           </td>`;
         }).join("");
 
         return `
           <tr style="background:${idx % 2 === 0 ? "#ffffff" : "#f8fafc"};">
-            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;font-weight:bold;">${st.student_number || idx + 1}</td>
-            <td style="padding:6px;border:1px solid #e2e8f0;font-size:11px;font-family:monospace;color:#4f46e5;font-weight:bold;text-align:${alignLeftOrRight};">${st.student_id}</td>
-            <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:12px;font-weight:600;text-align:${alignLeftOrRight};">${st.name}</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(11px * var(--fs));font-weight:bold;">${st.student_number || idx + 1}</td>
+            <td style="padding:6px;border:1px solid #e2e8f0;font-size:calc(11px * var(--fs));font-family:monospace;color:#4f46e5;font-weight:bold;text-align:${alignLeftOrRight};">${st.student_id}</td>
+            <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:600;text-align:${alignLeftOrRight};">${st.name}</td>
             ${scoresCellsHTML}
-            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:bold;">${st.totalMainScore}</td>
-            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:bold;color:#2563eb;">${st.percentage.toFixed(1)}%</td>
-            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:extrabold;color:#059669;">${st.gpa.toFixed(2)}</td>
-            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:12px;font-weight:bold;">${st.rank}</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:bold;">${st.totalMainScore}</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:bold;color:#2563eb;">${st.percentage.toFixed(1)}%</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:800;color:#064e3b;">${st.gpa.toFixed(2)}</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:bold;">${st.rank}</td>
           </tr>
         `;
       }).join("");
@@ -3664,14 +3665,14 @@ function changeFontSize(dir) {
 
       const totalRowHTML = `
         <tr style="background:#fef3c7;border-top:2px solid #f59e0b;">
-          <td colspan="3" style="padding:8px 10px;text-align:${alignLeftOrRight};border:1px solid #fbbf24;font-size:12px;font-weight:bold;color:#92400e;">${t("คะแนนรวมของแต่ละวิชา")}</td>
+          <td colspan="3" style="padding:8px 10px;text-align:${alignLeftOrRight};border:1px solid #fbbf24;font-size:calc(12px * var(--fs));font-weight:bold;color:#92400e;">${t("คะแนนรวมของแต่ละวิชา")}</td>
           ${selectedSubjects.map(s => {
             if (s.subject_type === "activity") {
-              return `<td style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:11px;color:#78716c;">—</td>`;
+              return `<td style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:calc(11px * var(--fs));color:#78716c;">—</td>`;
             }
-            return `<td style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:12px;font-weight:bold;color:#b45309;">${subjectTotals[s.id]}</td>`;
+            return `<td style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:calc(12px * var(--fs));font-weight:bold;color:#b45309;">${subjectTotals[s.id]}</td>`;
           }).join("")}
-          <td colspan="4" style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:11px;color:#78716c;">—</td>
+          <td colspan="4" style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:calc(11px * var(--fs));color:#78716c;">—</td>
         </tr>
       `;
 
@@ -3685,24 +3686,57 @@ function changeFontSize(dir) {
             @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap');
             body { font-family: 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Sarabun', 'Inter', sans-serif; margin: 20px; color: #1e293b; background: #fff; direction: ${langDir}; text-align: ${alignLeftOrRight}; }
             .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
-            .header h1 { margin: 0; font-size: 20px; font-weight: 800; color: #0f172a; }
-            .header h2 { margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #475569; }
-            .meta { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 12px; font-weight: 500; }
+            .header h1 { margin: 0; font-size: calc(20px * var(--fs)); font-weight: 800; color: #0f172a; }
+            .header h2 { margin: 4px 0 0; font-size: calc(15px * var(--fs)); font-weight: 600; color: #475569; }
+            .meta { display: flex; justify-content: space-between; font-size: calc(12px * var(--fs)); color: #64748b; margin-bottom: 12px; font-weight: 500; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
             th { background: #f1f5f9; color: #1e293b; font-weight: 700; }
             .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding: 0 40px; page-break-inside: avoid; }
             .sig-box { text-align: center; width: 220px; }
             .sig-line { border-bottom: 1px dotted #94a3b8; margin-top: 40px; margin-bottom: 6px; }
-            .print-btn { position: fixed; top: 16px; ${exportLanguage === "ms-jawi" ? "left: 16px;" : "right: 16px;"} padding: 10px 20px; background: #4f46e5; color: #fff; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); font-size: 13px; z-index: 100; }
+            :root { --fs: 1; }
+            .toolbar { position: fixed; top: 16px; ${exportLanguage === "ms-jawi" ? "left: 16px;" : "right: 16px;"} display: flex; align-items: center; gap: 8px; z-index: 100; }
+            .fs-group { display: flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 4px 6px; box-shadow: 0 4px 12px rgba(15,23,42,0.08); font-size: 12px; font-weight: 600; color: #334155; }
+            .fs-btn { min-width: 32px; height: 30px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; border-radius: 7px; font-weight: 800; cursor: pointer; font-size: 13px; }
+            .fs-btn:hover { background: #e2e8f0; }
+            .fs-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+            .fs-val { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
+            .print-btn { padding: 10px 20px; background: #4f46e5; color: #fff; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); font-size: 13px; }
             @media print {
-              .print-btn { display: none; }
+              .toolbar { display: none; }
               body { margin: 0; }
               @page { size: A4 landscape; margin: 10mm; }
             }
           </style>
         </head>
         <body>
-          <button class="print-btn" onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
+          <div class="toolbar">
+            <div class="fs-group" role="group" aria-label="${t("ขนาดตัวอักษร")}">
+              <span>${t("ขนาดตัวอักษร")}</span>
+              <button type="button" class="fs-btn" id="fs-dec" aria-label="${t("ขนาดตัวอักษร")} -">A−</button>
+              <span class="fs-val" id="fs-val" aria-live="polite">100%</span>
+              <button type="button" class="fs-btn" id="fs-inc" aria-label="${t("ขนาดตัวอักษร")} +">A+</button>
+            </div>
+            <button type="button" class="print-btn" onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
+          </div>
+          <script>
+            (function () {
+              var KEY = "tdk-export-classroom-fs", MIN = 0.7, MAX = 1.6, STEP = 0.1;
+              var scale = 1;
+              try { var saved = parseFloat(localStorage.getItem(KEY)); if (saved >= MIN && saved <= MAX) scale = saved; } catch (e) {}
+              var dec = document.getElementById("fs-dec"), inc = document.getElementById("fs-inc"), val = document.getElementById("fs-val");
+              function apply() {
+                document.documentElement.style.setProperty("--fs", String(scale));
+                val.textContent = Math.round(scale * 100) + "%";
+                dec.disabled = scale <= MIN + 0.001;
+                inc.disabled = scale >= MAX - 0.001;
+                try { localStorage.setItem(KEY, String(scale)); } catch (e) {}
+              }
+              dec.onclick = function () { scale = Math.max(MIN, Math.round((scale - STEP) * 10) / 10); apply(); };
+              inc.onclick = function () { scale = Math.min(MAX, Math.round((scale + STEP) * 10) / 10); apply(); };
+              apply();
+            })();
+          </script>
           <div class="header">
             <h1>${exportType === "yearly" ? `${t("รายงานสรุปผลการเรียนประจำชั้นเรียน")} (${t("เฉลี่ยทั้งปี")})` : t("รายงานสรุปผลการเรียนประจำชั้นเรียน")}</h1>
             <h2>${exportType === "yearly" ? `${t("ชั้นเรียน")} ${getClassroomDisplayName(classroom, exportLanguage)} — ${t("ปีการศึกษา")} ${setting.academic_year} (${t("เฉลี่ยทั้งปี")})` : `${t("ชั้นเรียน")} ${getClassroomDisplayName(classroom, exportLanguage)} — ${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}`}</h2>
@@ -3714,14 +3748,14 @@ function changeFontSize(dir) {
           <table>
             <thead>
               <tr>
-                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:40px;font-size:11px;">${t("ลำดับ")}</th>
-                <th style="padding:8px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;width:90px;font-size:11px;">${t("รหัสประจำตัว")}</th>
-                <th style="padding:8px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;font-size:11px;">${t("ชื่อ - นามสกุล")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:40px;font-size:calc(11px * var(--fs));">${t("ลำดับ")}</th>
+                <th style="padding:8px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;width:90px;font-size:calc(11px * var(--fs));">${t("รหัสประจำตัว")}</th>
+                <th style="padding:8px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;font-size:calc(11px * var(--fs));">${t("ชื่อ - นามสกุล")}</th>
                 ${subjectsHeaderHTML}
-                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:70px;font-size:11px;">${t("รวมคะแนน")}</th>
-                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:65px;font-size:11px;">${t("เฉลี่ย %")}</th>
-                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:11px;">${t("GPA")}</th>
-                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:11px;">${t("อันดับ")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:70px;font-size:calc(11px * var(--fs));">${t("รวมคะแนน")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:65px;font-size:calc(11px * var(--fs));">${t("เฉลี่ย %")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:calc(11px * var(--fs));">${t("GPA")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:calc(11px * var(--fs));">${t("อันดับ")}</th>
               </tr>
             </thead>
             <tbody>
@@ -3733,13 +3767,13 @@ function changeFontSize(dir) {
           <div class="signatures">
             <div class="sig-box">
               <div class="sig-line"></div>
-              <div style="font-size:12px;font-weight:bold;">( ${homeroomTeacher?.username || "........................................................"} )</div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
+              <div style="font-size:calc(12px * var(--fs));font-weight:bold;">( ${homeroomTeacher?.username || "........................................................"} )</div>
+              <div style="font-size:calc(11px * var(--fs));color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
             </div>
             <div class="sig-box">
               <div class="sig-line"></div>
-              <div style="font-size:12px;font-weight:bold;">( ${setting.academic_head || "........................................................"} )</div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
+              <div style="font-size:calc(12px * var(--fs));font-weight:bold;">( ${setting.academic_head || "........................................................"} )</div>
+              <div style="font-size:calc(11px * var(--fs));color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
             </div>
           </div>
         </body>
