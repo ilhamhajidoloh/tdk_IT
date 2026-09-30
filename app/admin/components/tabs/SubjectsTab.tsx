@@ -3,6 +3,7 @@ import { type DBSubject, type SystemSetting } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
 import PermissionGate from "@/app/components/PermissionGate";
+import SubjectMissingScores from "./SubjectMissingScores";
 
 interface SubjectsTabProps {
   settingsList: SystemSetting[];
@@ -30,6 +31,13 @@ export default function SubjectsTab({
   token,
 }: SubjectsTabProps) {
   const [subTab, setSubTab] = useState<SubjectSubTab>("list");
+  const [scoreSubject, setScoreSubject] = useState<DBSubject | null>(null);
+
+  const selectedSetting = settingsList.find(setting => setting.id === selectedSubjectSettingId);
+
+  if (scoreSubject && selectedSetting) {
+    return <div className="p-8"><SubjectMissingScores subject={scoreSubject} setting={selectedSetting} token={token} onBack={() => setScoreSubject(null)} /></div>;
+  }
 
   return (
     <div className="p-8">
@@ -202,6 +210,16 @@ export default function SubjectsTab({
                                 แก้ไขชื่อวิชา
                               </button>
                             </PermissionGate>
+                            {(Number(sub.midterm_max_score) || 0) + (Number(sub.final_max_score) || 0) > 0 && (
+                              <PermissionGate permission="scores.view">
+                                <button
+                                  onClick={() => setScoreSubject(sub)}
+                                  className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                >
+                                  เติมคะแนนที่ขาด
+                                </button>
+                              </PermissionGate>
+                            )}
                             <PermissionGate permission="subjects.delete">
                               <button
                                 onClick={() => handleDeleteSubject(sub.id, sub.name)}
@@ -267,6 +285,11 @@ export default function SubjectsTab({
                           แก้ไขชื่อวิชา
                         </button>
                       </PermissionGate>
+                      {(Number(sub.midterm_max_score) || 0) + (Number(sub.final_max_score) || 0) > 0 && (
+                        <PermissionGate permission="scores.view">
+                          <button onClick={() => setScoreSubject(sub)} className="flex-1 text-center text-emerald-600 dark:text-emerald-400 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg font-bold text-xs border-0 cursor-pointer">เติมคะแนนที่ขาด</button>
+                        </PermissionGate>
+                      )}
                       <PermissionGate permission="subjects.delete">
                         <button
                           onClick={() => handleDeleteSubject(sub.id, sub.name)}

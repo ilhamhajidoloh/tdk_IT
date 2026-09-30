@@ -465,7 +465,7 @@ export default function StudentScoresTab({
                           </div>
                         </div>
                         {/* Edit Buttons for Admin */}
-                        <div className="flex items-center gap-2">
+                        <div className="hidden">
                           {isEditing ? (
                             <>
                               <button
@@ -502,6 +502,7 @@ export default function StudentScoresTab({
                             </button>
                           )}
                         </div>
+                        <div className="text-xs font-semibold text-muted-foreground">เติมคะแนนที่ขาดได้จาก จัดการวิชาเรียน</div>
                       </div>
 
                       <div className="card-modern overflow-hidden">
