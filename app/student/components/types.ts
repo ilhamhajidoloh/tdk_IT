@@ -110,6 +110,7 @@ export interface GradeInfo {
 }
 
 export function getGradeInfo(percent: number): GradeInfo {
+  if (percent >= 95) return { letter: "A+", point: "4.0", color: "bg-emerald-200 text-emerald-800 border-emerald-300 dark:bg-emerald-500/25 dark:text-emerald-200 dark:border-emerald-400/40", bar: "bg-emerald-600" };
   if (percent >= 80) return { letter: "A", point: "4.0", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" };
   if (percent >= 75) return { letter: "B+", point: "3.5", color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", bar: "bg-green-500" };
   if (percent >= 70) return { letter: "B", point: "3.0", color: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:border-teal-500/30", bar: "bg-teal-500" };

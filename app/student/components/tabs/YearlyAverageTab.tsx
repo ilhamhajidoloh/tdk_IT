@@ -145,7 +145,9 @@ export default function YearlyAverageTab({ combinedGpaData, settingsList = [] }:
                     : { letter: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" }
                   )
               )
-            : (sub.percent >= 80
+            : (sub.percent >= 95
+                ? { letter: "A+", color: "bg-emerald-200 text-emerald-800 border-emerald-300 dark:bg-emerald-500/25 dark:text-emerald-200 dark:border-emerald-400/40", bar: "bg-emerald-600" }
+                : sub.percent >= 80
                 ? { letter: "A", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" }
                 : sub.percent >= 75
                 ? { letter: "B+", color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", bar: "bg-green-500" }

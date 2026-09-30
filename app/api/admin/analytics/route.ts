@@ -90,6 +90,18 @@ export async function GET(req: NextRequest) {
       grades = gradesRes.rows;
     }
 
+    // A configured score field alone does not make a subject meaningful in the
+    // analytics screen. Keep only subjects that actually have a saved score.
+    const recordedSubjectKeys = new Set(
+      grades
+        .filter((grade) => grade.midterm_score !== null || grade.final_score !== null)
+        .map((grade) => grade.subject?.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const gradedScoreSubjects = scoreSubjects.filter((subject) =>
+      recordedSubjectKeys.has(subject.name.trim().toLowerCase())
+    );
+
     // 4. Fetch Evaluation Records
     let evalRecords: any[] = [];
     const subjectIds = subjects.map((s: any) => s.id);
@@ -140,7 +152,7 @@ export async function GET(req: NextRequest) {
     grades.forEach((g: any) => {
       const stdId = g.student_id;
       const subjKey = g.subject ? g.subject.trim().toLowerCase() : "";
-      if (!subjKey) return;
+      if (!subjKey || (g.midterm_score === null && g.final_score === null)) return;
 
       const mid = g.midterm_score !== null ? Number(g.midterm_score) : 0;
       const fin = g.final_score !== null ? Number(g.final_score) : 0;
@@ -199,7 +211,7 @@ export async function GET(req: NextRequest) {
       let totalGpaPoints = 0;
       let studentWithGpaCount = 0;
 
-      const subjectBreakdown = scoreSubjects.map((subj: any) => {
+      const subjectBreakdown = gradedScoreSubjects.map((subj: any) => {
         const subjKey = subj.name.trim().toLowerCase();
         const maxScorePerStudent = subjectMaxMap.get(subjKey) || 100;
 
@@ -262,10 +274,10 @@ export async function GET(req: NextRequest) {
         gpa_avg: parseFloat(gpaAvg.toFixed(2)),
         subjects: subjectBreakdown,
       };
-    }).filter((classroom) => classroom.student_count > 0 && scoreSubjects.length > 0);
+    }).filter((classroom) => classroom.student_count > 0);
 
     // Subject Comparisons
-    const subjectStats = scoreSubjects.map((subj: any) => {
+    const subjectStats = gradedScoreSubjects.map((subj: any) => {
       const subjKey = subj.name.trim().toLowerCase();
       const maxScorePerStudent = subjectMaxMap.get(subjKey) || 100;
 
@@ -279,7 +291,9 @@ export async function GET(req: NextRequest) {
         "4.0": 0, "3.5": 0, "3.0": 0, "2.5": 0, "2.0": 0, "1.5": 0, "1.0": 0, "0.0": 0,
       };
 
-      const clsBreakdown = classrooms.map((cls: any) => {
+      const clsBreakdown = classrooms
+        .filter((cls) => (classroomStudentsMap.get(cls.id) || []).length > 0)
+        .map((cls: any) => {
         const clsStudents = classroomStudentsMap.get(cls.id) || [];
         let clsSubjScore = 0;
         let clsGradedCount = 0;
@@ -314,7 +328,8 @@ export async function GET(req: NextRequest) {
           avg_percentage: parseFloat(clsAvgPercentage.toFixed(2)),
           raw_avg_score: parseFloat(clsRawAvg.toFixed(2)),
         };
-      });
+        })
+        .filter((classroom) => classroom.graded_count > 0);
 
       const avgPercentage = totalMaxSubjectScore > 0 ? (totalSubjectScore * 100) / totalMaxSubjectScore : 0;
       const rawAvgScore = gradedCount > 0 ? (totalSubjectScore / gradedCount) : 0;
@@ -436,7 +451,7 @@ export async function GET(req: NextRequest) {
       school_avg_percentage: schoolAvgPercentage,
       total_students: students.length,
       total_classrooms: classroomStats.length,
-      total_subjects: scoreSubjects.length,
+      total_subjects: gradedScoreSubjects.length,
       top_classroom: sortedClassrooms[0] || null,
       lowest_classroom: sortedClassrooms[sortedClassrooms.length - 1] || null,
       top_subject: sortedSubjects[0] || null,
@@ -452,7 +467,7 @@ export async function GET(req: NextRequest) {
       term_key: termKey,
       kpi: kpiSummary,
       classrooms: classroomStats,
-      subjects: subjectStats,
+      subjects: subjectStats.filter((subject) => subject.graded_students > 0),
       grade_distribution: gradeDistribution,
       character_topics: characterTopics,
       rwt_topics: rwtTopics,

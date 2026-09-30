@@ -212,6 +212,7 @@ export interface GradeLabelInfo {
 
 export function getGradeLabel(total: number, maxTotal: number): GradeLabelInfo {
   const percent = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+  if (percent >= 95) return { label: "A+", point: "4.0", color: "bg-emerald-200 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-400/40" };
   if (percent >= 80) return { label: "A", point: "4.0", color: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30" };
   if (percent >= 75) return { label: "B+", point: "3.5", color: "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300 border-green-200 dark:border-green-500/30" };
   if (percent >= 70) return { label: "B", point: "3.0", color: "bg-teal-100 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-500/30" };

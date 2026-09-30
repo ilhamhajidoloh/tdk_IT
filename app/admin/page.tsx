@@ -3616,7 +3616,6 @@ function changeFontSize(dir) {
       const subjectsHeaderHTML = selectedSubjects.map(s => `
         <th style="padding:8px 6px;text-align:center;border:1px solid #cbd5e1;background:#f8fafc;font-size:11px;">
           <div dir="auto">${getSubjectDisplayName(s, exportLanguage)}</div>
-          <div style="font-weight:normal;color:#64748b;font-size:10px;">${s.subject_type === "activity" ? t("กิจกรรม") : `${s.credit_hours} ${t("นก.")}`}</div>
         </th>
       `).join("");
 
@@ -3632,8 +3631,8 @@ function changeFontSize(dir) {
             return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;"><span style="background:${badgeBg};color:${badgeFg};padding:2px 6px;border-radius:4px;font-weight:bold;">${sc.gradeStr}</span></td>`;
           }
           return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:11px;">
-            <div style="font-weight:bold;">${sc.total}</div>
-            <div style="font-size:10px;color:#475569;">${t("เกรด")} ${sc.gradeStr}</div>
+            <div style="font-size:14px;font-weight:800;color:#0f172a;line-height:1.2;">${sc.total}</div>
+            <div style="font-size:9px;color:#94a3b8;">${t("เกรด")} ${sc.gradeStr}</div>
           </td>`;
         }).join("");
 
