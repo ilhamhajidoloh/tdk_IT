@@ -182,7 +182,8 @@ export default function CoAdminsTab({ token, selectedSchoolId }: CoAdminsTabProp
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-xs">
+        <>
+        <div className="hidden overflow-x-auto rounded-2xl border border-border bg-card shadow-xs md:block">
           <table className="w-full text-left">
             <thead className="bg-muted text-muted-foreground text-xs uppercase font-semibold">
               <tr>
@@ -283,6 +284,48 @@ export default function CoAdminsTab({ token, selectedSchoolId }: CoAdminsTabProp
             </tbody>
           </table>
         </div>
+        <div className="space-y-3 md:hidden">
+          {filteredCoAdmins.map((coAdmin) => {
+            const perms = coAdmin.admin_permissions || {};
+            const activeCategories = Object.keys(perms).filter((cat) => {
+              const catObj = perms[cat as keyof typeof perms];
+              return catObj && Object.values(catObj).some((value) => value === true);
+            });
+            const totalGranted = Object.values(perms).reduce(
+              (total, category) => total + (category ? Object.values(category).filter(Boolean).length : 0),
+              0,
+            );
+
+            return (
+              <article key={coAdmin.id} className="card-modern space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 text-sm font-extrabold text-white shadow-sm">
+                      {coAdmin.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate font-bold text-foreground">{coAdmin.username}</div>
+                      <div className="truncate text-xs text-muted-foreground">{coAdmin.email || "-"}</div>
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-bold text-foreground">{totalGranted}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeCategories.map((catKey) => {
+                    const catDef = PERMISSION_CATEGORIES.find((category) => category.key === catKey);
+                    const actionCount = Object.values(perms[catKey as keyof typeof perms] || {}).filter(Boolean).length;
+                    return <span key={catKey} className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-300">{catDef?.label || catKey} ({actionCount})</span>;
+                  })}
+                </div>
+                <div className="flex justify-end gap-2 border-t border-border pt-2">
+                  <button onClick={() => handleOpenEditModal(coAdmin)} className="rounded-xl p-2 text-indigo-600 transition-all hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/20" title="Edit"><Edit2 className="h-4 w-4" /></button>
+                  <button onClick={() => handleRevokeCoAdmin(coAdmin)} className="rounded-xl p-2 text-rose-600 transition-all hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/20" title="Remove"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        </>
       )}
 
       {/* Permission Modal */}

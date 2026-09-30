@@ -840,7 +840,7 @@ export default function AnalyticsDashboardTab({
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-muted/60 text-muted-foreground text-xs uppercase font-bold border-b border-border">
                       <tr>
@@ -953,6 +953,13 @@ export default function AnalyticsDashboardTab({
                       })}
                     </tbody>
                   </table>
+                </div>
+                <div className="space-y-3 p-4 md:hidden">
+                  {displayedClassrooms.map((cls, index) => {
+                    const difference = cls.overall_avg_percentage - data.kpi.school_avg_percentage;
+                    const isAbove = difference >= 0;
+                    return <button key={cls.classroom_id} type="button" onClick={() => setInspectClassroom(cls)} className="card-modern w-full p-4 text-left"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{getClassroomName(cls)}</div><div className="mt-0.5 text-xs text-muted-foreground">{cls.student_count} คน</div></div><span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-black text-foreground">#{index + 1}</span></div><div className="mt-3 grid grid-cols-2 gap-2 border-y border-border py-3 text-center"><div><div className="text-xs text-muted-foreground">คะแนนเฉลี่ย</div><div className="font-black text-foreground">{cls.overall_avg_percentage}%</div></div><div><div className="text-xs text-muted-foreground">GPA</div><div className="font-black text-foreground">{cls.gpa_avg.toFixed(2)}</div></div></div><div className={isAbove ? "mt-3 text-xs font-bold text-emerald-600" : "mt-3 text-xs font-bold text-amber-600"}>{isAbove ? `สูงกว่าเกณฑ์ +${difference.toFixed(1)}%` : `ต่ำกว่าเกณฑ์ ${difference.toFixed(1)}%`}</div></button>;
+                  })}
                 </div>
               </div>
             </div>
@@ -1179,7 +1186,7 @@ export default function AnalyticsDashboardTab({
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-muted/60 text-muted-foreground text-xs uppercase font-bold border-b border-border">
                       <tr>
@@ -1284,6 +1291,12 @@ export default function AnalyticsDashboardTab({
                       })}
                     </tbody>
                   </table>
+                </div>
+                <div className="space-y-3 p-4 md:hidden">
+                  {processedSubjects.map((subject) => {
+                    const isAbove = subject.avg_percentage >= data.kpi.school_avg_percentage;
+                    return <button key={subject.subject_id} type="button" onClick={() => setSelectedSubject(subject)} className="card-modern w-full p-4 text-left"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{subject.subject_name}</div><div className="mt-0.5 text-xs text-muted-foreground">{subject.graded_students} คน · {subject.credit_hours || 0} หน่วยกิต</div></div><span className={isAbove ? "shrink-0 rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-600" : "shrink-0 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-600"}>{subject.avg_percentage}%</span></div><div className="mt-3 grid grid-cols-2 gap-2 border-y border-border py-3 text-center text-xs"><div><div className="text-muted-foreground">ผ่านเกณฑ์</div><div className="mt-1 font-bold text-foreground">{subject.pass_rate ?? "-"}%</div></div><div><div className="text-muted-foreground">สูงสุด / ต่ำสุด</div><div className="mt-1 font-bold text-foreground">{subject.highest_score} / {subject.lowest_score}</div></div></div></button>;
+                  })}
                 </div>
               </div>
             </div>
@@ -1514,7 +1527,7 @@ export default function AnalyticsDashboardTab({
                     <School className="w-4 h-4 text-indigo-500" />
                     <span>เปรียบเทียบผลสัมฤทธิ์ของวิชานี้ แยกตามห้องเรียน</span>
                   </h5>
-                  <div className="border border-border rounded-2xl overflow-hidden">
+                  <div className="hidden overflow-hidden rounded-2xl border border-border md:block">
                     <table className="w-full text-sm text-left">
                       <thead className="bg-muted/60 text-muted-foreground text-xs uppercase font-bold border-b border-border">
                         <tr>
@@ -1541,6 +1554,9 @@ export default function AnalyticsDashboardTab({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="space-y-2 md:hidden">
+                    {selectedSubject.classroom_breakdown.map((classroom) => <article key={classroom.classroom_id} className="card-modern flex items-center justify-between gap-3 p-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{classroom.classroom_name}</div><div className="text-xs text-muted-foreground">{classroom.graded_count ?? 0} / {classroom.student_count ?? "-"} คน</div></div><div className="shrink-0 text-right"><div className="font-black text-indigo-600 dark:text-indigo-400">{classroom.avg_percentage}%</div><div className="text-xs text-muted-foreground">{classroom.raw_avg_score !== undefined ? classroom.raw_avg_score.toFixed(1) : "-"}</div></div></article>)}
                   </div>
                 </div>
               </div>
@@ -1604,7 +1620,7 @@ export default function AnalyticsDashboardTab({
                   <h5 className="text-xs font-black uppercase text-muted-foreground tracking-wider flex items-center justify-between">
                     <span>รายวิชาที่สอนในห้องเรียนนี้ ({inspectClassroom.subjects.length} วิชา)</span>
                   </h5>
-                  <div className="border border-border rounded-2xl overflow-hidden">
+                  <div className="hidden overflow-hidden rounded-2xl border border-border md:block">
                     <table className="w-full text-sm text-left">
                       <thead className="bg-muted/60 text-muted-foreground text-xs uppercase font-bold border-b border-border">
                         <tr>
@@ -1655,6 +1671,12 @@ export default function AnalyticsDashboardTab({
                         })}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="space-y-2 md:hidden">
+                    {inspectClassroom.subjects.map((subject) => {
+                      const isAbove = subject.avg_percentage >= data.kpi.school_avg_percentage;
+                      return <article key={subject.subject_id} className="card-modern p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{subject.subject_name}</div><div className="text-xs text-muted-foreground">{subject.graded_count} / {inspectClassroom.student_count} คน</div></div><div className="shrink-0 text-right"><div className="font-black text-foreground">{subject.avg_percentage}%</div><span className={isAbove ? "text-xs font-bold text-emerald-600" : "text-xs font-bold text-amber-600"}>{isAbove ? "สูงกว่าเกณฑ์" : "ต่ำกว่าเกณฑ์"}</span></div></div></article>;
+                    })}
                   </div>
                 </div>
               </div>

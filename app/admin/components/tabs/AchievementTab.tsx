@@ -1016,7 +1016,7 @@ export default function AchievementTab({
         </div>
       ) : (
         <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
                 <tr className="bg-slate-900 text-white font-bold">
@@ -1104,6 +1104,9 @@ export default function AchievementTab({
                 </tr>
               </tfoot>
             </table>
+          </div>
+          <div className="space-y-3 p-4 md:hidden">
+            {filteredMatrixRows.map((row, index) => <article key={row.classroom_id} className="card-modern space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{getClassroomName(row, globalActiveLang)}</div><div className="text-xs text-muted-foreground">{row.student_count} คน</div></div><span className="shrink-0 text-xs font-bold text-muted-foreground">#{index + 1}</span></div><div className="grid grid-cols-2 gap-2 border-y border-border py-3 text-center text-xs"><div><div className="text-muted-foreground">คะแนนรวม</div><div className="mt-1 font-bold text-foreground">{row.total_all_subjects.toLocaleString()}</div></div><div><div className="text-muted-foreground">เฉลี่ยรวม</div><div className="mt-1 font-bold text-indigo-600 dark:text-indigo-400">{row.overall_avg_percentage.toFixed(2)}%</div></div></div><div className="space-y-2">{row.subject_stats.map((stat) => <div key={stat.subject_id} className="flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate text-muted-foreground">{getSubjectName(stat)}</span><span className={stat.avg_percentage >= 50 ? "shrink-0 font-bold text-emerald-600" : "shrink-0 font-bold text-rose-600"}>{stat.avg_percentage.toFixed(2)}%</span></div>)}</div></article>)}
           </div>
         </div>
       )}

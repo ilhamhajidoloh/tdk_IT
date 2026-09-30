@@ -334,7 +334,8 @@ export default function StudentScoresTab({
                 {classroomStudents.length === 0 ? "ไม่มีนักเรียนในห้องนี้" : "ยังไม่มีวิชาที่กำหนดให้ห้องนี้"}
               </div>
             ) : (
-              <div className="card-modern overflow-hidden">
+              <>
+              <div className="hidden card-modern overflow-hidden md:block">
                 <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
@@ -403,6 +404,25 @@ export default function StudentScoresTab({
                   </table>
                 </div>
               </div>
+              <div className="space-y-3 md:hidden">
+                {classroomStudents.map((student, index) => {
+                  let totalScore = 0;
+                  let totalMax = 0;
+                  const subjectScores = classroomSubjects.map((subject) => {
+                    const grade = findGrade(student.student_id, subject.name);
+                    const max = (Number(subject.midterm_max_score) || 50) + (Number(subject.final_max_score) || 50);
+                    const score = grade ? (grade.midterm_score ?? 0) + (grade.final_score ?? 0) : null;
+                    if (subject.subject_type !== "activity" || includeActivityInSum) {
+                      totalScore += score ?? 0;
+                      totalMax += max;
+                    }
+                    return { subject, score, max };
+                  });
+                  const percent = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
+                  return <article key={student.id} className="card-modern space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{student.name}</div><div className="text-xs text-muted-foreground">{student.student_id}</div></div><span className="shrink-0 text-xs font-semibold text-muted-foreground">{index + 1}</span></div><div className="grid grid-cols-2 gap-2 border-y border-border py-3 text-center"><div><div className="text-xs text-muted-foreground">รวม</div><div className="font-bold text-foreground">{totalScore}/{totalMax}</div></div><div><div className="text-xs text-muted-foreground">เฉลี่ย</div><span className={`inline-block rounded-lg border px-2 py-0.5 text-xs font-bold ${gradeInfo(percent).badge}`}>{percent.toFixed(1)}%</span></div></div><div className="space-y-2">{subjectScores.map(({ subject, score, max }) => <div key={subject.id} className="flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate text-muted-foreground">{subject.name}</span><span className={score !== null && score / max < 0.5 ? "shrink-0 font-bold text-rose-600 dark:text-rose-400" : "shrink-0 font-bold text-foreground"}>{score === null ? "—" : `${score}/${max}`}</span></div>)}</div></article>;
+                })}
+              </div>
+              </>
             )
           ) : (
             <div>
@@ -505,7 +525,8 @@ export default function StudentScoresTab({
                         <div className="text-xs font-semibold text-muted-foreground">เติมคะแนนที่ขาดได้จาก จัดการวิชาเรียน</div>
                       </div>
 
-                      <div className="card-modern overflow-hidden">
+                      <>
+                      <div className="hidden card-modern overflow-hidden md:block">
                         <table className="w-full text-sm">
                           <thead className="bg-muted text-muted-foreground text-xs">
                             <tr>
@@ -618,6 +639,15 @@ export default function StudentScoresTab({
                           </tbody>
                         </table>
                       </div>
+                      <div className="space-y-3 md:hidden">
+                        {rows.map(({ su, mid, fin, sum, max, pct }) => {
+                          const info = gradeInfo(pct);
+                          const midMax = Number(su.midterm_max_score) || 50;
+                          const finalMax = Number(su.final_max_score) || 50;
+                          return <article key={su.id} className="card-modern p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{su.name}</div>{(su.name_rumi || su.name_jawi) && <div className="truncate text-xs text-muted-foreground">{[su.name_rumi, su.name_jawi].filter(Boolean).join(" / ")}</div>}</div><span className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-bold ${info.badge}`}>{info.letter}</span></div><div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3 text-center text-xs"><div><div className="text-muted-foreground">เก็บ</div><div className="mt-1 font-bold text-foreground">{mid}/{midMax}</div></div><div><div className="text-muted-foreground">ปลายภาค</div><div className="mt-1 font-bold text-foreground">{fin}/{finalMax}</div></div><div><div className="text-muted-foreground">รวม</div><div className="mt-1 font-bold text-foreground">{sum}/{max}</div></div></div></article>;
+                        })}
+                      </div>
+                      </>
                     </div>
                   );
                 })()

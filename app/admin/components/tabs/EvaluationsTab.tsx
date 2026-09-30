@@ -285,7 +285,8 @@ export default function EvaluationsTab({
               ไม่มีนักเรียนในห้องนี้
             </div>
           ) : (
-            <div className="card-modern overflow-hidden">
+            <>
+            <div className="hidden card-modern overflow-hidden md:block">
               <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10 border-b border-border/80">
@@ -358,6 +359,19 @@ export default function EvaluationsTab({
                 </table>
               </div>
             </div>
+            <div className="space-y-3 md:hidden">
+              {classroomStudents.map((student, index) => (
+                <article key={student.id} className="card-modern space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0"><div className="truncate font-bold text-foreground">{student.name}</div><div className="text-xs text-muted-foreground">{student.student_id}</div></div>
+                    <span className="shrink-0 text-xs font-semibold text-muted-foreground">{index + 1}</span>
+                  </div>
+                  {activeTopics.length > 0 && <div className="space-y-2 border-t border-border pt-3"><div className="text-xs font-bold text-indigo-700 dark:text-indigo-400">คุณลักษณะอันพึงประสงค์</div>{activeTopics.map((topic) => <div key={topic.id} className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">{topic.name_th}</span><RatingBadge rating={findRating(student.student_id, "character", topic.id)} /></div>)}</div>}
+                  <div className="space-y-2 border-t border-border pt-3"><div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">การอ่าน คิดวิเคราะห์ และเขียน</div>{RWT_TOPICS.map((topic) => <div key={topic.key} className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">{topic.th}</span><RatingBadge rating={findRating(student.student_id, "rwt", topic.key)} /></div>)}</div>
+                </article>
+              ))}
+            </div>
+            </>
           )}
         </div>
       )}

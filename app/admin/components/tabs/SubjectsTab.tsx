@@ -633,8 +633,8 @@ function SubjectLanguageSection({
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-left text-sm">
+      <div className="rounded-xl border border-border p-2 md:overflow-x-auto md:p-0">
+        <table className="block w-full text-left text-sm md:table [&_>thead]:hidden md:[&_>thead]:table-header-group [&_>tbody]:block md:[&_>tbody]:table-row-group [&_>tbody>tr]:mb-3 [&_>tbody>tr]:block [&_>tbody>tr]:rounded-xl [&_>tbody>tr]:border [&_>tbody>tr]:border-border md:[&_>tbody>tr]:table-row md:[&_>tbody>tr]:border-0 [&_>tbody>tr>td]:block [&_>tbody>tr>td]:px-4 [&_>tbody>tr>td]:py-2 md:[&_>tbody>tr>td]:table-cell md:[&_>tbody>tr>td]:px-4 md:[&_>tbody>tr>td]:py-3">
           <thead className="bg-muted text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-bold w-12 text-center">#</th>

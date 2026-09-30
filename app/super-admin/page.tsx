@@ -1164,7 +1164,7 @@ export default function SuperAdminPage() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-left text-xs text-foreground">
                   <thead className="bg-muted/60 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border">
                     <tr>
@@ -1242,6 +1242,41 @@ export default function SuperAdminPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+              <div className="space-y-3 p-4 md:hidden">
+                {filteredAdmins.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">ไม่พบผู้ดูแลระบบ</div>
+                ) : (
+                  filteredAdmins.map((admin) => (
+                    <article key={admin.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <ShieldCheck className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-bold text-foreground">{admin.username}</div>
+                            <div className="truncate text-xs text-muted-foreground">{admin.email || "-"}</div>
+                          </div>
+                        </div>
+                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${admin.role === "super_admin" ? "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400" : "border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"}`}>
+                          {admin.role === "super_admin" ? "Super Admin" : "School Admin"}
+                        </span>
+                      </div>
+                      <div className="mt-3 border-t border-border pt-3 text-xs">
+                        <div className="text-muted-foreground">โรงเรียนที่ดูแล</div>
+                        <div className="mt-1 font-bold text-foreground">{admin.role === "super_admin" ? "ทุกโรงเรียน (Platform)" : admin.school_name || "ไม่ระบุ"}</div>
+                        {admin.subdomain && <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">?school={admin.subdomain}</div>}
+                      </div>
+                      {admin.role !== "super_admin" && (
+                        <div className="mt-3 flex justify-end gap-2 border-t border-border pt-3">
+                          <button onClick={() => openEditAdminModal(admin)} className="rounded-lg border border-border bg-card p-2 text-amber-500 shadow-sm hover:bg-muted" title="แก้ไข"><Key className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => handleDeleteAdmin(admin)} className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-red-600 hover:bg-red-500/20 dark:text-red-400" title="ลบ"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                      )}
+                    </article>
+                  ))
+                )}
               </div>
             </div>
           )
