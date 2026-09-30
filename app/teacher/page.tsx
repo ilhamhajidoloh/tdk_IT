@@ -1162,6 +1162,10 @@ export default function TeacherPortal() {
             homeroomStudents={homeroomStudents}
             grades={grades}
             calculateGPAForStudent={calculateGPAForStudent}
+            subjectsList={subjectsList}
+            currentTerm={enterTerm}
+            midtermMax={midtermMax}
+            finalMax={finalMax}
             otherTermSettings={otherTermSettings}
             rankingTermSettingId={rankingTermSettingId}
             setRankingTermSettingId={setRankingTermSettingId}

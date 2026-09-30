@@ -1,11 +1,17 @@
-import { type DBStudent, type DBClassroom, type DBGrade } from "../types";
+import { useState } from "react";
+import { type DBStudent, type DBClassroom, type DBGrade, type DBSubject } from "../types";
 import RankingLists, { type RankingRow } from "../RankingLists";
+import StudentGradesModal from "../modals/StudentGradesModal";
 
 interface HomeroomTabProps {
   homeroomClass: DBClassroom | null;
   homeroomStudents: DBStudent[];
   grades: DBGrade[];
   calculateGPAForStudent: (studentId: string) => string;
+  subjectsList: DBSubject[];
+  currentTerm: string;
+  midtermMax: number;
+  finalMax: number;
 
   otherTermSettings: { id: number; term: string; academic_year: string }[];
   rankingTermSettingId: number | null;
@@ -21,6 +27,10 @@ export default function HomeroomTab({
   homeroomStudents,
   grades,
   calculateGPAForStudent,
+  subjectsList,
+  currentTerm,
+  midtermMax,
+  finalMax,
   otherTermSettings,
   rankingTermSettingId,
   setRankingTermSettingId,
@@ -28,6 +38,8 @@ export default function HomeroomTab({
   rankingsLoaded,
   rankingsData,
 }: HomeroomTabProps) {
+  const [selectedStudent, setSelectedStudent] = useState<DBStudent | null>(null);
+
   if (!homeroomClass) {
     return (
       <div className="space-y-5">
@@ -77,7 +89,7 @@ export default function HomeroomTab({
               <span className="text-xs text-muted-foreground font-normal ml-2">({homeroomClass.name_thai})</span>
             )}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">เกรดเฉลี่ยสะสม (GPA) เฉพาะวิชาหลัก</p>
+          <p className="text-xs text-muted-foreground mt-0.5">เกรดเฉลี่ยสะสม (GPA) เฉพาะวิชาหลัก · กดที่นักเรียนเพื่อดูคะแนนและเกรดรายวิชา</p>
         </div>
 
         {/* Desktop */}
@@ -107,7 +119,14 @@ export default function HomeroomTab({
                   else if (gpaNum < 2.0) { gpaColor = "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/30"; statusLabel = "พอใช้"; }
                   else if (gpaNum < 3.0) { gpaColor = "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"; statusLabel = "ดี"; }
                   return (
-                    <tr key={s.id} className="hover:bg-muted transition-colors">
+                    <tr
+                      key={s.id}
+                      onClick={() => setSelectedStudent(s)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedStudent(s); } }}
+                      tabIndex={0}
+                      aria-label={`ดูคะแนนและเกรดของ ${s.name}`}
+                      className="hover:bg-muted transition-colors cursor-pointer focus:outline-none focus-visible:bg-muted"
+                    >
                       <td className="px-5 py-4 text-center text-muted-foreground text-xs">{idx + 1}</td>
                       <td className="px-5 py-4 font-bold text-indigo-600 dark:text-indigo-400 text-xs">{s.student_id}</td>
                       <td className="px-5 py-4 font-medium text-foreground">{s.name}</td>
@@ -138,7 +157,13 @@ export default function HomeroomTab({
             else if (gpaNum < 2.0) { gpaColor = "bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/30"; statusLabel = "พอใช้"; }
             else if (gpaNum < 3.0) { gpaColor = "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"; statusLabel = "ดี"; }
             return (
-              <div key={s.id} className="p-4 flex items-center gap-3">
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedStudent(s)}
+                aria-label={`ดูคะแนนและเกรดของ ${s.name}`}
+                className="w-full text-left p-4 flex items-center gap-3 bg-transparent border-0 cursor-pointer hover:bg-muted active:bg-muted transition-colors"
+              >
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-foreground truncate">{s.name}</div>
                   <div className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">{s.student_id} · {subjectCount} วิชา</div>
@@ -147,7 +172,7 @@ export default function HomeroomTab({
                   <span className={`px-3 py-1 rounded-xl border font-extrabold text-lg ${gpaColor}`}>{gpa}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${gpaColor}`}>{statusLabel}</span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -192,6 +217,18 @@ export default function HomeroomTab({
       {rankingsLoaded && (
         <RankingLists myClassroomId={myClassroomId} homeroomClassName={homeroomClass?.name} rankingsData={rankingsData} />
       )}
+
+      <StudentGradesModal
+        student={selectedStudent}
+        grades={grades}
+        subjectsList={subjectsList}
+        activeSettingId={activeSettingId}
+        currentTerm={currentTerm}
+        midtermMax={midtermMax}
+        finalMax={finalMax}
+        gpa={selectedStudent ? calculateGPAForStudent(selectedStudent.student_id) : "0.00"}
+        onClose={() => setSelectedStudent(null)}
+      />
     </div>
   );
 }
