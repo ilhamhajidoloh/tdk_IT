@@ -36,18 +36,18 @@ export default function AdminHeader({
   return (
     <header className="header-gradient shadow-sm sticky top-0 z-20 border-b border-border">
       <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
+        <div className="flex min-w-0 flex-1 items-center gap-3.5">
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-15 blur-sm" />
             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shrink-0 bg-card relative border border-border/80">
               <SchoolLogo school={school} schoolKey={schoolKey} className="w-full h-full" />
             </div>
           </div>
-          <div>
-            <h1 className="text-lg font-extrabold text-foreground leading-none gradient-text">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-extrabold text-foreground leading-none gradient-text">
               {school?.name || "ระบบแอดมิน"}
             </h1>
-            <p className="text-xs text-muted-foreground font-medium mt-0.5">
+            <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
               จัดการโครงสร้างระบบและผู้ใช้งาน
             </p>
           </div>
