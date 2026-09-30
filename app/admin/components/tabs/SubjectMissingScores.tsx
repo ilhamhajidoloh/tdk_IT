@@ -111,8 +111,40 @@ export default function SubjectMissingScores({ subject, setting, token, onBack }
       ) : (
         <div className="space-y-4">
           <button onClick={() => setClassroomId("")} className="text-sm font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer border-0 bg-transparent">← เลือกชั้นเรียนอื่น</button>
-          <div className="card-modern overflow-hidden">
-            <div className="px-5 py-4 border-b border-border flex justify-between gap-3"><div className="font-bold text-foreground">{selectedClassroom?.name}</div><div className="text-sm text-muted-foreground">คะแนนเต็ม เก็บ {midMax} / ปลายภาค {finalMax}</div></div>
+          <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <div className="font-bold text-foreground">{selectedClassroom?.name} <span className="text-sm font-medium text-muted-foreground">· {classroomStudents.length} คน</span></div>
+            <div className="text-sm text-muted-foreground">คะแนนเต็ม เก็บ {midMax} / ปลายภาค {finalMax}</div>
+          </div>
+
+          {/* Compact student cards make score entry comfortable on narrow screens. */}
+          <div className="md:hidden space-y-3">
+            {classroomStudents.map((student, index) => {
+              const grade = gradeFor(student.student_id);
+              const draft = drafts[student.student_id] ?? { midterm: "", final: "" };
+              const missingMid = midMax > 0 && grade?.midterm_score == null;
+              const missingFinal = finalMax > 0 && grade?.final_score == null;
+              const complete = !missingMid && !missingFinal;
+              const canSave = draft.midterm !== "" || draft.final !== "";
+              return <div key={student.id} className="card-modern p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div><div className="font-bold text-foreground">{student.student_number ?? index + 1}. {student.name}</div><div className="text-xs text-muted-foreground mt-0.5">{student.student_id}</div></div>
+                  <span className={`shrink-0 px-2 py-1 rounded-lg text-xs font-bold ${complete ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"}`}>{complete ? "ครบแล้ว" : "ยังขาด"}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-xs font-semibold text-muted-foreground">เก็บคะแนน <span className="font-normal">/ {midMax}</span>
+                    {missingMid ? <input value={draft.midterm} onChange={event => setDrafts(prev => ({ ...prev, [student.student_id]: { ...draft, midterm: changeScore(event.target.value, midMax) } }))} inputMode="decimal" type="number" min="0" max={midMax} placeholder="ยังไม่กรอก" className="input-modern mt-1.5 w-full text-center px-2 py-2 text-base" /> : <div className="mt-1.5 rounded-xl bg-muted px-3 py-2 text-center text-base font-bold text-foreground">{grade?.midterm_score ?? "-"}</div>}
+                  </label>
+                  <label className="text-xs font-semibold text-muted-foreground">ปลายภาค <span className="font-normal">/ {finalMax}</span>
+                    {missingFinal ? <input value={draft.final} onChange={event => setDrafts(prev => ({ ...prev, [student.student_id]: { ...draft, final: changeScore(event.target.value, finalMax) } }))} inputMode="decimal" type="number" min="0" max={finalMax} placeholder="ยังไม่กรอก" className="input-modern mt-1.5 w-full text-center px-2 py-2 text-base" /> : <div className="mt-1.5 rounded-xl bg-muted px-3 py-2 text-center text-base font-bold text-foreground">{grade?.final_score ?? "-"}</div>}
+                  </label>
+                </div>
+                {!complete && <button disabled={saving[student.student_id] || !canSave} onClick={() => save(student)} className="w-full min-h-11 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 cursor-pointer">{saving[student.student_id] ? "กำลังบันทึก..." : "บันทึกคะแนน"}</button>}
+              </div>;
+            })}
+            {classroomStudents.length === 0 && <div className="py-10 text-center rounded-2xl bg-muted text-muted-foreground">ไม่มีนักเรียนในชั้นเรียนนี้</div>}
+          </div>
+
+          <div className="hidden md:block card-modern overflow-hidden">
             <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted text-muted-foreground text-xs"><tr><th className="p-3 text-center">#</th><th className="p-3 text-left">นักเรียน</th><th className="p-3 text-center">เก็บคะแนน</th><th className="p-3 text-center">ปลายภาค</th><th className="p-3 text-center">สถานะ</th><th className="p-3" /></tr></thead>
               <tbody className="divide-y divide-border">{classroomStudents.map((student, index) => { const grade = gradeFor(student.student_id); const draft = drafts[student.student_id] ?? { midterm: "", final: "" }; const missingMid = midMax > 0 && grade?.midterm_score == null; const missingFinal = finalMax > 0 && grade?.final_score == null; const complete = !missingMid && !missingFinal; return <tr key={student.id}><td className="p-3 text-center text-muted-foreground">{student.student_number ?? index + 1}</td><td className="p-3"><div className="font-semibold text-foreground">{student.name}</div><div className="text-xs text-muted-foreground">{student.student_id}</div></td><td className="p-3 text-center">{missingMid ? <input value={draft.midterm} onChange={event => setDrafts(prev => ({ ...prev, [student.student_id]: { ...draft, midterm: changeScore(event.target.value, midMax) } }))} type="number" min="0" max={midMax} placeholder={`0-${midMax}`} className="input-modern w-20 text-center px-2 py-1" /> : <span className="font-semibold">{grade?.midterm_score ?? "-"}/{midMax}</span>}</td><td className="p-3 text-center">{missingFinal ? <input value={draft.final} onChange={event => setDrafts(prev => ({ ...prev, [student.student_id]: { ...draft, final: changeScore(event.target.value, finalMax) } }))} type="number" min="0" max={finalMax} placeholder={`0-${finalMax}`} className="input-modern w-20 text-center px-2 py-1" /> : <span className="font-semibold">{grade?.final_score ?? "-"}/{finalMax}</span>}</td><td className="p-3 text-center"><span className={`text-xs font-bold ${complete ? "text-emerald-600" : "text-amber-600"}`}>{complete ? "ครบแล้ว" : "ยังขาด"}</span></td><td className="p-3 text-center">{!complete && <button disabled={saving[student.student_id] || (draft.midterm === "" && draft.final === "")} onClick={() => save(student)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white disabled:opacity-40 cursor-pointer">{saving[student.student_id] ? "กำลังบันทึก" : "บันทึก"}</button>}</td></tr>; })}</tbody>
             </table></div>
