@@ -58,6 +58,53 @@ export async function ensureStatusSchema() {
     await pool.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS sort_order INTEGER");
     await pool.query("ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS name_jawi TEXT");
 
+    // A classroom belongs to one academic term, so its homeroom teacher must
+    // be stored on the classroom rather than on the teacher's global profile.
+    await pool.query("ALTER TABLE classrooms ADD COLUMN IF NOT EXISTS homeroom_teacher_id UUID REFERENCES users(id) ON DELETE SET NULL");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_classrooms_homeroom_teacher ON classrooms(homeroom_teacher_id)");
+    await pool.query(`
+      UPDATE classrooms
+         SET homeroom_teacher_id = (
+           SELECT u.id
+             FROM users u
+            WHERE u.role = 'teacher'
+              AND u.homeroom_classroom_id = classrooms.id::text
+            ORDER BY u.id
+            LIMIT 1
+         )
+       WHERE homeroom_teacher_id IS NULL
+         AND EXISTS (
+           SELECT 1
+             FROM users u
+            WHERE u.role = 'teacher'
+              AND u.homeroom_classroom_id = classrooms.id::text
+         )
+    `);
+
+    // A classroom may have several homeroom teachers, but a teacher may only be
+    // homeroom teacher of one classroom per term. setting_id is copied from the
+    // classroom so the database can enforce that rule with a unique constraint.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS classroom_homeroom_teachers (
+        classroom_id UUID NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+        teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        setting_id BIGINT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        PRIMARY KEY (classroom_id, teacher_id),
+        CONSTRAINT unique_homeroom_teacher_per_term UNIQUE (teacher_id, setting_id)
+      )
+    `);
+    // classrooms.homeroom_teacher_id is the previous single-teacher column; it
+    // is kept only as a migration source and is no longer read by the app.
+    await pool.query(`
+      INSERT INTO classroom_homeroom_teachers (classroom_id, teacher_id, setting_id)
+      SELECT c.id, c.homeroom_teacher_id, c.setting_id
+        FROM classrooms c
+       WHERE c.homeroom_teacher_id IS NOT NULL
+         AND c.setting_id IS NOT NULL
+      ON CONFLICT DO NOTHING
+    `);
+
     // student_gpa_digests table for long-term retention
     await pool.query(`
       CREATE TABLE IF NOT EXISTS student_gpa_digests (

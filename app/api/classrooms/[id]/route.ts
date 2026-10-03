@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function PUT(
   req: NextRequest,
@@ -8,6 +9,7 @@ export async function PUT(
 ) {
   const permError = await requirePermission(req, "classrooms.edit");
   if (permError) return permError;
+  await ensureStatusSchema();
 
   const { id } = await params;
   const { name, name_thai, name_rumi, name_jawi } = await req.json();
@@ -31,6 +33,7 @@ export async function DELETE(
 ) {
   const permError = await requirePermission(req, "classrooms.delete");
   if (permError) return permError;
+  await ensureStatusSchema();
 
   const { id } = await params;
 
@@ -39,7 +42,7 @@ export async function DELETE(
     return NextResponse.json({ error: "ไม่สามารถลบห้องเรียนที่มีนักเรียนอยู่ได้ กรุณาย้ายนักเรียนออกก่อน" }, { status: 400 });
   }
 
-  const teacherCheck = await pool.query("SELECT 1 FROM users WHERE homeroom_classroom_id = $1 LIMIT 1", [id]);
+  const teacherCheck = await pool.query("SELECT 1 FROM classroom_homeroom_teachers WHERE classroom_id = $1 LIMIT 1", [id]);
   if (teacherCheck.rows.length > 0) {
     return NextResponse.json({ error: "ไม่สามารถลบห้องเรียนที่มีครูประจำชั้นอยู่ได้ กรุณายกเลิกครูประจำชั้นก่อน" }, { status: 400 });
   }

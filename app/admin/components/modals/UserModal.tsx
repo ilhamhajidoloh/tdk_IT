@@ -19,9 +19,6 @@ interface UserModalProps {
   setRole: (role: "super_admin" | "admin" | "teacher" | "student") => void;
   studentId: string;
   setStudentId: (studentId: string) => void;
-  homeroomClassroomId: string;
-  setHomeroomClassroomId: (id: string) => void;
-  classrooms: { id: string; name: string }[];
   students: DBStudent[];
   onSave: () => void;
   isClerical: boolean;
@@ -46,9 +43,6 @@ export default function UserModal({
   setRole,
   studentId,
   setStudentId,
-  homeroomClassroomId,
-  setHomeroomClassroomId,
-  classrooms,
   students,
   onSave,
   isClerical,
@@ -377,41 +371,6 @@ export default function UserModal({
           {/* Teacher Fields */}
           {role === "teacher" && (
             <div className="space-y-4 animate-fade-in-up">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  ห้องประจำชั้น (Homeroom)
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
-                  </div>
-                  <select
-                    value={homeroomClassroomId}
-                    onChange={(e) => setHomeroomClassroomId(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border bg-muted/50 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="">-- ไม่มีห้องประจำชั้น --</option>
-                    {classrooms.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-muted-foreground">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
               {/* Clerical Duty checkbox */}
               <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl border border-border animate-fade-in-up">
                 <input

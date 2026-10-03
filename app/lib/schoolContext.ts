@@ -5,6 +5,21 @@ import { getAuthToken } from "@/app/lib/getAuthToken";
 import { headers } from "next/headers";
 import { decode } from "next-auth/jwt";
 import type { AdminPermissions } from "./permissions/types";
+import pool from "./db";
+
+async function isResignedTeacher(userId: unknown, role: unknown) {
+  if (role !== "teacher" || !userId) return false;
+  try {
+    const result = await pool.query(
+      "SELECT COALESCE(status, 'active') AS status FROM users WHERE id = $1",
+      [userId]
+    );
+    return result.rows[0]?.status === "resigned";
+  } catch {
+    // Keep legacy databases available until their status columns are migrated.
+    return false;
+  }
+}
 
 export interface SchoolContext {
   isSuperAdmin: boolean;
@@ -21,6 +36,7 @@ export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext
   if (req) {
     const token = await getAuthToken(req);
     if (token?.id) {
+      if (await isResignedTeacher(token.id, token.role)) return null;
       const isSuperAdmin = token.role === "super_admin";
       const isCoAdmin = Boolean(token.is_co_admin);
       const canAccessAdmin = isSuperAdmin || token.role === "admin" || isCoAdmin;
@@ -46,6 +62,7 @@ export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext
       if (raw && secret) {
         const token = await decode({ token: raw, secret });
         if (token?.id) {
+          if (await isResignedTeacher(token.id, token.role)) return null;
           const isSuperAdmin = token.role === "super_admin";
           const isCoAdmin = Boolean(token.is_co_admin);
           const canAccessAdmin = isSuperAdmin || token.role === "admin" || isCoAdmin;
@@ -70,6 +87,7 @@ export async function getSchoolContext(req?: NextRequest): Promise<SchoolContext
   if (!session?.user) return null;
 
   const user = session.user as any;
+  if (await isResignedTeacher(user.id, user.role)) return null;
   const isSuperAdmin = user.role === "super_admin";
   const isCoAdmin = Boolean(user.is_co_admin);
   const canAccessAdmin = isSuperAdmin || user.role === "admin" || isCoAdmin;

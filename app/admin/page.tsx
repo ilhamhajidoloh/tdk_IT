@@ -13,6 +13,7 @@ import { getClassroomName } from "../lib/classroom";
 import {
   DBUser,
   DBStudent,
+  DBClassroom,
   DBSubject,
   DBGrade,
   SchedulePeriod,
@@ -30,6 +31,7 @@ import CopySubjectsModal from "./components/modals/CopySubjectsModal";
 import CopyClassroomsModal from "./components/modals/CopyClassroomsModal";
 import AssignStudentsModal from "./components/modals/AssignStudentsModal";
 import UserModal from "./components/modals/UserModal";
+import HomeroomTeacherModal from "./components/modals/HomeroomTeacherModal";
 import SubjectModal from "./components/modals/SubjectModal";
 import StudentDetailModal from "./components/modals/StudentDetailModal";
 import SubjectsTab from "./components/tabs/SubjectsTab";
@@ -166,7 +168,7 @@ function LoadingScreen({ title, subtitle, schoolKey }: { title: string; subtitle
 function AdminPortalContent() {
   const [users, setUsers] = useState<DBUser[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [classrooms, setClassrooms] = useState<{ id: string; name: string; setting_id?: number }[]>([]);
+  const [classrooms, setClassrooms] = useState<{ id: string; name: string; setting_id?: number; homeroom_teacher_ids?: string[]; homeroom_teacher_names?: string[] }[]>([]);
   const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
   const [selectedSettingId, setSelectedSettingId] = useState<number | null>(null);
   const [students, setStudents] = useState<DBStudent[]>([]);
@@ -343,10 +345,10 @@ function AdminPortalContent() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"student" | "teacher" | "admin" | "super_admin">("student");
   const [studentId, setStudentId] = useState("");
-  const [homeroomClassroomId, setHomeroomClassroomId] = useState("");
   const [email, setEmail] = useState("");
   const [isClerical, setIsClerical] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const [homeroomTeacherClassroom, setHomeroomTeacherClassroom] = useState<DBClassroom | null>(null);
 
   // Subject Modal State
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
@@ -467,7 +469,7 @@ function AdminPortalContent() {
   // Export Modal specific states to support changing term settings dynamically inside the modal
   const [exportStudents, setExportStudents] = useState<DBStudent[]>([]);
   const [exportSubjects, setExportSubjects] = useState<DBSubject[]>([]);
-  const [exportClassrooms, setExportClassrooms] = useState<{ id: string; name: string; setting_id?: number | null }[]>([]);
+  const [exportClassrooms, setExportClassrooms] = useState<{ id: string; name: string; setting_id?: number | null; homeroom_teacher_ids?: string[]; homeroom_teacher_names?: string[] }[]>([]);
   const [exportDataLoading, setExportDataLoading] = useState(false);
 
   useEffect(() => {
@@ -3343,19 +3345,10 @@ function changeFontSize(dir) {
       return;
     }
 
-    // ดึงข้อมูลครูประจำชั้น
-    let homeroomTeacher: DBUser | null = null;
-    try {
-      const usersRes = await fetch("/api/users", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (usersRes.ok) {
-        const allUsers: DBUser[] = await usersRes.json();
-        homeroomTeacher = allUsers.find(u => u.homeroom_classroom_id === exportClassroomId && u.role === "teacher") || null;
-      }
-    } catch (err) {
-      console.error("Failed to fetch homeroom teacher:", err);
-    }
+    // ครูประจำชั้น (1 ชั้นมีได้หลายคน) มากับข้อมูลชั้นเรียนจาก /api/classrooms แล้ว
+    const homeroomTeacherNames = classroom.homeroom_teacher_names?.length
+      ? classroom.homeroom_teacher_names.join(", ")
+      : "........................................................";
 
     const selectedSubjects = exportSubjectList.filter(s => exportSelectedSubjectIds.includes(s.id));
     if (selectedSubjects.length === 0) {
@@ -3763,7 +3756,7 @@ function changeFontSize(dir) {
           <div class="signatures">
             <div class="sig-box">
               <div class="sig-line"></div>
-              <div style="font-size:calc(12px * var(--fs));font-weight:bold;">( ${homeroomTeacher?.username || "........................................................"} )</div>
+              <div style="font-size:calc(12px * var(--fs));font-weight:bold;">( ${homeroomTeacherNames} )</div>
               <div style="font-size:calc(11px * var(--fs));color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
             </div>
             <div class="sig-box">
@@ -3866,7 +3859,7 @@ function changeFontSize(dir) {
             <div class="signatures">
               <div class="sig-box">
                 <div class="sig-line"></div>
-                <div style="font-size:12px;font-weight:bold;">( ${homeroomTeacher?.username || "........................................................"} )</div>
+                <div style="font-size:12px;font-weight:bold;">( ${homeroomTeacherNames} )</div>
                 <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
               </div>
               <div class="sig-box">
@@ -3936,7 +3929,6 @@ function changeFontSize(dir) {
     setPassword("");
     setRole(user.role);
     setStudentId(user.student_id || "");
-    setHomeroomClassroomId(user.homeroom_classroom_id || "");
     setEmail(user.email || "");
     setIsClerical(user.is_clerical || false);
     setValidationError("");
@@ -3951,11 +3943,70 @@ function changeFontSize(dir) {
     setPassword("");
     setRole("student");
     setStudentId("");
-    setHomeroomClassroomId("");
     setEmail("");
     setIsClerical(false);
     setValidationError("");
     setIsUserModalOpen(true);
+  };
+
+  const handleResignTeacher = async (teacher: DBUser) => {
+    const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;",
+    }[char] || char));
+    const replacementOptions = users
+      .filter(user => user.role === "teacher" && user.id !== teacher.id && user.status !== "resigned")
+      .map(user => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.username)}</option>`)
+      .join("");
+
+    const result = await Swal.fire<{ reason: string; replacementId: string }>({
+      title: `ให้ ${teacher.username} ลาออก?`,
+      html: `
+        <p style="margin:0 0 12px;color:#475569;font-size:14px;text-align:left">บัญชีจะเข้าใช้งานต่อไม่ได้ คุณสามารถโอนวิชาและตารางสอนให้ครูคนอื่นได้ทันที</p>
+        <label style="display:block;text-align:left;font-weight:600;font-size:13px;margin-bottom:6px">เหตุผล (ไม่บังคับ)</label>
+        <textarea id="resignation-reason" class="swal2-textarea" placeholder="เช่น ย้ายงาน / เกษียณ" style="margin:0;width:100%;box-sizing:border-box"></textarea>
+        <label style="display:block;text-align:left;font-weight:600;font-size:13px;margin:14px 0 6px">โอนงานให้ครู</label>
+        <select id="replacement-teacher" class="swal2-select" style="margin:0;width:100%">
+          <option value="">ยังไม่โอนย้าย (ยกเลิกการมอบหมายเดิม)</option>
+          ${replacementOptions}
+        </select>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ยืนยันการลาออก",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#d97706",
+      preConfirm: () => {
+        const popup = Swal.getPopup();
+        const reason = (popup?.querySelector("#resignation-reason") as HTMLTextAreaElement | null)?.value.trim() || "";
+        const replacementId = (popup?.querySelector("#replacement-teacher") as HTMLSelectElement | null)?.value || "";
+        return { reason, replacementId };
+      },
+    });
+    if (!result.isConfirmed || !result.value) return;
+
+    const response = await fetch(`/api/users/${teacher.id}/resign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        resignation_reason: result.value.reason,
+        replacement_teacher_id: result.value.replacementId || null,
+      }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      Swal.fire("ดำเนินการไม่สำเร็จ", error.error || "ไม่สามารถบันทึกการลาออกได้", "error");
+      return;
+    }
+    const data = await response.json();
+    if (token) await loadData(token);
+    Swal.fire({
+      icon: "success",
+      title: "บันทึกการลาออกแล้ว",
+      text: data.replacement_teacher_id
+        ? `โอนรายวิชา ${data.transferred_subjects} รายวิชาให้ครูทดแทนแล้ว`
+        : `ยกเลิกการมอบหมาย ${data.transferred_subjects} รายวิชาแล้ว`,
+      confirmButtonColor: "#4f46e5",
+    });
   };
 
   const handleSaveUserSubmit = async () => {
@@ -3976,7 +4027,6 @@ function changeFontSize(dir) {
       ...(password.trim() ? { password: password.trim() } : {}),
       ...(role === "student" ? { student_id: studentId === "none" ? null : (studentId.trim() || undefined) } : {}),
       ...(role === "teacher" ? {
-        homeroom_classroom_id: homeroomClassroomId || null,
         is_clerical: isClerical,
       } : {}),
     };
@@ -4091,6 +4141,7 @@ function changeFontSize(dir) {
                 students={students}
                 handleEditUser={handleEditUser}
                 handleDeleteUser={handleDeleteUser}
+                handleResignTeacher={handleResignTeacher}
                 handleOpenExportScoreModal={handleOpenExportScoreModal}
                 filteredUsers={filteredUsers}
                 userCurrentPage={userCurrentPage}
@@ -4121,6 +4172,7 @@ function changeFontSize(dir) {
                 handleOpenAssignModal={handleOpenAssignModal}
                 handleEditClassroom={handleEditClassroom}
                 handleDeleteClassroom={handleDeleteClassroom}
+                handleOpenHomeroomTeacherModal={(classroom) => setHomeroomTeacherClassroom(classroom)}
               />
             )}
 
@@ -4396,13 +4448,35 @@ function changeFontSize(dir) {
         setRole={setRole}
         studentId={studentId}
         setStudentId={setStudentId}
-        homeroomClassroomId={homeroomClassroomId}
-        setHomeroomClassroomId={setHomeroomClassroomId}
-        classrooms={classrooms}
         students={students}
         onSave={handleSaveUserSubmit}
         isClerical={isClerical}
         setIsClerical={setIsClerical}
+      />
+
+      <HomeroomTeacherModal
+        key={homeroomTeacherClassroom?.id ?? "none"}
+        isOpen={!!homeroomTeacherClassroom}
+        classroom={homeroomTeacherClassroom}
+        classrooms={classrooms}
+        teachers={users}
+        onClose={() => setHomeroomTeacherClassroom(null)}
+        onSave={async (teacherIds) => {
+          if (!homeroomTeacherClassroom || !token || !selectedSettingId) return;
+          const response = await fetch(`/api/classrooms/${homeroomTeacherClassroom.id}/homeroom-teacher`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ teacher_ids: teacherIds }),
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            Swal.fire("ดำเนินการไม่สำเร็จ", error.error || "ไม่สามารถกำหนดครูประจำชั้นได้", "error");
+            return;
+          }
+          await loadClassrooms(selectedSettingId, token);
+          setHomeroomTeacherClassroom(null);
+          Swal.fire({ icon: "success", title: "บันทึกครูประจำชั้นแล้ว", confirmButtonColor: "#4f46e5" });
+        }}
       />
 
       {/* Subject Modal */}

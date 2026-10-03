@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import bcrypt from "bcrypt";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function PUT(
   req: NextRequest,
@@ -25,19 +26,23 @@ export async function PUT(
     replacement_teacher_id,
   } = await req.json();
   const finalEmail = email?.trim() || null;
-  const statusVal = status || 'active';
 
   if (!username?.trim() || !role) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   // ดึงข้อมูลผู้ใช้งานเดิมก่อน
-  const oldUserRow = await pool.query("SELECT student_id, role FROM users WHERE id = $1", [id]);
+  const oldUserRow = await pool.query(
+    "SELECT student_id, role, COALESCE(status, 'active') AS status FROM users WHERE id = $1",
+    [id]
+  );
   if (oldUserRow.rows.length === 0) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
   const oldRole = oldUserRow.rows[0].role;
   const oldStudentId = oldUserRow.rows[0].student_id;
+  // Ordinary profile edits must not accidentally reactivate a resigned teacher.
+  const statusVal = status || oldUserRow.rows[0].status || 'active';
 
   if (role === "admin" && oldRole !== "admin") {
     return NextResponse.json(
@@ -49,7 +54,21 @@ export async function PUT(
   // หากเป็นครูและปรับสถานะเป็น resigned (พ้นสภาพ)
   if (statusVal === 'resigned' && oldRole === 'teacher' && replacement_teacher_id) {
     await pool.query("UPDATE subjects SET teacher_id = $1 WHERE teacher_id = $2", [replacement_teacher_id, id]);
-    await pool.query("UPDATE classrooms SET teacher_id = $1 WHERE teacher_id = $2", [replacement_teacher_id, id]);
+    await ensureStatusSchema();
+    // โอนห้องประจำชั้นให้ครูแทน เฉพาะเทอมที่ครูแทนยังไม่ได้ประจำชั้นห้องอื่น
+    await pool.query(
+      `INSERT INTO classroom_homeroom_teachers (classroom_id, teacher_id, setting_id)
+       SELECT cht.classroom_id, $1, cht.setting_id
+         FROM classroom_homeroom_teachers cht
+        WHERE cht.teacher_id = $2
+          AND NOT EXISTS (
+            SELECT 1 FROM classroom_homeroom_teachers x
+             WHERE x.teacher_id = $1 AND x.setting_id = cht.setting_id
+          )
+       ON CONFLICT DO NOTHING`,
+      [replacement_teacher_id, id]
+    );
+    await pool.query("DELETE FROM classroom_homeroom_teachers WHERE teacher_id = $1", [id]);
   }
 
   let result;

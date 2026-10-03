@@ -166,9 +166,7 @@ export default function TeacherPortal() {
       .then(r => r.json())
       .then((data: DBClassroom[]) => {
         setClassrooms(data);
-        if (teacherUser.homeroom_classroom_id) {
-          setHomeroomClass(data.find(c => c.id === teacherUser.homeroom_classroom_id) || null);
-        }
+        setHomeroomClass(data.find(c => c.homeroom_teacher_ids?.includes(teacherUser.id)) || null);
       });
 
     fetch("/api/public/settings")

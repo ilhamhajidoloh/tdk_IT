@@ -59,16 +59,11 @@ export default function TeacherProfilePage() {
         setSubjects(mySubjects);
       }
 
-      // Load homeroom classroom
-      if (user.homeroom_classroom_id) {
-        const classroomsResponse = await fetch("/api/classrooms", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (classroomsResponse.ok) {
-          const classrooms: DBClassroom[] = await classroomsResponse.json();
-          const homeroom = classrooms.find(c => c.id === user.homeroom_classroom_id);
-          if (homeroom) setHomeroomClass(homeroom);
-        }
+      // Classrooms are term-specific, so the active classroom owns this assignment.
+      const classroomsResponse = await fetch("/api/public/classrooms");
+      if (classroomsResponse.ok) {
+        const classrooms: DBClassroom[] = await classroomsResponse.json();
+        setHomeroomClass(classrooms.find(c => c.homeroom_teacher_ids?.includes(user.id)) || null);
       }
     } catch (error) {
       console.error("Error loading teacher data:", error);

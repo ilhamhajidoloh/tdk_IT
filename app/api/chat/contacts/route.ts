@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/app/lib/verifyUser";
 import pool from "@/app/lib/db";
 import { ensureChatTables } from "@/app/lib/chatDb";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function GET(req: NextRequest) {
   const currentUser = await verifyUser(req);
@@ -10,6 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   await ensureChatTables();
+  await ensureStatusSchema();
 
   const { id, role } = currentUser;
 
@@ -26,13 +28,17 @@ export async function GET(req: NextRequest) {
 
   if (role === "teacher") {
     const me = await pool.query(
-      `SELECT id, homeroom_classroom_id FROM users WHERE id = $1`,
+      `SELECT cht.classroom_id AS homeroom_classroom_id
+         FROM classroom_homeroom_teachers cht
+        WHERE cht.teacher_id = $1
+          AND cht.setting_id = (
+            SELECT id FROM system_settings WHERE CURRENT_DATE BETWEEN start_date AND end_date ORDER BY id DESC LIMIT 1
+          )
+        LIMIT 1`,
       [id]
     );
-    const teacher = me.rows[0];
-    if (!teacher) return NextResponse.json([]);
-
-    const homeroomId = teacher.homeroom_classroom_id;
+    // ครูที่ไม่มีห้องประจำชั้นในเทอมนี้ยังต้องเห็นนักเรียนในรายวิชาและแอดมิน
+    const homeroomId: string | null = me.rows[0]?.homeroom_classroom_id ?? null;
 
     // students in homeroom
     let homeroomStudentIds: string[] = [];
@@ -128,8 +134,9 @@ export async function GET(req: NextRequest) {
     if (classroomId) {
       const ht = await pool.query(
         `SELECT u.id, u.username, u.role, u.email
-         FROM users u
-         WHERE u.homeroom_classroom_id = $1 AND u.role = 'teacher'`,
+           FROM classroom_homeroom_teachers cht
+           JOIN users u ON u.id = cht.teacher_id
+          WHERE cht.classroom_id = $1 AND u.role = 'teacher'`,
         [classroomId]
       );
       homeroomTeachers = ht.rows.map((r: any) => ({ ...r, contact_type: "homeroom_teacher" }));

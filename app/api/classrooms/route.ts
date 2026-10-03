@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission, requireAnyPermission } from "@/app/lib/permissions/middleware";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function GET(req: NextRequest) {
   const permError = await requireAnyPermission(
@@ -14,6 +15,7 @@ export async function GET(req: NextRequest) {
     "attendance.view"
   );
   if (permError) return permError;
+  await ensureStatusSchema();
 
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;
@@ -34,6 +36,8 @@ export async function GET(req: NextRequest) {
   if (settingId) {
     result = await pool.query(
       `SELECT c.*, s.academic_year, s.term,
+        COALESCE((SELECT array_agg(cht.teacher_id::text ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_ids,
+        COALESCE((SELECT array_agg(u.username ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_names,
         (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id) AS student_count
        FROM classrooms c
        LEFT JOIN system_settings s ON c.setting_id = s.id
@@ -44,6 +48,8 @@ export async function GET(req: NextRequest) {
   } else {
     result = await pool.query(
       `SELECT c.*, s.academic_year, s.term,
+        COALESCE((SELECT array_agg(cht.teacher_id::text ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_ids,
+        COALESCE((SELECT array_agg(u.username ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_names,
         (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id) AS student_count
        FROM classrooms c
        LEFT JOIN system_settings s ON c.setting_id = s.id

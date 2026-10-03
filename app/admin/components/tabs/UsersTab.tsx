@@ -19,6 +19,7 @@ interface UsersTabProps {
   students: DBStudent[];
   handleEditUser: (user: DBUser) => void;
   handleDeleteUser: (id: string) => void;
+  handleResignTeacher: (user: DBUser) => void;
   handleOpenExportScoreModal: (
     classroomId?: string,
     studentId?: string,
@@ -49,6 +50,7 @@ export default function UsersTab({
   students,
   handleEditUser,
   handleDeleteUser,
+  handleResignTeacher,
   handleOpenExportScoreModal,
   filteredUsers,
   userCurrentPage,
@@ -258,13 +260,14 @@ export default function UsersTab({
                       </span>
                     )}
                   </div>
-                  {u.email && <div className="text-[11px] text-subtle-foreground mt-0.5">{u.email}</div>}
+                    {u.email && <div className="text-[11px] text-subtle-foreground mt-0.5">{u.email}</div>}
+                  {u.status === "resigned" && (
+                    <div className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      พ้นสภาพ / ลาออก
+                    </div>
+                  )}
                   {u.role === "teacher" && (
                     <div className="text-[11px] text-muted-foreground mt-1 space-y-0.5">
-                      <div>
-                        <span className="font-medium">ห้องประจำชั้น:</span>{" "}
-                        {classrooms.find((c) => c.id === u.homeroom_classroom_id)?.name || "ไม่มี"}
-                      </div>
                       <div>
                         <span className="font-medium">วิชาที่สอน:</span>{" "}
                         {u.subjects && u.subjects.length > 0 ? u.subjects.join(", ") : "ไม่มี"}
@@ -296,6 +299,16 @@ export default function UsersTab({
                         แก้ไข
                       </button>
                     </PermissionGate>
+                    {u.role === "teacher" && u.status !== "resigned" && (
+                      <PermissionGate permission="users.edit">
+                        <button
+                          onClick={() => handleResignTeacher(u)}
+                          className="text-amber-700 dark:text-amber-300 hover:text-amber-900 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                        >
+                          ลาออก
+                        </button>
+                      </PermissionGate>
+                    )}
                     <PermissionGate permission="users.delete">
                       <button
                         onClick={() => handleDeleteUser(u.id)}
@@ -349,6 +362,11 @@ export default function UsersTab({
                   )}
                 </div>
                 {u.email && <div className="text-[11px] text-subtle-foreground break-all">{u.email}</div>}
+                {u.status === "resigned" && (
+                  <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    พ้นสภาพ / ลาออก
+                  </span>
+                )}
                 <span
                   className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
                     u.role === "admin"
@@ -383,6 +401,16 @@ export default function UsersTab({
                     แก้ไข
                   </button>
                 </PermissionGate>
+                {u.role === "teacher" && u.status !== "resigned" && (
+                  <PermissionGate permission="users.edit">
+                    <button
+                      onClick={() => handleResignTeacher(u)}
+                      className="text-amber-700 dark:text-amber-300 hover:text-amber-900 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                    >
+                      ลาออก
+                    </button>
+                  </PermissionGate>
+                )}
                 <PermissionGate permission="users.delete">
                   <button
                     onClick={() => handleDeleteUser(u.id)}
@@ -400,10 +428,6 @@ export default function UsersTab({
             )}
             {u.role === "teacher" && (
               <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border space-y-0.5">
-                <div>
-                  <span className="font-medium">ห้องประจำชั้น:</span>{" "}
-                  {classrooms.find((c) => c.id === u.homeroom_classroom_id)?.name || "ไม่มี"}
-                </div>
                 <div>
                   <span className="font-medium">วิชาที่สอน:</span>{" "}
                   {u.subjects && u.subjects.length > 0 ? u.subjects.join(", ") : "ไม่มี"}

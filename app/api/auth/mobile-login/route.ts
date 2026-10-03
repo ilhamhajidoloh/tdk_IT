@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { encode } from "next-auth/jwt";
 import pool from "@/app/lib/db";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 // Endpoint สำหรับแอปมือถือ (Flutter) โดยเฉพาะ: NextAuth ปกติใช้ httpOnly cookie
 // ซึ่งแอปเนทีฟรับ/ส่งไม่ได้ตามธรรมชาติ endpoint นี้ตรวจรหัสผ่านแบบเดียวกับ
@@ -48,6 +49,24 @@ export async function POST(req: NextRequest) {
   }
 
   const isReadOnly = user.role === "student" && (user.status === "graduated" || user.status === "resigned");
+
+  // ครูประจำชั้นผูกกับชั้นเรียนรายเทอม (classroom_homeroom_teachers) แอปมือถือยังอ่าน
+  // homeroom_classroom_id จาก user จึงคำนวณจากเทอมปัจจุบันแทนค่าเดิมในตาราง users
+  if (user.role === "teacher") {
+    await ensureStatusSchema();
+    const homeroom = await pool.query(
+      `SELECT cht.classroom_id AS id
+         FROM classroom_homeroom_teachers cht
+         JOIN system_settings s ON s.id = cht.setting_id
+        WHERE cht.teacher_id = $1
+        ORDER BY (s.end_date >= CURRENT_DATE) DESC,
+                 CASE WHEN s.end_date >= CURRENT_DATE THEN s.start_date END ASC,
+                 s.end_date DESC
+        LIMIT 1`,
+      [user.id]
+    );
+    user.homeroom_classroom_id = homeroom.rows[0]?.id ?? null;
+  }
 
   const tokenPayload = {
     id: user.id.toString(),

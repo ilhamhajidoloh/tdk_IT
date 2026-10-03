@@ -39,6 +39,8 @@ export interface DBClassroom {
   name_rumi?: string;
   name_jawi?: string;
   setting_id?: number | null;
+  homeroom_teacher_ids?: string[];
+  homeroom_teacher_names?: string[];
   created_at?: string;
 }
 

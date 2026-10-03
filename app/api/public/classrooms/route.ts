@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolFromUrl } from "@/app/lib/getSchoolByParam";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureStatusSchema();
     const subdomain = getSchoolFromUrl(req);
 
     const schoolResult = await pool.query(
@@ -29,6 +31,7 @@ export async function GET(req: NextRequest) {
         SELECT id FROM fallback_setting WHERE NOT EXISTS (SELECT 1 FROM target_setting)
       )
       SELECT c.id, c.name, c.name_thai, c.name_rumi, c.name_jawi, c.setting_id,
+        COALESCE((SELECT array_agg(cht.teacher_id::text) FROM classroom_homeroom_teachers cht WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_ids,
         (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id) AS student_count
       FROM classrooms c
       JOIN final_setting fs ON c.setting_id = fs.id
@@ -43,6 +46,7 @@ export async function GET(req: NextRequest) {
     if (result.rows.length === 0) {
       const fallback = await pool.query(
         `SELECT id, name, name_thai, name_rumi, name_jawi, setting_id,
+          COALESCE((SELECT array_agg(cht.teacher_id::text) FROM classroom_homeroom_teachers cht WHERE cht.classroom_id = classrooms.id), ARRAY[]::text[]) AS homeroom_teacher_ids,
           (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = classrooms.id AND cs.setting_id = classrooms.setting_id) AS student_count
          FROM classrooms
          WHERE (school_id = $1 OR school_id IS NULL)

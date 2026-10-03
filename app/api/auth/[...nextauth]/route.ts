@@ -6,6 +6,7 @@ import FacebookProvider from "next-auth/providers/facebook";
 import bcrypt from "bcrypt";
 import { createHmac } from "crypto";
 import pool from "@/app/lib/db";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,10 +23,11 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          await ensureStatusSchema();
           const result = await pool.query(
             `SELECT u.id, u.username, u.password, u.role, u.school_id, u.student_id,
                     u.homeroom_classroom_id, u.subjects, u.email, u.is_clerical,
-                    u.is_co_admin, u.admin_permissions
+                    u.is_co_admin, u.admin_permissions, COALESCE(u.status, 'active') AS status
              FROM users u
              WHERE (u.username = $1 OR u.student_id = $1)
                AND (
@@ -50,6 +52,10 @@ export const authOptions: NextAuthOptions = {
 
           if (!user) {
             throw new Error("ไม่พบชื่อผู้ใช้นี้");
+          }
+
+          if (user.status === "resigned") {
+            throw new Error("บัญชีครูนี้พ้นสภาพการทำงานแล้ว ไม่สามารถเข้าสู่ระบบได้");
           }
 
           const isPasswordValid = await bcrypt.compare(credentials.password, user.password);

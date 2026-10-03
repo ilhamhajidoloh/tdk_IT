@@ -23,6 +23,8 @@ export interface DBClassroom {
   name_rumi?: string | null;
   name_jawi?: string | null;
   setting_id?: number;
+  homeroom_teacher_ids?: string[];
+  homeroom_teacher_names?: string[];
 }
 export interface DBSubject {
   id: string;

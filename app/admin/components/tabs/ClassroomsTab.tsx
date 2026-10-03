@@ -18,6 +18,8 @@ interface ClassroomsTabProps {
     name_jawi?: string | null;
     setting_id?: number | null;
     student_count?: number | null;
+    homeroom_teacher_ids?: string[];
+    homeroom_teacher_names?: string[];
   }[];
   selectedClassroomIds: string[];
   classroomFileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -30,6 +32,7 @@ interface ClassroomsTabProps {
   handleOpenAssignModal: (classroom: any) => void;
   handleEditClassroom: (classroom: any) => void;
   handleDeleteClassroom: (id: string, name: string) => void;
+  handleOpenHomeroomTeacherModal: (classroom: any) => void;
 }
 
 export default function ClassroomsTab({
@@ -51,6 +54,7 @@ export default function ClassroomsTab({
   handleOpenAssignModal,
   handleEditClassroom,
   handleDeleteClassroom,
+  handleOpenHomeroomTeacherModal,
 }: ClassroomsTabProps) {
   return (
     <div className="p-8">
@@ -202,6 +206,7 @@ export default function ClassroomsTab({
                 </div>
                 <div className="pr-8 space-y-1">
                   <div className="font-extrabold text-lg text-indigo-700 dark:text-indigo-300">{c.name}</div>
+                  <div className="text-xs font-semibold text-muted-foreground">ครูประจำชั้น: <span className="text-foreground">{c.homeroom_teacher_names?.length ? c.homeroom_teacher_names.join(", ") : "ยังไม่กำหนด"}</span></div>
                   {hasStudents ? (
                     <>
                       {c.name_thai && (
@@ -253,6 +258,14 @@ export default function ClassroomsTab({
                     </PermissionGate>
                     <PermissionGate permission="classrooms.edit">
                       <button
+                        onClick={() => handleOpenHomeroomTeacherModal(c)}
+                        className="text-violet-600 dark:text-violet-300 hover:text-violet-800 px-3 py-1.5 bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        ครูประจำชั้น
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="classrooms.edit">
+                      <button
                         onClick={() => handleEditClassroom(c)}
                         className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                       >
@@ -276,6 +289,14 @@ export default function ClassroomsTab({
                         className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:bg-emerald-500/15 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
                       >
                         เพิ่มนักเรียน
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="classrooms.edit">
+                      <button
+                        onClick={() => handleOpenHomeroomTeacherModal(c)}
+                        className="text-violet-600 dark:text-violet-300 hover:text-violet-800 px-3 py-1.5 bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                      >
+                        ครูประจำชั้น
                       </button>
                     </PermissionGate>
                     <PermissionGate permission="classrooms.edit">
