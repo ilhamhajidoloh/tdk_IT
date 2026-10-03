@@ -357,6 +357,7 @@ function AdminPortalContent() {
   const [subjectName, setSubjectName] = useState("");
   const [subjectTeacherIds, setSubjectTeacherIds] = useState<string[]>([]);
   const [subjectClassroomIds, setSubjectClassroomIds] = useState<string[]>([]);
+  const [scoreDisabledClassroomIds, setScoreDisabledClassroomIds] = useState<string[]>([]);
   const [subjectSettingId, setSubjectSettingId] = useState<number | null>(null);
   const [subjectMidtermMax, setSubjectMidtermMax] = useState<number>(50);
   const [subjectFinalMax, setSubjectFinalMax] = useState<number>(50);
@@ -2437,6 +2438,7 @@ function AdminPortalContent() {
     setSubjectName("");
     setSubjectTeacherIds([]);
     setSubjectClassroomIds([]);
+    setScoreDisabledClassroomIds([]);
     setSubjectSettingId(selectedSubjectSettingId);
     setSubjectMidtermMax(50);
     setSubjectFinalMax(50);
@@ -2456,6 +2458,7 @@ function AdminPortalContent() {
       : subject.teacher_id ? [subject.teacher_id] : [];
     setSubjectTeacherIds(ids);
     setSubjectClassroomIds(subject.classroom_ids || []);
+    setScoreDisabledClassroomIds(subject.score_disabled_classroom_ids || []);
     setSubjectSettingId(subject.setting_id ?? selectedSubjectSettingId);
     setSubjectMidtermMax(subject.midterm_max_score ?? 50);
     setSubjectFinalMax(subject.final_max_score ?? 50);
@@ -2479,6 +2482,7 @@ function AdminPortalContent() {
       name: subjectName.trim(),
       teacher_ids: subjectTeacherIds,
       classroom_ids: subjectClassroomIds,
+      score_disabled_classroom_ids: scoreDisabledClassroomIds,
       setting_id: subjectSettingId || null,
       midterm_max_score: subjectType === "activity" && !subjectHasScore ? 0 : subjectMidtermMax,
       final_max_score: subjectType === "activity" && !subjectHasScore ? 0 : subjectFinalMax,
@@ -4427,6 +4431,8 @@ function changeFontSize(dir) {
         subjectClassrooms={subjectClassrooms}
         subjectClassroomIds={subjectClassroomIds}
         setSubjectClassroomIds={setSubjectClassroomIds}
+        scoreDisabledClassroomIds={scoreDisabledClassroomIds}
+        setScoreDisabledClassroomIds={setScoreDisabledClassroomIds}
         onSave={handleSaveSubjectSubmit}
       />
 
@@ -4492,4 +4498,3 @@ export default function AdminPortal() {
     </Suspense>
   );
 }
-

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { getSchoolContext } from "@/app/lib/schoolContext";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -25,7 +26,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (permError) return permError;
 
   const { id } = await params;
-  const { name, teacher_ids, classroom_ids, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours } = await req.json();
+  const { name, teacher_ids, classroom_ids, score_disabled_classroom_ids, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours } = await req.json();
+  const schoolId = (await getSchoolContext(req))?.schoolId || "00000000-0000-0000-0000-000000000001";
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Missing name" }, { status: 400 });
@@ -56,10 +58,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     await client.query("DELETE FROM subject_classrooms WHERE subject_id = $1", [id]);
     if (Array.isArray(classroom_ids) && classroom_ids.length > 0) {
-      const values = classroom_ids.map((_: string, i: number) => `($1, $${i + 2})`).join(", ");
+      const disabledClassroomIds = new Set(
+        Array.isArray(score_disabled_classroom_ids) ? score_disabled_classroom_ids.map(String) : []
+      );
+      const values = classroom_ids.map((_: string, i: number) => `($1, $${i + 2}, $${classroom_ids.length + 2}, $${classroom_ids.length + 3 + i})`).join(", ");
       await client.query(
-        `INSERT INTO subject_classrooms (subject_id, classroom_id) VALUES ${values}`,
-        [id, ...classroom_ids]
+        `INSERT INTO subject_classrooms (subject_id, classroom_id, school_id, score_enabled) VALUES ${values}`,
+        [id, ...classroom_ids, schoolId, ...classroom_ids.map((classroomId: string) => !disabledClassroomIds.has(String(classroomId)))]
       );
     }
 
@@ -103,7 +108,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     await client.query("COMMIT");
-    return NextResponse.json({ ...result.rows[0], classroom_ids: classroom_ids || [], teacher_ids: cleanedTeacherIds });
+    return NextResponse.json({ ...result.rows[0], classroom_ids: classroom_ids || [], score_disabled_classroom_ids: score_disabled_classroom_ids || [], teacher_ids: cleanedTeacherIds });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("PUT /api/subjects/[id] error:", error);

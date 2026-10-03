@@ -62,6 +62,32 @@ export async function POST(req: NextRequest) {
   }
 
   // Upsert — ถ้ามีอยู่แล้ว (student+subject+term) ให้ update แทน insert
+  // The subject may be taught to a classroom without collecting grades there.
+  // Enforce this at the API boundary so it cannot be bypassed by a direct call.
+  const scoreEnabled = await pool.query(
+    `SELECT 1
+       FROM subjects s
+       JOIN system_settings ss ON ss.id = s.setting_id
+       JOIN students st ON st.student_id = $1
+         AND (st.school_id = $4 OR st.school_id IS NULL)
+       JOIN classroom_students cs ON cs.student_id = st.id
+         AND cs.setting_id = s.setting_id
+       JOIN subject_classrooms sc ON sc.subject_id = s.id
+         AND sc.classroom_id = cs.classroom_id
+      WHERE s.name = $2
+        AND CONCAT(ss.term, '/', ss.academic_year) = $3
+        AND (s.school_id = $4 OR s.school_id IS NULL)
+        AND COALESCE(sc.score_enabled, TRUE) = TRUE
+      LIMIT 1`,
+    [student_id, subject, term, schoolId]
+  );
+  if (scoreEnabled.rows.length === 0) {
+    return NextResponse.json(
+      { error: "This subject is not configured to collect scores for the student's classroom" },
+      { status: 403 }
+    );
+  }
+
   const result = await pool.query(
     `INSERT INTO grades (student_id, subject, midterm_score, final_score, term, school_id)
      VALUES ($1, $2, $3, $4, $5, $6)

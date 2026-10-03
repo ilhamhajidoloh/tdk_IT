@@ -33,6 +33,7 @@ export interface DBSubject {
   teacher_names?: string[];
   classroom_ids?: string[];
   classroom_names?: string[];
+  score_disabled_classroom_ids?: string[];
   setting_id?: number | null;
   midterm_max_score?: number | null;
   final_max_score?: number | null;

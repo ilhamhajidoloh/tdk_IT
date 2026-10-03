@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
              ${teacherCols}
              COALESCE(array_agg(sc.classroom_id) FILTER (WHERE sc.classroom_id IS NOT NULL), '{}') as classroom_ids,
              COALESCE(array_agg(c.name) FILTER (WHERE c.name IS NOT NULL), '{}') as classroom_names,
+             COALESCE(array_agg(sc.classroom_id) FILTER (WHERE sc.classroom_id IS NOT NULL AND NOT COALESCE(sc.score_enabled, TRUE)), '{}') as score_disabled_classroom_ids,
              ${translationCols}
       FROM subjects s
       LEFT JOIN users u ON s.teacher_id = u.id
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
-  const { name, teacher_ids, classroom_ids, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours } = await req.json();
+  const { name, teacher_ids, classroom_ids, score_disabled_classroom_ids, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours } = await req.json();
   if (!name?.trim()) {
     return NextResponse.json({ error: "Missing name" }, { status: 400 });
   }
@@ -135,10 +136,13 @@ export async function POST(req: NextRequest) {
     const subject = result.rows[0];
 
     if (Array.isArray(classroom_ids) && classroom_ids.length > 0) {
-      const values = classroom_ids.map((_: string, i: number) => `($1, $${i + 2}, $${classroom_ids.length + 2})`).join(", ");
+      const disabledClassroomIds = new Set(
+        Array.isArray(score_disabled_classroom_ids) ? score_disabled_classroom_ids.map(String) : []
+      );
+      const values = classroom_ids.map((_: string, i: number) => `($1, $${i + 2}, $${classroom_ids.length + 2}, $${classroom_ids.length + 3 + i})`).join(", ");
       await client.query(
-        `INSERT INTO subject_classrooms (subject_id, classroom_id, school_id) VALUES ${values}`,
-        [subject.id, ...classroom_ids, schoolId]
+        `INSERT INTO subject_classrooms (subject_id, classroom_id, school_id, score_enabled) VALUES ${values}`,
+        [subject.id, ...classroom_ids, schoolId, ...classroom_ids.map((id: string) => !disabledClassroomIds.has(String(id)))]
       );
     }
 
@@ -152,7 +156,7 @@ export async function POST(req: NextRequest) {
     }
 
     await client.query("COMMIT");
-    return NextResponse.json({ ...subject, classroom_ids: classroom_ids || [], teacher_ids: teacher_ids || [] }, { status: 201 });
+    return NextResponse.json({ ...subject, classroom_ids: classroom_ids || [], score_disabled_classroom_ids: score_disabled_classroom_ids || [], teacher_ids: teacher_ids || [] }, { status: 201 });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("POST /api/subjects error:", error);

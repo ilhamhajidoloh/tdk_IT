@@ -848,6 +848,17 @@ export default function TeacherPortal() {
     .filter(s => (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0)
     .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999) || a.name.localeCompare(b.name, "th"));
 
+  // Keep all assigned classrooms for teaching-related features, but only send
+  // score-enabled classrooms to grade entry and grade status screens.
+  const gradeSubjects = mySubjects
+    .map(subject => ({
+      ...subject,
+      classroom_ids: (subject.classroom_ids || []).filter(
+        classroomId => !(subject.score_disabled_classroom_ids || []).includes(classroomId)
+      ),
+    }))
+    .filter(subject => (subject.classroom_ids || []).length > 0);
+
   const evalActiveTopics = evalTopics.filter(t => t.is_active).sort((a, b) => a.sort_order - b.sort_order);
   const evalClassroomOptions = classrooms.filter(c => mySubjects.find(s => s.id === evalSubjectId)?.classroom_ids?.includes(c.id));
   const evalClassroomStudents = students.filter(s => s.classroom_id === evalClassroomId);
@@ -1110,7 +1121,7 @@ export default function TeacherPortal() {
             isGradingActive={isGradingActive}
             settingsStartDate={settingsStartDate}
             settingsEndDate={settingsEndDate}
-            mySubjects={mySubjects}
+            mySubjects={gradeSubjects}
             enterSubject={enterSubject}
             setEnterSubject={setEnterSubject}
             enterClassroom={enterClassroom}
@@ -1144,7 +1155,7 @@ export default function TeacherPortal() {
 
         {activeTab === "status" && (
           <StatusTab
-            mySubjects={mySubjects}
+            mySubjects={gradeSubjects}
             statusSubject={statusSubject}
             setStatusSubject={setStatusSubject}
             statusClassroom={statusClassroom}

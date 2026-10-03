@@ -26,6 +26,8 @@ interface SubjectModalProps {
   subjectClassrooms: { id: string; name: string }[];
   subjectClassroomIds: string[];
   setSubjectClassroomIds: (ids: string[]) => void;
+  scoreDisabledClassroomIds: string[];
+  setScoreDisabledClassroomIds: (ids: string[]) => void;
   onSave: () => void;
 }
 
@@ -54,6 +56,8 @@ export default function SubjectModal({
   subjectClassrooms,
   subjectClassroomIds,
   setSubjectClassroomIds,
+  scoreDisabledClassroomIds,
+  setScoreDisabledClassroomIds,
   onSave,
 }: SubjectModalProps) {
   if (!isOpen) return null;
@@ -328,31 +332,58 @@ export default function SubjectModal({
                 ไม่มีชั้นเรียนในเทอมนี้ กรุณาเพิ่มที่เมนู จัดการชั้นเรียน
               </div>
             ) : (
+              <>
               <div className="grid grid-cols-2 gap-2 mt-1 max-h-[150px] overflow-y-auto pr-1">
                 {subjectClassrooms.map((c) => {
                   const isChecked = subjectClassroomIds.includes(c.id);
+                  const isScoreEnabled = !scoreDisabledClassroomIds.includes(c.id);
                   return (
-                    <label
+                    <div
                       key={c.id}
-                      className="flex items-center gap-2 px-3 py-2 border border-border rounded-xl bg-muted/30 hover:bg-muted hover:border-border cursor-pointer transition-all"
+                      className={`flex items-center gap-2 px-3 py-2 border border-border rounded-xl transition-all ${
+                        isChecked ? "bg-muted/30 hover:bg-muted" : "bg-muted/10 opacity-75"
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSubjectClassroomIds([...subjectClassroomIds, c.id]);
-                          } else {
-                            setSubjectClassroomIds(subjectClassroomIds.filter((id) => id !== c.id));
-                          }
-                        }}
-                        className="w-4 h-4 rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 border-border cursor-pointer"
-                      />
-                      <span className="text-xs font-bold text-foreground">{c.name}</span>
-                    </label>
+                      <label className="flex min-w-0 flex-1 items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSubjectClassroomIds([...subjectClassroomIds, c.id]);
+                            } else {
+                              setSubjectClassroomIds(subjectClassroomIds.filter((id) => id !== c.id));
+                              setScoreDisabledClassroomIds(scoreDisabledClassroomIds.filter((id) => id !== c.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 border-border cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-foreground truncate">{c.name}</span>
+                      </label>
+                      {isChecked && (
+                        <button
+                          type="button"
+                          onClick={() => setScoreDisabledClassroomIds(
+                            isScoreEnabled
+                              ? [...scoreDisabledClassroomIds, c.id]
+                              : scoreDisabledClassroomIds.filter((id) => id !== c.id)
+                          )}
+                          className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold border cursor-pointer transition-colors ${
+                            isScoreEnabled
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30"
+                              : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                          }`}
+                          title="สลับการเก็บคะแนนสำหรับชั้นนี้"
+                        >
+                          {isScoreEnabled ? "เก็บคะแนน" : "ไม่เก็บคะแนน"}
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
+              <p className="text-[11px] text-muted-foreground mt-2">ชั้นที่เลือกเป็น “ไม่เก็บคะแนน” ยังอยู่ในตารางสอนและเช็กชื่อ แต่จะไม่แสดงในหน้ากรอกคะแนน</p>
+              </>
             )}
           </div>
         </div>

@@ -166,6 +166,11 @@ export default function SubjectsTab({
                           {sub.classroom_names && sub.classroom_names.length > 0
                             ? sub.classroom_names.join(", ")
                             : "-"}
+                          {(sub.score_disabled_classroom_ids?.length ?? 0) > 0 && (
+                            <div className="mt-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              ไม่เก็บคะแนน {sub.score_disabled_classroom_ids?.length} ชั้น
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-center">
                           {sub.subject_type === "activity" ? (
@@ -258,6 +263,11 @@ export default function SubjectsTab({
                         {sub.classroom_names && sub.classroom_names.length > 0
                           ? sub.classroom_names.join(", ")
                           : "-"}
+                        {(sub.score_disabled_classroom_ids?.length ?? 0) > 0 && (
+                          <span className="ml-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                            (ไม่เก็บคะแนน {sub.score_disabled_classroom_ids?.length} ชั้น)
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium">ประเภทวิชา:</span>

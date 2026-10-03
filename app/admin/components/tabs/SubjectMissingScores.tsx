@@ -36,7 +36,10 @@ export default function SubjectMissingScores({ subject, setting, token, onBack }
         fetch(`/api/grades?term=${encodeURIComponent(term)}`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const allClassrooms: Classroom[] = classroomsResponse.ok ? await classroomsResponse.json() : [];
-      setClassrooms(allClassrooms.filter(item => subject.classroom_ids?.includes(item.id)));
+      setClassrooms(allClassrooms.filter(item =>
+        subject.classroom_ids?.includes(item.id) &&
+        !subject.score_disabled_classroom_ids?.includes(item.id)
+      ));
       setStudents(studentsResponse.ok ? await studentsResponse.json() : []);
       setGrades(gradesResponse.ok ? await gradesResponse.json() : []);
     } catch (error) {
