@@ -15,6 +15,11 @@ interface CopySubjectsModalProps {
   onSave: () => void;
 }
 
+function formatLanguages(s: DBSubject) {
+  const langs = [s.name_thai, s.name_rumi, s.name_jawi].filter((v) => v && v.trim());
+  return langs.length > 0 ? langs.join(" / ") : "-";
+}
+
 export default function CopySubjectsModal({
   isOpen,
   onClose,
@@ -46,7 +51,7 @@ export default function CopySubjectsModal({
           <div>
             <h3 className="text-xl font-extrabold text-foreground">คัดลอกวิชาเรียนไปยังเทอมอื่น</h3>
             <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
-              ดึงชื่อวิชา ชั้นเรียน และครูจากเทอมต้นทางมายังเทอมเป้าหมาย
+              คัดลอกชื่อวิชา ภาษา (คำแปล) หน่วยกิต และคะแนนเต็มเก็บ/สอบ ไปยังเทอมหรือปีการศึกษาอื่น
             </p>
           </div>
           <button
@@ -143,9 +148,9 @@ export default function CopySubjectsModal({
                     <tr>
                       <th className="px-4 py-3 font-semibold text-center w-14">คัดลอก</th>
                       <th className="px-4 py-3 font-semibold">ชื่อวิชา</th>
-                      <th className="px-4 py-3 font-semibold">ครูผู้สอน</th>
-                      <th className="px-4 py-3 font-semibold">ชั้นเรียน</th>
-                      <th className="px-4 py-3 font-semibold text-center">ประเภท</th>
+                      <th className="px-4 py-3 font-semibold">ภาษา (ไทย / Rumi / Jawi)</th>
+                      <th className="px-4 py-3 font-semibold text-center">หน่วยกิต</th>
+                      <th className="px-4 py-3 font-semibold text-center">คะแนนเต็ม (เก็บ/สอบ)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -167,22 +172,12 @@ export default function CopySubjectsModal({
                           />
                         </td>
                         <td className="px-4 py-3 font-bold text-foreground">{s.name}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {s.teacher_names?.join(", ") || s.teacher_name || "-"}
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{formatLanguages(s)}</td>
+                        <td className="px-4 py-3 text-center text-sm text-foreground">
+                          {s.subject_type === "activity" ? "กิจกรรม" : Number(s.credit_hours) || 1}
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {s.classroom_names?.join(", ") || "-"}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
-                              s.subject_type === "activity"
-                                ? "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                                : "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
-                            }`}
-                          >
-                            {s.subject_type === "activity" ? "วิชากิจกรรม" : "วิชาหลัก"}
-                          </span>
+                        <td className="px-4 py-3 text-center text-sm font-semibold text-foreground">
+                          {s.midterm_max_score ?? 50} / {s.final_max_score ?? 50}
                         </td>
                       </tr>
                     ))}
@@ -212,11 +207,10 @@ export default function CopySubjectsModal({
                       />
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-foreground text-sm">{s.name}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          ครู: {s.teacher_names?.join(", ") || s.teacher_name || "-"}
-                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">ภาษา: {formatLanguages(s)}</div>
                         <div className="text-xs text-muted-foreground">
-                          ชั้น: {s.classroom_names?.join(", ") || "-"}
+                          {s.subject_type === "activity" ? "วิชากิจกรรม" : `${Number(s.credit_hours) || 1} หน่วยกิต`}
+                          {" · "}คะแนนเต็ม เก็บ {s.midterm_max_score ?? 50} / สอบ {s.final_max_score ?? 50}
                         </div>
                       </div>
                       <span
@@ -243,8 +237,9 @@ export default function CopySubjectsModal({
 
           {copySubjectsSourceId && copySubjectsTargetId && (
             <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-sm text-amber-700 dark:text-amber-300 font-medium">
-              ⚠️ ชั้นเรียนจะถูกจับคู่โดยอัตโนมัติ (จับคู่จากชื่อชั้นเรียนในเทอมปลายทาง)
-              หากชั้นเรียนในเทอมปลายทางไม่มีชื่อเดียวกัน ชั้นเรียนนั้นจะไม่ถูกเชื่อม (แต่ยังคัดลอกวิชาได้)
+              ⚠️ คัดลอกเฉพาะชื่อวิชา ภาษา หน่วยกิต และคะแนนเต็มเก็บ/สอบ เท่านั้น
+              ชั้นเรียนและครูผู้สอนไม่ถูกคัดลอก ต้องกำหนดใหม่ในเทอมปลายทาง
+              (วิชาที่มีชื่อซ้ำกับวิชาในเทอมปลายทางจะถูกข้าม)
             </div>
           )}
         </div>

@@ -1521,7 +1521,7 @@ function AdminPortalContent() {
 
   const handleSaveCopySubjects = async () => {
     if (!copySubjectsTargetId) {
-      Swal.fire("ข้อผิดพลาด", "กรุณาเลือกเทอร์ปลายทาง", "warning");
+      Swal.fire("ข้อผิดพลาด", "กรุณาเลือกเทอมปลายทาง", "warning");
       return;
     }
     const selected = sourceSubjects.filter(s => copySubjectsSelected[s.id]);
@@ -1535,21 +1535,13 @@ function AdminPortalContent() {
       body: JSON.stringify({
         source_setting_id: copySubjectsSourceId,
         target_setting_id: copySubjectsTargetId,
-        subjects: selected.map(s => ({
-          name: s.name,
-          teacher_ids: s.teacher_ids || (s.teacher_id ? [s.teacher_id] : []),
-          classroom_ids: s.classroom_ids || [],
-          midterm_max_score: s.midterm_max_score,
-          final_max_score: s.final_max_score,
-          subject_type: s.subject_type,
-          credit_hours: s.credit_hours,
-          score_display_mode: s.score_display_mode,
-        }))
+        subject_ids: selected.map(s => s.id)
       })
     });
     if (res.ok) {
       const data = await res.json();
-      Swal.fire("สำเร็จ", `คัดลอกวิชาเรียน ${data.created} วิชาเรียบร้อยแล้ว`, "success");
+      const skippedText = data.skipped ? ` (ข้าม ${data.skipped} วิชาที่มีชื่อซ้ำในเทอมปลายทาง)` : "";
+      Swal.fire("สำเร็จ", `คัดลอกวิชาเรียน ${data.created} วิชาเรียบร้อยแล้ว${skippedText}`, "success");
       setIsCopySubjectsModalOpen(false);
       if (token && copySubjectsTargetId?.toString() === selectedSubjectSettingId?.toString()) {
         const refreshed = await fetch(`/api/subjects?settingId=${selectedSubjectSettingId}`, {
