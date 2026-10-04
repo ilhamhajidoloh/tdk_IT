@@ -16,6 +16,22 @@ function daysBetween(a: string, b: string): number {
   return Math.round((bDate.getTime() - aDate.getTime()) / (24 * 3600 * 1000));
 }
 
+function hasEffectiveSchoolDayInRange(
+  start: string,
+  end: string,
+  scheduleDays: number[],
+  holidayDates: string[]
+): boolean {
+  let date = start;
+  while (date <= end) {
+    const [year, month, day] = date.split("-").map(Number);
+    const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    if (scheduleDays.includes(dayOfWeek) && !holidayDates.includes(date)) return true;
+    date = addDays(date, 1);
+  }
+  return false;
+}
+
 interface TeacherGroupRow {
   id: string;
   name: string;
@@ -184,6 +200,19 @@ export async function GET(req: NextRequest) {
     .filter((h) => h.applies_to === "all" || h.applies_to === "cooks")
     .map((h) => h.date);
 
+  const teacherWeekHasEffectiveSchoolDay = hasEffectiveSchoolDayInRange(
+    teacherWindowStart,
+    addDays(teacherWindowStart, 6),
+    scheduleDays,
+    teacherHolidayDates
+  );
+  const cookWeekHasEffectiveSchoolDay = hasEffectiveSchoolDayInRange(
+    baseWeekStart,
+    addDays(baseWeekStart, 6),
+    scheduleDays,
+    cookHolidayDates
+  );
+
   // The duty engine keeps every holiday source above so that rotations remain
   // correct. For the home-page list, show only dates the school normally opens
   // and collapse the same holiday imported from both calendar tables.
@@ -203,7 +232,11 @@ export async function GET(req: NextRequest) {
   const cookGroups: CookGroupRow[] = cookGroupsRes.rows;
 
   // Teacher duty: 1 group per effective school week
-  const teacherFromDate = teacherHasPassedLastSchoolDay ? addDays(today, 7) : today;
+  // Keep an all-closed current week visible as "closed", even after its last
+  // regular school day. An active week retains the existing next-week rollover.
+  const teacherFromDate = teacherHasPassedLastSchoolDay && teacherWeekHasEffectiveSchoolDay
+    ? addDays(today, 7)
+    : today;
   const teacherForecast = buildTeacherForecast(
     teacherAnchor,
     teacherGroups,
@@ -223,8 +256,16 @@ export async function GET(req: NextRequest) {
     : null;
 
   // Cook duty: 1 group per effective school day (skip holidays)
-  const weekStart = cookHasPassedLastSchoolDay ? addDays(baseWeekStart, 7) : baseWeekStart;
+  const weekStart = cookHasPassedLastSchoolDay && cookWeekHasEffectiveSchoolDay
+    ? addDays(baseWeekStart, 7)
+    : baseWeekStart;
   const weekEnd = addDays(weekStart, 6);
+  const cookDisplayWeekHasEffectiveSchoolDay = hasEffectiveSchoolDayInRange(
+    weekStart,
+    weekEnd,
+    scheduleDays,
+    cookHolidayDates
+  );
   const cookEntries = buildCookSchedule(
     cookAnchor,
     cookGroups,
@@ -279,6 +320,7 @@ export async function GET(req: NextRequest) {
     holidays: visibleHolidays,
     teacherDuty: {
       current: teacherCurrent,
+      currentWeekClosed: teacherForecast[0]?.allDaysClosed ?? false,
       forecast: teacherForecast.slice(1).filter((f) => !f.allDaysClosed).map((f) => ({
         weekStart: f.weekStart,
         weekEnd: f.weekEnd,
@@ -291,6 +333,7 @@ export async function GET(req: NextRequest) {
     cookDuty: {
       weekStart,
       weekEnd,
+      currentWeekClosed: !cookDisplayWeekHasEffectiveSchoolDay,
       thisWeek: cookThisWeek,
       today: cookToday ? serializeCookEntry(cookToday) : null,
       forecast: cookForecast.map(serializeCookEntry),

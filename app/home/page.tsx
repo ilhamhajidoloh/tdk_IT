@@ -76,11 +76,13 @@ interface HomeData {
   holidays: HolidayItem[];
   teacherDuty: {
     current: TeacherDutyGroup | null;
+    currentWeekClosed: boolean;
     forecast: TeacherDutyGroup[];
   };
   cookDuty: {
     weekStart: string;
     weekEnd: string;
+    currentWeekClosed: boolean;
     thisWeek: CookDayEntry[];
     today: CookDayEntry | null;
     forecast: CookDayEntry[];
@@ -147,6 +149,14 @@ function EmptyNote({ text }: { text: string }) {
   return (
     <div className="text-center py-8 text-sm text-muted-foreground bg-muted/40 rounded-3xl border border-dashed border-border font-semibold">
       {text}
+    </div>
+  );
+}
+
+function ClosedWeekNote() {
+  return (
+    <div className="text-center py-8 text-lg font-black text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-3xl border border-rose-500/25">
+      ปิด
     </div>
   );
 }
@@ -551,19 +561,25 @@ function SchoolHomeContent() {
                     gradient="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600"
                     ringClass="ring-indigo-500/20 dark:ring-indigo-400/20"
                   >
-                    {data?.teacherDuty?.current ? (
+                    {data?.teacherDuty ? (
                       <div className="space-y-5 flex-1 flex flex-col justify-between">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
-                              กลุ่มเวร:{" "}
-                              <span className="text-indigo-600 dark:text-indigo-400 font-black">
-                                {data.teacherDuty.current.name}
-                              </span>
-                            </h3>
+                        {data.teacherDuty.currentWeekClosed ? (
+                          <ClosedWeekNote />
+                        ) : data.teacherDuty.current ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+                                กลุ่มเวร:{" "}
+                                <span className="text-indigo-600 dark:text-indigo-400 font-black">
+                                  {data.teacherDuty.current.name}
+                                </span>
+                              </h3>
+                            </div>
+                            <MemberList names={data.teacherDuty.current.members.map((m) => m.username)} tone="indigo" />
                           </div>
-                          <MemberList names={data.teacherDuty.current.members.map((m) => m.username)} tone="indigo" />
-                        </div>
+                        ) : (
+                          <EmptyNote text="ไม่มีตารางเวรครูประจำสัปดาห์นี้" />
+                        )}
 
                         {data.teacherDuty.forecast.length > 0 && (
                           <div className="pt-5 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
@@ -608,10 +624,12 @@ function SchoolHomeContent() {
                     gradient="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600"
                     ringClass="ring-emerald-500/20 dark:ring-emerald-400/20"
                   >
-                    {data?.cookDuty?.thisWeek && data.cookDuty.thisWeek.length > 0 ? (
+                    {data?.cookDuty ? (
                       <div className="space-y-5 flex-1 flex flex-col justify-between">
-                        {/* ตารางรายสัปดาห์ */}
-                        <div className="space-y-3">
+                        {data.cookDuty.currentWeekClosed ? (
+                          <ClosedWeekNote />
+                        ) : data.cookDuty.thisWeek.length > 0 ? (
+                          <div className="space-y-3">
                           <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                             <CalendarDays className="w-3.5 h-3.5 text-emerald-500" />
                             <span>ตารางประจำสัปดาห์</span>
@@ -686,7 +704,10 @@ function SchoolHomeContent() {
                               );
                             })}
                           </div>
-                        </div>
+                          </div>
+                        ) : (
+                          <EmptyNote text="ไม่มีตารางเวรแม่ครัวประจำสัปดาห์นี้" />
+                        )}
 
                         {data.cookDuty.forecast && data.cookDuty.forecast.length > 0 && (
                           <div className="pt-5 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
