@@ -35,6 +35,7 @@ interface EnterGradesTabProps {
 
   currentClassroomStudents: DBStudent[];
   savedCount: number;
+  onNavigateBack: () => void;
   onSaveAll: () => void;
   onPrintStudentList: () => void;
   onExportStudentListExcel: () => void;
@@ -72,6 +73,7 @@ export default function EnterGradesTab({
   onChangeDisplayMode,
   currentClassroomStudents,
   savedCount,
+  onNavigateBack,
   onSaveAll,
   onPrintStudentList,
   onExportStudentListExcel,
@@ -101,7 +103,7 @@ export default function EnterGradesTab({
         <div className="flex items-center justify-between gap-3 flex-wrap animate-fade-in-up">
           <button
             type="button"
-            onClick={() => enterClassroom ? setEnterClassroom("") : setEnterSubject("")}
+            onClick={onNavigateBack}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card text-sm font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <span aria-hidden="true">←</span>

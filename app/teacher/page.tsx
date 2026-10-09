@@ -821,9 +821,6 @@ export default function TeacherPortal() {
     return (totalPoints / totalCredits).toFixed(2);
   };
 
-  if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบ" />;
-  if (!isClient || loading || !teacherUser) return <SkeletonTeacherPortal />;
-
   const currentSubjectObj = subjectsList.find(s => s.name?.trim().toLowerCase() === enterSubject?.trim().toLowerCase() && s.setting_id === activeSettingId);
   const currentMidtermMax = Number(currentSubjectObj?.midterm_max_score) || midtermMax;
   const currentFinalMax = Number(currentSubjectObj?.final_max_score) || finalMax;
@@ -865,6 +862,69 @@ export default function TeacherPortal() {
 
   const attendanceClassroomOptions = classrooms.filter(c => mySubjects.find(s => s.id === attendanceSubjectId)?.classroom_ids?.includes(c.id));
   const attendanceClassroomStudents = students.filter(s => s.classroom_id === attendanceClassroomId);
+
+  const hasUnsavedGradeChanges = activeTab === "enter" && Boolean(enterSubject && enterClassroom) &&
+    currentClassroomStudents.some(student => {
+      const draft = rowScores[student.student_id] ?? { midterm: "", final: "" };
+      const saved = grades.find(g =>
+        g.student_id === student.student_id &&
+        g.subject.trim().toLowerCase() === enterSubject.trim().toLowerCase() &&
+        g.term === enterTerm
+      );
+      const draftMidterm = draft.midterm === "" ? null : Number(draft.midterm);
+      const savedMidterm = saved?.midterm_score ?? null;
+      if (draftMidterm !== savedMidterm) return true;
+      if (isCombined) return false;
+      const draftFinal = draft.final === "" ? null : Number(draft.final);
+      const savedFinal = saved?.final_score ?? null;
+      return draftFinal !== savedFinal;
+    });
+
+  const showUnsavedGradeWarning = () => {
+    void Swal.fire({
+      icon: "warning",
+      title: "ยังไม่ได้บันทึกคะแนน",
+      text: "กรุณากด “บันทึก” ให้เรียบร้อยก่อนย้อนกลับหรือไปยังเมนูอื่น",
+      confirmButtonText: "ตกลง",
+      confirmButtonColor: "#4f46e5",
+    });
+  };
+
+  const handleTabChange = (tab: Tab) => {
+    if (tab !== activeTab && hasUnsavedGradeChanges) {
+      showUnsavedGradeWarning();
+      return;
+    }
+    setActiveTab(tab);
+  };
+
+  const handleEnterGradesBack = () => {
+    if (hasUnsavedGradeChanges) {
+      showUnsavedGradeWarning();
+      return;
+    }
+    if (enterClassroom) {
+      setEnterClassroom("");
+    } else {
+      setEnterSubject("");
+    }
+  };
+
+  useEffect(() => {
+    if (!hasUnsavedGradeChanges) return;
+
+    const handlePopState = () => {
+      window.history.pushState({ gradeGuard: true }, "", window.location.href);
+      showUnsavedGradeWarning();
+    };
+
+    window.history.pushState({ gradeGuard: true }, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [hasUnsavedGradeChanges]);
+
+  if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบ" />;
+  if (!isClient || loading || !teacherUser) return <SkeletonTeacherPortal />;
 
   const myScheduleEntries = scheduleEntries.filter(e => {
     if (e.teacher_id) return e.teacher_id === teacherUser?.id;
@@ -1052,6 +1112,7 @@ export default function TeacherPortal() {
       <TabNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onTabChange={handleTabChange}
         enterBadge={enterSubject && enterClassroom ? `${savedCount}/${currentClassroomStudents.length}` : undefined}
         homeroomBadge={homeroomClass ? homeroomStudents.length : undefined}
         isClerical={teacherUser?.is_clerical}
@@ -1137,6 +1198,7 @@ export default function TeacherPortal() {
             onChangeDisplayMode={handleChangeDisplayMode}
             currentClassroomStudents={currentClassroomStudents}
             savedCount={savedCount}
+            onNavigateBack={handleEnterGradesBack}
             onSaveAll={handleSaveAll}
             onPrintStudentList={handlePrintClassStudentList}
             onExportStudentListExcel={handleExportClassStudentListExcel}

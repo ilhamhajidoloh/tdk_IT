@@ -30,6 +30,7 @@ const TAB_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> 
 interface TabNavProps {
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
+  onTabChange?: (tab: Tab) => void;
   enterBadge?: string;
   homeroomBadge?: number;
   isClerical?: boolean;
@@ -38,6 +39,7 @@ interface TabNavProps {
 export default function TabNav({
   activeTab,
   setActiveTab,
+  onTabChange,
   enterBadge,
   homeroomBadge,
   isClerical,
@@ -62,7 +64,7 @@ export default function TabNav({
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => (onTabChange ?? setActiveTab)(tab.key)}
                 data-active={activeTab === tab.key}
                 className="ui-segment-item !flex-none px-4 whitespace-nowrap"
               >
