@@ -125,6 +125,7 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "GPA": { th: "GPA", rumi: "GPA", jawi: "GPA" },
     "อันดับ": { th: "อันดับ", rumi: "Kedudukan", jawi: "كدودوقن" },
     "อันดับในห้องเรียน": { th: "อันดับในห้องเรียน", rumi: "Kedudukan Dalam Kelas", jawi: "كدودوقن دالم كلس" },
+    "อันดับในโรงเรียน": { th: "อันดับในโรงเรียน", rumi: "Kedudukan Dalam Sekolah", jawi: "كدودوقن دالم سكوله" },
     "อันดับที่": { th: "อันดับที่", rumi: "Ke-", jawi: "ك-" },
     "วิชาหลัก": { th: "วิชาหลัก", rumi: "Subjek Teras", jawi: "ڤلاجران ت رس" },
     "กิจกรรม": { th: "กิจกรรม", rumi: "Aktiviti", jawi: "اكتيۏيتي" },
@@ -3499,7 +3500,7 @@ function changeFontSize(dir) {
       `;
     };
 
-    const studentRows = classStudents.map(st => {
+    const allStudentRows = exportStudents.map(st => {
       const sMap = gradeMap.get(st.student_id) || new Map();
       let totalMainScore = 0;
       let maxPossibleMain = 0;
@@ -3582,17 +3583,25 @@ function changeFontSize(dir) {
         student_id: st.student_id,
         name: st.name,
         student_number: st.student_number,
+        classroom_id: st.classroom_id,
         subjectScores,
         totalMainScore,
         maxPossibleMain,
         percentage: Math.round(pct * 100) / 100,
         gpa: Math.round(gpa * 100) / 100,
         rank: 0,
+        schoolRank: 0,
       };
     });
 
-    const sortedForRank = [...studentRows].sort((a, b) => b.percentage - a.percentage || b.totalMainScore - a.totalMainScore);
-    sortedForRank.forEach((r, idx) => {
+    const sortedForSchoolRank = [...allStudentRows].sort((a, b) => b.percentage - a.percentage || b.totalMainScore - a.totalMainScore);
+    sortedForSchoolRank.forEach((r, idx) => {
+      r.schoolRank = idx + 1;
+    });
+
+    const studentRows = allStudentRows.filter(st => st.classroom_id === exportClassroomId);
+    const sortedForClassroomRank = [...studentRows].sort((a, b) => b.percentage - a.percentage || b.totalMainScore - a.totalMainScore);
+    sortedForClassroomRank.forEach((r, idx) => {
       r.rank = idx + 1;
     });
 
@@ -3636,6 +3645,7 @@ function changeFontSize(dir) {
             <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:bold;color:#2563eb;">${st.percentage.toFixed(1)}%</td>
             <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:800;color:#064e3b;">${st.gpa.toFixed(2)}</td>
             <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:bold;">${st.rank}</td>
+            <td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(12px * var(--fs));font-weight:bold;color:#7c3aed;">${st.schoolRank}</td>
           </tr>
         `;
       }).join("");
@@ -3661,7 +3671,7 @@ function changeFontSize(dir) {
             }
             return `<td style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:calc(12px * var(--fs));font-weight:bold;color:#b45309;">${subjectTotals[s.id]}</td>`;
           }).join("")}
-          <td colspan="4" style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:calc(11px * var(--fs));color:#78716c;">—</td>
+          <td colspan="5" style="padding:8px;text-align:center;border:1px solid #fbbf24;font-size:calc(11px * var(--fs));color:#78716c;">—</td>
         </tr>
       `;
 
@@ -3744,7 +3754,8 @@ function changeFontSize(dir) {
                 <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:70px;font-size:calc(11px * var(--fs));">${t("รวมคะแนน")}</th>
                 <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:65px;font-size:calc(11px * var(--fs));">${t("เฉลี่ย %")}</th>
                 <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:calc(11px * var(--fs));">${t("GPA")}</th>
-                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:55px;font-size:calc(11px * var(--fs));">${t("อันดับ")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:65px;font-size:calc(11px * var(--fs));">${t("อันดับในห้องเรียน")}</th>
+                <th style="padding:8px;text-align:center;border:1px solid #cbd5e1;width:65px;font-size:calc(11px * var(--fs));">${t("อันดับในโรงเรียน")}</th>
               </tr>
             </thead>
             <tbody>
@@ -3851,6 +3862,10 @@ function changeFontSize(dir) {
               <div class="sum-card">
                 <div class="sum-label">${t("อันดับในห้องเรียน")}</div>
                 <div class="sum-val" style="color:#7c3aed;">${t("อันดับที่")} ${st.rank} / ${classStudents.length}</div>
+              </div>
+              <div class="sum-card">
+                <div class="sum-label">${t("อันดับในโรงเรียน")}</div>
+                <div class="sum-val" style="color:#db2777;">${t("อันดับที่")} ${st.schoolRank} / ${allStudentRows.length}</div>
               </div>
             </div>
 
