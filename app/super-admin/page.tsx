@@ -26,7 +26,8 @@ import {
   Ban,
   Clock3,
   Upload,
-  X
+  X,
+  User
 } from "lucide-react";
 import { useAuth } from "../lib/useAuth";
 import ThemeToggle from "../components/ThemeToggle";
@@ -666,6 +667,14 @@ export default function SuperAdminPage() {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
+
+            <button
+              onClick={() => router.push("/super-admin/profile")}
+              title="โปรไฟล์"
+              className="flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 border border-border transition-all shrink-0"
+            >
+              <User className="w-4 h-4" />
+            </button>
 
             {/* Social Mail Link Button */}
             <button

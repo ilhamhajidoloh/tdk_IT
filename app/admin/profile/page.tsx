@@ -140,13 +140,15 @@ export default function AdminProfilePage() {
     );
   }
 
+  const profileBackPath = user.role === "super_admin" ? "/super-admin" : "/admin";
+
   return (
     <div className="profile-page profile-page-admin min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Simple Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
         <div className="px-4 py-4 flex items-center justify-between">
           <button
-            onClick={() => router.push("/admin")}
+            onClick={() => router.push(profileBackPath)}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
