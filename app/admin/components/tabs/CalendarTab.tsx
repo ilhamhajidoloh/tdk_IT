@@ -14,6 +14,7 @@ type CalendarEvent = {
   event_type: string;
   academic_year: string | null;
   school_id: string | null;
+  visibility: string;
   created_at: string;
   updated_at: string;
 };
@@ -116,6 +117,13 @@ export default function CalendarTab({
             </select>
           </div>
           <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">แสดงให้</label>
+            <select id="swal-visibility" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground">
+              <option value="all">ทุกคน (ครู, นักเรียน, ผู้ปกครอง)</option>
+              <option value="teacher_only">เฉพาะครู</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ปีการศึกษา</label>
             <select id="swal-year" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground">
               ${years.map(year => `<option value="${year}" ${year === currentYear ? "selected" : ""}>${yearLabel(year)}</option>`).join("")}
@@ -148,6 +156,7 @@ export default function CalendarTab({
         const dateMode = (document.getElementById("swal-date-mode") as HTMLSelectElement).value;
         const end_date = (document.getElementById("swal-end-date") as HTMLInputElement).value;
         const event_type = (document.getElementById("swal-type") as HTMLSelectElement).value;
+        const visibility = (document.getElementById("swal-visibility") as HTMLSelectElement).value;
         const academic_year = (document.getElementById("swal-year") as HTMLSelectElement).value;
 
         if (!title || !event_date || (dateMode === "range" && !end_date)) {
@@ -160,7 +169,7 @@ export default function CalendarTab({
           return null;
         }
 
-        return { title, description, event_date, end_date: dateMode === "range" ? end_date : null, event_type, academic_year };
+        return { title, description, event_date, end_date: dateMode === "range" ? end_date : null, event_type, visibility, academic_year };
       }
     });
 
@@ -214,6 +223,13 @@ export default function CalendarTab({
             </select>
           </div>
           <div>
+            <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">แสดงให้</label>
+            <select id="swal-visibility" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground">
+              <option value="all" ${event.visibility === "all" ? "selected" : ""}>ทุกคน (ครู, นักเรียน, ผู้ปกครอง)</option>
+              <option value="teacher_only" ${event.visibility === "teacher_only" ? "selected" : ""}>เฉพาะครู</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wider">ปีการศึกษา</label>
             <select id="swal-year" class="w-full px-4 py-3 rounded-xl border border-border bg-card focus:ring-2 focus:ring-indigo-400 outline-none transition-all text-sm font-semibold text-foreground">
               ${years.map(year => `<option value="${year}" ${year === event.academic_year ? "selected" : ""}>${yearLabel(year)}</option>`).join("")}
@@ -246,6 +262,7 @@ export default function CalendarTab({
         const dateMode = (document.getElementById("swal-date-mode") as HTMLSelectElement).value;
         const end_date = (document.getElementById("swal-end-date") as HTMLInputElement).value;
         const event_type = (document.getElementById("swal-type") as HTMLSelectElement).value;
+        const visibility = (document.getElementById("swal-visibility") as HTMLSelectElement).value;
         const academic_year = (document.getElementById("swal-year") as HTMLSelectElement).value;
 
         if (!title || !event_date || (dateMode === "range" && !end_date)) {
@@ -258,7 +275,7 @@ export default function CalendarTab({
           return null;
         }
 
-        return { title, description, event_date, end_date: dateMode === "range" ? end_date : null, event_type, academic_year };
+        return { title, description, event_date, end_date: dateMode === "range" ? end_date : null, event_type, visibility, academic_year };
       }
     });
 

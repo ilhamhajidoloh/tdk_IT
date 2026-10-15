@@ -578,6 +578,7 @@ export default function StudentPortal() {
             <CalendarTimeline
               schoolId={user?.school_id}
               academicYear={activeSetting?.academic_year}
+              userRole="student"
             />
             <OverviewTab
               studentName={currentStudent.name}

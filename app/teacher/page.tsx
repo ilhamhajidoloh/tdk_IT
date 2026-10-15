@@ -1150,6 +1150,7 @@ export default function TeacherPortal() {
             <CalendarTimeline
               schoolId={teacherUser?.school_id}
               academicYear={enterTerm.split("/")[1]}
+              userRole="teacher"
             />
             <DashboardTab
               isGradingActive={isGradingActive}

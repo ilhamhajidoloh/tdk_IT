@@ -11,11 +11,13 @@ type CalendarEvent = {
   event_date: string;
   event_type: string;
   academic_year: string | null;
+  visibility: string;
 };
 
 type CalendarTimelineProps = {
   schoolId?: string | null;
   academicYear?: string | null;
+  userRole?: string; // teacher, student, parent, admin, super_admin
 };
 
 const EVENT_TYPE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
@@ -27,7 +29,7 @@ const EVENT_TYPE_COLORS: Record<string, { bg: string; text: string; dot: string 
   deadline: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-300", dot: "bg-amber-500" },
 };
 
-export default function CalendarTimeline({ schoolId, academicYear }: CalendarTimelineProps) {
+export default function CalendarTimeline({ schoolId, academicYear, userRole }: CalendarTimelineProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -43,6 +45,7 @@ export default function CalendarTimeline({ schoolId, academicYear }: CalendarTim
         const params = new URLSearchParams();
         if (schoolId) params.append("schoolId", schoolId);
         if (academicYear) params.append("academicYear", academicYear);
+        if (userRole) params.append("userRole", userRole);
 
         const queryString = params.toString();
         if (queryString) url += `?${queryString}`;
@@ -60,7 +63,7 @@ export default function CalendarTimeline({ schoolId, academicYear }: CalendarTim
     };
 
     fetchEvents();
-  }, [schoolId, academicYear]);
+  }, [schoolId, academicYear, userRole]);
 
   useEffect(() => {
     fetch("/api/public/settings?all=true")

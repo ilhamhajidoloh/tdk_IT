@@ -394,7 +394,7 @@ function SchoolHomeContent() {
         ) : (
           <>
             {/* Calendar Timeline */}
-            <CalendarTimeline schoolId={schoolInfo?.id} academicYear={undefined} />
+            <CalendarTimeline schoolId={schoolInfo?.id} academicYear={undefined} userRole="guest" />
 
             {/* Sub-Tab Navigation Bar */}
             <div className="flex flex-wrap items-center gap-2 p-1.5 bg-muted/60 dark:bg-muted/40 rounded-2xl border border-border">

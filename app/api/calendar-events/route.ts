@@ -9,10 +9,11 @@ export async function GET(req: NextRequest) {
   try {
     const schoolParam = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id");
     const academicYear = req.nextUrl.searchParams.get("academicYear");
+    const userRole = req.nextUrl.searchParams.get("userRole"); // teacher, student, admin, etc.
 
     let query = `
       SELECT id, title, description, event_date, event_type,
-             academic_year, school_id, created_at, updated_at
+             academic_year, school_id, visibility, created_at, updated_at
       FROM calendar_events
       WHERE 1=1
     `;
@@ -29,6 +30,15 @@ export async function GET(req: NextRequest) {
       query += ` AND academic_year = $${paramIndex}`;
       params.push(academicYear);
       paramIndex++;
+    }
+
+    // Filter by visibility based on user role
+    if (userRole && userRole !== "admin" && userRole !== "super_admin") {
+      if (userRole === "teacher") {
+        query += ` AND (visibility = 'all' OR visibility = 'teacher_only')`;
+      } else {
+        query += ` AND visibility = 'all'`;
+      }
     }
 
     query += ` ORDER BY event_date ASC, created_at ASC`;
@@ -68,9 +78,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, description, event_date, end_date, event_type, academic_year, school_id, applies_to } = body;
+    const { title, description, event_date, end_date, event_type, academic_year, school_id, applies_to, visibility } = body;
     const requestedSchoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id");
     const effectiveSchoolId = school_id || requestedSchoolId || session.school_id || null;
+    const effectiveVisibility = visibility || "all"; // default to 'all' if not specified
 
     if (!title || !event_date) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -109,10 +120,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const values = dates.map((date) => [title, description || null, date, event_type || "general", academic_year || null, effectiveSchoolId]);
-    const placeholders = values.map((_, row) => `($${row * 6 + 1}, $${row * 6 + 2}, $${row * 6 + 3}, $${row * 6 + 4}, $${row * 6 + 5}, $${row * 6 + 6})`).join(", ");
+    const values = dates.map((date) => [title, description || null, date, event_type || "general", academic_year || null, effectiveSchoolId, effectiveVisibility]);
+    const placeholders = values.map((_, row) => `($${row * 7 + 1}, $${row * 7 + 2}, $${row * 7 + 3}, $${row * 7 + 4}, $${row * 7 + 5}, $${row * 7 + 6}, $${row * 7 + 7})`).join(", ");
     const result = await pool.query(
-      `INSERT INTO calendar_events (title, description, event_date, event_type, academic_year, school_id)
+      `INSERT INTO calendar_events (title, description, event_date, event_type, academic_year, school_id, visibility)
        VALUES ${placeholders}
        RETURNING *`,
       values.flat()
@@ -149,7 +160,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, title, description, event_date, end_date, event_type, academic_year } = body;
+    const { id, title, description, event_date, end_date, event_type, academic_year, visibility } = body;
 
     if (!id || !title || !event_date) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -158,10 +169,10 @@ export async function PUT(req: NextRequest) {
     const result = await pool.query(
       `UPDATE calendar_events
        SET title = $1, description = $2, event_date = $3, event_type = $4,
-           academic_year = $5, updated_at = NOW()
-       WHERE id = $6
+           academic_year = $5, visibility = $6, updated_at = NOW()
+       WHERE id = $7
        RETURNING *`,
-      [title, description || null, event_date, event_type || "general", academic_year || null, id]
+      [title, description || null, event_date, event_type || "general", academic_year || null, visibility || "all", id]
     );
 
     if (result.rows.length === 0) {
@@ -193,10 +204,10 @@ export async function PUT(req: NextRequest) {
       const openDays = new Set(scheduleDays);
       dates.splice(0, dates.length, ...dates.filter((date) => openDays.has(new Date(`${date}T00:00:00Z`).getUTCDay())));
       if (dates.length > 0) {
-        const values = dates.map((date) => [title, description || null, date, event_type || "general", academic_year || null, result.rows[0].school_id]);
-        const placeholders = values.map((_, row) => `($${row * 6 + 1}, $${row * 6 + 2}, $${row * 6 + 3}, $${row * 6 + 4}, $${row * 6 + 5}, $${row * 6 + 6})`).join(", ");
+        const values = dates.map((date) => [title, description || null, date, event_type || "general", academic_year || null, result.rows[0].school_id, result.rows[0].visibility || "all"]);
+        const placeholders = values.map((_, row) => `($${row * 7 + 1}, $${row * 7 + 2}, $${row * 7 + 3}, $${row * 7 + 4}, $${row * 7 + 5}, $${row * 7 + 6}, $${row * 7 + 7})`).join(", ");
         await pool.query(
-          `INSERT INTO calendar_events (title, description, event_date, event_type, academic_year, school_id) VALUES ${placeholders}`,
+          `INSERT INTO calendar_events (title, description, event_date, event_type, academic_year, school_id, visibility) VALUES ${placeholders}`,
           values.flat()
         );
       }
