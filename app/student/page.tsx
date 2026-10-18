@@ -55,6 +55,20 @@ export default function StudentPortal() {
 
   useEffect(() => { setIsClient(true); }, []);
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("tab") !== "grades") return;
+    setActiveTab("grades");
+    url.searchParams.delete("tab");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  const handleGradesReleased = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "grades");
+    window.location.replace(url.toString());
+  };
+
   // จัดการผลลัพธ์จากการเชื่อมต่อบัญชี
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -623,6 +637,7 @@ export default function StudentPortal() {
             midtermMax={midtermMax}
             finalMax={finalMax}
             ranking={myRanking}
+            onGradesReleased={handleGradesReleased}
           />
         )}
 

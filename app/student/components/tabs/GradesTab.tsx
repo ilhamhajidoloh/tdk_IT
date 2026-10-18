@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ClipboardList, Download, FileText, Trophy } from "lucide-react";
 import * as XLSX from "xlsx";
 import { type DBGrade, type DBSubject, type CombinedActivityResult, getGradeInfo } from "../types";
@@ -24,14 +24,16 @@ interface GradesTabProps {
   midtermMax: number;
   finalMax: number;
   ranking: { school_rank: number; school_total: number; classroom_rank: number; classroom_total: number } | null;
+  onGradesReleased: () => void;
 }
 
 type PdfLanguage = "th" | "ms-rumi" | "ms-jawi";
 
-function ReleaseCountdownTimer({ targetDateStr, settingName }: { targetDateStr: string | null; settingName: string }) {
+function ReleaseCountdownTimer({ targetDateStr, settingName, onReleased }: { targetDateStr: string | null; settingName: string; onReleased: () => void }) {
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number; isExpired: boolean }>({
     days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: false
   });
+  const hasTriggeredRelease = useRef(false);
 
   useEffect(() => {
     if (!targetDateStr) return;
@@ -44,6 +46,10 @@ function ReleaseCountdownTimer({ targetDateStr, settingName }: { targetDateStr: 
 
       if (difference <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true });
+        if (!hasTriggeredRelease.current) {
+          hasTriggeredRelease.current = true;
+          onReleased();
+        }
       } else {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24));
         const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -56,7 +62,7 @@ function ReleaseCountdownTimer({ targetDateStr, settingName }: { targetDateStr: 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [targetDateStr]);
+  }, [targetDateStr, onReleased]);
 
   const formattedTargetDate = targetDateStr
     ? new Date(targetDateStr).toLocaleString("th-TH", {
@@ -152,6 +158,7 @@ export default function GradesTab({
   midtermMax,
   finalMax,
   ranking,
+  onGradesReleased,
 }: GradesTabProps) {
   const [pdfLanguage, setPdfLanguage] = useState<PdfLanguage>("th");
 
@@ -450,7 +457,7 @@ export default function GradesTab({
       </div>
 
       {!isGradeReleased ? (
-        <ReleaseCountdownTimer targetDateStr={releaseDateStr} settingName={activeTermStr} />
+        <ReleaseCountdownTimer targetDateStr={releaseDateStr} settingName={activeTermStr} onReleased={onGradesReleased} />
       ) : (
         <>
           {filteredGrades.length === 0 ? (
