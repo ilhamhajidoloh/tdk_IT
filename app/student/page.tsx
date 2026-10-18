@@ -603,6 +603,10 @@ export default function StudentPortal() {
 
         {activeTab === "grades" && (
           <GradesTab
+            studentName={currentStudent.name}
+            studentCode={currentStudent.student_id}
+            studentNumber={currentStudent.student_number}
+            classroomName={formatClassroomOption(classroom)}
             activeTermStr={activeTermStr}
             settingsList={settingsList}
             activeSettingId={activeSettingId}

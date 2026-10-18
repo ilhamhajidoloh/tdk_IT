@@ -142,7 +142,6 @@ export default function AdminSidebar({
     items: navItems.filter((item) => cat.keys.includes(item.key)),
   })).filter((cat) => cat.items.length > 0);
 
-  // Filtered items for mobile view based on category filter
   const mobileFilteredItems =
     selectedCategoryFilter === "all"
       ? navItems
@@ -192,7 +191,7 @@ export default function AdminSidebar({
         </div>
 
         {/* Category Filter Pills (Mobile/Tablet) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="hidden flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setSelectedCategoryFilter("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
@@ -228,7 +227,7 @@ export default function AdminSidebar({
         </div>
 
         {/* Scrollable Horizontal Chip Bar for Selected Category */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
+        <div className="hidden flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
           {mobileFilteredItems.map((item) => {
             const Icon = ICON_MAP[item.key] || Home;
             const isActive = activeTab === item.key;

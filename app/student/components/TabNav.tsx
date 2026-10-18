@@ -38,7 +38,7 @@ export default function TabNav({ activeTab, setActiveTab, gradesCount }: TabNavP
   return (
     <>
       {/* ── TOP STICKY BAR (Responsive Scroll on Mobile / Segment on Desktop) ── */}
-      <div className="sticky top-16 z-10 border-b border-border bg-background/85 backdrop-blur-xl">
+      <div className="hidden sm:block sticky top-16 z-10 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="max-w-screen-lg mx-auto px-3 sm:px-6 py-2.5">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
             {NAV_TABS.map((tab) => {
@@ -82,7 +82,7 @@ export default function TabNav({ activeTab, setActiveTab, gradesCount }: TabNavP
 
       {/* ── MOBILE BOTTOM NAVIGATION (Fixed Bottom Bar on < sm screens) ── */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-card/95 backdrop-blur-xl border-t border-border shadow-2xl px-2 py-1.5 pb-safe">
-        <div className="grid grid-cols-5 gap-1">
+        <div className="flex items-stretch gap-1 overflow-x-auto scrollbar-none">
           {NAV_TABS.map((tab) => {
             const Icon = TAB_ICON_MAP[tab.key];
             const isActive = activeTab === tab.key;
@@ -90,7 +90,7 @@ export default function TabNav({ activeTab, setActiveTab, gradesCount }: TabNavP
               <button
                 key={`mob-${tab.key}`}
                 onClick={() => setActiveTab(tab.key)}
-                className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all border-0 cursor-pointer ${
+                className={`relative flex min-w-15 shrink-0 flex-1 flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all border-0 cursor-pointer ${
                   isActive
                     ? "text-primary font-bold"
                     : "text-muted-foreground hover:text-foreground font-medium"
