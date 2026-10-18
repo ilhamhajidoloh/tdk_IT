@@ -214,10 +214,12 @@ export async function GET(req: NextRequest) {
   );
 
   // The duty engine keeps every holiday source above so that rotations remain
-  // correct. For the home-page list, show only dates the school normally opens
-  // and collapse the same holiday imported from both calendar tables.
+  // correct. For the home-page list, show only dates that have not passed,
+  // fall on a regular school day, and collapse entries imported from both
+  // calendar tables.
   const visibleHolidayMap = new Map<string, (typeof holidays)[number]>();
   for (const holiday of holidays) {
+    if (holiday.date < today) continue;
     const dayOfWeek = new Date(`${holiday.date}T00:00:00Z`).getUTCDay();
     if (!scheduleDays.includes(dayOfWeek)) continue;
     const key = `${holiday.date}|${holiday.reason.trim().toLocaleLowerCase()}`;
