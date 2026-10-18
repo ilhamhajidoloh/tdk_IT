@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ClipboardList, Download, FileText, Trophy } from "lucide-react";
+import { Download, FileText, TrendingUp, Award, BarChart3, Clock } from "lucide-react";
 import * as XLSX from "xlsx";
 import { type DBGrade, type DBSubject, type CombinedActivityResult, getGradeInfo } from "../types";
 
@@ -75,64 +75,56 @@ function ReleaseCountdownTimer({ targetDateStr, settingName, onReleased }: { tar
     : null;
 
   return (
-    <div className="ui-card p-8 sm:p-10 text-center relative overflow-hidden bg-gradient-to-b from-card via-card to-amber-500/5 border-amber-500/30 dark:border-amber-500/20 shadow-xl rounded-3xl animate-scale-up space-y-6">
-      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600" />
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-amber-900/20 border-2 border-amber-200 dark:border-amber-800/30 p-8 sm:p-12 shadow-2xl">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.1),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(249,115,22,0.1),transparent_50%)]" />
 
-      <div className="w-20 h-20 mx-auto bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-3xl flex items-center justify-center text-4xl shadow-inner border border-amber-500/20 animate-pulse">
-        🔒
-      </div>
-
-      <div className="space-y-2 max-w-md mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-bold">
-          ⏳ การประกาศผลการเรียน · เทอม {settingName}
+      <div className="relative z-10 text-center space-y-6">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg animate-pulse">
+          <Clock className="w-10 h-10 text-white" />
         </div>
-        <h3 className="text-xl sm:text-2xl font-extrabold text-foreground">
-          ผลการเรียนยังไม่เปิดเผยสำหรับนักเรียน
-        </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          ผู้ดูแลระบบได้กำหนดช่วงเวลาเปิดประกาศผลสัมฤทธิ์ทางการเรียนไว้
-          {formattedTargetDate ? ` ในวันที่ ${formattedTargetDate} น.` : " ระบบกำลังเตรียมความพร้อม"}
-        </p>
-      </div>
 
-      {/* Countdown Digits UI */}
-      {targetDateStr && !timeLeft.isExpired ? (
-        <div className="pt-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-            นับเวลาถอยหลังเปิดระบบ (Countdown Timer)
+        <div className="space-y-3">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 border border-amber-500/30 backdrop-blur-sm">
+            <span className="text-sm font-bold text-amber-800 dark:text-amber-300">เทอม {settingName}</span>
           </div>
-          <div className="grid grid-cols-4 gap-2 sm:gap-4 max-w-md mx-auto">
-            <div className="bg-muted/60 border border-border p-3 sm:p-4 rounded-2xl shadow-inner">
-              <div className="text-2xl sm:text-4xl font-extrabold text-amber-600 dark:text-amber-400 font-mono">
-                {String(timeLeft.days).padStart(2, "0")}
-              </div>
-              <div className="text-[10px] sm:text-xs font-bold text-muted-foreground mt-1">วัน</div>
-            </div>
-            <div className="bg-muted/60 border border-border p-3 sm:p-4 rounded-2xl shadow-inner">
-              <div className="text-2xl sm:text-4xl font-extrabold text-amber-600 dark:text-amber-400 font-mono">
-                {String(timeLeft.hours).padStart(2, "0")}
-              </div>
-              <div className="text-[10px] sm:text-xs font-bold text-muted-foreground mt-1">ชั่วโมง</div>
-            </div>
-            <div className="bg-muted/60 border border-border p-3 sm:p-4 rounded-2xl shadow-inner">
-              <div className="text-2xl sm:text-4xl font-extrabold text-amber-600 dark:text-amber-400 font-mono">
-                {String(timeLeft.minutes).padStart(2, "0")}
-              </div>
-              <div className="text-[10px] sm:text-xs font-bold text-muted-foreground mt-1">นาที</div>
-            </div>
-            <div className="bg-muted/60 border border-border p-3 sm:p-4 rounded-2xl shadow-inner">
-              <div className="text-2xl sm:text-4xl font-extrabold font-mono text-orange-600 dark:text-orange-400 animate-pulse">
-                {String(timeLeft.seconds).padStart(2, "0")}
-              </div>
-              <div className="text-[10px] sm:text-xs font-bold text-muted-foreground mt-1">วินาที</div>
+
+          <h3 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">
+            ผลการเรียนยังไม่เปิดเผย
+          </h3>
+
+          <p className="text-base text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+            {formattedTargetDate
+              ? `ระบบจะเปิดเผยผลการเรียนในวันที่ ${formattedTargetDate}`
+              : "ผู้ดูแลระบบกำลังเตรียมประกาศผลการเรียน"}
+          </p>
+        </div>
+
+        {targetDateStr && !timeLeft.isExpired && (
+          <div className="pt-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-4">
+              เหลือเวลาอีก
+            </p>
+            <div className="grid grid-cols-4 gap-3 sm:gap-4 max-w-lg mx-auto">
+              {[
+                { value: timeLeft.days, label: "วัน" },
+                { value: timeLeft.hours, label: "ชั่วโมง" },
+                { value: timeLeft.minutes, label: "นาที" },
+                { value: timeLeft.seconds, label: "วินาที" }
+              ].map((item, idx) => (
+                <div key={idx} className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
+                  <div className="relative bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-xl border border-amber-200 dark:border-amber-800/30">
+                    <div className="text-4xl sm:text-5xl font-black bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent font-mono">
+                      {String(item.value).padStart(2, "0")}
+                    </div>
+                    <div className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-2">{item.label}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="p-4 bg-muted/40 rounded-2xl border border-border max-w-md mx-auto text-xs text-muted-foreground font-medium">
-          ระบบปิดการแสดงผลการเรียนชั่วคราวโดยผู้ดูแลระบบ เมื่อถึงเวลากำหนด เกรดจะปรากฏขึ้นให้อัตโนมัติ
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -397,63 +389,74 @@ export default function GradesTab({
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b-2 border-border">
-        <div className="space-y-1">
-          <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">รายงานผลการเรียน</h2>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-semibold text-xs">
-              📅 เทอม {activeTermStr}
-            </span>
-          </p>
+      {/* Header Section - New Design */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-6 shadow-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white">ผลการเรียน</h2>
+                <p className="text-white/80 text-sm font-medium">Academic Performance Report</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="px-4 py-2.5 rounded-xl bg-white/20 backdrop-blur-md border-2 border-white/30 text-white font-bold text-sm hover:bg-white/30 transition-all focus:outline-none focus:ring-2 focus:ring-white/50 appearance-none cursor-pointer"
+              value={activeSettingId || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                const s = settingsList.find((x: any) => String(x.id) === val);
+                if (s) onChangeSetting(s);
+              }}
+            >
+              {settingsList.map(s => (
+                <option key={s.id} value={s.id} className="bg-gray-900 text-white">
+                  ปี {s.academic_year} เทอม {s.term}{s.is_active ? " • ปัจจุบัน" : ""}
+                </option>
+              ))}
+            </select>
+
+            {isGradeReleased && filteredGrades.length > 0 && (
+              <>
+                <select
+                  aria-label="ภาษาสำหรับรายงาน PDF"
+                  value={pdfLanguage}
+                  onChange={(event) => setPdfLanguage(event.target.value as PdfLanguage)}
+                  className="px-3 py-2.5 rounded-xl bg-white/20 backdrop-blur-md border-2 border-white/30 text-white font-semibold text-sm hover:bg-white/30 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
+                >
+                  <option value="th" className="bg-gray-900 text-white">PDF: ไทย</option>
+                  <option value="ms-rumi" className="bg-gray-900 text-white">PDF: Melayu (Rumi)</option>
+                  <option value="ms-jawi" className="bg-gray-900 text-white">PDF: Melayu (Jawi)</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 backdrop-blur-md border-2 border-white/30 text-white font-bold text-sm hover:bg-white/30 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportGrades}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-600 font-bold text-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
+                >
+                  <Download className="h-4 w-4" />
+                  Excel
+                </button>
+              </>
+            )}
+          </div>
         </div>
-        {isGradeReleased && filteredGrades.length > 0 && (
-          <button
-            type="button"
-            onClick={handleExportGrades}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <Download className="h-4 w-4" />
-            ส่งออก Excel
-          </button>
-        )}
-        {isGradeReleased && filteredGrades.length > 0 && (
-          <select
-            aria-label="ภาษาสำหรับรายงาน PDF"
-            value={pdfLanguage}
-            onChange={(event) => setPdfLanguage(event.target.value as PdfLanguage)}
-            className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <option value="th">PDF: ไทย</option>
-            <option value="ms-rumi">PDF: Melayu (Rumi)</option>
-            <option value="ms-jawi">PDF: Melayu (Jawi)</option>
-          </select>
-        )}
-        {isGradeReleased && filteredGrades.length > 0 && (
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-card px-4 py-2.5 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <FileText className="h-4 w-4" />
-            พิมพ์ / บันทึก PDF
-          </button>
-        )}
-        <select
-          className="px-4 py-2.5 rounded-xl border-2 border-border bg-card text-foreground font-semibold text-sm hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-          value={activeSettingId || ""}
-          onChange={(e) => {
-            const val = e.target.value;
-            const s = settingsList.find((x: any) => String(x.id) === val);
-            if (s) onChangeSetting(s);
-          }}
-        >
-          {settingsList.map(s => (
-            <option key={s.id} value={s.id}>
-              ปี {s.academic_year} เทอม {s.term}{s.is_active ? " • ปัจจุบัน" : ""}
-            </option>
-          ))}
-        </select>
       </div>
 
       {!isGradeReleased ? (
@@ -461,137 +464,190 @@ export default function GradesTab({
       ) : (
         <>
           {filteredGrades.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-100 to-fuchsia-100 dark:from-violet-900/20 dark:to-fuchsia-900/20 flex items-center justify-center mb-6">
-                <ClipboardList className="w-12 h-12 text-violet-600 dark:text-violet-400" />
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800/50 border-2 border-gray-200 dark:border-gray-700 p-12 text-center">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05),transparent_70%)]" />
+
+              <div className="relative z-10 space-y-4">
+                <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center shadow-xl">
+                  <BarChart3 className="w-12 h-12 text-gray-500 dark:text-gray-400" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white">ยังไม่มีผลการเรียน</h3>
+                <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                  ระบบยังไม่มีข้อมูลคะแนนสำหรับเทอมนี้ กรุณารอคุณครูบันทึกคะแนนเข้าสู่ระบบ
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-foreground mb-2">ยังไม่มีผลการเรียน</h3>
-              <p className="text-sm text-muted-foreground text-center max-w-md">
-                ระบบยังไม่มีข้อมูลคะแนนสำหรับเทอมนี้ กรุณารอคุณครูบันทึกคะแนนเข้าสู่ระบบ
-              </p>
             </div>
           ) : (
             <>
-              {/* Stats Overview Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* GPA Card - Redesigned */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 p-6 shadow-lg">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12" />
-                  <div className="relative">
-                    <div className="text-white/80 text-sm font-semibold mb-2 uppercase tracking-wider">เกรดเฉลี่ย</div>
-                    <div className="flex items-end gap-2 mb-4">
-                      <span className="text-5xl sm:text-6xl font-black text-white leading-none">{gpaValue}</span>
-                      <span className="text-white/70 text-xl font-bold mb-2">/ 4.00</span>
-                    </div>
-                    <div className="flex items-center justify-between text-white/90">
-                      <span className="text-sm font-medium">{gpaCredits} หน่วยกิต</span>
-                      <span className="px-3 py-1 rounded-full bg-white/20 text-xs font-bold backdrop-blur-sm">
-                        {gpaNum >= 3.5 ? '🌟 ดีเยี่ยม' : gpaNum >= 2.5 ? '✨ ดี' : gpaNum >= 1.5 ? '✓ ผ่าน' : '⚠ ปรับปรุง'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+              {/* Modern Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* GPA Card - Premium Design */}
+                <div className="relative group overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-6 shadow-xl hover:shadow-2xl transition-all">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.2),transparent_60%)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
 
-                {/* Average Score Card - New Design */}
-                <div className="relative overflow-hidden rounded-2xl bg-card border-2 border-border p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md">
-                      <span className="text-2xl">📈</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-3xl sm:text-4xl font-black text-foreground">{avgPercent}%</div>
-                      <div className="text-xs text-muted-foreground font-medium">คะแนนเฉลี่ย</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-3 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-1000 ease-out"
-                        style={{ width: `${avgPercent}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">ผลเฉลี่ยทุกวิชา ({subjectCount} วิชา)</p>
-                  </div>
-                </div>
-
-                {/* Ranking Card - Redesigned */}
-                {activeSetting?.is_ranking_released === true && ranking ? (
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 shadow-lg">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                    <div className="relative">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Trophy className="w-6 h-6 text-white" />
-                        <span className="text-white/90 text-sm font-bold uppercase tracking-wider">อันดับ</span>
+                  <div className="relative z-10 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <TrendingUp className="w-6 h-6 text-white" />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <div className="text-white/80 text-xs font-semibold">ในห้อง</div>
+                      <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm">
+                        <span className="text-xs font-bold text-white">
+                          {gpaNum >= 3.5 ? '🌟 ดีเยี่ยม' : gpaNum >= 2.5 ? '✨ ดี' : gpaNum >= 1.5 ? '✓ ผ่าน' : '⚠ ปรับปรุง'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-white/80 text-xs font-bold uppercase tracking-wider mb-2">เกรดเฉลี่ย GPA</div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-6xl font-black text-white">{gpaValue}</span>
+                        <span className="text-2xl font-bold text-white/70">/ 4.00</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/20">
+                      <div className="flex items-center justify-between text-white/90 text-sm">
+                        <span className="font-medium">หน่วยกิตรวม</span>
+                        <span className="font-bold">{gpaCredits} หน่วย</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Average Score Card */}
+                <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 p-6 shadow-lg hover:shadow-xl hover:border-blue-400 dark:hover:border-blue-500 transition-all group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-150 transition-transform" />
+
+                  <div className="relative z-10 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
+                        <span className="text-2xl">📊</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-4xl font-black bg-gradient-to-br from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent">
+                          {avgPercent}%
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">คะแนนเฉลี่ย</div>
+                      <div className="h-3 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-1000 ease-out shadow-lg"
+                          style={{ width: `${avgPercent}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">ผลเฉลี่ยจาก {subjectCount} วิชา</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ranking Card */}
+                {activeSetting?.is_ranking_released === true && ranking ? (
+                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 p-6 shadow-xl hover:shadow-2xl transition-all group">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.2),transparent_60%)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+
+                    <div className="relative z-10 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                          <Award className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-white/90 text-xs font-bold uppercase tracking-wider">อันดับของคุณ</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className="text-white/80 text-xs font-semibold">ในห้องเรียน</div>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-black text-white">{ranking.classroom_rank}</span>
-                            <span className="text-white/70 text-sm font-bold">/{ranking.classroom_total}</span>
+                            <span className="text-4xl font-black text-white">{ranking.classroom_rank}</span>
+                            <span className="text-lg font-bold text-white/70">/{ranking.classroom_total}</span>
                           </div>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <div className="text-white/80 text-xs font-semibold">ในโรงเรียน</div>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-black text-white">{ranking.school_rank}</span>
-                            <span className="text-white/70 text-sm font-bold">/{ranking.school_total}</span>
+                            <span className="text-4xl font-black text-white">{ranking.school_rank}</span>
+                            <span className="text-lg font-bold text-white/70">/{ranking.school_total}</span>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="relative overflow-hidden rounded-2xl bg-card border-2 border-dashed border-border p-6 flex items-center justify-center">
-                    <div className="text-center space-y-2">
-                      <div className="w-12 h-12 mx-auto rounded-xl bg-muted flex items-center justify-center">
-                        <span className="text-2xl opacity-50">🏆</span>
+                  <div className="relative overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800/50 border-2 border-dashed border-gray-300 dark:border-gray-600 p-6 flex items-center justify-center">
+                    <div className="text-center space-y-3">
+                      <div className="w-16 h-16 mx-auto rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                        <Award className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                       </div>
-                      <p className="text-xs text-muted-foreground font-medium">อันดับยังไม่เปิดเผย</p>
+                      <p className="text-sm font-bold text-gray-500 dark:text-gray-400">อันดับยังไม่เปิดเผย</p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Grades List Section */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-bold text-foreground px-2">รายวิชา ({filteredGrades.length} วิชา)</h3>
+              {/* Combined Activity Result */}
+              {useCombinedActivity && (() => {
+                const combined = getCombinedActivityResult();
+                if (!combined) return null;
+                return (
+                  <div className={`relative overflow-hidden rounded-2xl p-6 shadow-lg border-2 ${
+                    combined.pass
+                      ? "bg-gradient-to-br from-emerald-50 to-green-100 dark:from-emerald-950/20 dark:to-green-900/20 border-emerald-300 dark:border-emerald-700/30"
+                      : "bg-gradient-to-br from-rose-50 to-red-100 dark:from-rose-950/20 dark:to-red-900/20 border-rose-300 dark:border-rose-700/30"
+                  }`}>
+                    <div className="flex items-center gap-5">
+                      <div className={`w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl ${
+                        combined.pass ? "bg-gradient-to-br from-emerald-500 to-green-600" : "bg-gradient-to-br from-rose-500 to-red-600"
+                      }`}>
+                        <span className="text-2xl font-black text-white">{combined.label}</span>
+                      </div>
 
-                {/* Combined Activity Result */}
-                {useCombinedActivity && (() => {
-                  const combined = getCombinedActivityResult();
-                  if (!combined) return null;
-                  return (
-                    <div className={`rounded-xl p-5 ${combined.pass ? "bg-emerald-50 dark:bg-emerald-950/10 border-2 border-emerald-300 dark:border-emerald-700/30" : "bg-rose-50 dark:bg-rose-950/10 border-2 border-rose-300 dark:border-rose-700/30"}`}>
-                      <div className="flex items-center gap-4">
-                        <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${combined.pass ? "bg-emerald-500" : "bg-rose-500"} shadow-lg`}>
-                          <span className="text-2xl font-black text-white">{combined.label}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-bold text-foreground">ผลกิจกรรมรวม</h4>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${combined.pass ? "bg-emerald-200 text-emerald-800 dark:bg-emerald-800/30 dark:text-emerald-300" : "bg-rose-200 text-rose-800 dark:bg-rose-800/30 dark:text-rose-300"}`}>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-lg font-black text-gray-900 dark:text-white">ผลกิจกรรมรวม</h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              combined.pass
+                                ? "bg-emerald-200 text-emerald-800 dark:bg-emerald-800/50 dark:text-emerald-200"
+                                : "bg-rose-200 text-rose-800 dark:bg-rose-800/50 dark:text-rose-200"
+                            }`}>
                               {Math.round(combined.percent)}%
                             </span>
                           </div>
-                          <div className="text-xs text-muted-foreground mb-2">
+                          <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                             {combined.totalScore} / {combined.totalMax} คะแนน
                           </div>
-                          <div className="h-2 rounded-full bg-white dark:bg-card overflow-hidden">
-                            <div className={`h-full ${combined.bar} transition-all duration-700`} style={{ width: `${Math.min(100, combined.percent)}%` }} />
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-2 truncate">
-                            {scoredActivitySubjects.map(s => s.name).join(", ")}
-                          </div>
+                        </div>
+
+                        <div className="h-3 rounded-full bg-white dark:bg-gray-900/50 overflow-hidden shadow-inner">
+                          <div
+                            className={`h-full ${combined.bar} transition-all duration-1000 ease-out shadow-lg`}
+                            style={{ width: `${Math.min(100, combined.percent)}%` }}
+                          />
+                        </div>
+
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">
+                          รวมจาก: {scoredActivitySubjects.map(s => s.name).join(", ")}
                         </div>
                       </div>
                     </div>
-                  );
-                })()}
+                  </div>
+                );
+              })()}
 
-                {/* Individual Grade Cards */}
-                <div className="space-y-2">
+              {/* Subjects List - Modern Cards */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white">รายวิชาทั้งหมด</h3>
+                  <span className="px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-sm font-bold">
+                    {filteredGrades.length} วิชา
+                  </span>
+                </div>
+
+                <div className="grid gap-3">
                   {orderedGrades.map(grade => {
                     const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
                     const mMax = Number(subject?.midterm_max_score) || midtermMax;
@@ -610,56 +666,61 @@ export default function GradesTab({
                     return (
                       <div
                         key={grade.id}
-                        className="group rounded-xl bg-card border border-border hover:border-primary/50 p-4 transition-all hover:shadow-md"
+                        className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 p-5 transition-all hover:shadow-xl"
                       >
-                        <div className="flex items-center gap-4">
-                          {/* Grade Display */}
-                          <div className={`w-16 h-16 rounded-xl border-2 flex flex-col items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${info.color}`}>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:scale-150 transition-transform" />
+
+                        <div className="relative z-10 flex items-center gap-5">
+                          {/* Grade Badge */}
+                          <div className={`w-20 h-20 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0 shadow-lg transition-transform group-hover:scale-110 ${info.color}`}>
                             <span className="text-[9px] font-bold uppercase tracking-wide opacity-70">
-                              {isActivity ? "ผลประเมิน" : "เกรด"}
+                              {isActivity ? "ผล" : "เกรด"}
                             </span>
                             {!isActivity ? (
                               <>
-                                <span className="text-2xl font-black leading-none">{info.point}</span>
+                                <span className="text-3xl font-black leading-none">{info.point}</span>
                                 <span className="text-[10px] font-semibold opacity-70">{info.letter}</span>
                               </>
                             ) : (
-                              <span className="text-lg font-black">{info.letter}</span>
+                              <span className="text-xl font-black">{info.letter}</span>
                             )}
                           </div>
 
                           {/* Subject Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
-                              <h4 className="font-bold text-foreground truncate">{grade.subject}</h4>
+                          <div className="flex-1 min-w-0 space-y-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-black text-lg text-gray-900 dark:text-white truncate">{grade.subject}</h4>
                               {isActivity ? (
-                                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 text-xs font-bold">
+                                <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-xs font-bold">
                                   กิจกรรม
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300 text-xs font-bold">
+                                <span className="px-2.5 py-1 rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 text-xs font-bold">
                                   {Number(subject?.credit_hours) || 1} หน่วยกิต
                                 </span>
                               )}
                             </div>
 
                             {/* Progress Bar */}
-                            <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
-                              <div className={`h-full ${info.bar} transition-all duration-500`} style={{ width: `${Math.min(100, percent)}%` }} />
+                            <div className="h-2.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shadow-inner">
+                              <div className={`h-full ${info.bar} transition-all duration-700 shadow-lg`} style={{ width: `${Math.min(100, percent)}%` }} />
                             </div>
 
                             {/* Score Details */}
-                            <div className="flex items-center gap-3 text-xs font-semibold text-muted-foreground">
+                            <div className="flex items-center gap-4 text-xs font-bold text-gray-600 dark:text-gray-400">
                               {isCombined ? (
-                                <span>รวม {totalScore}/{mMax + fMax}</span>
+                                <span className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                  รวม {totalScore}/{mMax + fMax}
+                                </span>
                               ) : (
                                 <>
-                                  <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500" />
                                     เก็บ {grade.midterm_score ?? 0}/{mMax}
                                   </span>
-                                  <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-rose-500" />
                                     สอบ {grade.final_score ?? 0}/{fMax}
                                   </span>
                                 </>
@@ -667,12 +728,14 @@ export default function GradesTab({
                             </div>
                           </div>
 
-                          {/* Total Score */}
-                          <div className="text-right shrink-0">
-                            <div className="text-[10px] font-bold text-muted-foreground mb-1">คะแนนรวม</div>
-                            <div className="text-3xl font-black text-foreground leading-none mb-1">{totalScore}</div>
-                            <div className="text-xs text-muted-foreground font-semibold">/ {mMax + fMax}</div>
-                            <div className="mt-1 px-2 py-0.5 rounded-md bg-muted text-xs font-bold">
+                          {/* Total Score Display */}
+                          <div className="text-right shrink-0 space-y-1">
+                            <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">คะแนนรวม</div>
+                            <div className="text-4xl font-black bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+                              {totalScore}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-bold">/ {mMax + fMax}</div>
+                            <div className="mt-2 px-3 py-1 rounded-lg bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 text-sm font-black">
                               {Math.round(percent)}%
                             </div>
                           </div>
