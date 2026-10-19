@@ -328,11 +328,54 @@ export default function AchievementTab({
     }
   };
 
-  // Dynamic Filtering: Compute matrix rows for selected classrooms
-  const filteredMatrixRows = useMemo(() => {
+  // Recalculate every displayed row from raw scores. This keeps the on-screen
+  // table, print view, and exports on the same Excel-compatible formula even
+  // if an older API response contains pre-calculated percentages.
+  const calculatedMatrixRows = useMemo(() => {
     if (!data) return [];
-    return data.matrix_rows.filter((r) => selectedClassroomIds.includes(r.classroom_id));
-  }, [data, selectedClassroomIds]);
+
+    return data.matrix_rows.map((row) => {
+      let totalAllSubjects = 0;
+      let maxPossibleAllSubjects = 0;
+
+      const subjectStats = data.subjects.map((subject) => {
+        const sourceStat = row.subject_stats.find((stat) => stat.subject_id === subject.id);
+        const totalScore = Number(sourceStat?.total_score) || 0;
+        const maxPossibleScore = row.student_count * Math.max(0, Number(subject.max_score) || 0);
+        const avgPercentage = maxPossibleScore > 0
+          ? (totalScore * 100) / maxPossibleScore
+          : 0;
+
+        totalAllSubjects += totalScore;
+        maxPossibleAllSubjects += maxPossibleScore;
+
+        return {
+          subject_id: subject.id,
+          subject_name: sourceStat?.subject_name || subject.name,
+          total_score: totalScore,
+          max_possible_score: maxPossibleScore,
+          avg_percentage: parseFloat(avgPercentage.toFixed(2)),
+        };
+      });
+
+      const overallAvgPercentage = maxPossibleAllSubjects > 0
+        ? (totalAllSubjects * 100) / maxPossibleAllSubjects
+        : 0;
+
+      return {
+        ...row,
+        subject_stats: subjectStats,
+        total_all_subjects: totalAllSubjects,
+        max_possible_all_subjects: maxPossibleAllSubjects,
+        overall_avg_percentage: parseFloat(overallAvgPercentage.toFixed(2)),
+      };
+    });
+  }, [data]);
+
+  // Dynamic Filtering: Compute recalculated matrix rows for selected classrooms
+  const filteredMatrixRows = useMemo(() => {
+    return calculatedMatrixRows.filter((r) => selectedClassroomIds.includes(r.classroom_id));
+  }, [calculatedMatrixRows, selectedClassroomIds]);
 
   // Dynamic Filtering: Recalculate summary totals for selected classrooms
   const filteredSchoolSummary = useMemo(() => {
