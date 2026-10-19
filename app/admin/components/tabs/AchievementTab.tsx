@@ -354,7 +354,9 @@ export default function AchievementTab({
           subject_name: sourceStat?.subject_name || subject.name,
           total_score: totalScore,
           max_possible_score: maxPossibleScore,
-          avg_percentage: parseFloat(avgPercentage.toFixed(2)),
+          // Keep full precision for the Excel-style summary calculation;
+          // rendering applies its own two-decimal display format.
+          avg_percentage: avgPercentage,
         };
       });
 
@@ -367,7 +369,7 @@ export default function AchievementTab({
         subject_stats: subjectStats,
         total_all_subjects: totalAllSubjects,
         max_possible_all_subjects: maxPossibleAllSubjects,
-        overall_avg_percentage: parseFloat(overallAvgPercentage.toFixed(2)),
+        overall_avg_percentage: overallAvgPercentage,
       };
     });
   }, [data]);
@@ -377,7 +379,9 @@ export default function AchievementTab({
     return calculatedMatrixRows.filter((r) => selectedClassroomIds.includes(r.classroom_id));
   }, [calculatedMatrixRows, selectedClassroomIds]);
 
-  // Dynamic Filtering: Recalculate summary totals for selected classrooms
+  // Dynamic Filtering: Recalculate summary totals for selected classrooms.
+  // The summary percentages intentionally mirror the current Excel template:
+  // each selected classroom contributes one equally weighted percentage.
   const filteredSchoolSummary = useMemo(() => {
     if (!data) {
       return {
@@ -395,20 +399,24 @@ export default function AchievementTab({
 
     const subjectStats = data.subjects.map((subj) => {
       let totalSubjectScore = 0;
+      let classroomPercentageTotal = 0;
+      let classroomPercentageCount = 0;
 
       filteredMatrixRows.forEach((r) => {
         const st = r.subject_stats.find((s) => s.subject_id === subj.id);
         if (st) {
           totalSubjectScore += st.total_score;
+          classroomPercentageTotal += st.avg_percentage;
+          classroomPercentageCount += 1;
         }
       });
 
-      // Use the Excel-compatible weighted denominator. Do not average the
-      // classroom percentages: classrooms can have different student counts.
+      // Keep raw/max totals for exports, while the shown percentage follows
+      // the Excel template's SUM(class percentages) / number of classrooms.
       const maxPossibleScore = totalStudents * Math.max(0, Number(subj.max_score) || 0);
-
-      const avgPercentage =
-        maxPossibleScore > 0 ? (totalSubjectScore * 100) / maxPossibleScore : 0;
+      const avgPercentage = classroomPercentageCount > 0
+        ? classroomPercentageTotal / classroomPercentageCount
+        : 0;
 
       schoolAllSubjectsTotal += totalSubjectScore;
       schoolAllSubjectsMaxTotal += maxPossibleScore;
@@ -422,10 +430,9 @@ export default function AchievementTab({
       };
     });
 
-    const overallAvgPercentage =
-      schoolAllSubjectsMaxTotal > 0
-        ? (schoolAllSubjectsTotal * 100) / schoolAllSubjectsMaxTotal
-        : 0;
+    const overallAvgPercentage = filteredMatrixRows.length > 0
+      ? filteredMatrixRows.reduce((sum, row) => sum + row.overall_avg_percentage, 0) / filteredMatrixRows.length
+      : 0;
 
     return {
       total_students: totalStudents,
