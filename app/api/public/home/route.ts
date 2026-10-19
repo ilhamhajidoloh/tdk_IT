@@ -8,14 +8,6 @@ import { getSchoolFromUrl } from "@/app/lib/getSchoolByParam";
 const TEACHER_FORECAST_WEEKS = 5;
 const COOK_FORECAST_DAYS = 8;
 
-function daysBetween(a: string, b: string): number {
-  const [ay, am, ad] = a.split("-").map(Number);
-  const [by, bm, bd] = b.split("-").map(Number);
-  const aDate = new Date(Date.UTC(ay, am - 1, ad));
-  const bDate = new Date(Date.UTC(by, bm - 1, bd));
-  return Math.round((bDate.getTime() - aDate.getTime()) / (24 * 3600 * 1000));
-}
-
 function hasEffectiveSchoolDayInRange(
   start: string,
   end: string,
@@ -111,8 +103,11 @@ export async function GET(req: NextRequest) {
         [schoolId]
       ),
       pool.query(
-        "SELECT id, date, reason, applies_to FROM public.school_holidays WHERE is_published = true AND (school_id = $1 OR school_id IS NULL) AND date >= $2 AND date <= $3 ORDER BY date ASC",
-        [schoolId, addDays(today, -7), holidayWindowEnd]
+        // Rotation is calculated from its anchor date, so prior holidays must
+        // remain available; limiting this to the last week makes older
+        // closures incorrectly consume cook-duty groups.
+        "SELECT id, date, reason, applies_to FROM public.school_holidays WHERE is_published = true AND (school_id = $1 OR school_id IS NULL) AND date <= $2 ORDER BY date ASC",
+        [schoolId, holidayWindowEnd]
       ),
     ]);
 
@@ -142,8 +137,8 @@ export async function GET(req: NextRequest) {
      FROM public.calendar_events
      WHERE event_type = 'holiday'
        AND (school_id = $1 OR school_id IS NULL)
-       AND event_date >= $2 AND event_date <= $3`,
-    [schoolId, addDays(today, -7), holidayWindowEnd]
+       AND event_date <= $2`,
+    [schoolId, holidayWindowEnd]
   );
 
   // Determine if we have passed the last school day of the current week for cooks (Monday to Sunday)
@@ -160,21 +155,9 @@ export async function GET(req: NextRequest) {
   }
   const cookHasPassedLastSchoolDay = today > cookLastSchoolDay;
 
-  // Determine if we have passed the last school day of the current week for teachers (anchored week window)
-  const teacherEffectiveFrom = today < teacherAnchor ? teacherAnchor : today;
-  const teacherWindowIndex = Math.floor(daysBetween(teacherAnchor, teacherEffectiveFrom) / 7);
-  const teacherWindowStart = addDays(teacherAnchor, teacherWindowIndex * 7);
-  let teacherLastSchoolDay = teacherWindowStart;
-  for (let i = 6; i >= 0; i--) {
-    const curDateStr = addDays(teacherWindowStart, i);
-    const [y, m, d] = curDateStr.split("-").map(Number);
-    const dayVal = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-    if (scheduleDays.includes(dayVal)) {
-      teacherLastSchoolDay = curDateStr;
-      break;
-    }
-  }
-  const teacherHasPassedLastSchoolDay = today > teacherLastSchoolDay;
+  // Teacher duty uses the same Monday-to-Sunday week as cook duty.
+  const teacherWindowStart = baseWeekStart;
+  const teacherHasPassedLastSchoolDay = cookHasPassedLastSchoolDay;
 
   // Normalize holiday dates to YYYY-MM-DD strings
   const holidays: { id: string; date: string; reason: string; applies_to: string }[] = [

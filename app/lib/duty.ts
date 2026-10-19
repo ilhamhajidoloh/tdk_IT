@@ -146,8 +146,8 @@ function lastScheduleDayInRange(start: string, end: string, scheduleDays: number
 
 /**
  * Forecast which teacher-duty group is on duty for each of the next `weeksAhead`
- * 7-day windows starting with the window containing `fromDate`. Windows are
- * anchored at `anchorDate` (group #0's first week).
+ * Monday-to-Sunday windows starting with the week containing `fromDate`.
+ * `anchorDate` identifies group #0's initial calendar week.
  *
  * Rotation rule: a window only advances the rotation index if it has at least
  * one effective school day (schedule day that is NOT a holiday). An all-closed
@@ -165,16 +165,18 @@ export function buildTeacherForecast<T>(
   if (orderedItems.length === 0) return [];
 
   const effectiveFrom = fromDate < anchorDate ? anchorDate : fromDate;
+  const rotationAnchorWeekStart = mondayOf(anchorDate);
 
-  // Which calendar window contains fromDate?
-  const currentWindowIndex = Math.floor(daysBetween(anchorDate, effectiveFrom) / 7);
-  const currentWindowStart = addDays(anchorDate, currentWindowIndex * 7);
+  // Teacher and cook duty both use calendar weeks. The anchor selects the
+  // group for its containing week; it must not shift the week boundary.
+  const currentWindowStart = mondayOf(effectiveFrom);
+  const currentWindowIndex = Math.floor(daysBetween(rotationAnchorWeekStart, currentWindowStart) / 7);
 
   // Count how many "active" weeks elapsed before the current window,
   // starting from anchor. Only weeks with ≥1 effective school day consume a slot.
   let activeSlots = 0;
   for (let i = 0; i < currentWindowIndex; i++) {
-    const wStart = addDays(anchorDate, i * 7);
+    const wStart = addDays(rotationAnchorWeekStart, i * 7);
     const wEnd = addDays(wStart, 6);
     if (hasEffectiveSchoolDay(wStart, wEnd, scheduleDays, holidayDates)) {
       activeSlots++;
@@ -239,73 +241,28 @@ export function buildCookSchedule<T>(
 ): DailyRotationEntry<T>[] {
   if (orderedItems.length === 0 || scheduleDays.length === 0 || count <= 0) return [];
 
-  const weekScheduleDaysCount: Record<number, number> = {};
-  const weekIsActive: Record<number, boolean> = {};
-
-  function getWeekInfo(w: number) {
-    if (w in weekScheduleDaysCount) {
-      return { count: weekScheduleDaysCount[w], active: weekIsActive[w] };
-    }
-    const wStart = addDays(anchorDate, w * 7);
-    const wEnd = addDays(wStart, 6);
-    let schedCount = 0;
-    let holidaysCount = 0;
-    let cur = wStart;
-    while (cur <= wEnd) {
-      if (isScheduleDay(cur, scheduleDays)) {
-        schedCount++;
-        if (holidayDates.includes(cur)) {
-          holidaysCount++;
-        }
-      }
-      cur = addDays(cur, 1);
-    }
-    const active = schedCount > 0 && holidaysCount < schedCount;
-    weekScheduleDaysCount[w] = schedCount;
-    weekIsActive[w] = active;
-    return { count: schedCount, active };
-  }
-
-  const weekOffsets: Record<number, number> = {};
-  function getWeekOffset(w: number): number {
-    if (w <= 0) return 0;
-    if (w in weekOffsets) return weekOffsets[w];
-    const prevInfo = getWeekInfo(w - 1);
-    const prevOffset = getWeekOffset(w - 1);
-    const offset = prevOffset + (prevInfo.active ? prevInfo.count : 0);
-    weekOffsets[w] = offset;
-    return offset;
-  }
-
+  const holidayDateSet = new Set(holidayDates);
   const results: DailyRotationEntry<T>[] = [];
-  let cur = fromDate > anchorDate ? fromDate : anchorDate;
+  const firstDate = fromDate > anchorDate ? fromDate : anchorDate;
   const MAX_ITERATIONS = 20 * 366;
 
+  // A cook group is consumed only by an effective school day.  Do not derive
+  // offsets from 7-day anchor windows: a window boundary can split a weekend,
+  // causing a holiday to be counted when the other weekend day is open.
+  let rotationSlot = startingOffset;
+  let cur = anchorDate;
+  while (cur < firstDate) {
+    if (isScheduleDay(cur, scheduleDays) && !holidayDateSet.has(cur)) {
+      rotationSlot++;
+    }
+    cur = addDays(cur, 1);
+  }
+
   for (let i = 0; i < MAX_ITERATIONS && results.length < count; i++) {
-    if (isScheduleDay(cur, scheduleDays)) {
-      const daysDiff = daysBetween(anchorDate, cur);
-      const weekNum = Math.floor(daysDiff / 7);
-
-      const weekInfo = getWeekInfo(weekNum);
-      if (weekInfo.active) {
-        // Calculate the day's index within the week's schedule days
-        const wStart = addDays(anchorDate, weekNum * 7);
-        let position = 0;
-        let wDate = wStart;
-        while (wDate < cur) {
-          if (isScheduleDay(wDate, scheduleDays)) {
-            position++;
-          }
-          wDate = addDays(wDate, 1);
-        }
-
-        // If this specific day is not a holiday, calculate the group and add to results
-        if (!holidayDates.includes(cur)) {
-          const offset = getWeekOffset(weekNum);
-          const index = (offset + position + startingOffset) % orderedItems.length;
-          results.push({ date: cur, index, item: orderedItems[index] });
-        }
-      }
+    if (isScheduleDay(cur, scheduleDays) && !holidayDateSet.has(cur)) {
+      const index = ((rotationSlot % orderedItems.length) + orderedItems.length) % orderedItems.length;
+      results.push({ date: cur, index, item: orderedItems[index] });
+      rotationSlot++;
     }
     cur = addDays(cur, 1);
   }
