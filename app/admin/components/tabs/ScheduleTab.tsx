@@ -419,10 +419,6 @@ export default function ScheduleTab({
                                 const selectedSubj = entry?.subject_id
                                   ? subjectsList.find((s) => s.id === entry.subject_id)
                                   : null;
-                                const subjectTeacherDisplay =
-                                  selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 0
-                                    ? selectedSubj.teacher_names.join(", ")
-                                    : selectedSubj?.teacher_name || "";
                                 return (
                                   <td key={d.value} className="px-3 py-2 align-top min-w-[140px]">
                                     {/* Subject Selector */}
@@ -449,9 +445,7 @@ export default function ScheduleTab({
                                     </select>
 
                                     {/* Teacher Override Selector */}
-                                    {entry?.subject_id &&
-                                      selectedSubj?.teacher_ids &&
-                                      selectedSubj.teacher_ids.length > 0 && (
+                                    {entry?.subject_id && selectedSubj && (
                                         <select
                                           value={entry.teacher_id ?? ""}
                                           onChange={(ev) =>
@@ -466,13 +460,11 @@ export default function ScheduleTab({
                                           className="w-full mt-1 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-300 outline-none"
                                           title="ระบุครูผู้สอนเฉพาะห้องนี้ (กรณีครูต่างกันแต่ละชั้น)"
                                         >
-                                          <option value="">
-                                            {subjectTeacherDisplay
-                                              ? `ครู: ${subjectTeacherDisplay}`
-                                              : "-- เลือกครูผู้สอน --"}
-                                          </option>
+                                          {selectedSubj.teacher_ids?.length !== 1 && (
+                                            <option value="">-- ว่าง / กำหนดครูภายหลัง --</option>
+                                          )}
                                           {users
-                                            .filter((u) => selectedSubj.teacher_ids!.includes(u.id))
+                                            .filter((u) => (selectedSubj.teacher_ids || []).includes(u.id))
                                             .map((u) => (
                                               <option key={u.id} value={u.id}>
                                                 {u.username}
@@ -538,10 +530,6 @@ export default function ScheduleTab({
                               const selectedSubj = entry?.subject_id
                                 ? subjectsList.find((s) => s.id === entry.subject_id)
                                 : null;
-                              const subjectTeacherDisplay =
-                                selectedSubj?.teacher_names && selectedSubj.teacher_names.length > 0
-                                  ? selectedSubj.teacher_names.join(", ")
-                                  : selectedSubj?.teacher_name || "";
                               return (
                                 <div key={d.value} className="p-2.5 rounded-xl border border-border bg-card">
                                   <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1.5">
@@ -569,9 +557,7 @@ export default function ScheduleTab({
                                     })}
                                   </select>
 
-                                  {entry?.subject_id &&
-                                    selectedSubj?.teacher_ids &&
-                                    selectedSubj.teacher_ids.length > 0 && (
+                                  {entry?.subject_id && selectedSubj && (
                                       <select
                                         value={entry.teacher_id ?? ""}
                                         onChange={(ev) =>
@@ -585,13 +571,11 @@ export default function ScheduleTab({
                                         }
                                         className="w-full mt-1.5 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-500/30 bg-blue-50/60 dark:bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-300 outline-none"
                                       >
-                                        <option value="">
-                                          {subjectTeacherDisplay
-                                            ? `ครู: ${subjectTeacherDisplay}`
-                                            : "-- เลือกครูผู้สอน --"}
-                                        </option>
+                                        {selectedSubj.teacher_ids?.length !== 1 && (
+                                          <option value="">-- ว่าง / กำหนดครูภายหลัง --</option>
+                                        )}
                                         {users
-                                          .filter((u) => selectedSubj.teacher_ids!.includes(u.id))
+                                          .filter((u) => (selectedSubj.teacher_ids || []).includes(u.id))
                                           .map((u) => (
                                             <option key={u.id} value={u.id}>
                                               {u.username}
