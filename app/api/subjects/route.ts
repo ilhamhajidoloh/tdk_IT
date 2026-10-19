@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 
     const result = await client.query(
       "INSERT INTO subjects (name, teacher_id, setting_id, midterm_max_score, final_max_score, subject_type, credit_hours, school_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
-      [name.trim(), primaryTeacherId || null, setting_id || null, midterm_max_score || null, final_max_score || null, subject_type === "activity" ? "activity" : "main", credit_hours ?? 1, schoolId]
+      [name.trim(), primaryTeacherId || null, setting_id || null, midterm_max_score ?? null, final_max_score ?? null, subject_type === "activity" ? "activity" : "main", credit_hours ?? 1, schoolId]
     );
     const subject = result.rows[0];
 

@@ -80,10 +80,16 @@ export async function GET(req: NextRequest) {
     let subjects = subjectsRes.rows.filter((subject: any) => {
       const midMax = subject.midterm_max_score !== null ? Number(subject.midterm_max_score) : Number(defaultMidMax) || 50;
       const finalMax = subject.final_max_score !== null ? Number(subject.final_max_score) : Number(defaultFinMax) || 50;
+      // An activity with both maximum-score fields unset is a scoreless
+      // activity. Do not fall back to the term defaults for this case.
+      const activityHasScores =
+        subject.subject_type !== "activity" ||
+        ((subject.midterm_max_score !== null || subject.final_max_score !== null) &&
+          Number(subject.midterm_max_score || 0) + Number(subject.final_max_score || 0) > 0);
       // Activity subjects must have at least one classroom where score entry is
       // enabled. This prevents activities configured as "ไม่เก็บคะแนน" from
       // being pulled into the report when the activity toggle is on.
-      return midMax + finalMax > 0 && (
+      return activityHasScores && midMax + finalMax > 0 && (
         subject.subject_type !== "activity" ||
         (scoreEnabledClassroomsBySubject.get(subject.id)?.size ?? 0) > 0
       );

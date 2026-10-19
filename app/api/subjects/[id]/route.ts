@@ -48,7 +48,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const result = await client.query(
       "UPDATE subjects SET name = $1, teacher_id = $2, setting_id = $3, midterm_max_score = $4, final_max_score = $5, subject_type = $6, credit_hours = $7 WHERE id = $8 RETURNING *",
-      [name.trim(), primaryTeacherId || null, setting_id || null, midterm_max_score || null, final_max_score || null, subject_type === "activity" ? "activity" : "main", credit_hours ?? 1, id]
+      [name.trim(), primaryTeacherId || null, setting_id || null, midterm_max_score ?? null, final_max_score ?? null, subject_type === "activity" ? "activity" : "main", credit_hours ?? 1, id]
     );
 
     if (result.rows.length === 0) {
