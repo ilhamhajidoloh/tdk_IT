@@ -10,6 +10,8 @@ interface SubjectHeader {
   id: string;
   name: string;
   max_score: number;
+  subject_type?: "main" | "activity";
+  score_enabled_classroom_ids?: string[];
 }
 
 interface SubjectStat {
@@ -341,7 +343,12 @@ export default function AchievementTab({
       const subjectStats = data.subjects.map((subject) => {
         const sourceStat = row.subject_stats.find((stat) => stat.subject_id === subject.id);
         const totalScore = Number(sourceStat?.total_score) || 0;
-        const maxPossibleScore = row.student_count * Math.max(0, Number(subject.max_score) || 0);
+        const isActivityScoreEnabled =
+          subject.subject_type !== "activity" ||
+          subject.score_enabled_classroom_ids?.includes(row.classroom_id) === true;
+        const maxPossibleScore = isActivityScoreEnabled
+          ? row.student_count * Math.max(0, Number(subject.max_score) || 0)
+          : 0;
         const avgPercentage = maxPossibleScore > 0
           ? (totalScore * 100) / maxPossibleScore
           : 0;
@@ -413,7 +420,10 @@ export default function AchievementTab({
 
       // Keep raw/max totals for exports, while the shown percentage follows
       // the Excel template's SUM(class percentages) / number of classrooms.
-      const maxPossibleScore = totalStudents * Math.max(0, Number(subj.max_score) || 0);
+      const maxPossibleScore = filteredMatrixRows.reduce(
+        (sum, row) => sum + (row.subject_stats.find((stat) => stat.subject_id === subj.id)?.max_possible_score || 0),
+        0
+      );
       const avgPercentage = classroomPercentageCount > 0
         ? classroomPercentageTotal / classroomPercentageCount
         : 0;

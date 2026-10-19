@@ -304,14 +304,14 @@ export default function GradesTab({
     const formalStyle = win.document.createElement("style");
     formalStyle.textContent = `
       body{background:#fff!important;color:#000!important}
-      .page{width:210mm!important;min-height:297mm!important;margin:0 auto!important;padding:15mm 19mm!important;text-align:${isJawi ? "right" : "left"}!important;border:2px solid #000!important;box-sizing:border-box!important}
+      .page{width:210mm!important;min-height:297mm!important;margin:0 auto!important;padding:15mm 19mm!important;text-align:${isJawi ? "right" : "left"}!important;border:0!important;box-sizing:border-box!important}
       .head{border-top:1px solid #000;padding-top:7mm;margin-bottom:5mm!important}
       .logo{width:50px!important;height:50px!important}.school{font-weight:400!important;margin:0!important}.title{font-weight:600!important}.term{}
       .info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:2px 18px!important;margin:5mm 0!important;padding:3mm 0!important;border:0!important}
       table{table-layout:fixed!important}th,td{border:1px solid #000!important;padding:2.2px 3px!important;line-height:1.25!important;background:#fff!important}th{font-weight:600!important}.subject{white-space:nowrap!important}
       .summary{margin-top:0!important;border:1px solid #000!important;border-top:0!important;padding:3mm!important;text-align:center!important}
       .signatures{gap:35mm!important;margin-top:16mm!important}.line{margin:18mm 8mm 3px!important;border-color:#000!important}.footer{margin-top:16mm!important}
-      @media print{body{margin:5mm!important}.page{margin:0!important;padding:15mm 19mm!important;border:2px solid #000!important}@page{size:A4 portrait;margin:5mm}}
+      @media print{body{margin:5mm!important}.page{margin:0!important;padding:15mm 19mm!important;border:0!important}@page{size:A4 portrait;margin:5mm}}
     `;
     win.document.head.appendChild(formalStyle);
     const fontControlScript = win.document.createElement("script");

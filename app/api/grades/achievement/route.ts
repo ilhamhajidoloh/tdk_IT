@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 1. Fetch Classrooms, Subjects, Students, and Grades
-    const [classroomsRes, subjectsRes, studentsRes, translationsRes] = await Promise.all([
+    const [classroomsRes, subjectsRes, subjectClassroomsRes, studentsRes, translationsRes] = await Promise.all([
       pool.query(
         "SELECT id, name, name_thai, name_rumi, name_jawi FROM classrooms WHERE setting_id = $1 ORDER BY name",
         [settingId]
@@ -43,6 +43,14 @@ export async function GET(req: NextRequest) {
       pool.query(
         `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, sort_order 
          FROM subjects WHERE setting_id = $1 ORDER BY COALESCE(sort_order, 999) ASC, name ASC`,
+        [settingId]
+      ),
+      pool.query(
+        `SELECT sc.subject_id, sc.classroom_id
+         FROM subject_classrooms sc
+         JOIN subjects s ON s.id = sc.subject_id
+         WHERE s.setting_id = $1
+           AND COALESCE(sc.score_enabled, TRUE) = TRUE`,
         [settingId]
       ),
       pool.query(
@@ -61,10 +69,24 @@ export async function GET(req: NextRequest) {
     const classrooms = classroomsRes.rows;
     // Include only subjects with configured scores. Scoreless activities and
     // scoreless subjects must not appear in the achievement report.
+    const scoreEnabledClassroomsBySubject = new Map<string, Set<string>>();
+    subjectClassroomsRes.rows.forEach((row: any) => {
+      if (!scoreEnabledClassroomsBySubject.has(row.subject_id)) {
+        scoreEnabledClassroomsBySubject.set(row.subject_id, new Set());
+      }
+      scoreEnabledClassroomsBySubject.get(row.subject_id)!.add(row.classroom_id);
+    });
+
     let subjects = subjectsRes.rows.filter((subject: any) => {
       const midMax = subject.midterm_max_score !== null ? Number(subject.midterm_max_score) : Number(defaultMidMax) || 50;
       const finalMax = subject.final_max_score !== null ? Number(subject.final_max_score) : Number(defaultFinMax) || 50;
-      return midMax + finalMax > 0;
+      // Activity subjects must have at least one classroom where score entry is
+      // enabled. This prevents activities configured as "ไม่เก็บคะแนน" from
+      // being pulled into the report when the activity toggle is on.
+      return midMax + finalMax > 0 && (
+        subject.subject_type !== "activity" ||
+        (scoreEnabledClassroomsBySubject.get(subject.id)?.size ?? 0) > 0
+      );
     });
     if (!includeActivity) {
       subjects = subjects.filter((subject: any) => subject.subject_type !== "activity");
@@ -153,14 +175,21 @@ export async function GET(req: NextRequest) {
 
       const subjectStats = subjects.map((subj: any) => {
         const subjKey = subj.name.trim().toLowerCase();
-        const maxScorePerStudent = subjectMaxMap.get(subjKey) || 100;
+        const isScoreEnabledForClassroom =
+          subj.subject_type !== "activity" ||
+          scoreEnabledClassroomsBySubject.get(subj.id)?.has(cls.id) === true;
+        const maxScorePerStudent = isScoreEnabledForClassroom
+          ? subjectMaxMap.get(subjKey) || 100
+          : 0;
 
         let totalClassroomScore = 0;
-        clsStudentIds.forEach((stdId) => {
-          const key = `${stdId}_${subjKey}`;
-          const score = gradeScoreMap.get(key) || 0;
-          totalClassroomScore += score;
-        });
+        if (isScoreEnabledForClassroom) {
+          clsStudentIds.forEach((stdId) => {
+            const key = `${stdId}_${subjKey}`;
+            const score = gradeScoreMap.get(key) || 0;
+            totalClassroomScore += score;
+          });
+        }
 
         const totalMaxClassroomScore = studentCount * maxScorePerStudent;
         const avgPercentage =
@@ -206,16 +235,21 @@ export async function GET(req: NextRequest) {
 
     const schoolSubjectStats = subjects.map((subj: any) => {
       const subjKey = subj.name.trim().toLowerCase();
-      const maxScorePerStudent = subjectMaxMap.get(subjKey) || 100;
 
       let totalSchoolSubjectScore = 0;
+      let totalMaxSchoolScore = 0;
       students.forEach((std: any) => {
+        const classroomId = studentClassroomMap.get(std.student_id);
+        const isScoreEnabledForClassroom =
+          subj.subject_type !== "activity" ||
+          (classroomId !== undefined && scoreEnabledClassroomsBySubject.get(subj.id)?.has(classroomId) === true);
+        if (!isScoreEnabledForClassroom) return;
         const key = `${std.student_id}_${subjKey}`;
         const score = gradeScoreMap.get(key) || 0;
         totalSchoolSubjectScore += score;
+        totalMaxSchoolScore += subjectMaxMap.get(subjKey) || 100;
       });
 
-      const totalMaxSchoolScore = schoolTotalStudents * maxScorePerStudent;
       const avgPercentage =
         totalMaxSchoolScore > 0
           ? (totalSchoolSubjectScore * 100) / totalMaxSchoolScore
@@ -255,6 +289,10 @@ export async function GET(req: NextRequest) {
       subjects: subjects.map((s: any) => ({
         id: s.id,
         name: s.name,
+        subject_type: s.subject_type,
+        score_enabled_classroom_ids: s.subject_type === "activity"
+          ? Array.from(scoreEnabledClassroomsBySubject.get(s.id) || [])
+          : undefined,
         max_score: subjectMaxMap.get(s.name.trim().toLowerCase()) || 100,
       })),
       matrix_rows: matrixRows,

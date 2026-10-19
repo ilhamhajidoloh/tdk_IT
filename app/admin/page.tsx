@@ -3960,7 +3960,7 @@ function changeFontSize(dir) {
               background: #fff;
               padding: 15mm 19mm;
               transform-origin: top center;
-              border: 2px solid #000;
+              border: 0;
               box-sizing: border-box;
             }
             .header {
@@ -4050,7 +4050,7 @@ function changeFontSize(dir) {
             @media print {
               body { background: #fff; margin: 5mm; }
               .toolbar { display: none; }
-              .report-card { margin: 0; padding: 15mm 19mm; border: 2px solid #000; }
+              .report-card { margin: 0; padding: 15mm 19mm; border: 0; }
               @page { size: A4 portrait; margin: 5mm; }
             }
           </style>
