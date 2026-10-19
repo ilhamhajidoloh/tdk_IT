@@ -37,9 +37,9 @@ export async function GET(
     let queryParams = [param];
 
     if (isUuid) {
-      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, address, phone, email, enabled_modules FROM public.schools WHERE id = $1 AND is_active = true";
+      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules FROM public.schools WHERE id = $1 AND is_active = true";
     } else {
-      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, address, phone, email, enabled_modules FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true";
+      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true";
     }
 
     let result = await pool.query(query, queryParams);

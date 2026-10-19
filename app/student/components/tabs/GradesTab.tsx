@@ -2,13 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import { Download, FileText, TrendingUp, Award, BarChart3, Clock } from "lucide-react";
 import * as XLSX from "xlsx";
 import { type DBGrade, type DBSubject, type CombinedActivityResult, getGradeInfo } from "../types";
+import { getSchoolLogoUrl } from "../../../components/SchoolBrand";
 
 interface GradesTabProps {
   studentName: string;
   studentCode: string;
   studentNumber?: number | null;
   classroomName: string;
+  homeroomTeacherNames?: string[];
+  schoolId?: string;
   activeTermStr: string;
+  academicHead?: string | null;
   settingsList: any[];
   activeSettingId: number | null;
   onChangeSetting: (setting: any) => void;
@@ -134,7 +138,10 @@ export default function GradesTab({
   studentCode,
   studentNumber,
   classroomName,
+  homeroomTeacherNames = [],
+  schoolId,
   activeTermStr,
+  academicHead,
   settingsList,
   activeSettingId,
   onChangeSetting,
@@ -153,6 +160,15 @@ export default function GradesTab({
   onGradesReleased,
 }: GradesTabProps) {
   const [pdfLanguage, setPdfLanguage] = useState<PdfLanguage>("th");
+  const [school, setSchool] = useState<{ name?: string; name_en?: string; name_jawi?: string; logo_url?: string; logo_drive_file_id?: string } | null>(null);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    fetch(`/api/public/schools/${encodeURIComponent(schoolId)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then(setSchool)
+      .catch(() => setSchool(null));
+  }, [schoolId]);
 
   // Check release status for active setting
   const activeSetting = settingsList.find((s: any) => s.id === activeSettingId);
@@ -218,14 +234,13 @@ export default function GradesTab({
         : getGradeInfo(percent);
 
       return {
-        "ลำดับ": index + 1,
-        "รายวิชา": grade.subject,
-        "ประเภท": isActivity ? "กิจกรรม" : "วิชาการ",
-        "หน่วยกิต": isActivity ? "-" : Number(subject?.credit_hours) || 1,
-        "คะแนนเก็บ": `${grade.midterm_score ?? 0}/${midtermMaxScore}`,
-        "คะแนนสอบ": `${grade.final_score ?? 0}/${finalMaxScore}`,
-        "คะแนนรวม": `${totalScore}/${totalMaxScore}`,
-        "เกรด": gradeInfo.point,
+        "بيلاڠن": index + 1,
+        "نام ڤلاجران": grade.subject,
+        "جم كريديت": isActivity ? "-" : Number(subject?.credit_hours) || 1,
+        "مركة كڬياتن": `${grade.midterm_score ?? 0}`,
+        "مركة ڤڤريقسأن": `${grade.final_score ?? 0}`,
+        "مركة سموا": totalScore,
+        "ڬريد": gradeInfo.point,
       };
     });
 
@@ -247,13 +262,79 @@ export default function GradesTab({
     const worksheet = XLSX.utils.aoa_to_sheet(summaryRows);
     XLSX.utils.sheet_add_json(worksheet, rows, { origin: "A14" });
     worksheet["!cols"] = [
-      { wch: 8 }, { wch: 30 }, { wch: 14 }, { wch: 12 },
-      { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
+      { wch: 10 }, { wch: 35 }, { wch: 12 }, { wch: 14 },
+      { wch: 16 }, { wch: 14 }, { wch: 12 },
     ];
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "ผลการเรียน");
     XLSX.writeFile(workbook, `ผลการเรียน_${studentCode}_${activeTermStr}.xlsx`);
+  };
+
+  const handlePrintTermReport = () => {
+    const escapeHtml = (value: unknown) => String(value ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
+    const text = (th: string, rumi: string, jawi: string) =>
+      pdfLanguage === "ms-jawi" ? jawi : pdfLanguage === "ms-rumi" ? rumi : th;
+    const isJawi = pdfLanguage === "ms-jawi";
+    const rows = orderedGrades.map((grade, index) => {
+      const subject = subjectsList.find((item) => item.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && item.setting_id === activeSettingId);
+      const midMaxScore = Number(subject?.midterm_max_score) || midtermMax;
+      const finalMaxScore = Number(subject?.final_max_score) || finalMax;
+      const mid = Number(grade.midterm_score) || 0;
+      const final = Number(grade.final_score) || 0;
+      const total = mid + final;
+      const totalMax = midMaxScore + finalMaxScore;
+      const percent = totalMax > 0 ? (total * 100) / totalMax : 0;
+      const gradeLabel = subject?.subject_type === "activity" ? (percent >= 50 ? text("ผ่าน", "Lulus", "لولوس") : text("ไม่ผ่าน", "Gagal", "ݢاݢل")) : getGradeInfo(percent).letter;
+      return `<tr><td>${index + 1}</td><td class="subject">${escapeHtml(grade.subject)}</td><td>${mid}/${midMaxScore}</td><td>${final}/${finalMaxScore}</td><td>${total}/${totalMax}</td><td>${percent.toFixed(2)}%</td><td>${escapeHtml(gradeLabel)}</td></tr>`;
+    }).join("");
+    const schoolName = pdfLanguage === "ms-jawi" ? (school?.name_jawi || school?.name || "") : pdfLanguage === "ms-rumi" ? (school?.name_en || school?.name || "") : (school?.name || "");
+    const schoolLogoUrl = getSchoolLogoUrl(school?.logo_drive_file_id, school?.logo_url);
+    const logo = schoolName ? `<img class="logo" src="${escapeHtml(schoolLogoUrl)}" alt="">` : "";
+    const teacherName = homeroomTeacherNames.join(", ") || "-";
+    const dir = isJawi ? "rtl" : "ltr";
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!doctype html><html lang="${isJawi ? "ms-Arab" : pdfLanguage}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(text("รายงานผลการเรียนรายเทอม", "Laporan Keputusan Penggal", "لاڤورن كڤوتوسن ڤڠݢل"))}</title><style>@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;600;700&display=swap');:root{--fs:1}*{box-sizing:border-box}body{margin:0;background:#eee;font-family:${isJawi ? "'Noto Naskh Arabic'" : "Sarabun"},sans-serif;color:#111}.toolbar{position:fixed;top:12px;right:12px;z-index:2;display:flex;gap:8px;align-items:center}.toolbar button{border:0;border-radius:7px;padding:9px 14px;background:#1d4ed8;color:white;font-weight:700}.font-controls{background:#fff;padding:6px 10px;border-radius:7px;box-shadow:0 2px 8px #0002;font-size:12px}.font-controls button{min-width:30px;padding:6px 8px;background:#f1f5f9;color:#111;border:1px solid #cbd5e1}.page{width:210mm;min-height:297mm;margin:10px auto;background:#fff;padding:13mm 15mm;text-align:${isJawi ? "right" : "left"}}.head{text-align:center}.logo{width:58px;height:58px;object-fit:contain}.school{font-size:calc(18px * var(--fs));font-weight:700;margin:3px}.title{font-size:calc(20px * var(--fs));font-weight:700;margin:2px}.term{font-size:calc(14px * var(--fs))}.info{display:grid;grid-template-columns:1fr 1fr;gap:5px 20px;margin:12px 0;font-size:calc(14px * var(--fs))}.info b{font-weight:700}table{border-collapse:collapse;width:100%;font-size:calc(13px * var(--fs))}th,td{border:1px solid #111;padding:5px;text-align:center}th{font-weight:700;background:#fafafa}.subject{text-align:${isJawi ? "right" : "left"}}.summary{margin-top:10px;border:1px solid #111;padding:7px;font-size:calc(14px * var(--fs))}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:50px;text-align:center;margin-top:32px;font-size:calc(14px * var(--fs))}.line{border-top:1px solid #111;margin:28px 12px 5px}.footer{text-align:center;font-size:calc(10px * var(--fs));margin-top:22px}@media print{body{background:#fff}.toolbar{display:none}.page{margin:0;width:auto;min-height:0}@page{size:A4 portrait;margin:0}}</style></head><body><div class="toolbar"><div class="font-controls"><button type="button" id="font-dec">A−</button> <span id="font-size">100%</span> <button type="button" id="font-inc">A+</button></div><button onclick="window.print()">${escapeHtml(text("พิมพ์ / บันทึก PDF", "Cetak / Simpan PDF", "چيتق / سيمڤن PDF"))}</button></div><main class="page"><header class="head">${logo}<div class="school">${escapeHtml(schoolName)}</div><div class="title">${escapeHtml(text("รายงานผลการเรียนรายเทอม", "Laporan Keputusan Penggal", "لاڤورن كڤوتوسن ڤڠݢل"))}</div><div class="term">${escapeHtml(text("ปีการศึกษา / ภาคเรียน", "Sesi Akademik", "سيسي اكناديميك"))}: ${escapeHtml(activeTermStr)}</div></header><section class="info"><div><b>${escapeHtml(text("ชื่อ - นามสกุล", "Nama Penuh", "نام ڤنوه"))}:</b> ${escapeHtml(studentName)}</div><div><b>${escapeHtml(text("รหัสนักเรียน", "Nombor Pelajar", "نمبر ڤلاجر"))}:</b> ${escapeHtml(studentCode)}</div><div><b>${escapeHtml(text("ชั้นเรียน", "Kelas", "كلس"))}:</b> ${escapeHtml(classroomName)}</div><div><b>${escapeHtml(text("เลขที่", "Nombor", "نمبر"))}:</b> ${escapeHtml(studentNumber ?? "-")}</div></section><table><thead><tr><th>${escapeHtml(text("ที่", "Bil.", "بيلاڠن"))}</th><th>${escapeHtml(text("รายวิชา", "Mata Pelajaran", "نام ڤلاجران"))}</th><th>${escapeHtml(text("คะแนนเก็บ", "Markah Kerja Kursus", "مرکه كرج كورسوس"))}</th><th>${escapeHtml(text("คะแนนสอบ", "Markah Peperiksaan", "مرکه ڤڤريکساءن"))}</th><th>${escapeHtml(text("คะแนนรวม", "Jumlah", "جومله"))}</th><th>${escapeHtml(text("ร้อยละ", "Peratus", "ڤراتوس"))}</th><th>${escapeHtml(text("ผลการเรียน", "Keputusan", "كڤوتوسن"))}</th></tr></thead><tbody>${rows}</tbody></table><div class="summary">${escapeHtml(text("คะแนนรวม", "Jumlah Markah", "جومله مرکه"))}: ${totalEarnedScore}/${totalPossibleScore} &nbsp; | &nbsp; ${escapeHtml(text("ร้อยละ", "Peratus", "ڤراتوس"))}: ${overallPercent.toFixed(2)}% &nbsp; | &nbsp; GPA: ${escapeHtml(gpaValue)}</div><section class="signatures"><div><div class="line"></div><b>${escapeHtml(teacherName)}</b><br>${escapeHtml(text("ครูประจำชั้น", "Guru Kelas", "ڬورو كلس"))}</div><div><div class="line"></div><b>${escapeHtml(academicHead || "-")}</b><br>${escapeHtml(text("หัวหน้าฝ่ายวิชาการ", "Ketua Bahagian Akademik", "كتوابهاڬين ڤلاجران"))}</div></section><div class="footer">${escapeHtml(text("พิมพ์จากระบบสารสนเทศโรงเรียน", "Dijana oleh sistem maklumat sekolah", "ديجانا اوليه سيستم معلومت سكوله"))}</div></main><script>var fs=1,draw=function(){document.documentElement.style.setProperty('--fs',fs);document.getElementById('font-size').textContent=Math.round(fs*100)+'%'};document.getElementById('font-dec').onclick=function(){fs=Math.max(.7,+(fs-.1).toFixed(1));draw()};document.getElementById('font-inc').onclick=function(){fs=Math.min(1.5,+(fs+.1).toFixed(1));draw()};draw()</script></body></html>`);
+    win.document.close();
+    // Restyle the generated document as the supplied formal grade-sheet:
+    // plain black rules, compact centered heading and signature blocks.
+    const formalStyle = win.document.createElement("style");
+    formalStyle.textContent = `
+      body{background:#fff!important;color:#000!important}
+      .page{width:210mm!important;min-height:297mm!important;margin:0 auto!important;padding:15mm 19mm!important;text-align:${isJawi ? "right" : "left"}!important;border:2px solid #000!important;box-sizing:border-box!important}
+      .head{border-top:1px solid #000;padding-top:7mm;margin-bottom:5mm!important}
+      .logo{width:50px!important;height:50px!important}.school{font-weight:400!important;margin:0!important}.title{font-weight:600!important}.term{}
+      .info{display:grid!important;grid-template-columns:1fr 1fr!important;gap:2px 18px!important;margin:5mm 0!important;padding:3mm 0!important;border:0!important}
+      table{table-layout:fixed!important}th,td{border:1px solid #000!important;padding:2.2px 3px!important;line-height:1.25!important;background:#fff!important}th{font-weight:600!important}.subject{white-space:nowrap!important}
+      .summary{margin-top:0!important;border:1px solid #000!important;border-top:0!important;padding:3mm!important;text-align:center!important}
+      .signatures{gap:35mm!important;margin-top:16mm!important}.line{margin:18mm 8mm 3px!important;border-color:#000!important}.footer{margin-top:16mm!important}
+      @media print{body{margin:5mm!important}.page{margin:0!important;padding:15mm 19mm!important;border:2px solid #000!important}@page{size:A4 portrait;margin:5mm}}
+    `;
+    win.document.head.appendChild(formalStyle);
+    const fontControlScript = win.document.createElement("script");
+    fontControlScript.textContent = `
+      (function () {
+        var scale = 1;
+        var targets = [[".school", 14], [".title", 17], [".term", 12], [".info", 12], ["table", 12], [".summary", 12], [".signatures", 12], [".footer", 9]];
+        var value = document.getElementById("font-size");
+        function apply() {
+          targets.forEach(function (target) {
+            document.querySelectorAll(target[0]).forEach(function (element) {
+              element.style.setProperty("font-size", (target[1] * scale) + "px", "important");
+            });
+          });
+          document.documentElement.style.setProperty('--fs', scale);
+          if (value) value.textContent = Math.round(scale * 100) + "%";
+        }
+        document.getElementById("font-dec").onclick = function () { scale = Math.max(0.7, +(scale - 0.1).toFixed(1)); apply(); };
+        document.getElementById("font-inc").onclick = function () { scale = Math.min(1.5, +(scale + 0.1).toFixed(1)); apply(); };
+        apply();
+      })();
+    `;
+    win.document.body.appendChild(fontControlScript);
   };
 
   const handleExportPdf = () => {
@@ -308,7 +389,7 @@ export default function GradesTab({
           : percent >= 50 ? textForPdf("ผ่าน", "Lulus", "لولوس") : textForPdf("ไม่ผ่าน", "Gagal", "ݢاݢل")
         : getGradeInfo(percent).letter;
 
-      return `<tr><td>${index + 1}</td><td>${escapeHtml(grade.subject)}</td><td>${isActivity ? textForPdf("กิจกรรม", "Aktiviti", "اکتيۏيتي") : textForPdf("วิชาหลัก", "Subjek Utama", "سوبجيک اوتام")}</td><td>${isActivity ? "-" : Number(subject?.credit_hours) || 1}</td><td>${grade.midterm_score ?? 0}/${midtermMaxScore}</td><td>${grade.final_score ?? 0}/${finalMaxScore}</td><td>${totalScore}/${totalMaxScore}</td><td>${escapeHtml(gradeLabel)}</td></tr>`;
+      return `<tr><td>${index + 1}</td><td>${escapeHtml(grade.subject)}</td><td>${isActivity ? "-" : Number(subject?.credit_hours) || 1}</td><td>${grade.midterm_score ?? 0}/${midtermMaxScore}</td><td>${grade.final_score ?? 0}/${finalMaxScore}</td><td>${totalScore}/${totalMaxScore}</td><td>${escapeHtml(gradeLabel)}</td></tr>`;
     }).join("");
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -324,11 +405,10 @@ export default function GradesTab({
     pdfDocument.documentElement.lang = pdfLanguage === "ms-jawi" ? "ms-Arab" : pdfLanguage;
     if (pdfLanguage === "ms-jawi") pdfDocument.body.classList.add("jawi-document");
     const reportHeaders: [string, string, string][] = [
-      ["ลำดับ", "Bil.", "بيل."],
-      ["ชื่อวิชาเรียน", "Nama Subjek", "نام سوبجيک"],
-      ["ประเภท", "Jenis", "جينيس"],
-      ["หน่วยกิต", "Kredit", "کريديت"],
-      ["คะแนนเก็บ", "Markah Kerja Kursus", "مرکه کرجا کورسوس"],
+      ["ลำดับ", "Bil.", "بيلاڠن"],
+      ["ชื่อวิชาเรียน", "Nama Subjek", "نام موريد"],
+      ["หน่วยกิต", "Kredit", "كريديت"],
+      ["คะแนนเก็บ", "Markah Kerja Kursus", "مرکه كرجا كورسوس"],
       ["คะแนนสอบ", "Markah Peperiksaan", "مرکه ڤڤريکساءن"],
       ["คะแนนรวม", "Jumlah Markah", "جومله مرکه"],
       ["เกรด", "Gred", "ݢريد"],
@@ -339,24 +419,23 @@ export default function GradesTab({
       reportTable.querySelector("tbody")!.innerHTML = reportRows;
     }
     const title = pdfDocument.querySelector(".title");
-    if (title) title.innerHTML = `${triLabel("รายงานผลการเรียน", "Laporan Keputusan Akademik", "لاڤورن کڤوتوسن اکناديميك")}`;
+    if (title) title.innerHTML = `${triLabel("รายงานผลการเรียน", "Laporan Keputusan Akademik", "لاڤورن كڤوتوسن اكناديميك")}`;
     const subtitle = pdfDocument.querySelector(".subtitle");
-    if (title) title.innerHTML = triLabel("ใบรายงานผลการเรียนรายบุคคล", "Laporan Keputusan Akademik Individu", "لاڤورن کڤوتوسن اکناديميك انديۏيدو");
+    if (title) title.innerHTML = triLabel("ใบรายงานผลการเรียนรายบุคคล", "Laporan Keputusan Akademik Individu", "لاڤورن كڤوتوسن اكناديميك انديۏيدو");
     if (subtitle) subtitle.innerHTML = `${triLabel("ภาคเรียน", "Sesi", "سيسي")}: ${escapeHtml(activeTermStr)}`;
     const details = pdfDocument.querySelector(".details");
     if (details) {
-      details.innerHTML = `<div><b>${triLabel("ชื่อ - นามสกุล", "Nama Penuh", "نام ڤنوه")}</b>: ${escapeHtml(studentName)}</div><div><b>${triLabel("รหัสประจำตัว", "Nombor Pelajar", "نومبور ڤلاجر")}</b>: ${escapeHtml(studentCode)}</div><div><b>${triLabel("ชั้นเรียน", "Kelas", "کلس")}</b>: ${escapeHtml(classroomName)}</div><div><b>${triLabel("เลขที่", "Nombor", "نومبور")}</b>: ${studentNumber ?? "-"}</div>`;
+      details.innerHTML = `<div><b>${triLabel("ชื่อ - นามสกุล", "Nama Penuh", "نام ڤنوه")}</b>: ${escapeHtml(studentName)}</div><div><b>${triLabel("รหัสประจำตัว", "Nombor Pelajar", "نمبر ڤلاجر")}</b>: ${escapeHtml(studentCode)}</div><div><b>${triLabel("ชั้นเรียน", "Kelas", "كلس")}</b>: ${escapeHtml(classroomName)}</div><div><b>${triLabel("เลขที่", "Nombor", "نمبر")}</b>: ${studentNumber ?? "-"}</div>`;
     }
     const headers: [string, string, string][] = [
-      ["ลำดับ", "Bil.", "بيل."],
+      ["ลำดับ", "Bil.", "بيلاڠن"],
       ["รายวิชา", "Mata Pelajaran", "ماتا ڤلاجرن"],
-      ["ประเภท", "Jenis", "جينيس"],
-      ["คะแนนเก็บ", "Markah Kerja Kursus", "مرکه کرجا کورسوس"],
+      ["คะแนนเก็บ", "Markah Kerja Kursus", "مرکه كرجا كورسوس"],
       ["คะแนนสอบ", "Markah Peperiksaan", "مرکه ڤڤريکساءن"],
       ["คะแนนรวม", "Jumlah Markah", "جومله مرکه"],
       ["ร้อยละ", "Peratus", "ڤراتوس"],
       ["เกรด", "Gred", "ݢريد"],
-      ["ผลการเรียน", "Keputusan", "کڤوتوسن"],
+      ["ผลการเรียน", "Keputusan", "كڤوتوسن"],
     ];
     pdfDocument.querySelectorAll("thead th").forEach((cell, index) => {
       const label = headers[index];
@@ -366,8 +445,8 @@ export default function GradesTab({
     if (summary) {
       summary.innerHTML = [
         `<span>${triLabel("เกรดเฉลี่ย (GPA)", "Purata Nilai Gred", "ڤوراتا نيلاي ݢريد")}: ${escapeHtml(gpaValue)}</span>`,
-        `<span>${triLabel("หน่วยกิตรวม", "Jumlah Kredit", "جومله کريديت")}: ${escapeHtml(gpaCredits)}</span>`,
-        `<span>${triLabel("เปอร์เซ็นต์รวม", "Peratus Keseluruhan", "ڤراتوس کسلوروهان")}: ${overallPercent}%</span>`,
+        `<span>${triLabel("หน่วยกิตรวม", "Jumlah Kredit", "جومله كريديت")}: ${escapeHtml(gpaCredits)}</span>`,
+        `<span>${triLabel("เปอร์เซ็นต์รวม", "Peratus Keseluruhan", "ڤراتوس كسلوروهان")}: ${overallPercent}%</span>`,
       ].join("");
     }
     if (summary) {
@@ -375,8 +454,8 @@ export default function GradesTab({
         `<span>${triLabel("คะแนนรวมวิชาหลัก", "Jumlah Markah Subjek Utama", "جومله مرکه سوبجيک اوتام")}: ${totalEarnedScore}/${totalPossibleScore}</span>`,
         `<span>${triLabel("คิดเป็นร้อยละ", "Peratus", "ڤراتوس")}: ${overallPercent}%</span>`,
         `<span>${triLabel("เกรดเฉลี่ย (GPA)", "Purata Nilai Gred", "ڤوراتا نيلاي ݢريد")}: ${escapeHtml(gpaValue)}</span>`,
-        `<span>${triLabel("อันดับในห้องเรียน", "Kedudukan Dalam Kelas", "کدودوقن دالم کلس")}: ${ranking ? `${ranking.classroom_rank}/${ranking.classroom_total}` : "-"}</span>`,
-        `<span>${triLabel("อันดับในโรงเรียน", "Kedudukan Dalam Sekolah", "کدودوقن دالم سکوله")}: ${ranking ? `${ranking.school_rank}/${ranking.school_total}` : "-"}</span>`,
+        `<span>${triLabel("อันดับในห้องเรียน", "Kedudukan Dalam Kelas", "كدودوقن دالم كلس")}: ${ranking ? `${ranking.classroom_rank}/${ranking.classroom_total}` : "-"}</span>`,
+        `<span>${triLabel("อันดับในโรงเรียน", "Kedudukan Dalam Sekolah", "كدودوقن دالم سكوله")}: ${ranking ? `${ranking.school_rank}/${ranking.school_total}` : "-"}</span>`,
       ].join("");
     }
     const style = pdfDocument.createElement("style");
@@ -438,11 +517,11 @@ export default function GradesTab({
 
                 <button
                   type="button"
-                  onClick={handleExportPdf}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 backdrop-blur-md border-2 border-white/30 text-white font-bold text-sm hover:bg-white/30 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
+                  onClick={handlePrintTermReport}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 text-amber-950 font-bold text-sm shadow-lg hover:bg-amber-300 transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
                 >
                   <FileText className="h-4 w-4" />
-                  PDF
+                  รายงานรายเทอม
                 </button>
 
                 <button

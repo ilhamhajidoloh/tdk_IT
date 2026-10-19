@@ -96,8 +96,8 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     },
     "ใบรายงานผลการเรียนรายบุคคล": {
       th: "ใบรายงานผลการเรียนรายบุคคล",
-      rumi: "Slip Keputusan Peperiksaan Individu",
-      jawi: "سليڤ كڤوتوسن ڤڤريقسان اينديويدو"
+      rumi: "Laporan Natijah Peperiksaan Seseorang",
+      jawi: "بورڠ لاڤوران نتيجة ڤڤريقسأن سسؤرڠ"
     },
     "ชั้นเรียน": { th: "ชั้นเรียน", rumi: "Kelas", jawi: "كلس" },
     "ชั้น": { th: "ชั้น", rumi: "Kelas", jawi: "كلس" },
@@ -108,15 +108,15 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "จำนวนวิชาที่ส่งออก:": { th: "จำนวนวิชาที่ส่งออก:", rumi: "Jumlah Subjek:", jawi: "جومله ڤلاجران:" },
     "วิชา": { th: "วิชา", rumi: "subjek", jawi: "ڤلاجران" },
     "วันที่ออกรายงาน:": { th: "วันที่ออกรายงาน:", rumi: "Tarikh Dikeluarkan:", jawi: "تاريخ دكلواركن:" },
-    "ลำดับ": { th: "ลำดับ", rumi: "Bil.", jawi: "بيل." },
-    "รหัสประจำตัว": { th: "รหัสประจำตัว", rumi: "No. ID", jawi: "نومبور اءي-دي" },
-    "ชื่อ - นามสกุล": { th: "ชื่อ - นามสกุล", rumi: "Nama Murid", jawi: "نام موريد" },
-    "เลขที่": { th: "เลขที่", rumi: "No.", jawi: "نومبور" },
+    "ลำดับ": { th: "ลำดับ", rumi: "Bil.", jawi: "بيلاڠن" },
+    "รหัสประจำตัว": { th: "รหัสประจำตัว", rumi: "No. ID", jawi: "نمبر اءي-دي" },
+    "ชื่อ - นามสกุล": { th: "ชื่อ - นามสกุล", rumi: "Nama Murid", jawi: "نام ڤلاجر" },
+    "เลขที่": { th: "เลขที่", rumi: "No.", jawi: "نمبر" },
     "ประเภท": { th: "ประเภท", rumi: "Kategori", jawi: "كاتڬوري" },
-    "หน่วยกิต": { th: "หน่วยกิต", rumi: "Jam Kredit", jawi: "جام ك ريديت" },
-    "นก.": { th: "นก.", rumi: "kredit", jawi: "ك ريديت" },
+    "หน่วยกิต": { th: "หน่วยกิต", rumi: "Jam Kredit", jawi: "جم كريديت" },
+    "นก.": { th: "นก.", rumi: "kredit", jawi: "كريديت" },
     "คะแนนเก็บ": { th: "คะแนนเก็บ", rumi: "Kerja Kursus", jawi: "مركة كڬياتن" },
-    "คะแนนสอบ": { th: "คะแนนสอบ", rumi: "Peperiksaan", jawi: "مركة ففريقسأن" },
+    "คะแนนสอบ": { th: "คะแนนสอบ", rumi: "Peperiksaan", jawi: "مركة ڤڤريقسأن" },
     "คะแนนรวม": { th: "คะแนนรวม", rumi: "Jumlah Markah", jawi: "مركة سموا" },
     "รวมคะแนน": { th: "รวมคะแนน", rumi: "Jumlah Markah", jawi: "مركة سموا" },
     "เกรด": { th: "เกรด", rumi: "Gred", jawi: "ڬريد" },
@@ -145,7 +145,7 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     "หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ": {
       th: "หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ",
       rumi: "Guru Penolong Kanan / Pengetua",
-      jawi: "ڬورو ڤنولوڠ كنان / ڤڠتوا"
+      jawi: "كتوابهاڬين ڤلاجران"
     },
     "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" },
     "คุณลักษณะอันพึงประสงค์": { th: "คุณลักษณะอันพึงประสงค์", rumi: "Sifat-Sifat Yang Diingini", jawi: "سيفت٢ يڠ دايڠيني" },
@@ -3117,7 +3117,7 @@ window.addEventListener('afterprint', function () {
         "ชื่อ-สกุล": { th: "ชื่อ-สกุล", rumi: "Nama Lengkap", jawi: "نام لڠکاڤ" },
         "ทั้งหมด": { th: "ทั้งหมด", rumi: "Jumlah", jawi: "جمله" },
         "คน": { th: "คน", rumi: "orang", jawi: "اورڠ" },
-        "ยังไม่ระบุชั้นเรียน": { th: "ยังไม่ระบุชั้นเรียน", rumi: "Belum Ditentukan", jawi: "بيلوم ديتنتوکن" },
+        "ยังไม่ระบุชั้นเรียน": { th: "ยังไม่ระบุชั้นเรียน", rumi: "Belum Ditentukan", jawi: "بيلوم ديتنتوكن" },
         "ออกรายงาน ณ": { th: "ออกรายงาน ณ", rumi: "Laporan pada", jawi: "لاڤورن ڤد" },
         "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" },
         "ขนาดตัวอักษร:": { th: "ขนาดตัวอักษร:", rumi: "Saiz Fon:", jawi: "ساءيز فون:" }
@@ -3789,6 +3789,30 @@ function changeFontSize(dir) {
         return;
       }
 
+      // ดึงข้อมูลโรงเรียน
+      let schoolData: { name?: string; name_en?: string; name_jawi?: string; logo_url?: string; logo_drive_file_id?: string } | null = null;
+      const schoolId = (adminUser as { school_id?: string } | null)?.school_id || "main";
+      try {
+        const schoolRes = await fetch(`/api/public/schools/${encodeURIComponent(schoolId)}`);
+        if (schoolRes.ok) {
+          schoolData = await schoolRes.json();
+        }
+      } catch (err) {
+        console.error("Failed to fetch school data:", err);
+      }
+
+      const schoolName = exportLanguage === "ms-jawi"
+        ? (schoolData?.name_jawi || schoolData?.name || "")
+        : exportLanguage === "ms-rumi"
+          ? (schoolData?.name_en || schoolData?.name || "")
+          : (schoolData?.name || "");
+      const schoolLogoUrl = schoolData?.logo_drive_file_id
+        ? `/api/public/schools/logo/${schoolData.logo_drive_file_id}`
+        : schoolData?.logo_url;
+      const schoolLogo = schoolLogoUrl
+        ? `<img class="logo" src="${schoolLogoUrl.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;")}" alt="" />`
+        : "";
+
       const reportCardsHTML = targetStudents.map((st, sIdx) => {
         const subjectRowsHTML = selectedSubjects.map((sub, idx) => {
           const sc = st.subjectScores[sub.id];
@@ -3799,14 +3823,13 @@ function changeFontSize(dir) {
 
           return `
             <tr>
-              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${idx + 1}</td>
-              <td dir="auto" style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;font-weight:600;">${getSubjectDisplayName(sub, exportLanguage)}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${sub.subject_type === "activity" ? `<span style='color:#7c3aed;font-weight:bold;'>${t("กิจกรรม")}</span>` : t("วิชาหลัก")}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${sub.subject_type === "activity" ? "-" : sub.credit_hours}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${midText}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${finText}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;font-weight:bold;">${totalText}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;font-weight:extrabold;color:${sc?.isActivity ? (sc.passed ? '#15803d' : '#b91c1c') : '#4f46e5'};">${gradeText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${idx + 1}</td>
+              <td dir="auto" style="padding:8px 12px;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:600;text-align:${alignLeftOrRight};">${getSubjectDisplayName(sub, exportLanguage)}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${sub.subject_type === "activity" ? "-" : sub.credit_hours}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${midText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${finText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:bold;">${totalText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:extrabold;color:${sc?.isActivity ? (sc.passed ? '#15803d' : '#b91c1c') : '#4f46e5'};">${gradeText}</td>
             </tr>
           `;
         }).join("");
@@ -3817,28 +3840,29 @@ function changeFontSize(dir) {
         return `
           <div class="report-card ${sIdx < targetStudents.length - 1 ? 'page-break' : ''}">
             <div class="header">
-              <h1 style="margin:0;font-size:22px;font-weight:800;color:#0f172a;">${titleText}</h1>
-              <h2 style="margin:4px 0 0;font-size:15px;font-weight:600;color:#475569;">${subtitleText}</h2>
+              ${schoolLogo}
+              ${schoolName ? `<div class="school">${schoolName}</div>` : ''}
+              <h1>${titleText}</h1>
+              <h2>${subtitleText}</h2>
             </div>
 
-            <div class="student-info-grid" style="text-align:${alignLeftOrRight};">
-              <div class="info-item"><span>${t("ชื่อ - นามสกุล")}:</span> <b>${st.name}</b></div>
-              <div class="info-item"><span>${t("รหัสประจำตัว")}:</span> <b style="font-family:monospace;color:#4f46e5;">${st.student_id}</b></div>
-              <div class="info-item"><span>${t("ชั้นเรียน")}:</span> <b>${t("ชั้น")} ${getClassroomDisplayName(classroom, exportLanguage)}</b></div>
-              <div class="info-item"><span>${t("เลขที่")}:</span> <b>${st.student_number || "-"}</b></div>
+            <div class="student-info">
+              <div class="info-row"><span>${t("ชื่อ - นามสกุล")}:</span> <b>${st.name}</b></div>
+              <div class="info-row"><span>${t("รหัสประจำตัว")}:</span> <b style="font-family:monospace;color:#4f46e5;">${st.student_id}</b></div>
+              <div class="info-row"><span>${t("ชั้นเรียน")}:</span> <b>${t("ชั้น")} ${getClassroomDisplayName(classroom, exportLanguage)}</b></div>
+              <div class="info-row"><span>${t("เลขที่")}:</span> <b>${st.student_number || "-"}</b></div>
             </div>
 
-            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+            <table>
               <thead>
-                <tr style="background:#f1f5f9;">
-                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:40px;font-size:12px;">${t("ลำดับ")}</th>
-                  <th style="padding:10px 12px;text-align:${alignLeftOrRight};border:1px solid #cbd5e1;font-size:12px;">${exportLanguage === "th" ? "ชื่อวิชาเรียน" : exportLanguage === "ms-rumi" ? "Nama Subjek" : "نام ڤلاجران"}</th>
-                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("ประเภท")}</th>
-                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:70px;font-size:12px;">${t("หน่วยกิต")}</th>
-                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("คะแนนเก็บ")}</th>
-                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("คะแนนสอบ")}</th>
-                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:80px;font-size:12px;">${t("คะแนนรวม")}</th>
-                  <th style="padding:10px 8px;border:1px solid #cbd5e1;width:70px;font-size:12px;">${t("เกรด")}</th>
+                <tr>
+                  <th style="width:40px;">${t("ลำดับ")}</th>
+                  <th style="text-align:${alignLeftOrRight};">${exportLanguage === "th" ? "ชื่อวิชาเรียน" : exportLanguage === "ms-rumi" ? "Nama Subjek" : "نام ڤلاجران"}</th>
+                  <th style="width:70px;">${t("หน่วยกิต")}</th>
+                  <th style="width:80px;">${t("คะแนนเก็บ")}</th>
+                  <th style="width:80px;">${t("คะแนนสอบ")}</th>
+                  <th style="width:80px;">${t("คะแนนรวม")}</th>
+                  <th style="width:70px;">${t("เกรด")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -3846,27 +3870,12 @@ function changeFontSize(dir) {
               </tbody>
             </table>
 
-            <div class="summary-box">
-              <div class="sum-card">
-                <div class="sum-label">${exportSumActivityScores ? t("คะแนนรวมทั้งหมด") : t("คะแนนรวมวิชาหลัก")}</div>
-                <div class="sum-val">${st.totalMainScore} / ${st.maxPossibleMain}</div>
-              </div>
-              <div class="sum-card">
-                <div class="sum-label">${t("คิดเป็นร้อยละ")}</div>
-                <div class="sum-val" style="color:#2563eb;">${st.percentage.toFixed(1)}%</div>
-              </div>
-              <div class="sum-card">
-                <div class="sum-label">${t("เกรดเฉลี่ย (GPA)")}</div>
-                <div class="sum-val" style="color:#059669;">${st.gpa.toFixed(2)}</div>
-              </div>
-              <div class="sum-card">
-                <div class="sum-label">${t("อันดับในห้องเรียน")}</div>
-                <div class="sum-val" style="color:#7c3aed;">${t("อันดับที่")} ${st.rank} / ${classStudents.length}</div>
-              </div>
-              <div class="sum-card">
-                <div class="sum-label">${t("อันดับในโรงเรียน")}</div>
-                <div class="sum-val" style="color:#db2777;">${t("อันดับที่")} ${st.schoolRank} / ${allStudentRows.length}</div>
-              </div>
+            <div class="summary">
+              <div><strong>${exportSumActivityScores ? t("คะแนนรวมทั้งหมด") : t("คะแนนรวมวิชาหลัก")}:</strong> ${st.totalMainScore} / ${st.maxPossibleMain}</div>
+              <div><strong>${t("คิดเป็นร้อยละ")}:</strong> <span style="color:#2563eb;">${st.percentage.toFixed(1)}%</span></div>
+              <div><strong>${t("เกรดเฉลี่ย (GPA)")}:</strong> <span style="color:#059669;">${st.gpa.toFixed(2)}</span></div>
+              <div><strong>${t("อันดับในห้องเรียน")}:</strong> ${t("อันดับที่")} ${st.rank} / ${classStudents.length}</div>
+              <div><strong>${t("อันดับในโรงเรียน")}:</strong> ${t("อันดับที่")} ${st.schoolRank} / ${allStudentRows.length}</div>
             </div>
 
             ${buildEvalSectionHTML(st.student_id)}
@@ -3874,13 +3883,13 @@ function changeFontSize(dir) {
             <div class="signatures">
               <div class="sig-box">
                 <div class="sig-line"></div>
-                <div style="font-size:12px;font-weight:bold;">( ${homeroomTeacherNames} )</div>
-                <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
+                <div><b>( ${homeroomTeacherNames} )</b></div>
+                <div class="sig-role">${t("ครูประจำชั้น")}</div>
               </div>
               <div class="sig-box">
                 <div class="sig-line"></div>
-                <div style="font-size:12px;font-weight:bold;">( ${setting.academic_head || "........................................................"} )</div>
-                <div style="font-size:11px;color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
+                <div><b>( ${setting.academic_head || "........................................................"} )</b></div>
+                <div class="sig-role">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
               </div>
             </div>
           </div>
@@ -3889,34 +3898,206 @@ function changeFontSize(dir) {
 
       win.document.write(`
         <!DOCTYPE html>
-        <html dir="${langDir}">
+        <html dir="${langDir}" lang="${exportLanguage === "ms-jawi" ? "ms-Arab" : exportLanguage}">
         <head>
           <title>${exportType === "yearly" ? `${t("ใบรายงานผลการเรียนรายบุคคล")} (${t("เฉลี่ยทั้งปี")})` : t("ใบรายงานผลการเรียนรายบุคคล")} - ${t("ชั้น")} ${classroom.name}</title>
           <meta charset="utf-8" />
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;500;600;700;800&family=Inter:wght@400;600;700;800&display=swap');
-            body { font-family: 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Sarabun', 'Inter', sans-serif; margin: 20px; color: #1e293b; background: #fff; direction: ${langDir}; text-align: ${alignLeftOrRight}; }
-            .report-card { padding: 10px 0; margin-bottom: 20px; page-break-inside: avoid; }
-            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
-            .student-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; font-size: 13px; }
-            .summary-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
-            .sum-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; text-align: center; }
-            .sum-label { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
-            .sum-val { font-size: 16px; font-weight: 800; color: #0f172a; }
-            .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding: 0 40px; page-break-inside: avoid; }
-            .sig-box { text-align: center; width: 220px; }
-            .sig-line { border-bottom: 1px dotted #94a3b8; margin-top: 40px; margin-bottom: 6px; }
-            .print-btn { position: fixed; top: 16px; ${exportLanguage === "ms-jawi" ? "left: 16px;" : "right: 16px;"} padding: 10px 20px; background: #4f46e5; color: #fff; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); font-size: 13px; z-index: 100; }
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;600;700&display=swap');
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              font-family: ${exportLanguage === "ms-jawi" ? "'Noto Naskh Arabic'" : "Sarabun"}, sans-serif;
+              margin: 5mm;
+              background: #eee;
+              color: #111;
+              direction: ${langDir};
+              text-align: ${alignLeftOrRight};
+            }
+            .toolbar {
+              position: fixed;
+              top: 12px;
+              ${exportLanguage === "ms-jawi" ? "left: 12px;" : "right: 12px;"}
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              z-index: 100;
+            }
+            .toolbar button {
+              padding: 9px 14px;
+              background: #1d4ed8;
+              color: white;
+              border: 0;
+              border-radius: 7px;
+              font-weight: 700;
+              cursor: pointer;
+            }
+            .fs-controls {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              background: white;
+              padding: 6px 12px;
+              border-radius: 8px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              font-size: 12px;
+              font-weight: 600;
+            }
+            .fs-btn {
+              min-width: 28px;
+              height: 28px;
+              border: 1px solid #cbd5e1;
+              background: #f8fafc;
+              border-radius: 6px;
+              font-weight: 700;
+              cursor: pointer;
+            }
+            .fs-btn:hover { background: #e2e8f0; }
+            .fs-val { min-width: 42px; text-align: center; color: #4f46e5; }
+            .report-card {
+              width: 210mm;
+              min-height: 297mm;
+              margin: 0;
+              background: #fff;
+              padding: 15mm 19mm;
+              transform-origin: top center;
+              border: 2px solid #000;
+              box-sizing: border-box;
+            }
+            .header {
+              text-align: center;
+              padding-top: 7mm;
+              margin-bottom: 5mm;
+            }
+            .logo {
+              width: 50px;
+              height: 50px;
+              object-fit: contain;
+              margin-bottom: 3px;
+            }
+            :root { --fs: 1; }
+            .school {
+              font-size: calc(14px * var(--fs));
+              font-weight: 400;
+              margin: 0 0 3px;
+            }
+            .header h1 {
+              font-size: calc(17px * var(--fs));
+              font-weight: 600;
+              margin: 0;
+            }
+            .header h2 {
+              font-size: calc(12px * var(--fs));
+              font-weight: 400;
+              margin: 3px 0 0;
+              color: #555;
+            }
+            .student-info {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 2px 18px;
+              margin: 5mm 0;
+              padding: 3mm 0;
+              font-size: calc(12px * var(--fs));
+            }
+            .info-row { line-height: 1.4; }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
+              font-size: calc(12px * var(--fs));
+            }
+            th, td {
+              border: 1px solid #000;
+              padding: 2.2px 3px;
+              line-height: 1.25;
+              background: #fff;
+              text-align: center;
+            }
+            th { font-weight: 600; }
+            .summary {
+              margin-top: 0;
+              border: 1px solid #000;
+              padding: 3mm;
+              font-size: calc(12px * var(--fs));
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 8px;
+            }
+            .signatures {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 35mm;
+              margin-top: 16mm;
+              font-size: calc(12px * var(--fs));
+              text-align: center;
+            }
+            .sig-line {
+              border-top: 1px solid #000;
+              margin: 18mm 8mm 3px;
+            }
+            .sig-role {
+              font-size: calc(11px * var(--fs));
+              color: #555;
+              margin-top: 2px;
+            }
+            .eval-section {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 16px;
+              margin-bottom: 20px;
+            }
+            .page-break { page-break-after: always; }
             @media print {
-              .print-btn { display: none; }
-              body { margin: 0; }
-              .page-break { page-break-after: always; break-after: page; }
-              @page { size: A4 portrait; margin: 12mm; }
+              body { background: #fff; margin: 5mm; }
+              .toolbar { display: none; }
+              .report-card { margin: 0; padding: 15mm 19mm; border: 2px solid #000; }
+              @page { size: A4 portrait; margin: 5mm; }
             }
           </style>
         </head>
         <body>
-          <button class="print-btn" onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
+          <div class="toolbar">
+            <div class="fs-controls">
+              <span>${t("ขนาดตัวอักษร")}</span>
+              <button type="button" class="fs-btn" id="fs-dec">A−</button>
+              <span class="fs-val" id="fs-val">100%</span>
+              <button type="button" class="fs-btn" id="fs-inc">A+</button>
+            </div>
+            <button onclick="window.print()">🖨️ ${t("พิมพ์ / บันทึก PDF")}</button>
+          </div>
+          <script>
+            (function() {
+              var scale = 1;
+              var MIN = 0.7, MAX = 1.6, STEP = 0.1;
+              try {
+                var saved = parseFloat(localStorage.getItem('tdk-export-individual-fs'));
+                if (saved >= MIN && saved <= MAX) scale = saved;
+              } catch(e) {}
+
+              var dec = document.getElementById('fs-dec');
+              var inc = document.getElementById('fs-inc');
+              var val = document.getElementById('fs-val');
+
+              function apply() {
+                document.documentElement.style.setProperty('--fs', String(scale));
+                val.textContent = Math.round(scale * 100) + '%';
+                dec.disabled = scale <= MIN + 0.001;
+                inc.disabled = scale >= MAX - 0.001;
+                try { localStorage.setItem('tdk-export-individual-fs', String(scale)); } catch(e) {}
+              }
+
+              dec.onclick = function() {
+                scale = Math.max(MIN, Math.round((scale - STEP) * 10) / 10);
+                apply();
+              };
+              inc.onclick = function() {
+                scale = Math.min(MAX, Math.round((scale + STEP) * 10) / 10);
+                apply();
+              };
+
+              apply();
+            })();
+          </script>
           ${reportCardsHTML}
         </body>
         </html>

@@ -621,7 +621,10 @@ export default function StudentPortal() {
             studentCode={currentStudent.student_id}
             studentNumber={currentStudent.student_number}
             classroomName={formatClassroomOption(classroom)}
+            homeroomTeacherNames={classroom?.homeroom_teacher_names || []}
+            schoolId={user?.school_id}
             activeTermStr={activeTermStr}
+            academicHead={activeSetting?.academic_head || null}
             settingsList={settingsList}
             activeSettingId={activeSettingId}
             onChangeSetting={handleChangeSetting}

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const all = req.nextUrl.searchParams.get("all");
     if (all === "true") {
       const result = await pool.query(
-        "SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, is_grade_released, grade_release_date, is_ranking_released, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
+        "SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, is_grade_released, grade_release_date, is_ranking_released, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
         [schoolId]
       );
       return NextResponse.json(result.rows.map(formatRow));
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     // Find active term or next upcoming term
     const result = await pool.query(`
-      SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, is_grade_released, grade_release_date, is_ranking_released,
+      SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, is_grade_released, grade_release_date, is_ranking_released,
              (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active
       FROM system_settings
       WHERE end_date >= CURRENT_DATE AND (school_id = $1 OR school_id IS NULL)
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 
     if (result.rows.length === 0) {
       const fallback = await pool.query(`
-        SELECT id, academic_year, term, start_date, end_date, midterm_max_score, final_max_score, schedule_days, is_grade_released, grade_release_date, is_ranking_released,
+        SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, is_grade_released, grade_release_date, is_ranking_released,
                false AS is_active
         FROM system_settings
         WHERE school_id = $1 OR school_id IS NULL

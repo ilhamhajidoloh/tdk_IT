@@ -443,7 +443,7 @@ export default function AchievementTab({
     };
   }, [data, filteredMatrixRows]);
 
-  // Print PDF Export
+  // Print PDF Export (A4 Landscape - รายงานสรุปผลสัมฤทธิ์)
   const handlePrintReport = () => {
     if (!data || filteredMatrixRows.length === 0) {
       Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนที่ต้องการคำนวณอย่างน้อย 1 ห้อง", "warning");
@@ -673,6 +673,74 @@ export default function AchievementTab({
     } else {
       Swal.fire("แจ้งเตือน", "กรุณายินยอมให้เปิด Pop-up เพื่อพิมพ์รายงาน", "warning");
     }
+  };
+
+  // Print PDF Term Report (A4 Portrait - รายงานรายเทอม รูปแบบฝั่งนักเรียน)
+  const handlePrintTermReport = () => {
+    if (!data || filteredMatrixRows.length === 0) {
+      Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนที่ต้องการคำนวณอย่างน้อย 1 ห้อง", "warning");
+      return;
+    }
+
+    const escapeHtml = (value: unknown) => String(value ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
+
+    const text = (thai: string, rumi: string, jawi: string) => {
+      if (globalActiveLang === "arabic") return jawi;
+      if (globalActiveLang === "rumi") return rumi;
+      return thai;
+    };
+
+    const isJawi = globalActiveLang === "arabic";
+    const dir = isJawi ? "rtl" : "ltr";
+
+    // Build table rows for each classroom
+    const classroomRows = filteredMatrixRows.map((row, idx) => {
+      const subjectCells = row.subject_stats.map((st) => {
+        return `<td>${st.total_score.toLocaleString()}</td><td>${st.avg_percentage.toFixed(2)}%</td>`;
+      }).join("");
+
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td class="classroom-cell">${escapeHtml(getClassroomName(row, globalActiveLang))}</td>
+        <td>${row.student_count}</td>
+        ${subjectCells}
+        <td>${row.total_all_subjects.toLocaleString()}</td>
+        <td>${row.overall_avg_percentage.toFixed(2)}%</td>
+      </tr>`;
+    }).join("");
+
+    // Build summary row
+    const summaryCells = filteredSchoolSummary.subject_stats.map((st) => {
+      return `<td>${st.total_score.toLocaleString()}</td><td>${st.avg_percentage.toFixed(2)}%</td>`;
+    }).join("");
+
+    const summaryRow = `<tr style="background-color: #e2e8f0; font-weight: bold;">
+      <td colspan="2" style="text-align: center;">${escapeHtml(text("รวมทั้งหมด", "Jumlah Keseluruhan", "جومله کسلوروهان"))} (${filteredMatrixRows.length} ${escapeHtml(text("ชั้น", "Kelas", "کلس"))})</td>
+      <td>${filteredSchoolSummary.total_students}</td>
+      ${summaryCells}
+      <td>${filteredSchoolSummary.total_all_subjects.toLocaleString()}</td>
+      <td>${filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%</td>
+    </tr>`;
+
+    // Build subject headers
+    const subjectHeaders = data.subjects.map((s) => {
+      return `<th colspan="2">${escapeHtml(getSubjectName(s))}<br/><span style="font-size: 10px;">(${escapeHtml(text("เต็ม", "Penuh", "ڤنوه"))} ${s.max_score})</span></th>`;
+    }).join("");
+
+    const subjectSubHeaders = data.subjects.map(() => {
+      return `<th>${escapeHtml(text("รวม", "Jumlah", "جومله"))}</th><th>${escapeHtml(text("เฉลี่ย", "Purata", "ڤوراتا"))} (%)</th>`;
+    }).join("");
+
+    const win = window.open("", "_blank");
+    if (!win) {
+      Swal.fire("แจ้งเตือน", "กรุณายินยอมให้เปิด Pop-up เพื่อพิมพ์รายงาน", "warning");
+      return;
+    }
+
+    win.document.write(`<!doctype html><html lang="${isJawi ? "ms-Arab" : globalActiveLang === "rumi" ? "ms" : "th"}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(text("รายงานผลสัมฤทธิ์รายเทอม", "Laporan Pencapaian Penggal", "لاڤورن ڤنچاڤاين ڤڠݢل"))}</title><style>@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;600;700&display=swap');*{box-sizing:border-box}body{margin:0;background:#eee;font-family:${isJawi ? "'Noto Naskh Arabic'" : "Sarabun"},sans-serif;color:#111}.toolbar{position:fixed;top:12px;right:12px;z-index:2}.toolbar button{border:0;border-radius:7px;padding:9px 14px;background:#1d4ed8;color:white;font-weight:700}.page{width:210mm;min-height:297mm;margin:10px auto;background:#fff;padding:13mm 15mm;text-align:${isJawi ? "right" : "left"}}.head{text-align:center;border-top:1px solid #000;padding-top:7mm;margin-bottom:5mm}.school{font-size:14px;font-weight:400;margin:0}.title{font-size:17px;font-weight:600}.term{font-size:12px}.info{display:grid;grid-template-columns:1fr;gap:2px;margin:5mm 0;padding:3mm 0;font-size:12px}table{border-collapse:collapse;width:100%;font-size:11px;table-layout:auto}th,td{border:1px solid #000;padding:2.2px 3px;line-height:1.25;background:#fff;text-align:center}th{font-weight:600}.classroom-cell{text-align:${isJawi ? "right" : "left"};white-space:nowrap}.summary{margin-top:0;border:1px solid #000;border-top:0;padding:3mm;font-size:12px;text-align:center}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:35mm;margin-top:16mm;font-size:12px;text-align:center}.line{border-top:1px solid #000;margin:18mm 8mm 3px}.footer{margin-top:16mm;font-size:9px;text-align:center}@media print{body{background:#fff}.toolbar{display:none}.page{margin:0;padding:10mm 14mm}@page{size:A4 portrait;margin:0}}</style></head><body><div class="toolbar"><button onclick="window.print()">${escapeHtml(text("พิมพ์ / บันทึก PDF", "Cetak / Simpan PDF", "چيتق / سيمڤن PDF"))}</button></div><main class="page"><header class="head"><div class="school">${escapeHtml(agencyName || data.school_name || "")}</div><div class="title">${escapeHtml(text("รายงานผลสัมฤทธิ์ทางการเรียนรายเทอม", "Laporan Pencapaian Akademik Penggal", "لاڤورن ڤنچاڤاين اکناديميك ڤڠݢل"))}</div><div class="term">${escapeHtml(text("ภาคเรียนที่", "Penggal", "ڤڠݢل"))} ${data.term} ${escapeHtml(text("ประจำปีการศึกษา", "Sesi Akademik", "سيسي اکناديميك"))} ${data.academic_year}</div></header><section class="info"><div><b>${escapeHtml(text("หัวข้อรายงาน", "Tajuk Laporan", "تاجوق لاڤورن"))}:</b> ${escapeHtml(reportTitle)}</div></section><table><thead><tr><th rowspan="2">${escapeHtml(text("ที่", "Bil.", "بيل."))}</th><th rowspan="2">${escapeHtml(text("ระดับชั้น", "Kelas", "کلس"))}</th><th rowspan="2">${escapeHtml(text("จำนวนนักเรียน", "Bilangan Pelajar", "بيلاڠن ڤلاجر"))}<br/>${escapeHtml(text("(คน)", "(Orang)", "(اورڠ)"))}</th>${subjectHeaders}<th colspan="2">${escapeHtml(text("คะแนนรวมทุกวิชา", "Jumlah Markah Semua Subjek", "جومله مرکه سموا سوبجيک"))}</th></tr><tr>${subjectSubHeaders}<th>${escapeHtml(text("รวม", "Jumlah", "جومله"))}</th><th>${escapeHtml(text("เฉลี่ย", "Purata", "ڤوراتا"))} (%)</th></tr></thead><tbody>${classroomRows}${summaryRow}</tbody></table><div class="summary"><strong>${escapeHtml(text("สรุปภาพรวม", "Ringkasan Keseluruhan", "ريڠکاسن کسلوروهان"))}:</strong><br/>${escapeHtml(text("นักเรียนทั้งหมด", "Jumlah Pelajar", "جومله ڤلاجر"))}: ${filteredSchoolSummary.total_students} &nbsp;|&nbsp; ${escapeHtml(text("คะแนนรวม", "Jumlah Markah", "جومله مرکه"))}: ${filteredSchoolSummary.total_all_subjects} &nbsp;|&nbsp; ${escapeHtml(text("เฉลี่ยรวม", "Purata Keseluruhan", "ڤوراتا کسلوروهان"))}: ${filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%</div><section class="signatures"><div><div class="line"></div><b>( ........................................................... )</b><br/>${escapeHtml(text("ผู้จัดทำรายงาน", "Penyedia Laporan", "ڤڽديا لاڤورن"))}</div><div><div class="line"></div><b>( ........................................................... )</b><br/>${escapeHtml(text("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ", "Ketua Bahagian Akademik / Pengetua", "کتوا بهاݢين اکناديميك / ڤڠتوا"))}</div></section><div class="footer">${escapeHtml(text("พิมพ์จากระบบสารสนเทศโรงเรียน", "Dijana oleh sistem maklumat sekolah", "ديجانا اوليه سيستم معلومت سکوله"))}</div></main></body></html>`);
+    win.document.close();
   };
 
   // CSV Export
