@@ -352,15 +352,17 @@ export default function AchievementTab({
 
     const subjectStats = data.subjects.map((subj) => {
       let totalSubjectScore = 0;
-      let maxPossibleScore = 0;
 
       filteredMatrixRows.forEach((r) => {
         const st = r.subject_stats.find((s) => s.subject_id === subj.id);
         if (st) {
           totalSubjectScore += st.total_score;
-          maxPossibleScore += st.max_possible_score;
         }
       });
+
+      // Use the Excel-compatible weighted denominator. Do not average the
+      // classroom percentages: classrooms can have different student counts.
+      const maxPossibleScore = totalStudents * Math.max(0, Number(subj.max_score) || 0);
 
       const avgPercentage =
         maxPossibleScore > 0 ? (totalSubjectScore * 100) / maxPossibleScore : 0;
