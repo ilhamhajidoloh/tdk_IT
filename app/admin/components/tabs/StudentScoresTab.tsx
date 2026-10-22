@@ -66,6 +66,10 @@ export default function StudentScoresTab({
   const [isEditing, setIsEditing] = useState(false);
   const [editScores, setEditScores] = useState<Record<string, { midterm: string; final: string }>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isBatchGrading, setIsBatchGrading] = useState(false);
+  const [batchSubjectId, setBatchSubjectId] = useState("");
+  const [batchScores, setBatchScores] = useState<Record<string, { midterm: string; final: string }>>({});
+  const [isBatchSaving, setIsBatchSaving] = useState(false);
 
   const handleScoreChange = (val: string, max: number) => {
     if (val === "") return "";
@@ -78,7 +82,10 @@ export default function StudentScoresTab({
   useEffect(() => {
     setIsEditing(false);
     setEditScores({});
-  }, [scoresSelectedStudentId, scoresViewMode, scoresSettingId]);
+    setIsBatchGrading(false);
+    setBatchSubjectId("");
+    setBatchScores({});
+  }, [scoresSelectedStudentId, scoresViewMode, scoresSettingId, scoresClassroomId]);
 
   const handleStartEdit = () => {
     const initialScores: Record<string, { midterm: string; final: string }> = {};
@@ -215,6 +222,77 @@ export default function StudentScoresTab({
     ? studentSubjectsAll.filter(su => findGrade(selectedStudent.student_id, su.name))
     : [];
   const studentSubjects = studentSubjectsGraded.length > 0 ? studentSubjectsGraded : studentSubjectsAll;
+  const batchSubject = classroomSubjectsAll.find(subject => subject.id === batchSubjectId);
+  const batchMidtermMax = Number(batchSubject?.midterm_max_score) || 0;
+  const batchFinalMax = Number(batchSubject?.final_max_score) || 0;
+  const batchIsCombined = batchSubject?.score_display_mode === "combined";
+
+  const startBatchGrading = () => {
+    if (!batchSubject) return;
+    const initialScores: Record<string, { midterm: string; final: string }> = {};
+    classroomStudents.forEach(student => {
+      const grade = findGrade(student.student_id, batchSubject.name);
+      initialScores[student.student_id] = {
+        midterm: grade?.midterm_score == null ? "" : String(grade.midterm_score),
+        final: grade?.final_score == null ? "" : String(grade.final_score),
+      };
+    });
+    setBatchScores(initialScores);
+    setIsBatchGrading(true);
+  };
+
+  const saveBatchGrades = async () => {
+    if (!token || !scoresSettingId || !batchSubject) return;
+    const setting = settingsList.find(settingItem => settingItem.id === scoresSettingId);
+    if (!setting) return;
+
+    const term = `${setting.term}/${setting.academic_year}`;
+    const updates = classroomStudents.filter(student => {
+      const previous = findGrade(student.student_id, batchSubject.name);
+      const draft = batchScores[student.student_id] || { midterm: "", final: "" };
+      if (!previous && draft.midterm === "" && (batchIsCombined || draft.final === "")) {
+        return false;
+      }
+      const midterm = draft.midterm === "" ? null : Number(draft.midterm);
+      const final = batchIsCombined ? 0 : (draft.final === "" ? null : Number(draft.final));
+      return previous?.midterm_score !== midterm || previous?.final_score !== final;
+    });
+
+    if (updates.length === 0) {
+      setIsBatchGrading(false);
+      return;
+    }
+
+    setIsBatchSaving(true);
+    try {
+      const responses = await Promise.all(updates.map(student => {
+        const draft = batchScores[student.student_id] || { midterm: "", final: "" };
+        return fetch("/api/grades", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            student_id: student.student_id,
+            subject: batchSubject.name,
+            midterm_score: draft.midterm === "" ? null : Number(draft.midterm),
+            final_score: batchIsCombined ? 0 : (draft.final === "" ? null : Number(draft.final)),
+            term,
+          }),
+        });
+      }));
+
+      if (responses.some(response => !response.ok)) {
+        throw new Error("Unable to save one or more grades");
+      }
+      await onRefreshGrades();
+      setIsBatchGrading(false);
+      Swal.fire({ title: "บันทึกสำเร็จ", text: `บันทึกคะแนน ${updates.length} คนแล้ว`, icon: "success", timer: 1400, showConfirmButton: false });
+    } catch (error) {
+      console.error(error);
+      Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถบันทึกคะแนนทั้งชั้นได้ครบถ้วน", "error");
+    } finally {
+      setIsBatchSaving(false);
+    }
+  };
 
   return (
     <div className="p-8 animate-fade-in-up">
@@ -336,6 +414,99 @@ export default function StudentScoresTab({
               </div>
             ) : (
               <>
+              <div className="card-modern mb-5 overflow-hidden">
+                <div className="flex flex-col gap-4 border-b border-border p-5 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="font-bold text-foreground">บันทึกคะแนนทั้งชั้น</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">เลือกวิชา แล้วกรอกและบันทึกคะแนนของนักเรียนทุกคนในห้องนี้พร้อมกัน</p>
+                  </div>
+                  {!isBatchGrading && (
+                    <div className="flex w-full gap-2 sm:w-auto">
+                      <select
+                        value={batchSubjectId}
+                        onChange={event => setBatchSubjectId(event.target.value)}
+                        className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground sm:w-64"
+                      >
+                        <option value="">-- เลือกรายวิชา --</option>
+                        {classroomSubjectsAll.map(subject => (
+                          <option key={subject.id} value={subject.id}>{subject.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={startBatchGrading}
+                        disabled={!batchSubjectId}
+                        className="shrink-0 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:from-indigo-700 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        เริ่มกรอกคะแนน
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {isBatchGrading && batchSubject && (
+                  <div className="p-5">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                        {batchSubject.name}
+                        <span className="ml-2 text-xs font-medium text-muted-foreground">
+                          {batchIsCombined
+                            ? `คะแนนรวมเต็ม ${batchMidtermMax + batchFinalMax}`
+                            : `เก็บ ${batchMidtermMax} / สอบ ${batchFinalMax}`}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsBatchGrading(false)}
+                          disabled={isBatchSaving}
+                          className="rounded-xl border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted disabled:cursor-not-allowed"
+                        >
+                          ยกเลิก
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveBatchGrades}
+                          disabled={isBatchSaving}
+                          className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isBatchSaving ? "กำลังบันทึก..." : "บันทึกคะแนนทั้งชั้น"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted text-xs text-muted-foreground">
+                          <tr>
+                            <th className="w-12 px-3 py-3 text-center">#</th>
+                            <th className="min-w-56 px-3 py-3 text-left">นักเรียน</th>
+                            <th className="min-w-28 px-3 py-3 text-center">{batchIsCombined ? `คะแนนรวม / ${batchMidtermMax + batchFinalMax}` : `เก็บ / ${batchMidtermMax}`}</th>
+                            {!batchIsCombined && <th className="min-w-28 px-3 py-3 text-center">สอบ / {batchFinalMax}</th>}
+                            <th className="min-w-24 px-3 py-3 text-center">รวม</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {classroomStudents.map((student, index) => {
+                            const score = batchScores[student.student_id] || { midterm: "", final: "" };
+                            const total = batchIsCombined
+                              ? (score.midterm === "" ? null : Number(score.midterm))
+                              : (score.midterm === "" && score.final === "" ? null : (Number(score.midterm) || 0) + (Number(score.final) || 0));
+                            return (
+                              <tr key={student.id} className="hover:bg-muted/60">
+                                <td className="px-3 py-2 text-center text-xs text-muted-foreground">{index + 1}</td>
+                                <td className="px-3 py-2"><div className="font-semibold text-foreground">{student.name}</div><div className="text-xs text-muted-foreground">{student.student_id}</div></td>
+                                <td className="px-3 py-2"><input type="number" min="0" max={batchIsCombined ? batchMidtermMax + batchFinalMax : batchMidtermMax} value={score.midterm} onChange={event => setBatchScores(previous => ({ ...previous, [student.student_id]: { ...score, midterm: handleScoreChange(event.target.value, batchIsCombined ? batchMidtermMax + batchFinalMax : batchMidtermMax) } }))} className="input-modern w-full px-2 py-2 text-center text-sm font-semibold" /></td>
+                                {!batchIsCombined && <td className="px-3 py-2"><input type="number" min="0" max={batchFinalMax} value={score.final} onChange={event => setBatchScores(previous => ({ ...previous, [student.student_id]: { ...score, final: handleScoreChange(event.target.value, batchFinalMax) } }))} className="input-modern w-full px-2 py-2 text-center text-sm font-semibold" /></td>}
+                                <td className="px-3 py-2 text-center font-bold text-foreground">{total ?? "—"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="hidden card-modern overflow-hidden md:block">
                 <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
                   <table className="w-full text-sm">
