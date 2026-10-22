@@ -79,6 +79,20 @@ export default function CalendarTimeline({ schoolId, academicYear, userRole }: C
       .catch(() => {});
   }, [academicYear]);
 
+  useEffect(() => {
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
+    const showTimelineOnMobile = () => {
+      if (mobileQuery.matches) setViewMode("timeline");
+    };
+
+    const frame = window.requestAnimationFrame(showTimelineOnMobile);
+    mobileQuery.addEventListener("change", showTimelineOnMobile);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mobileQuery.removeEventListener("change", showTimelineOnMobile);
+    };
+  }, []);
+
   const formatThaiDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("th-TH", {
@@ -149,7 +163,7 @@ export default function CalendarTimeline({ schoolId, academicYear, userRole }: C
           <p className="text-xs text-muted-foreground">กิจกรรมและเหตุการณ์สำคัญ</p>
         </div>
         </div>
-        <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1" role="tablist" aria-label="มุมมองปฏิทิน">
+        <div className="hidden md:inline-flex rounded-lg border border-border bg-muted/30 p-1" role="tablist" aria-label="มุมมองปฏิทิน">
           <button type="button" role="tab" aria-selected={viewMode === "calendar"} onClick={() => setViewMode("calendar")} className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold cursor-pointer ${viewMode === "calendar" ? "bg-background text-indigo-700 shadow-sm dark:text-indigo-300" : "text-muted-foreground"}`}><Calendar className="h-3.5 w-3.5" />ปฏิทิน</button>
           <button type="button" role="tab" aria-selected={viewMode === "timeline"} onClick={() => setViewMode("timeline")} className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold cursor-pointer ${viewMode === "timeline" ? "bg-background text-indigo-700 shadow-sm dark:text-indigo-300" : "text-muted-foreground"}`}><List className="h-3.5 w-3.5" />Timeline</button>
         </div>
@@ -161,7 +175,7 @@ export default function CalendarTimeline({ schoolId, academicYear, userRole }: C
           <p className="text-sm text-muted-foreground">ไม่มีกำหนดการที่กำลังจะมาถึง</p>
         </div>
       ) : viewMode === "calendar" ? (
-        <div className="overflow-hidden rounded-xl border border-border">
+        <div className="hidden overflow-hidden rounded-xl border border-border md:block">
           <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-2"><button type="button" aria-label="เดือนก่อนหน้า" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))} className="rounded-md p-1 text-muted-foreground hover:bg-muted cursor-pointer"><ChevronLeft className="h-4 w-4" /></button><span className="text-sm font-bold text-foreground">{calendarMonth.toLocaleDateString("th-TH", { month: "long", year: "numeric" })}</span><button type="button" aria-label="เดือนถัดไป" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))} className="rounded-md p-1 text-muted-foreground hover:bg-muted cursor-pointer"><ChevronRight className="h-4 w-4" /></button></div>
           <div className="grid grid-cols-7 border-b border-border bg-muted/20 text-center text-[10px] font-semibold text-muted-foreground">{["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((day) => <div key={day} className="py-1.5">{day}</div>)}</div>
           <div className="grid grid-cols-7">{monthCells.map((day, index) => { const key = day ? `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` : ""; const dayEvents = key ? eventsByDay.get(key) || [] : []; const isToday = key === todayKey; return <div key={`${key}-${index}`} className={`min-h-14 border-b border-r border-border p-1 ${day ? "bg-background" : "bg-muted/10"} ${isToday ? "bg-indigo-50 ring-2 ring-inset ring-indigo-500 dark:bg-indigo-500/10" : ""}`}>{day && <><div className="flex items-center justify-between"><span className={`text-[10px] ${isToday ? "font-bold text-indigo-700 dark:text-indigo-300" : "text-muted-foreground"}`}>{day}</span>{isToday && <span className="text-[8px] font-bold text-indigo-700 dark:text-indigo-300">วันนี้</span>}</div>{dayEvents.slice(0, 1).map((event) => <div key={event.id} className={`mt-1 truncate rounded px-1 py-0.5 text-[9px] font-semibold ${getEventColor(event.event_type).bg} ${getEventColor(event.event_type).text}`}>{event.title}</div>)}</>}</div>; })}</div>
