@@ -185,6 +185,7 @@ function AdminPortalContent() {
     setUserCurrentPage(1);
   }, [userSubTab]);
   const [isClient, setIsClient] = useState(false);
+  const [initialDataLoading, setInitialDataLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const classroomFileInputRef = useRef<HTMLInputElement>(null);
   const autoFixedScheduleEntries = useRef<Set<string>>(new Set());
@@ -692,10 +693,21 @@ function AdminPortalContent() {
       }).then(() => router.replace(destination));
       return;
     }
-    if (token) loadData(token);
-    if (token) loadSettings(token);
-    if (token) loadEvalTopics(token);
-    if (token) loadCalendarEvents(token);
+    if (!token) return;
+
+    let cancelled = false;
+    const loadInitialData = async () => {
+      setInitialDataLoading(true);
+      await Promise.allSettled([
+        loadData(token),
+        loadSettings(token),
+        loadEvalTopics(token),
+        loadCalendarEvents(token),
+      ]);
+      if (!cancelled) setInitialDataLoading(false);
+    };
+    void loadInitialData();
+    return () => { cancelled = true; };
   }, [loading, adminUser, canAccessAdmin, filteredNavItems.length, token, router]);
 
   useEffect(() => {
@@ -712,27 +724,28 @@ function AdminPortalContent() {
   };
 
   const loadData = (authToken: string) => {
-    fetch(`/api/users${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
+    const requests: Promise<unknown>[] = [fetch(`/api/users${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.ok ? r.json() : [])
       .then(setUsers)
-      .catch(err => console.error("loadData users error:", err));
+      .catch(err => console.error("loadData users error:", err))];
     if (selectedSettingId) {
-      loadStudents(selectedSettingId, authToken);
+      requests.push(loadStudents(selectedSettingId, authToken));
     }
     if (selectedSubjectSettingId) {
-      loadSubjects(selectedSubjectSettingId, authToken);
+      requests.push(loadSubjects(selectedSubjectSettingId, authToken));
     }
+    return Promise.allSettled(requests);
   };
 
   const loadEvalTopics = (authToken: string) => {
-    fetch(`/api/evaluations/topics${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
+    return fetch(`/api/evaluations/topics${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.ok ? r.json() : [])
       .then(setEvalTopics)
       .catch(err => console.error("loadEvalTopics error:", err));
   };
 
   const loadCalendarEvents = (authToken: string) => {
-    fetch(`/api/calendar-events${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
+    return fetch(`/api/calendar-events${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.ok ? r.json() : [])
       .then(setCalendarEvents)
       .catch(err => console.error("loadCalendarEvents error:", err));
@@ -740,7 +753,7 @@ function AdminPortalContent() {
 
   // นักเรียนต้องโหลดตามเทอม (selectedSettingId) เพราะห้องเรียน/การลงทะเบียนของนักเรียนแยกกันตามเทอม
   const loadStudents = (settingId: number, authToken: string) => {
-    fetch(`/api/students?settingId=${settingId}${getSchoolParam("&")}`, { headers: { Authorization: `Bearer ${authToken}` } })
+    return fetch(`/api/students?settingId=${settingId}${getSchoolParam("&")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.ok ? r.json() : [])
       .then(setStudents)
       .catch(err => console.error("loadStudents error:", err));
@@ -4262,7 +4275,7 @@ function changeFontSize(dir) {
   const paginatedUsers = filteredUsers.slice((userCurrentPage - 1) * usersPerPage, userCurrentPage * usersPerPage);
 
   if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบจัดการโรงเรียน" />;
-  if (!isClient || loading) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังตรวจสอบสิทธิ์การเข้าใช้งาน" />;
+  if (!isClient || loading || initialDataLoading) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังเตรียมข้อมูลสำหรับคุณ" />;
 
   // Do not render permission-dependent components while the redirect alert is open.
   if (!adminUser || !canAccessAdmin || filteredNavItems.length === 0) {

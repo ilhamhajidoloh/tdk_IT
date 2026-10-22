@@ -43,6 +43,7 @@ export default function StudentPortal() {
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriod[]>([]);
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [initialDataLoading, setInitialDataLoading] = useState(true);
   const [midtermMax, setMidtermMax] = useState(50);
   const [finalMax, setFinalMax] = useState(50);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -98,27 +99,17 @@ export default function StudentPortal() {
     if (!user || user.role !== "student" || !user.student_id) { router.push("/login"); return; }
     if (!token) return;
 
-    fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } })
+    let cancelled = false;
+    const loadInitialData = async () => {
+      setInitialDataLoading(true);
+      const studentRequest = fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then((data: DBStudent[]) => {
         const student = data.find(s => s.student_id === user.student_id);
         if (student) setCurrentStudent(student);
       });
 
-    fetch(`/api/grades?studentId=${user.student_id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(setStudentGrades);
-
-    fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }).catch(console.error);
-
-    fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : [])
-      .then(setEvalTopics)
-      .catch(console.error);
-
-    fetch("/api/public/classrooms").then(r => r.json()).then(setClassrooms);
-
-    fetch("/api/public/settings?all=true")
+      const settingsRequest = fetch("/api/public/settings?all=true")
       .then(r => r.json())
       .then(list => {
         if (!Array.isArray(list)) return;
@@ -130,7 +121,30 @@ export default function StudentPortal() {
           setFinalMax(activeOrLatest.final_max_score ?? 50);
           if (Array.isArray(activeOrLatest.schedule_days)) setScheduleDaysConfig(activeOrLatest.schedule_days);
         }
+        return activeOrLatest;
       });
+
+      await Promise.allSettled([
+        studentRequest,
+        fetch(`/api/grades?studentId=${user.student_id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setStudentGrades),
+        fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
+        fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalTopics),
+        fetch("/api/public/classrooms").then(r => r.json()).then(setClassrooms),
+        settingsRequest,
+      ]);
+      const activeSetting = await settingsRequest.catch(() => null);
+      if (activeSetting?.id) {
+        await Promise.allSettled([
+          fetch(`/api/schedule-periods?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
+          fetch(`/api/schedules?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
+          fetch(`/api/evaluations/summary?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalSummary),
+          fetch(`/api/grades/rankings?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null)),
+        ]);
+      }
+      if (!cancelled) setInitialDataLoading(false);
+    };
+    void loadInitialData();
+    return () => { cancelled = true; };
   }, [loading, user, token, router]);
 
   useEffect(() => {
@@ -485,7 +499,7 @@ export default function StudentPortal() {
   };
 
   if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบ" />;
-  if (!isClient || loading || !currentStudent) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังดึงข้อมูลส่วนตัวของคุณ" />;
+  if (!isClient || loading || !currentStudent || initialDataLoading) return <LoadingScreen title="กำลังโหลดข้อมูล..." subtitle="โปรดรอสักครู่ ระบบกำลังดึงข้อมูลส่วนตัวของคุณ" />;
 
   const gpaData = calculateGPA();
   const gpaNum = parseFloat(gpaData.value);

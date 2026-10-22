@@ -635,12 +635,12 @@ export default function SuperAdminPage() {
   const schoolAdminsCount = admins.filter((a) => a.role === "admin").length;
   const pendingRequestsCount = schoolRequests.filter((request) => request.status === "pending").length;
 
-  if (loading || !user) {
+  if (loading || !user || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-muted-foreground">กำลังตรวจสอบสิทธิ์ Super Admin...</span>
+          <span className="text-sm font-semibold text-muted-foreground">กำลังโหลดข้อมูล Super Admin...</span>
         </div>
       </div>
     );

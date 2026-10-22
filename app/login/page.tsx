@@ -99,6 +99,12 @@ function LoginContent() {
   const [linkSig, setLinkSig] = useState("");
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
 
+  // SweetAlert renders in a portal outside this page. Close any login dialog
+  // once navigation removes the login page; each dashboard owns its loading UI.
+  useEffect(() => {
+    return () => Swal.close();
+  }, []);
+
   useEffect(() => {
     setShowPassword(false);
   }, [activeTab]);
@@ -170,7 +176,14 @@ function LoginContent() {
         .then(res => res.ok ? res.json() : null)
         .then(user => {
           if (!user) return;
-          Swal.fire({ icon: "success", title: "เข้าสู่ระบบสำเร็จ", timer: 1000, showConfirmButton: false });
+          setIsRedirecting(true);
+          Swal.fire({
+            title: "กำลังเตรียมข้อมูล...",
+            text: "โปรดรอสักครู่ ระบบกำลังโหลดข้อมูลสำหรับบัญชีของคุณ",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading(),
+          });
           if (user.role === "super_admin") router.push("/super-admin");
           else if (user.role === "admin") router.push("/admin");
           else if (user.role === "teacher") router.push("/teacher");
@@ -308,7 +321,10 @@ function LoginContent() {
             <span class="text-sm font-bold text-muted-foreground">กำลังเข้าสู่ระบบในฐานะ <span class="text-foreground">${roleLabel}</span></span>
           </div>
         `,
-        timer: 1200,
+        text: "กำลังโหลดข้อมูลของคุณ...",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading(),
         showConfirmButton: false,
       });
 

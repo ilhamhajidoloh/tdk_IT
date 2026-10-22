@@ -46,6 +46,7 @@ export default function TeacherPortal() {
   const [classrooms, setClassrooms] = useState<DBClassroom[]>([]);
   const [subjectsList, setSubjectsList] = useState<DBSubject[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [initialDataLoading, setInitialDataLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [activeSettingId, setActiveSettingId] = useState<number | null>(null);
   const [scheduleDaysConfig, setScheduleDaysConfig] = useState<number[]>([1, 2, 3, 4, 5]);
@@ -145,33 +146,12 @@ export default function TeacherPortal() {
     }
     if (!token) return;
 
-    fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(setStudents);
-
-    fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setSubjectsList(data);
-      })
-      .catch(console.error);
-
-    loadGrades(token);
-
-    fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : [])
-      .then(setEvalTopics)
-      .catch(console.error);
-
-    fetch("/api/public/classrooms")
-      .then(r => r.json())
-      .then((data: DBClassroom[]) => {
-        setClassrooms(data);
-        setHomeroomClass(data.find(c => c.homeroom_teacher_ids?.includes(teacherUser.id)) || null);
-      });
-
-    fetch("/api/public/settings")
-      .then(r => r.json())
-      .then(s => {
+    let cancelled = false;
+    const loadInitialData = async () => {
+      setInitialDataLoading(true);
+      const settingsRequest = fetch("/api/public/settings")
+        .then(r => r.json())
+        .then(s => {
         const termStr = `${s.term}/${s.academic_year}`;
         setEnterTerm(termStr);
         setStatusTerm(termStr);
@@ -183,10 +163,35 @@ export default function TeacherPortal() {
         if (Array.isArray(s.schedule_days)) setScheduleDaysConfig(s.schedule_days);
         const todayStr = new Date().toISOString().split("T")[0];
         setIsGradingActive(todayStr >= (s.start_date ?? "") && todayStr <= (s.end_date ?? ""));
+        return s;
       });
+
+      await Promise.allSettled([
+        fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setStudents),
+        fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
+        loadGrades(token),
+        fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalTopics),
+        fetch("/api/public/classrooms").then(r => r.json()).then((data: DBClassroom[]) => {
+          setClassrooms(data);
+          setHomeroomClass(data.find(c => c.homeroom_teacher_ids?.includes(teacherUser.id)) || null);
+        }),
+        settingsRequest,
+      ]);
+      const setting = await settingsRequest.catch(() => null);
+      if (setting?.id) {
+        await Promise.allSettled([
+          fetch(`/api/schedule-periods?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
+          fetch(`/api/schedules?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
+          fetch(`/api/grades/rankings?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } }),
+        ]);
+      }
+      if (!cancelled) setInitialDataLoading(false);
+    };
+    void loadInitialData();
 
     setEnterClassroom("");
     setStatusClassroom("");
+    return () => { cancelled = true; };
   }, [loading, teacherUser, token, router]);
 
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
@@ -924,7 +929,7 @@ export default function TeacherPortal() {
   }, [hasUnsavedGradeChanges]);
 
   if (isLoggingOut) return <LoadingScreen title="กำลังออกจากระบบ..." subtitle="ขอบคุณที่ใช้งานระบบ" />;
-  if (!isClient || loading || !teacherUser) return <SkeletonTeacherPortal />;
+  if (!isClient || loading || !teacherUser || initialDataLoading) return <SkeletonTeacherPortal />;
 
   const myScheduleEntries = scheduleEntries.filter(e => {
     if (e.teacher_id) return e.teacher_id === teacherUser?.id;
