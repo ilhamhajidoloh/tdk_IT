@@ -21,6 +21,7 @@ export default function SubjectMissingScores({ subject, setting, token, onBack }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, { midterm: string; final: string }>>({});
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
   const term = `${setting.term}/${setting.academic_year}`;
   const midMax = Number(subject.midterm_max_score) || 0;
@@ -89,7 +90,52 @@ export default function SubjectMissingScores({ subject, setting, token, onBack }
     }
   };
 
+  const saveAll = async () => {
+    const studentsToSave = classroomStudents.filter(student => {
+      const grade = gradeFor(student.student_id);
+      const draft = drafts[student.student_id] ?? { midterm: "", final: "" };
+      const missingMid = midMax > 0 && grade?.midterm_score == null;
+      const missingFinal = finalMax > 0 && grade?.final_score == null;
+      return (missingMid && draft.midterm !== "") || (missingFinal && draft.final !== "");
+    });
+    if (studentsToSave.length === 0) return;
+
+    setIsSavingAll(true);
+    try {
+      const responses = await Promise.all(studentsToSave.map(student => {
+        const grade = gradeFor(student.student_id);
+        const draft = drafts[student.student_id] ?? { midterm: "", final: "" };
+        return fetch("/api/grades", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            student_id: student.student_id,
+            subject: subject.name,
+            midterm_score: grade?.midterm_score ?? (draft.midterm === "" ? null : Number(draft.midterm)),
+            final_score: grade?.final_score ?? (draft.final === "" ? null : Number(draft.final)),
+            term,
+          }),
+        });
+      }));
+      if (responses.some(response => !response.ok)) throw new Error("Save all failed");
+      await load();
+      setDrafts({});
+      Swal.fire({ title: "บันทึกสำเร็จ", text: `บันทึกคะแนน ${studentsToSave.length} คนแล้ว`, icon: "success", timer: 1400, showConfirmButton: false });
+    } catch (error) {
+      console.error(error);
+      Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถบันทึกคะแนนทั้งชั้นได้ครบถ้วน", "error");
+    } finally {
+      setIsSavingAll(false);
+    }
+  };
+
   const selectedClassroom = classrooms.find(item => item.id === classroomId);
+  const batchSaveCount = classroomStudents.filter(student => {
+    const grade = gradeFor(student.student_id);
+    const draft = drafts[student.student_id] ?? { midterm: "", final: "" };
+    return (midMax > 0 && grade?.midterm_score == null && draft.midterm !== "") ||
+      (finalMax > 0 && grade?.final_score == null && draft.final !== "");
+  }).length;
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-wrap items-start gap-3">
@@ -117,6 +163,21 @@ export default function SubjectMissingScores({ subject, setting, token, onBack }
           <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <div className="font-bold text-foreground">{selectedClassroom?.name} <span className="text-sm font-medium text-muted-foreground">· {classroomStudents.length} คน</span></div>
             <div className="text-sm text-muted-foreground">คะแนนเต็ม เก็บ {midMax} / ปลายภาค {finalMax}</div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+            <div>
+              <div className="text-sm font-bold text-foreground">บันทึกคะแนนทั้งชั้น</div>
+              <div className="text-xs text-muted-foreground">บันทึกเฉพาะนักเรียนที่กรอกคะแนนไว้ในตารางนี้</div>
+            </div>
+            <button
+              type="button"
+              onClick={saveAll}
+              disabled={isSavingAll || batchSaveCount === 0}
+              className="min-h-10 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:from-indigo-700 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isSavingAll ? "กำลังบันทึก..." : `บันทึกทั้งหมด${batchSaveCount > 0 ? ` (${batchSaveCount} คน)` : ""}`}
+            </button>
           </div>
 
           {/* Compact student cards make score entry comfortable on narrow screens. */}
