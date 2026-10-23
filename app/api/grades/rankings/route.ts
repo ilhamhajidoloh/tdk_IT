@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   if (!settingId) return NextResponse.json({ error: "settingId required" }, { status: 400 });
 
   const mode = req.nextUrl.searchParams.get("mode") || "single";
+  const includeActivityScores = req.nextUrl.searchParams.get("includeActivityScores") === "true";
   await ensureStatusSchema();
 
   const settingRes = await pool.query(
@@ -30,18 +31,23 @@ export async function GET(req: NextRequest) {
   }
 
   if (mode === "combined") {
-    return handleCombined(settingId, academic_year, defaultMidMax, defaultFinMax, studentId);
+    return handleCombined(settingId, academic_year, defaultMidMax, defaultFinMax, studentId, includeActivityScores);
   }
 
   const termKey = `${settingTerm}/${academic_year}`;
-  return handleSingleTerm(settingId, termKey, defaultMidMax, defaultFinMax, studentId);
+  return handleSingleTerm(settingId, termKey, defaultMidMax, defaultFinMax, studentId, includeActivityScores);
 }
 
-async function handleSingleTerm(settingId: string, termKey: string, defaultMidMax: number, defaultFinMax: number, studentId: string | null) {
+async function handleSingleTerm(settingId: string, termKey: string, defaultMidMax: number, defaultFinMax: number, studentId: string | null, includeActivityScores: boolean) {
   const [subjectsRes, studentsRes] = await Promise.all([
     pool.query(
-      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, sort_order
-       FROM subjects WHERE setting_id = $1 ORDER BY COALESCE(sort_order, 999) ASC, name ASC`,
+      `SELECT s.id, s.name, s.subject_type, s.midterm_max_score, s.final_max_score, s.credit_hours, s.sort_order,
+              COALESCE(array_agg(sc.classroom_id) FILTER (WHERE sc.classroom_id IS NOT NULL AND NOT COALESCE(sc.score_enabled, TRUE)), '{}') AS score_disabled_classroom_ids
+       FROM subjects s
+       LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
+       WHERE s.setting_id = $1
+       GROUP BY s.id
+       ORDER BY COALESCE(s.sort_order, 999) ASC, s.name ASC`,
       [settingId]
     ),
     pool.query(
@@ -80,12 +86,12 @@ async function handleSingleTerm(settingId: string, termKey: string, defaultMidMa
 
   const subjectMap = new Map<string, any>(subjects.map((s: any) => [s.name?.trim().toLowerCase(), s]));
 
-  const studentScores = calcStudentScores(studentsRes.rows, gradeMap, subjectMap, defaultMidMax, defaultFinMax);
+  const studentScores = calcStudentScores(studentsRes.rows, gradeMap, subjectMap, defaultMidMax, defaultFinMax, includeActivityScores);
   const result = assignRanks(studentScores);
   return NextResponse.json(studentId ? result.filter((row: any) => row.student_id === studentId) : result);
 }
 
-async function handleCombined(settingId: string, academicYear: string, defaultMidMax: number, defaultFinMax: number, studentId: string | null) {
+async function handleCombined(settingId: string, academicYear: string, defaultMidMax: number, defaultFinMax: number, studentId: string | null, includeActivityScores: boolean) {
   const bothSettingsRes = await pool.query(
     `SELECT id, term, midterm_max_score, final_max_score FROM system_settings WHERE academic_year = $1 ORDER BY term`,
     [academicYear]
@@ -100,8 +106,13 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
 
   const [allSubjectsRes, enrollmentsRes] = await Promise.all([
     pool.query(
-      `SELECT id, name, subject_type, midterm_max_score, final_max_score, credit_hours, setting_id, sort_order
-       FROM subjects WHERE setting_id = ANY($1) ORDER BY COALESCE(sort_order, 999) ASC, name ASC`,
+      `SELECT s.id, s.name, s.subject_type, s.midterm_max_score, s.final_max_score, s.credit_hours, s.setting_id, s.sort_order,
+              COALESCE(array_agg(sc.classroom_id) FILTER (WHERE sc.classroom_id IS NOT NULL AND NOT COALESCE(sc.score_enabled, TRUE)), '{}') AS score_disabled_classroom_ids
+       FROM subjects s
+       LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
+       WHERE s.setting_id = ANY($1)
+       GROUP BY s.id
+       ORDER BY COALESCE(s.sort_order, 999) ASC, s.name ASC`,
       [settingIds]
     ),
     pool.query(
@@ -196,7 +207,7 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
   const combinedDefaultMidMax = Number(defaultMidMax) * 2;
   const combinedDefaultFinMax = Number(defaultFinMax) * 2;
 
-  const studentScores = calcStudentScores(students, gradeMap, combinedSubjectMap, combinedDefaultMidMax, combinedDefaultFinMax);
+  const studentScores = calcStudentScores(students, gradeMap, combinedSubjectMap, combinedDefaultMidMax, combinedDefaultFinMax, includeActivityScores);
   const result = assignRanks(studentScores);
   return NextResponse.json(studentId ? result.filter((row: any) => row.student_id === studentId) : result);
 }
@@ -206,7 +217,8 @@ function calcStudentScores(
   gradeMap: Map<string, { subject: string; midterm_score: number | null; final_score: number | null }[]>,
   subjectMap: Map<string, any>,
   defaultMidMax: number,
-  defaultFinMax: number
+  defaultFinMax: number,
+  includeActivityScores: boolean
 ) {
   return students.map((st: any) => {
     const sg = gradeMap.get(st.student_id) || [];
@@ -217,7 +229,10 @@ function calcStudentScores(
 
     sg.forEach(g => {
       const sub = subjectMap.get(g.subject?.trim().toLowerCase()) as any;
-      if (sub?.subject_type === "activity") return;
+      const isActivity = sub?.subject_type === "activity";
+      const activityHasScores = (Number(sub?.midterm_max_score) || 0) + (Number(sub?.final_max_score) || 0) > 0;
+      const scoreDisabledForClassroom = Array.isArray(sub?.score_disabled_classroom_ids) && sub.score_disabled_classroom_ids.includes(st.classroom_id);
+      if (isActivity && (!includeActivityScores || !activityHasScores || scoreDisabledForClassroom)) return;
       const mMax = Number(sub?.midterm_max_score) || Number(defaultMidMax) || 50;
       const fMax = Number(sub?.final_max_score) || Number(defaultFinMax) || 50;
       const credits = Number(sub?.credit_hours) || 1;
@@ -229,6 +244,8 @@ function calcStudentScores(
       totalScore += subTotal;
       maxPossible += subMax;
 
+      // Activities can affect the ranking percentage, but remain pass/fail and do not affect GPA.
+      if (isActivity) return;
       const pct = subMax > 0 ? (subTotal / subMax) * 100 : 0;
       let point = 0;
       if (pct >= 80) point = 4;
@@ -260,7 +277,10 @@ function calcStudentScores(
       gpa: Math.round(gpa * 100) / 100,
       subject_count: sg.filter(g => {
         const sub = subjectMap.get(g.subject?.trim().toLowerCase()) as any;
-        return sub?.subject_type !== "activity";
+        const isActivity = sub?.subject_type === "activity";
+        const activityHasScores = (Number(sub?.midterm_max_score) || 0) + (Number(sub?.final_max_score) || 0) > 0;
+        const scoreDisabledForClassroom = Array.isArray(sub?.score_disabled_classroom_ids) && sub.score_disabled_classroom_ids.includes(st.classroom_id);
+        return !isActivity || (includeActivityScores && activityHasScores && !scoreDisabledForClassroom);
       }).length,
     };
   });

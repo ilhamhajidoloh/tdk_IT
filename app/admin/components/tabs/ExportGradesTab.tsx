@@ -334,6 +334,24 @@ export default function ExportGradesTab({
           </label>
         </div>
 
+        <div className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 ${
+          includeActivitySubjects && exportSumActivityScores
+            ? "border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+            : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50"
+        }`}>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">สถานะอันดับในไฟล์ Export</p>
+            <p className={`mt-0.5 text-sm font-extrabold ${includeActivitySubjects && exportSumActivityScores ? "text-emerald-700 dark:text-emerald-300" : "text-slate-700 dark:text-slate-200"}`}>
+              {includeActivitySubjects && exportSumActivityScores
+                ? "รวมรายวิชากิจกรรมที่มีการเก็บคะแนนแล้ว"
+                : "ยังไม่รวมรายวิชากิจกรรมที่มีการเก็บคะแนน"}
+            </p>
+          </div>
+          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold ${includeActivitySubjects && exportSumActivityScores ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100"}`}>
+            {includeActivitySubjects && exportSumActivityScores ? "รวมแล้ว" : "ยังไม่รวม"}
+          </span>
+        </div>
+
         {/* Subject Order Section */}
         <div>
           <div className="flex items-center justify-between mb-2">

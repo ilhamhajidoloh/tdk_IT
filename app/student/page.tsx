@@ -138,7 +138,7 @@ export default function StudentPortal() {
           fetch(`/api/schedule-periods?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
           fetch(`/api/schedules?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
           fetch(`/api/evaluations/summary?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalSummary),
-          fetch(`/api/grades/rankings?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null)),
+          fetch(`/api/grades/rankings?settingId=${activeSetting.id}&includeActivityScores=true`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null)),
         ]);
       }
       if (!cancelled) setInitialDataLoading(false);
@@ -178,7 +178,7 @@ export default function StudentPortal() {
       return;
     }
     setMyRanking(null);
-    fetch(`/api/grades/rankings?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/grades/rankings?settingId=${activeSettingId}&includeActivityScores=true`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null))
       .catch(() => setMyRanking(null));
@@ -386,9 +386,15 @@ export default function StudentPortal() {
         const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === setting.id);
         if (!subject) return;
         termsWithGrades.add(termKey);
-        const mMax = Number(subject.midterm_max_score) || Number(setting.midterm_max_score) || 50;
-        const fMax = Number(subject.final_max_score) || Number(setting.final_max_score) || 50;
         const isAct = subject.subject_type === "activity";
+        const activityHasScores = (Number(subject.midterm_max_score) || 0) + (Number(subject.final_max_score) || 0) > 0;
+        if (isAct && !activityHasScores) return;
+        const mMax = isAct
+          ? Number(subject.midterm_max_score)
+          : Number(subject.midterm_max_score) || Number(setting.midterm_max_score) || 50;
+        const fMax = isAct
+          ? Number(subject.final_max_score)
+          : Number(subject.final_max_score) || Number(setting.final_max_score) || 50;
         const credits = isAct ? 0 : (Number(subject.credit_hours) || 1);
         const key = subject.name.trim().toLowerCase();
         const entry = bySubject.get(key) || { name: subject.name.trim(), total: 0, max: 0, credits, isActivity: isAct };
@@ -412,6 +418,8 @@ export default function StudentPortal() {
       if (e.isActivity) {
         actTotalScore += e.total;
         actTotalMax += e.max;
+        totalScore += e.total;
+        totalMax += e.max;
         activitySubjects.push({ name: e.name, totalScore: e.total, totalMax: e.max, percent: pct, credits: 0, point: 0, isActivity: true });
       } else {
         totalScore += e.total;

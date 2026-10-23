@@ -11,8 +11,10 @@ interface RankingsTabProps {
   rankingsData: RankingRow[];
   rankingsClassroomFilter: string;
   setRankingsClassroomFilter: (filter: string) => void;
+  rankingsIncludeActivityScores: boolean;
+  setRankingsIncludeActivityScores: (include: boolean) => void;
   token: string | null;
-  loadRankings: (settingId: number, token: string) => void;
+  loadRankings: (settingId: number, token: string, includeActivityScores?: boolean) => void;
 }
 
 export default function RankingsTab({
@@ -23,6 +25,8 @@ export default function RankingsTab({
   rankingsData,
   rankingsClassroomFilter,
   setRankingsClassroomFilter,
+  rankingsIncludeActivityScores,
+  setRankingsIncludeActivityScores,
   token,
   loadRankings,
 }: RankingsTabProps) {
@@ -36,7 +40,7 @@ export default function RankingsTab({
       >
         <button
           onClick={() => {
-            if (rankingsSettingId && token) loadRankings(rankingsSettingId, token);
+            if (rankingsSettingId && token) loadRankings(rankingsSettingId, token, rankingsIncludeActivityScores);
           }}
           disabled={!rankingsSettingId}
           className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:bg-muted disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
@@ -53,6 +57,46 @@ export default function RankingsTab({
         selectedId={rankingsSettingId}
         onSelect={handleSelectRankingsSetting}
       />
+
+      <div className={`mt-4 flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 ${
+        rankingsIncludeActivityScores
+          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+          : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50"
+      }`}>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">สถานะการจัดอันดับ</p>
+          <p className={`mt-0.5 text-sm font-extrabold ${rankingsIncludeActivityScores ? "text-emerald-700 dark:text-emerald-300" : "text-slate-700 dark:text-slate-200"}`}>
+            {rankingsIncludeActivityScores
+              ? "รวมรายวิชากิจกรรมที่มีการเก็บคะแนนแล้ว"
+              : "ยังไม่รวมรายวิชากิจกรรมที่มีการเก็บคะแนน"}
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-extrabold ${rankingsIncludeActivityScores ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100"}`}>
+          {rankingsIncludeActivityScores ? "รวมแล้ว" : "ยังไม่รวม"}
+        </span>
+      </div>
+
+      <div className="mt-4 mb-6 flex items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <div>
+          <p className="text-sm font-bold text-foreground">รวมวิชากิจกรรมที่เก็บคะแนนในการจัดอันดับ</p>
+          <p className="text-xs text-muted-foreground mt-0.5">นับเฉพาะวิชากิจกรรมที่เปิดเก็บคะแนนในห้องเรียน โดยไม่กระทบ GPA</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={rankingsIncludeActivityScores}
+          onClick={() => {
+            const nextValue = !rankingsIncludeActivityScores;
+            setRankingsIncludeActivityScores(nextValue);
+            if (rankingsSettingId && token) loadRankings(rankingsSettingId, token, nextValue);
+          }}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors cursor-pointer ${
+            rankingsIncludeActivityScores ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600"
+          }`}
+        >
+          <span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${rankingsIncludeActivityScores ? "translate-x-5" : "translate-x-0"}`} />
+        </button>
+      </div>
 
       {!rankingsSettingId ? (
         <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">

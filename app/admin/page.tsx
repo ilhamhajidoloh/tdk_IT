@@ -392,6 +392,7 @@ function AdminPortalContent() {
   const [rankingsSettingId, setRankingsSettingId] = useState<number | null>(null);
   const [rankingsLoading, setRankingsLoading] = useState(false);
   const [rankingsClassroomFilter, setRankingsClassroomFilter] = useState<string>("all");
+  const [rankingsIncludeActivityScores, setRankingsIncludeActivityScores] = useState(false);
 
   // Student Scores State
   const [scoresSettingId, setScoresSettingId] = useState<number | null>(null);
@@ -809,10 +810,10 @@ function AdminPortalContent() {
     }
   };
 
-  const loadRankings = async (settingId: number, authToken: string) => {
+  const loadRankings = async (settingId: number, authToken: string, includeActivityScores = false) => {
     setRankingsLoading(true);
     try {
-      const res = await fetch(`/api/grades/rankings?settingId=${settingId}${getSchoolParam("&")}`, {
+      const res = await fetch(`/api/grades/rankings?settingId=${settingId}&includeActivityScores=${includeActivityScores}${getSchoolParam("&")}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) setRankingsData(await res.json());
@@ -826,7 +827,7 @@ function AdminPortalContent() {
   const handleSelectRankingsSetting = (settingId: number) => {
     setRankingsSettingId(settingId);
     setRankingsClassroomFilter("all");
-    if (token) loadRankings(settingId, token);
+    if (token) loadRankings(settingId, token, rankingsIncludeActivityScores);
   };
 
   const loadStudentScores = async (settingId: number, authToken: string) => {
@@ -3520,7 +3521,7 @@ function changeFontSize(dir) {
       let totalGpaPoints = 0;
       let totalCredits = 0;
 
-      const subjectScores: Record<string, { total: number | null; midterm: number | null; final: number | null; gradeStr: string; isActivity: boolean; passed?: boolean }> = {};
+      const subjectScores: Record<string, { total: number | null; midterm: number | null; final: number | null; maxScore: number; gradeStr: string; isActivity: boolean; passed?: boolean }> = {};
 
       selectedSubjects.forEach(sub => {
         const subKey = sub.name?.trim().toLowerCase();
@@ -3545,6 +3546,7 @@ function changeFontSize(dir) {
               total,
               midterm: scoreData.midterm,
               final: scoreData.final,
+              maxScore: subMax,
               gradeStr: passed ? t("ผ.") : t("มผ."),
               isActivity: true,
               passed
@@ -3574,6 +3576,7 @@ function changeFontSize(dir) {
               total,
               midterm: scoreData.midterm,
               final: scoreData.final,
+              maxScore: subMax,
               gradeStr: gStr,
               isActivity: false
             };
@@ -3583,6 +3586,7 @@ function changeFontSize(dir) {
             total: null,
             midterm: null,
             final: null,
+            maxScore: subMax,
             gradeStr: "—",
             isActivity: sub.subject_type === "activity"
           };
@@ -3638,9 +3642,12 @@ function changeFontSize(dir) {
             return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;color:#94a3b8;font-size:calc(11px * var(--fs));">—</td>`;
           }
           if (sc.isActivity) {
-            const badgeBg = sc.passed ? "#dcfce7" : "#ffe4e6";
-            const badgeFg = sc.passed ? "#166534" : "#991b1b";
-            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(11px * var(--fs));"><span style="background:${badgeBg};color:${badgeFg};padding:2px 6px;border-radius:4px;font-weight:bold;">${sc.gradeStr}</span></td>`;
+            const activityStatus = t(sc.passed ? "ผ่าน" : "ไม่ผ่าน");
+            const activityStatusColor = sc.passed ? "#15803d" : "#b91c1c";
+            return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(11px * var(--fs));">
+              <div style="font-size:calc(14px * var(--fs));font-weight:800;color:#0f172a;line-height:1.2;">${sc.total}</div>
+              <div style="font-size:calc(9px * var(--fs));color:${activityStatusColor};font-weight:700;">${activityStatus}</div>
+            </td>`;
           }
           return `<td style="padding:6px;text-align:center;border:1px solid #e2e8f0;font-size:calc(11px * var(--fs));">
             <div style="font-size:calc(14px * var(--fs));font-weight:800;color:#0f172a;line-height:1.2;">${sc.total}</div>
@@ -3832,7 +3839,9 @@ function changeFontSize(dir) {
           const midText = sc && sc.midterm !== null ? sc.midterm : "—";
           const finText = sc && sc.final !== null ? sc.final : "—";
           const totalText = sc && sc.total !== null ? sc.total : "—";
-          const gradeText = sc ? sc.gradeStr : "—";
+          const gradeText = sc?.isActivity && sc.total !== null
+            ? `${t("คะแนน")} ${sc.total}/${sc.maxScore}`
+            : (sc ? sc.gradeStr : "—");
 
           return `
             <tr>
@@ -3842,7 +3851,7 @@ function changeFontSize(dir) {
               <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${midText}</td>
               <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${finText}</td>
               <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:bold;">${totalText}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:extrabold;color:${sc?.isActivity ? (sc.passed ? '#15803d' : '#b91c1c') : '#4f46e5'};">${gradeText}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:extrabold;color:${sc?.isActivity ? '#0f172a' : '#4f46e5'};">${gradeText}</td>
             </tr>
           `;
         }).join("");
@@ -4455,6 +4464,8 @@ function changeFontSize(dir) {
                 rankingsData={rankingsData}
                 rankingsClassroomFilter={rankingsClassroomFilter}
                 setRankingsClassroomFilter={setRankingsClassroomFilter}
+                rankingsIncludeActivityScores={rankingsIncludeActivityScores}
+                setRankingsIncludeActivityScores={setRankingsIncludeActivityScores}
                 token={token}
                 loadRankings={loadRankings}
               />

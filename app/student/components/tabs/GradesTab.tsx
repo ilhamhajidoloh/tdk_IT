@@ -191,16 +191,18 @@ export default function GradesTab({
     return aOrder - bOrder || a.subject.localeCompare(b.subject, "th");
   });
 
-  // Calculate average percentage across all academic subjects
+  // Include scored activities in the student's total and percentage. GPA remains academic-only.
   let totalPercent = 0;
   let subjectCount = 0;
   let totalEarnedScore = 0;
   let totalPossibleScore = 0;
   filteredGrades.forEach(g => {
     const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-    if (subject?.subject_type === "activity") return;
-    const mMax = Number(subject?.midterm_max_score) || midtermMax;
-    const fMax = Number(subject?.final_max_score) || finalMax;
+    const isActivity = subject?.subject_type === "activity";
+    const activityHasScores = (Number(subject?.midterm_max_score) || 0) + (Number(subject?.final_max_score) || 0) > 0;
+    if (isActivity && !activityHasScores) return;
+    const mMax = isActivity ? Number(subject?.midterm_max_score) : Number(subject?.midterm_max_score) || midtermMax;
+    const fMax = isActivity ? Number(subject?.final_max_score) : Number(subject?.final_max_score) || finalMax;
     const totalScore = (g.midterm_score ?? 0) + (g.final_score ?? 0);
     const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
     totalPercent += percent;
@@ -451,7 +453,7 @@ export default function GradesTab({
     }
     if (summary) {
       summary.innerHTML = [
-        `<span>${triLabel("คะแนนรวมวิชาหลัก", "Jumlah Markah Subjek Utama", "جومله مرکه سوبجيک اوتام")}: ${totalEarnedScore}/${totalPossibleScore}</span>`,
+        `<span>${triLabel("คะแนนรวมทั้งหมด", "Jumlah Keseluruhan", "جومله كسلوروهان")}: ${totalEarnedScore}/${totalPossibleScore}</span>`,
         `<span>${triLabel("คิดเป็นร้อยละ", "Peratus", "ڤراتوس")}: ${overallPercent}%</span>`,
         `<span>${triLabel("เกรดเฉลี่ย (GPA)", "Purata Nilai Gred", "ڤوراتا نيلاي ݢريد")}: ${escapeHtml(gpaValue)}</span>`,
         `<span>${triLabel("อันดับในห้องเรียน", "Kedudukan Dalam Kelas", "كدودوقن دالم كلس")}: ${ranking ? `${ranking.classroom_rank}/${ranking.classroom_total}` : "-"}</span>`,
@@ -558,6 +560,15 @@ export default function GradesTab({
             </div>
           ) : (
             <>
+              <div className="flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">สถานะการคำนวณผลการเรียน</p>
+                  <p className="mt-0.5 text-sm font-extrabold text-emerald-800 dark:text-emerald-200">คะแนนรวมและอันดับ รวมรายวิชากิจกรรมที่มีการเก็บคะแนนแล้ว</p>
+                  <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-300/80">GPA ไม่รวมรายวิชากิจกรรม</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-emerald-600 px-3 py-1 text-xs font-extrabold text-white">รวมแล้ว</span>
+              </div>
+
               {/* Modern Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* GPA Card - Premium Design */}
