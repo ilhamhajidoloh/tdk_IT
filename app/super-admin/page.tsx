@@ -186,17 +186,22 @@ export default function SuperAdminPage() {
     }
   };
 
-  const loadAllData = async () => {
+  const loadTabData = async (tab: "schools" | "admins" | "requests") => {
     setLoadingData(true);
-    await Promise.all([fetchSchools(), fetchAdmins(), fetchSchoolRequests()]);
-    setLoadingData(false);
+    try {
+      if (tab === "schools") await fetchSchools();
+      if (tab === "admins") await fetchAdmins();
+      if (tab === "requests") await fetchSchoolRequests();
+    } finally {
+      setLoadingData(false);
+    }
   };
 
   useEffect(() => {
     if (user?.role === "super_admin") {
-      loadAllData();
+      void loadTabData(activeTab);
     }
-  }, [user]);
+  }, [user, activeTab]);
 
   // --- SCHOOL ACTIONS ---
   const openAddSchoolModal = () => {

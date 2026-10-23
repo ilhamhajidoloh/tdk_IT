@@ -170,21 +170,12 @@ export default function TeacherPortal() {
         fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setStudents),
         fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
         loadGrades(token),
-        fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalTopics),
         fetch("/api/public/classrooms").then(r => r.json()).then((data: DBClassroom[]) => {
           setClassrooms(data);
           setHomeroomClass(data.find(c => c.homeroom_teacher_ids?.includes(teacherUser.id)) || null);
         }),
         settingsRequest,
       ]);
-      const setting = await settingsRequest.catch(() => null);
-      if (setting?.id) {
-        await Promise.allSettled([
-          fetch(`/api/schedule-periods?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
-          fetch(`/api/schedules?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
-          fetch(`/api/grades/rankings?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } }),
-        ]);
-      }
       if (!cancelled) setInitialDataLoading(false);
     };
     void loadInitialData();
@@ -197,7 +188,7 @@ export default function TeacherPortal() {
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
 
   useEffect(() => {
-    if (!token || !activeSettingId) return;
+    if (!token || !activeSettingId || !["dashboard", "schedule", "yearly-average"].includes(activeTab)) return;
     fetch(`/api/schedule-periods?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setSchedulePeriods(data); })
@@ -214,20 +205,20 @@ export default function TeacherPortal() {
       })
       .catch(console.error);
     setRankingTermSettingId(null);
-  }, [token, activeSettingId]);
+  }, [token, activeSettingId, activeTab]);
 
   useEffect(() => {
-    if (!token || !activeSettingId) return;
+    if (!token || !activeSettingId || activeTab !== "homeroom") return;
     const sid = rankingTermSettingId || activeSettingId;
     setRankingsLoaded(false);
     fetch(`/api/grades/rankings?settingId=${sid}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } })
       .catch(console.error);
-  }, [token, activeSettingId, rankingTermSettingId]);
+  }, [token, activeSettingId, rankingTermSettingId, activeTab]);
 
   useEffect(() => {
-    if (!token || !activeSettingId || !combinedAvailable) {
+    if (!token || !activeSettingId || !combinedAvailable || activeTab !== "yearly-average") {
       setRankingsCombinedData([]);
       setRankingsCombinedLoaded(false);
       return;
@@ -237,7 +228,15 @@ export default function TeacherPortal() {
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) { setRankingsCombinedData(data); setRankingsCombinedLoaded(true); } })
       .catch(console.error);
-  }, [token, activeSettingId, combinedAvailable]);
+  }, [token, activeSettingId, combinedAvailable, activeTab]);
+
+  useEffect(() => {
+    if (!token || activeTab !== "evaluate") return;
+    fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setEvalTopics(data); })
+      .catch(console.error);
+  }, [token, activeTab]);
 
   useEffect(() => {
     if (!enterClassroom) return;

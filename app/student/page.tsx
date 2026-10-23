@@ -44,6 +44,7 @@ export default function StudentPortal() {
   const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntry[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [initialDataLoading, setInitialDataLoading] = useState(true);
+  const [tabLoading, setTabLoading] = useState(false);
   const [midtermMax, setMidtermMax] = useState(50);
   const [finalMax, setFinalMax] = useState(50);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -124,23 +125,9 @@ export default function StudentPortal() {
         return activeOrLatest;
       });
 
-      await Promise.allSettled([
-        studentRequest,
-        fetch(`/api/grades?studentId=${user.student_id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setStudentGrades),
-        fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
-        fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalTopics),
-        fetch("/api/public/classrooms").then(r => r.json()).then(setClassrooms),
-        settingsRequest,
-      ]);
-      const activeSetting = await settingsRequest.catch(() => null);
-      if (activeSetting?.id) {
-        await Promise.allSettled([
-          fetch(`/api/schedule-periods?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
-          fetch(`/api/schedules?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
-          fetch(`/api/evaluations/summary?settingId=${activeSetting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalSummary),
-          fetch(`/api/grades/rankings?settingId=${activeSetting.id}&includeActivityScores=true`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null)),
-        ]);
-      }
+      // Render the portal after identity and term are known. Each tab fetches
+      // only its own data below instead of blocking login on every report.
+      await Promise.allSettled([studentRequest, settingsRequest]);
       if (!cancelled) setInitialDataLoading(false);
     };
     void loadInitialData();
@@ -148,30 +135,50 @@ export default function StudentPortal() {
   }, [loading, user, token, router]);
 
   useEffect(() => {
-    if (!token || !activeSettingId) return;
-    fetch(`/api/schedule-periods?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }).catch(console.error);
-    fetch(`/api/schedules?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }).catch(console.error);
-  }, [token, activeSettingId]);
+    if (!token || !user?.student_id || !activeSettingId || initialDataLoading) return;
+    let cancelled = false;
+    const loadActiveTab = async () => {
+      setTabLoading(true);
+      try {
+        if (["overview", "grades", "yearly-average"].includes(activeTab)) {
+          await Promise.all([
+            fetch(`/api/grades?studentId=${user.student_id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setStudentGrades),
+            fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
+            fetch("/api/public/classrooms").then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setClassrooms(data); }),
+          ]);
+        }
+        if (["overview", "schedule"].includes(activeTab)) {
+          await Promise.all([
+            fetch(`/api/schedule-periods?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
+            fetch(`/api/schedules?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
+          ]);
+        }
+      } finally {
+        if (!cancelled) setTabLoading(false);
+      }
+    };
+    void loadActiveTab();
+    return () => { cancelled = true; };
+  }, [activeSettingId, activeTab, initialDataLoading, token, user?.student_id]);
 
   useEffect(() => {
-    if (!token || !activeSettingId) return;
+    if (!token || !activeSettingId || activeTab !== "evaluation") return;
     const setting = settingsList.find(s => s.id === activeSettingId);
     if (!isEvaluationTermOpen(setting?.term)) {
       setEvalSummary([]);
       return;
     }
     setEvalLoading(true);
-    fetch(`/api/evaluations/summary?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : [])
-      .then(setEvalSummary)
+    Promise.all([
+      fetch("/api/evaluations/topics", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalTopics),
+      fetch(`/api/evaluations/summary?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setEvalSummary),
+    ])
       .catch(console.error)
       .finally(() => setEvalLoading(false));
-  }, [token, activeSettingId, settingsList]);
+  }, [token, activeSettingId, settingsList, activeTab]);
 
   useEffect(() => {
-    if (!token || !activeSettingId) return;
+    if (!token || !activeSettingId || activeTab !== "grades") return;
     const setting = settingsList.find(s => s.id === activeSettingId);
     if (setting?.is_ranking_released !== true) {
       setMyRanking(null);
@@ -182,7 +189,7 @@ export default function StudentPortal() {
       .then(r => r.ok ? r.json() : [])
       .then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null))
       .catch(() => setMyRanking(null));
-  }, [token, activeSettingId, settingsList]);
+  }, [token, activeSettingId, settingsList, activeTab]);
 
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
 
@@ -609,6 +616,12 @@ export default function StudentPortal() {
 
       {/* ── MAIN ── */}
       <main className="flex-1 max-w-screen-lg mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 pb-24 sm:pb-8">
+        {tabLoading ? (
+          <div className="min-h-80 flex flex-col items-center justify-center gap-3 text-center">
+            <span className="h-9 w-9 rounded-full border-4 border-violet-200 border-t-violet-600 animate-spin" />
+            <p className="text-sm font-semibold text-muted-foreground">กำลังโหลดข้อมูลแท็บนี้...</p>
+          </div>
+        ) : <>
         {activeTab === "overview" && (
           <>
             <CalendarTimeline
@@ -693,6 +706,7 @@ export default function StudentPortal() {
         )}
 
         {activeTab === "news" && <NewsTab />}
+        </>}
       </main>
       {user && <ChatWidget userId={user.id} userRole="student" />}
     </div>

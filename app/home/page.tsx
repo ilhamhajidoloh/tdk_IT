@@ -211,23 +211,40 @@ function SchoolHomeContent() {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [schoolReady, setSchoolReady] = useState(false);
   const [activeTab, setActiveTab] = useState<HomeSubTab>("news");
   const [forecastModal, setForecastModal] = useState<ForecastModalState>(null);
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      fetch(`/api/public/schools/${schoolParam}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/public/home?school=${schoolParam}`).then((r) => (r.ok ? r.json() : null)),
-    ])
-      .then(([school, homeData]) => {
+    setSchoolReady(false);
+    setData(null);
+    fetch(`/api/public/schools/${schoolParam}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((school) => {
         setSchoolInfo(school);
         updateSchoolDocumentMeta(school);
-        setData(homeData);
       })
+      .catch((err) => console.error("Error fetching school information:", err))
+      .finally(() => {
+        setSchoolReady(true);
+        setLoading(false);
+      });
+  }, [schoolParam]);
+
+  useEffect(() => {
+    // School information is enough to render the header and the information
+    // tab. News and duty data are deferred until the visitor opens them.
+    if (!schoolReady || activeTab === "info") return;
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/public/home?school=${schoolParam}&tab=${activeTab}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((homeData) => { if (!cancelled) setData(homeData); })
       .catch((err) => console.error("Error fetching school home data:", err))
       .finally(() => setLoading(false));
-  }, [schoolParam]);
+    return () => { cancelled = true; };
+  }, [activeTab, schoolParam, schoolReady]);
 
   const changeSchool = () => {
     localStorage.removeItem("selectedSchool");
