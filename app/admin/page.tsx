@@ -166,6 +166,18 @@ function LoadingScreen({ title, subtitle, schoolKey }: { title: string; subtitle
   return <SchoolLoadingScreen title={title} subtitle={subtitle} schoolKey={schoolKey} />;
 }
 
+function TabLoadingState() {
+  return (
+    <div className="min-h-[500px] flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <span className="h-10 w-10 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+      <div>
+        <p className="font-bold text-foreground">กำลังโหลดข้อมูลแท็บนี้...</p>
+        <p className="mt-1 text-sm text-muted-foreground">โปรดรอสักครู่ ระบบจะแสดงข้อมูลทันทีเมื่อโหลดเสร็จ</p>
+      </div>
+    </div>
+  );
+}
+
 function AdminPortalContent() {
   const [users, setUsers] = useState<DBUser[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -186,6 +198,7 @@ function AdminPortalContent() {
   }, [userSubTab]);
   const [isClient, setIsClient] = useState(false);
   const [initialDataLoading, setInitialDataLoading] = useState(true);
+  const [activeTabLoading, setActiveTabLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const classroomFileInputRef = useRef<HTMLInputElement>(null);
   const autoFixedScheduleEntries = useRef<Set<string>>(new Set());
@@ -699,12 +712,9 @@ function AdminPortalContent() {
     let cancelled = false;
     const loadInitialData = async () => {
       setInitialDataLoading(true);
-      await Promise.allSettled([
-        loadData(token),
-        loadSettings(token),
-        loadEvalTopics(token),
-        loadCalendarEvents(token),
-      ]);
+      // The shell only needs the current academic setting. Other data is fetched
+      // when its tab is opened, so a slow report cannot block the entire portal.
+      await loadSettings(token);
       if (!cancelled) setInitialDataLoading(false);
     };
     void loadInitialData();
@@ -713,10 +723,16 @@ function AdminPortalContent() {
 
   useEffect(() => {
     if (token && selectedSchoolId) {
-      loadData(token);
+      // Prevent the previous school's tab data from being requested while the
+      // new school's academic settings are still resolving.
+      setSelectedSettingId(null);
+      setSelectedSubjectSettingId(null);
+      setGradeStatusSettingId(null);
+      setRankingsSettingId(null);
+      setYearlyAvgSettingId(null);
+      setScoresSettingId(null);
+      setEvalSettingId(null);
       loadSettings(token);
-      loadEvalTopics(token);
-      loadCalendarEvents(token);
     }
   }, [selectedSchoolId, token]);
 
@@ -736,6 +752,13 @@ function AdminPortalContent() {
       requests.push(loadSubjects(selectedSubjectSettingId, authToken));
     }
     return Promise.allSettled(requests);
+  };
+
+  const loadUsers = (authToken: string) => {
+    return fetch(`/api/users${getSchoolParam("?")}`, { headers: { Authorization: `Bearer ${authToken}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(setUsers)
+      .catch(err => console.error("loadUsers error:", err));
   };
 
   const loadEvalTopics = (authToken: string) => {
@@ -759,12 +782,6 @@ function AdminPortalContent() {
       .then(setStudents)
       .catch(err => console.error("loadStudents error:", err));
   };
-
-  useEffect(() => {
-    if (selectedSettingId && token) {
-      loadStudents(selectedSettingId, token);
-    }
-  }, [selectedSettingId, token]);
 
   const loadSubjects = async (settingId: number, authToken: string) => {
     try {
@@ -827,7 +844,6 @@ function AdminPortalContent() {
   const handleSelectRankingsSetting = (settingId: number) => {
     setRankingsSettingId(settingId);
     setRankingsClassroomFilter("all");
-    if (token) loadRankings(settingId, token, rankingsIncludeActivityScores);
   };
 
   const loadStudentScores = async (settingId: number, authToken: string) => {
@@ -872,7 +888,6 @@ function AdminPortalContent() {
     setScoresSettingId(settingId);
     setScoresClassroomId("");
     setScoresSelectedStudentId("");
-    if (token) loadStudentScores(settingId, token);
   };
 
   const loadEvalData = async (settingId: number, authToken: string) => {
@@ -897,7 +912,6 @@ function AdminPortalContent() {
   const handleSelectEvalSetting = (settingId: number) => {
     setEvalSettingId(settingId);
     setEvalClassroomId("");
-    if (token) loadEvalData(settingId, token);
   };
 
   const handleAddEvalTopic = async () => {
@@ -989,7 +1003,6 @@ function AdminPortalContent() {
   const handleSelectYearlyAvgSetting = (settingId: number) => {
     setYearlyAvgSettingId(settingId);
     setYearlyAvgClassroomFilter("all");
-    if (token) loadYearlyAverage(settingId, token);
   };
 
   const loadGradeStatus = async (settingId: number, authToken: string) => {
@@ -1034,17 +1047,10 @@ function AdminPortalContent() {
 
   const handleSelectGradeStatusSetting = (settingId: number) => {
     setGradeStatusSettingId(settingId);
-    if (token) loadGradeStatus(settingId, token);
   };
 
   const handleSelectSubjectSetting = (settingId: number) => {
     setSelectedSubjectSettingId(settingId);
-    if (token) {
-      loadSubjects(settingId, token);
-      loadSubjectClassrooms(settingId, token);
-      loadSchedulePeriods(settingId, token);
-      loadScheduleEntries(settingId, token);
-    }
   };
 
   const loadClassrooms = async (settingId: number, authToken: string) => {
@@ -1076,31 +1082,15 @@ function AdminPortalContent() {
         setEndDate(activeSetting.end_date ?? "");
         const todayStr = new Date().toISOString().split("T")[0];
         setIsGradingActive(todayStr >= (activeSetting.start_date ?? "") && todayStr <= (activeSetting.end_date ?? ""));
-        // โหลด classrooms ของ active setting เป็นค่าเริ่มต้น
+        // Keep the active setting ready for the navigation and defer each tab's
+        // data request until that tab is actually opened.
         setSelectedSettingId(activeSetting.id);
-        loadClassrooms(activeSetting.id, authToken);
-        // โหลด subjects ของ active setting เป็นค่าเริ่มต้น
         setSelectedSubjectSettingId(activeSetting.id);
-
-        // โหลดข้อมูลทั้งหมดพร้อมกันด้วย Promise.allSettled เพื่อให้แต่ละ request ไม่กระทบกัน
-        await Promise.allSettled([
-          loadSubjects(activeSetting.id, authToken),
-          loadSubjectClassrooms(activeSetting.id, authToken),
-          loadSchedulePeriods(activeSetting.id, authToken),
-          loadScheduleEntries(activeSetting.id, authToken),
-        ]);
-
-        // โหลด grade status
         setGradeStatusSettingId(activeSetting.id);
-        await loadGradeStatus(activeSetting.id, authToken);
-
-        // โหลด rankings
         setRankingsSettingId(activeSetting.id);
-        await loadRankings(activeSetting.id, authToken);
-
-        // โหลด yearly average
         setYearlyAvgSettingId(activeSetting.id);
-        await loadYearlyAverage(activeSetting.id, authToken);
+        setScoresSettingId(activeSetting.id);
+        setEvalSettingId(activeSetting.id);
       } else {
         setIsGradingActive(false);
       }
@@ -1108,6 +1098,94 @@ function AdminPortalContent() {
       console.error("loadSettings error:", err);
     }
   };
+
+  useEffect(() => {
+    if (initialDataLoading || !token) return;
+    // Settings are intentionally loaded before this effect. A tab's data is
+    // loaded only after the admin chooses that tab instead of all at login.
+    const defaultSettingId = selectedSettingId;
+    if (defaultSettingId === null) return;
+
+    let cancelled = false;
+    const loadActiveTab = async () => {
+      setActiveTabLoading(true);
+      try {
+        switch (activeTab) {
+          case "dashboard":
+            await Promise.all([
+              loadData(token),
+              loadClassrooms(defaultSettingId, token),
+              loadSchedulePeriods(selectedSubjectSettingId ?? defaultSettingId, token),
+            ]);
+            break;
+          case "users":
+            await loadUsers(token);
+            break;
+          case "classrooms":
+            await loadClassrooms(defaultSettingId, token);
+            break;
+          case "students":
+            await Promise.all([loadClassrooms(defaultSettingId, token), loadStudents(defaultSettingId, token)]);
+            break;
+          case "subjects":
+            await Promise.all([
+              loadSubjects(selectedSubjectSettingId ?? defaultSettingId, token),
+              loadSubjectClassrooms(selectedSubjectSettingId ?? defaultSettingId, token),
+            ]);
+            break;
+          case "schedule": {
+            const settingId = selectedSubjectSettingId ?? defaultSettingId;
+            await Promise.all([
+              loadUsers(token),
+              loadSubjects(settingId, token),
+              loadSubjectClassrooms(settingId, token),
+              loadSchedulePeriods(settingId, token),
+              loadScheduleEntries(settingId, token),
+            ]);
+            break;
+          }
+          case "grade-status":
+            await loadGradeStatus(gradeStatusSettingId ?? defaultSettingId, token);
+            break;
+          case "student-scores":
+            await loadStudentScores(scoresSettingId ?? defaultSettingId, token);
+            break;
+          case "rankings":
+            await loadRankings(rankingsSettingId ?? defaultSettingId, token, rankingsIncludeActivityScores);
+            break;
+          case "yearly-average":
+            await loadYearlyAverage(yearlyAvgSettingId ?? defaultSettingId, token);
+            break;
+          case "evaluations":
+            await Promise.all([loadEvalTopics(token), loadEvalData(evalSettingId ?? defaultSettingId, token)]);
+            break;
+          case "calendar":
+            await loadCalendarEvents(token);
+            break;
+          case "settings":
+            await loadClassrooms(defaultSettingId, token);
+            break;
+        }
+      } finally {
+        if (!cancelled) setActiveTabLoading(false);
+      }
+    };
+
+    void loadActiveTab();
+    return () => { cancelled = true; };
+  }, [
+    activeTab,
+    evalSettingId,
+    gradeStatusSettingId,
+    initialDataLoading,
+    rankingsIncludeActivityScores,
+    rankingsSettingId,
+    scoresSettingId,
+    selectedSettingId,
+    selectedSubjectSettingId,
+    token,
+    yearlyAvgSettingId,
+  ]);
 
   const handleAddSetting = async () => {
     const { value: formValues } = await Swal.fire({
@@ -4343,6 +4421,7 @@ function changeFontSize(dir) {
 
           {/* Main Content Area */}
           <div className="lg:col-span-9 glass-strong rounded-3xl overflow-hidden min-h-[500px]">
+            {activeTabLoading ? <TabLoadingState /> : <>
             {activeTab === "dashboard" && (
               <DashboardTab
                 adminYear={adminYear}
@@ -4665,6 +4744,7 @@ function changeFontSize(dir) {
                 schoolParam={getSchoolParam("?")}
               />
             )}
+            </>}
           </div>
         </div>
       </main>
