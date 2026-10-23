@@ -624,9 +624,9 @@ function SchoolHomeContent() {
                                     {entry.members.map((m) => (
                                       <span
                                         key={m.id || m.name}
-                                        className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl text-base font-bold leading-snug border border-white/30"
+                                        className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl text-sm font-bold leading-snug border border-white shadow-sm text-emerald-900"
                                       >
-                                        <span className="w-2 h-2 shrink-0 rounded-full bg-white" />
+                                        <span className="w-2 h-2 shrink-0 rounded-full bg-emerald-600" />
                                         {m.name}
                                       </span>
                                     ))}

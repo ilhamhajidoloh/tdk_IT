@@ -242,7 +242,7 @@ export default function GradesTab({
         "مركة كڬياتن": `${grade.midterm_score ?? 0}`,
         "مركة ڤڤريقسأن": `${grade.final_score ?? 0}`,
         "مركة سموا": totalScore,
-        "ڬريد": gradeInfo.point,
+        "ڬريد": isActivity ? gradeInfo.letter : gradeInfo.point,
       };
     });
 
@@ -366,8 +366,8 @@ export default function GradesTab({
       const activityResult = isActivity && useCombinedActivity ? getCombinedActivityResult() : null;
       const gradeInfo = isActivity
         ? activityResult
-          ? { point: "-", letter: activityResult.pass ? textForPdf("ผ่าน", "Lulus", "لولوس") : textForPdf("ไม่ผ่าน", "Gagal", "ݢاݢل") }
-          : { point: "-", letter: percent >= 50 ? textForPdf("ผ่าน", "Lulus", "لولوس") : textForPdf("ไม่ผ่าน", "Gagal", "ݢاݢل") }
+          ? { point: activityResult.pass ? textForPdf("ผ่าน", "Lulus", "لولوس") : textForPdf("ไม่ผ่าน", "Gagal", "ݢاݢل"), letter: activityResult.label }
+          : { point: percent >= 50 ? textForPdf("ผ่าน", "Lulus", "لولوس") : textForPdf("ไม่ผ่าน", "Gagal", "ݢاݢل"), letter: percent >= 50 ? textForPdf("ผ่าน", "Lulus", "لولوس") : textForPdf("ไม่ผ่าน", "Gagal", "ݢاݢل") }
         : getGradeInfo(percent);
 
       return `<tr><td>${index + 1}</td><td>${escapeHtml(grade.subject)}</td><td>${isActivity ? textForPdf("กิจกรรม", "Aktiviti", "اکتيۏيتي") : textForPdf("วิชาการ", "Akademik", "اکاديميك")}</td><td>${escapeHtml(`${grade.midterm_score ?? 0}/${midtermMaxScore}`)}</td><td>${escapeHtml(`${grade.final_score ?? 0}/${finalMaxScore}`)}</td><td>${totalScore}/${totalMaxScore}</td><td>${percent.toFixed(2)}%</td><td>${gradeInfo.point}</td><td>${escapeHtml(gradeInfo.letter)}</td></tr>`;

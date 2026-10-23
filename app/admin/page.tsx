@@ -3938,7 +3938,7 @@ function changeFontSize(dir) {
           const finText = sc && sc.final !== null ? sc.final : "—";
           const totalText = sc && sc.total !== null ? sc.total : "—";
           const gradeText = sc?.isActivity && sc.total !== null
-            ? `${t("คะแนน")} ${sc.total}/${sc.maxScore}`
+            ? t(sc.passed ? "ผ่าน" : "ไม่ผ่าน")
             : (sc ? sc.gradeStr : "—");
 
           return `
