@@ -7,7 +7,7 @@ interface HomeroomTabProps {
   homeroomClass: DBClassroom | null;
   homeroomStudents: DBStudent[];
   grades: DBGrade[];
-  calculateGPAForStudent: (studentId: string) => string;
+  calculateGPAForStudent: (studentId: string, termSettingId?: number) => string;
   subjectsList: DBSubject[];
   currentTerm: string;
   midtermMax: number;
@@ -57,16 +57,46 @@ export default function HomeroomTab({
   }
 
   const myClassroomId = homeroomClass.id;
+  const selectedTermSettingId = rankingTermSettingId || activeSettingId;
+  const selectedTermInfo = otherTermSettings.find(s => s.id === selectedTermSettingId);
+  const displayTerm = selectedTermInfo ? `${selectedTermInfo.term}/${selectedTermInfo.academic_year}` : currentTerm;
 
   return (
     <div className="space-y-5">
+      {/* Term Selector */}
+      <div className="card-modern overflow-hidden">
+        <div className="px-5 py-4 border-b border-border/60">
+          <h3 className="font-bold text-foreground text-sm">เลือกภาคเรียนที่ต้องการดูข้อมูล</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">ปีการศึกษา {otherTermSettings.length > 0 ? otherTermSettings[0].academic_year : ""}</p>
+        </div>
+        <div className="p-5 flex flex-wrap gap-2">
+          {otherTermSettings.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setRankingTermSettingId(s.id)}
+              className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all duration-200 cursor-pointer ${
+                rankingTermSettingId === s.id || (!rankingTermSettingId && s.id === activeSettingId)
+                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-lg shadow-indigo-200/40"
+                  : "bg-card/80 text-foreground border-border/60 hover:border-indigo-300 hover:bg-indigo-50/60 dark:bg-indigo-500/10 hover:shadow-sm"
+              }`}
+            >
+              เทอม {s.term}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 stagger-children">
         {[
           { label: "นักเรียนทั้งหมด", value: homeroomStudents.length, gradient: "from-indigo-500 to-violet-600", shadowColor: "shadow-indigo-200/40", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
-          { label: "GPA >= 3.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) >= 3.0).length, gradient: "from-emerald-500 to-teal-600", shadowColor: "shadow-emerald-200/40", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
-          { label: "GPA < 2.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 2.0 && parseFloat(calculateGPAForStudent(s.student_id)) > 0).length, gradient: "from-amber-500 to-orange-600", shadowColor: "shadow-amber-200/40", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
-          { label: "GPA < 1.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id)) < 1.0 && grades.some(g => g.student_id === s.student_id)).length, gradient: "from-rose-500 to-pink-600", shadowColor: "shadow-rose-200/40", icon: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+          { label: "GPA >= 3.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id, selectedTermSettingId ?? undefined)) >= 3.0).length, gradient: "from-emerald-500 to-teal-600", shadowColor: "shadow-emerald-200/40", icon: "M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" },
+          { label: "GPA < 2.0", value: homeroomStudents.filter(s => parseFloat(calculateGPAForStudent(s.student_id, selectedTermSettingId ?? undefined)) < 2.0 && parseFloat(calculateGPAForStudent(s.student_id, selectedTermSettingId ?? undefined)) > 0).length, gradient: "from-amber-500 to-orange-600", shadowColor: "shadow-amber-200/40", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
+          { label: "GPA < 1.0", value: homeroomStudents.filter(s => {
+            const gpa = parseFloat(calculateGPAForStudent(s.student_id, selectedTermSettingId ?? undefined));
+            const hasGrades = grades.some(g => g.student_id === s.student_id && g.term === displayTerm);
+            return gpa < 1.0 && hasGrades;
+          }).length, gradient: "from-rose-500 to-pink-600", shadowColor: "shadow-rose-200/40", icon: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
         ].map((card, i) => (
           <div key={i} className="card-modern p-4 animate-fade-in-up hover:scale-[1.02] transition-transform duration-200">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-gradient-to-br ${card.gradient} shadow-lg ${card.shadowColor}`}>
@@ -89,7 +119,9 @@ export default function HomeroomTab({
               <span className="text-xs text-muted-foreground font-normal ml-2">({homeroomClass.name_thai})</span>
             )}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">เกรดเฉลี่ยสะสม (GPA) เฉพาะวิชาหลัก · กดที่นักเรียนเพื่อดูคะแนนและเกรดรายวิชา</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            เกรดเฉลี่ยสะสม (GPA) เฉพาะวิชาหลัก · เทอม {selectedTermInfo?.term || ""} · กดที่นักเรียนเพื่อดูคะแนนและเกรดรายวิชา
+          </p>
         </div>
 
         {/* Desktop */}
@@ -110,9 +142,9 @@ export default function HomeroomTab({
                 <tr><td colSpan={6} className="py-12 text-center text-muted-foreground">ยังไม่มีนักเรียนในห้องนี้</td></tr>
               ) : (
                 homeroomStudents.map((s, idx) => {
-                  const gpa = calculateGPAForStudent(s.student_id);
+                  const gpa = calculateGPAForStudent(s.student_id, selectedTermSettingId ?? undefined);
                   const gpaNum = parseFloat(gpa);
-                  const subjectCount = grades.filter(g => g.student_id === s.student_id).length;
+                  const subjectCount = grades.filter(g => g.student_id === s.student_id && g.term === displayTerm).length;
                   let gpaColor = "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30";
                   let statusLabel = "ดีเยี่ยม";
                   if (gpaNum < 1.0) { gpaColor = "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"; statusLabel = "ต้องปรับปรุง"; }
@@ -148,9 +180,9 @@ export default function HomeroomTab({
         {/* Mobile */}
         <div className="md:hidden divide-y divide-border">
           {homeroomStudents.map((s, idx) => {
-            const gpa = calculateGPAForStudent(s.student_id);
+            const gpa = calculateGPAForStudent(s.student_id, selectedTermSettingId ?? undefined);
             const gpaNum = parseFloat(gpa);
-            const subjectCount = grades.filter(g => g.student_id === s.student_id).length;
+            const subjectCount = grades.filter(g => g.student_id === s.student_id && g.term === displayTerm).length;
             let gpaColor = "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30";
             let statusLabel = "ดีเยี่ยม";
             if (gpaNum < 1.0) { gpaColor = "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"; statusLabel = "ต้องปรับปรุง"; }
@@ -178,29 +210,6 @@ export default function HomeroomTab({
         </div>
       </div>
 
-      {/* Term Selector for Rankings */}
-      <div className="card-modern overflow-hidden">
-        <div className="px-5 py-4 border-b border-border/60">
-          <h3 className="font-bold text-foreground text-sm">เลือกช่วงเวลาดูอันดับ</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">ปีการศึกษา {otherTermSettings.length > 0 ? otherTermSettings[0].academic_year : ""}</p>
-        </div>
-        <div className="p-5 flex flex-wrap gap-2">
-          {otherTermSettings.map(s => (
-            <button
-              key={s.id}
-              onClick={() => setRankingTermSettingId(s.id)}
-              className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all duration-200 cursor-pointer ${
-                rankingTermSettingId === s.id || (!rankingTermSettingId && s.id === activeSettingId)
-                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-lg shadow-indigo-200/40"
-                  : "bg-card/80 text-foreground border-border/60 hover:border-indigo-300 hover:bg-indigo-50/60 dark:bg-indigo-500/10 hover:shadow-sm"
-              }`}
-            >
-              เทอม {s.term}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Rankings Loading */}
       {!rankingsLoaded && activeSettingId && (
         <div className="card-modern p-8 text-center">
@@ -222,11 +231,11 @@ export default function HomeroomTab({
         student={selectedStudent}
         grades={grades}
         subjectsList={subjectsList}
-        activeSettingId={activeSettingId}
-        currentTerm={currentTerm}
+        activeSettingId={selectedTermSettingId ?? null}
+        currentTerm={displayTerm}
         midtermMax={midtermMax}
         finalMax={finalMax}
-        gpa={selectedStudent ? calculateGPAForStudent(selectedStudent.student_id) : "0.00"}
+        gpa={selectedStudent ? calculateGPAForStudent(selectedStudent.student_id, selectedTermSettingId ?? undefined) : "0.00"}
         onClose={() => setSelectedStudent(null)}
       />
     </div>

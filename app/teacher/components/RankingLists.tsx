@@ -22,7 +22,9 @@ export default function RankingLists({
   if (classroomRankings.length === 0) {
     return (
       <div className="card-modern p-10 text-center text-muted-foreground font-semibold text-sm">
-        ไม่มีข้อมูลนักเรียนในห้องนี้สำหรับช่วงเวลาที่เลือก
+        {rankingsData.length === 0
+          ? "ยังไม่มีผลการเรียนสำหรับเทอมนี้ จึงยังไม่สามารถจัดอันดับได้"
+          : "ไม่มีข้อมูลนักเรียนในห้องนี้สำหรับช่วงเวลาที่เลือก"}
       </div>
     );
   }

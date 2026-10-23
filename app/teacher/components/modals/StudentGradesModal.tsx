@@ -48,7 +48,7 @@ export default function StudentGradesModal({
     return matches.find(s => s.setting_id === activeSettingId) ?? matches[0];
   };
 
-  const studentGrades = grades.filter(g => g.student_id === student.student_id);
+  const studentGrades = grades.filter(g => g.student_id === student.student_id && g.term === currentTerm);
   // เปอร์เซ็นต์คะแนนรวม คิดเฉพาะวิชาหลัก (ขอบเขตเดียวกับ GPA)
   let scoreSum = 0;
   let maxSum = 0;

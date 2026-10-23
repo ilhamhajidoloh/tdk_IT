@@ -188,7 +188,7 @@ export default function TeacherPortal() {
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
 
   useEffect(() => {
-    if (!token || !activeSettingId || !["dashboard", "schedule", "yearly-average"].includes(activeTab)) return;
+    if (!token || !activeSettingId || !["dashboard", "schedule", "homeroom", "yearly-average"].includes(activeTab)) return;
     fetch(`/api/schedule-periods?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setSchedulePeriods(data); })
@@ -798,12 +798,28 @@ export default function TeacherPortal() {
     return num.toString();
   };
 
-  const calculateGPAForStudent = (studentId: string) => {
-    const sg = grades.filter(g => g.student_id === studentId);
+  const calculateGPAForStudent = (studentId: string, termSettingId?: number) => {
+    const targetSettingId = termSettingId ?? activeSettingId;
+    const targetTermInfo = otherTermSettings.find(s => s.id === targetSettingId);
+    const targetTerm = targetSettingId === activeSettingId
+      ? enterTerm
+      : targetTermInfo
+        ? `${targetTermInfo.term}/${targetTermInfo.academic_year}`
+        : undefined;
+    const sg = grades.filter(g => {
+      const subject = subjectsList.find(s =>
+        s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() &&
+        s.setting_id === targetSettingId
+      );
+      return g.student_id === studentId && subject && (!targetTerm || g.term === targetTerm);
+    });
     let totalPoints = 0;
     let totalCredits = 0;
     sg.forEach(g => {
-      const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
+      const subject = subjectsList.find(s =>
+        s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() &&
+        s.setting_id === targetSettingId
+      );
       if (subject?.subject_type === "activity") return;
       const mMax = Number(subject?.midterm_max_score) || midtermMax;
       const fMax = Number(subject?.final_max_score) || finalMax;
