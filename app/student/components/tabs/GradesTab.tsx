@@ -79,24 +79,24 @@ function ReleaseCountdownTimer({ targetDateStr, settingName, onReleased }: { tar
     : null;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-amber-900/20 border-2 border-amber-200 dark:border-amber-800/30 p-8 sm:p-12 shadow-2xl">
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-amber-900/20 border-2 border-amber-200 dark:border-amber-800/30 p-6 sm:p-8 lg:p-12 shadow-2xl">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.1),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(249,115,22,0.1),transparent_50%)]" />
 
-      <div className="relative z-10 text-center space-y-6">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg animate-pulse">
-          <Clock className="w-10 h-10 text-white" />
+      <div className="relative z-10 text-center space-y-4 sm:space-y-6">
+        <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg animate-pulse">
+          <Clock className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
         </div>
 
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 border border-amber-500/30 backdrop-blur-sm">
-            <span className="text-sm font-bold text-amber-800 dark:text-amber-300">เทอม {settingName}</span>
+        <div className="space-y-2 sm:space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-amber-500/20 border border-amber-500/30 backdrop-blur-sm">
+            <span className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-300">เทอม {settingName}</span>
           </div>
 
-          <h3 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">
+          <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 dark:text-white px-4">
             ผลการเรียนยังไม่เปิดเผย
           </h3>
 
-          <p className="text-base text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-md mx-auto px-4">
             {formattedTargetDate
               ? `ระบบจะเปิดเผยผลการเรียนในวันที่ ${formattedTargetDate}`
               : "ผู้ดูแลระบบกำลังเตรียมประกาศผลการเรียน"}
@@ -104,11 +104,11 @@ function ReleaseCountdownTimer({ targetDateStr, settingName, onReleased }: { tar
         </div>
 
         {targetDateStr && !timeLeft.isExpired && (
-          <div className="pt-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-4">
+          <div className="pt-2 sm:pt-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-3 sm:mb-4">
               เหลือเวลาอีก
             </p>
-            <div className="grid grid-cols-4 gap-3 sm:gap-4 max-w-lg mx-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4 max-w-lg mx-auto px-2">
               {[
                 { value: timeLeft.days, label: "วัน" },
                 { value: timeLeft.hours, label: "ชั่วโมง" },
@@ -116,12 +116,12 @@ function ReleaseCountdownTimer({ targetDateStr, settingName, onReleased }: { tar
                 { value: timeLeft.seconds, label: "วินาที" }
               ].map((item, idx) => (
                 <div key={idx} className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
-                  <div className="relative bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-xl border border-amber-200 dark:border-amber-800/30">
-                    <div className="text-4xl sm:text-5xl font-black bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent font-mono">
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl sm:rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity" />
+                  <div className="relative bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xl border border-amber-200 dark:border-amber-800/30">
+                    <div className="text-3xl sm:text-4xl lg:text-5xl font-black bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent font-mono">
                       {String(item.value).padStart(2, "0")}
                     </div>
-                    <div className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-2">{item.label}</div>
+                    <div className="text-[10px] sm:text-xs font-bold text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">{item.label}</div>
                   </div>
                 </div>
               ))}
