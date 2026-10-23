@@ -3612,14 +3612,34 @@ function changeFontSize(dir) {
     });
 
     const sortedForSchoolRank = [...allStudentRows].sort((a, b) => b.percentage - a.percentage || b.totalMainScore - a.totalMainScore);
-    sortedForSchoolRank.forEach((r, idx) => {
-      r.schoolRank = idx + 1;
+    let schoolRank = 0;
+    let previousSchoolPercentage: number | null = null;
+    let sameSchoolPercentageCount = 0;
+    sortedForSchoolRank.forEach((r) => {
+      if (r.percentage !== previousSchoolPercentage) {
+        schoolRank += 1 + sameSchoolPercentageCount;
+        sameSchoolPercentageCount = 0;
+      } else {
+        sameSchoolPercentageCount++;
+      }
+      r.schoolRank = schoolRank;
+      previousSchoolPercentage = r.percentage;
     });
 
     const studentRows = allStudentRows.filter(st => st.classroom_id === exportClassroomId);
     const sortedForClassroomRank = [...studentRows].sort((a, b) => b.percentage - a.percentage || b.totalMainScore - a.totalMainScore);
-    sortedForClassroomRank.forEach((r, idx) => {
-      r.rank = idx + 1;
+    let classroomRank = 0;
+    let previousClassroomPercentage: number | null = null;
+    let sameClassroomPercentageCount = 0;
+    sortedForClassroomRank.forEach((r) => {
+      if (r.percentage !== previousClassroomPercentage) {
+        classroomRank += 1 + sameClassroomPercentageCount;
+        sameClassroomPercentageCount = 0;
+      } else {
+        sameClassroomPercentageCount++;
+      }
+      r.rank = classroomRank;
+      previousClassroomPercentage = r.percentage;
     });
 
     const win = window.open("", "_blank");
