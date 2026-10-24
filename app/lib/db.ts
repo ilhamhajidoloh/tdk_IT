@@ -11,6 +11,12 @@ const isLocalDb = connectionString?.includes("localhost") || connectionString?.i
 const pool = new Pool({
   connectionString,
   ssl: isLocalDb ? false : { rejectUnauthorized: false }, // SSL ปิดเมื่อใช้ Local DB, เปิดเมื่อใช้ CockroachDB Cloud
+  // A serverless deployment can start several instances during a traffic spike.
+  // Keep each instance deliberately small so the database is not exhausted by
+  // idle pools. Override only when the database capacity is known.
+  max: Number(process.env.DB_POOL_MAX || 3),
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 5_000,
 });
 
 export default pool;

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolFromUrl } from "@/app/lib/getSchoolByParam";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
+
+const PUBLIC_CACHE_HEADERS = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
 
 export async function GET(req: NextRequest) {
   try {
-    await ensureStatusSchema();
     const subdomain = getSchoolFromUrl(req);
 
     const schoolResult = await pool.query(
@@ -59,10 +59,10 @@ export async function GET(req: NextRequest) {
          ORDER BY name`,
         [schoolId]
       );
-      return NextResponse.json(fallback.rows);
+      return NextResponse.json(fallback.rows, { headers: PUBLIC_CACHE_HEADERS });
     }
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(result.rows, { headers: PUBLIC_CACHE_HEADERS });
   } catch (error) {
     console.error("Error fetching public classrooms:", error);
     return NextResponse.json([]);

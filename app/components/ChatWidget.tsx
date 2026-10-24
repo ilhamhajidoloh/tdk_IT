@@ -118,12 +118,15 @@ export default function ChatWidget({ userId, userRole }: { userId: string; userR
   }, [fetchUnread]);
 
   useEffect(() => {
+    // Avoid background polling for every signed-in parent/student. Poll only
+    // while the chat UI is open, when a fresh unread count is actually useful.
+    if (!isOpen) return;
     fetchUnread();
-    unreadPollRef.current = setInterval(fetchUnread, 15000);
+    unreadPollRef.current = setInterval(fetchUnread, 60_000);
     return () => {
       if (unreadPollRef.current) clearInterval(unreadPollRef.current);
     };
-  }, [fetchUnread]);
+  }, [fetchUnread, isOpen]);
 
   useEffect(() => {
     if (isOpen && view === "conversations") {

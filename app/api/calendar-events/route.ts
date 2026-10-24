@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getAuthToken } from "@/app/lib/getAuthToken";
 import { normalizeScheduleDays } from "@/app/lib/duty";
+import pool from "@/app/lib/db";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const PUBLIC_CACHE_HEADERS = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
 
 export async function GET(req: NextRequest) {
   try {
@@ -45,21 +45,7 @@ export async function GET(req: NextRequest) {
 
     const result = await pool.query(query, params);
 
-    // Keep legacy/calendar holiday entries visible to the duty engine as well.
-    // This backfills records created before calendar holidays were linked to
-    // school_holidays, including entries whose old school_id was null.
-    if (schoolParam) {
-      const holidayRows = result.rows.filter((row) => row.event_type === "holiday");
-      for (const holiday of holidayRows) {
-        await pool.query(
-          `INSERT INTO school_holidays (date, reason, is_published, applies_to, school_id)
-           VALUES ($1, $2, true, 'all', $3)
-           ON CONFLICT DO NOTHING`,
-          [holiday.event_date, holiday.title, schoolParam]
-        );
-      }
-    }
-    return NextResponse.json(result.rows);
+    return NextResponse.json(result.rows, { headers: PUBLIC_CACHE_HEADERS });
   } catch (error) {
     console.error("GET calendar-events error:", error);
     return NextResponse.json({ error: "Failed to fetch calendar events" }, { status: 500 });

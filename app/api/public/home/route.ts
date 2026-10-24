@@ -48,6 +48,7 @@ interface CookDisplayEntry {
 export async function GET(req: NextRequest) {
   const today = todayStr();
   const schoolSubdomain = getSchoolFromUrl(req);
+  const activeTab = req.nextUrl.searchParams.get("tab") || "news";
 
   // Get school ID
   const schoolRes = await pool.query(
@@ -55,6 +56,64 @@ export async function GET(req: NextRequest) {
     [schoolSubdomain]
   );
   const schoolId = schoolRes.rows[0]?.id || "00000000-0000-0000-0000-000000000001";
+
+  // The landing page opens on the news tab. Do not calculate the full duty
+  // rotation (groups, members and future dates) until a visitor explicitly
+  // opens that tab.
+  if (activeTab === "news") {
+    const newsQuery = pool.query(
+      "SELECT id, title, content, created_at, target_audience FROM public.news WHERE is_published = true AND COALESCE(target_audience, 'all') = 'all' AND (expires_at IS NULL OR expires_at > NOW()) AND (school_id = $1 OR school_id IS NULL) ORDER BY created_at DESC LIMIT 10",
+      [schoolId]
+    );
+    const scheduleDaysQuery = pool.query(
+      `SELECT schedule_days FROM public.system_settings
+       WHERE (school_id = $1 OR school_id IS NULL)
+       ORDER BY (CURRENT_DATE BETWEEN start_date AND end_date) DESC, school_id NULLS LAST, start_date DESC, term DESC
+       LIMIT 1`,
+      [schoolId]
+    );
+    const holidaysQuery = pool.query(
+      "SELECT id, date, reason, applies_to FROM public.school_holidays WHERE is_published = true AND (school_id = $1 OR school_id IS NULL) AND date >= $2 ORDER BY date ASC",
+      [schoolId, today]
+    );
+    const calendarHolidaysQuery = pool.query(
+      `SELECT id, event_date AS date, title AS reason
+       FROM public.calendar_events
+       WHERE event_type = 'holiday' AND (school_id = $1 OR school_id IS NULL) AND event_date >= $2`,
+      [schoolId, today]
+    );
+    const [newsRes, scheduleDaysRes, holidaysRes, calendarHolidayRes] = await Promise.all([
+      newsQuery,
+      scheduleDaysQuery,
+      holidaysQuery,
+      calendarHolidaysQuery,
+    ]);
+    const scheduleDays = normalizeScheduleDays(scheduleDaysRes.rows[0]?.schedule_days);
+    const visibleHolidayMap = new Map<string, { id: string; date: string; reason: string; applies_to: string }>();
+    const holidays = [
+      ...holidaysRes.rows,
+      ...calendarHolidayRes.rows.map((row) => ({ ...row, id: `calendar-${row.id}`, applies_to: "all" })),
+    ];
+    for (const holiday of holidays) {
+      const date = String(holiday.date).slice(0, 10);
+      const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+      if (!scheduleDays.includes(weekday)) continue;
+      const key = `${date}|${String(holiday.reason).trim().toLocaleLowerCase()}`;
+      const existing = visibleHolidayMap.get(key);
+      if (!existing || (existing.applies_to !== "all" && holiday.applies_to === "all")) {
+        visibleHolidayMap.set(key, { ...holiday, date });
+      }
+    }
+
+    return NextResponse.json({
+      news: newsRes.rows,
+      holidays: Array.from(visibleHolidayMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
+      teacherDuty: { current: null, currentWeekClosed: false, forecast: [] },
+      cookDuty: { weekStart: today, weekEnd: today, currentWeekClosed: false, thisWeek: [], today: null, forecast: [] },
+    }, {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    });
+  }
 
   // Look-ahead window for holiday fetching (cover all forecast + some buffer)
   const holidayWindowEnd = addDays(today, TEACHER_FORECAST_WEEKS * 7 + COOK_FORECAST_DAYS + 14);

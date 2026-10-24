@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -24,7 +23,6 @@ async function hasTranslationsTable(): Promise<boolean> {
 
 export async function GET(req: NextRequest) {
   try {
-    await ensureStatusSchema();
     const context = await getSchoolContext(req);
     let schoolId = context?.schoolId;
 

@@ -23,19 +23,6 @@ export async function GET(req: NextRequest) {
     schoolId = "00000000-0000-0000-0000-000000000001";
   }
 
-  // Auto-sync students from users using a single fast query
-  try {
-    await pool.query(
-      `INSERT INTO students (name, student_id, school_id)
-       SELECT username, student_id, COALESCE(school_id, $1::uuid) FROM users
-       WHERE role = 'student' AND student_id IS NOT NULL AND student_id != ''
-       ON CONFLICT (student_id) DO NOTHING`,
-      [schoolId]
-    );
-  } catch (e) {
-    console.error("Error auto-syncing students from users:", e);
-  }
-
   const classroomId = req.nextUrl.searchParams.get("classroomId");
   const settingIdParam = req.nextUrl.searchParams.get("settingId");
   const statusParam = req.nextUrl.searchParams.get("status"); // active | graduated | resigned | all

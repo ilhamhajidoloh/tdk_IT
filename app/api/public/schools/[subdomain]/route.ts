@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
+
+const PUBLIC_CACHE_HEADERS = { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=900" };
 
 const DEFAULT_MAIN_SCHOOL = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -31,7 +32,6 @@ export async function GET(
   const isMain = param.toLowerCase() === "main" || param === "00000000-0000-0000-0000-000000000001";
 
   try {
-    await ensureStatusSchema();
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
     let query = "";
     let queryParams = [param];
@@ -66,7 +66,7 @@ export async function GET(
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(result.rows[0], { headers: PUBLIC_CACHE_HEADERS });
   } catch (error: any) {
     console.error("GET /api/public/schools/[subdomain] error:", error);
     // หากเป็น main ให้ fallback ส่ง default config เพื่อไม่ให้หน้าเว็บล่ม
