@@ -133,8 +133,9 @@ export default function TeacherPortal() {
     }
   }, [update]);
 
-  const loadGrades = async (authToken: string) => {
-    const res = await fetch("/api/grades", { headers: { Authorization: `Bearer ${authToken}` } });
+  const loadGrades = async (authToken: string, term?: string) => {
+    const query = term ? `?term=${encodeURIComponent(term)}` : "";
+    const res = await fetch(`/api/grades${query}`, { headers: { Authorization: `Bearer ${authToken}` } });
     if (res.ok) setGrades(await res.json());
   };
 
@@ -166,15 +167,19 @@ export default function TeacherPortal() {
         return s;
       });
 
+      // Resolve the active term first, then request only that term's records.
+      // Fetching every historic student, subject and grade row made each teacher
+      // login increasingly expensive as a school accumulated data.
+      const setting = await settingsRequest;
+      const activeTerm = `${setting.term}/${setting.academic_year}`;
       await Promise.allSettled([
-        fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setStudents),
-        fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
-        loadGrades(token),
+        fetch(`/api/students?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setStudents),
+        fetch(`/api/subjects?settingId=${setting.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
+        loadGrades(token, activeTerm),
         fetch("/api/public/classrooms").then(r => r.json()).then((data: DBClassroom[]) => {
           setClassrooms(data);
           setHomeroomClass(data.find(c => c.homeroom_teacher_ids?.includes(teacherUser.id)) || null);
         }),
-        settingsRequest,
       ]);
       if (!cancelled) setInitialDataLoading(false);
     };

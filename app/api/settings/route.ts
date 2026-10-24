@@ -50,7 +50,6 @@ export async function GET(req: NextRequest) {
     schoolId = "00000000-0000-0000-0000-000000000001";
   }
 
-  await ensureStatusSchema();
   const result = await pool.query(
     "SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, attendance_total_weeks, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
     [schoolId]

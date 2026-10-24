@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission, requireAnyPermission } from "@/app/lib/permissions/middleware";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function GET(req: NextRequest) {
   const permError = await requireAnyPermission(
@@ -15,8 +14,6 @@ export async function GET(req: NextRequest) {
     "attendance.view"
   );
   if (permError) return permError;
-  await ensureStatusSchema();
-
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId;
 

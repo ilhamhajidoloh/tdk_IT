@@ -3,7 +3,6 @@ import pool from "@/app/lib/db";
 import bcrypt from "bcrypt";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -23,7 +22,6 @@ export async function GET(req: NextRequest) {
   }
 
   const context = await getSchoolContext(req);
-  await ensureStatusSchema();
   let schoolId = context?.schoolId;
 
   const requestedSchoolId = req.nextUrl.searchParams.get("schoolId") || req.nextUrl.searchParams.get("school_id");
