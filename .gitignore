@@ -50,3 +50,5 @@ push-env.ps1
 /scripts
 
 *.log
+
+/performance
