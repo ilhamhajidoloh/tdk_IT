@@ -386,8 +386,9 @@ export default function SchoolRequestPage() {
     const isApproved = request.status === "approved";
 
     return (
-      <article key={request.id} className="bg-card border border-border rounded-3xl p-5 shadow-sm space-y-3.5 hover:shadow-md transition-all">
-        <div className="flex items-start justify-between gap-3">
+      <article key={request.id} className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-950/5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-indigo-50 dark:bg-indigo-400/10" />
+        <div className="relative flex items-start justify-between gap-3">
           <div>
             <h3 className="font-black text-base text-foreground">{request.school_name}</h3>
             {request.school_name_en && (
@@ -405,6 +406,7 @@ export default function SchoolRequestPage() {
           </span>
         </div>
 
+        <div className="relative mt-4 space-y-3.5">
         {isApproved && request.has_admin && (
           <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -484,38 +486,31 @@ export default function SchoolRequestPage() {
           <span>ส่งเมื่อ {new Date(request.created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}</span>
           <span className="font-mono">Subdomain: {request.subdomain}</span>
         </div>
+        </div>
       </article>
     );
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-9 h-9 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+    return <div className="grid min-h-screen place-items-center bg-[#f5f7fb] dark:bg-slate-950"><div className="h-9 w-9 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center"><Building2 className="w-5 h-5" /></div>
-            <div>
-              <h1 className="font-black text-lg">ขอสร้างโรงเรียน</h1>
-              <p className="text-xs text-muted-foreground">ส่งรายละเอียดให้ Super Admin พิจารณา</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link href="/" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs font-bold hover:bg-muted"><ArrowLeft className="w-4 h-4" />กลับหน้าหลัก</Link>
-          </div>
-        </div>
+    <div className="min-h-screen overflow-hidden bg-[#f5f7fb] text-slate-950 dark:bg-slate-950 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden" aria-hidden="true"><div className="absolute -left-32 top-16 h-80 w-80 rounded-full bg-cyan-300/25 blur-3xl dark:bg-cyan-500/10" /><div className="absolute -right-32 top-0 h-[28rem] w-[28rem] rounded-full bg-indigo-400/20 blur-3xl dark:bg-indigo-500/15" /></div>
+      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
+        <Link href="/" className="group flex items-center gap-3" aria-label="กลับหน้าแรก TDK IT"><div className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-950 text-white shadow-lg shadow-slate-950/15 transition-transform group-hover:-rotate-6 dark:bg-white dark:text-slate-950"><Building2 className="h-5 w-5" /></div><div className="leading-none"><p className="text-sm font-black tracking-tight">TDK IT</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">School Network</p></div></Link>
+        <div className="flex items-center gap-2 sm:gap-3"><ThemeToggle /><Link href="/" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-800 sm:px-4"><ArrowLeft className="h-3.5 w-3.5" /><span className="hidden sm:inline">กลับหน้าหลัก</span><span className="sm:hidden">กลับ</span></Link></div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] gap-8">
+      <main className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-12 pt-3 sm:px-8 sm:pb-16 lg:px-10">
+        <section className="mb-8 border-b border-slate-200/80 pb-8 dark:border-slate-800 sm:mb-10 sm:pb-10"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400">Start a school workspace</p><div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-balance text-3xl font-black tracking-[-0.045em] sm:text-4xl">สร้างพื้นที่ใหม่<br className="sm:hidden" /> <span className="text-indigo-600 dark:text-indigo-400">ให้โรงเรียนของคุณ</span></h1><p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">ส่งรายละเอียดเบื้องต้นเพื่อให้ทีมงานตรวจสอบและเปิดใช้งานระบบสำหรับโรงเรียนของคุณ</p></div><div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-xs shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70"><div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600"><CheckCircle2 className="h-4 w-4" /></div><div><p className="font-extrabold">ส่งคำขอออนไลน์</p><p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">ติดตามสถานะได้ทันที</p></div></div></div></section>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] lg:gap-8">
         {/* Left Column: School Request Form */}
-        <form onSubmit={submitRequest} className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <form onSubmit={submitRequest} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-950/5 dark:border-slate-800 dark:bg-slate-900 sm:p-8 space-y-6">
           <div>
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black">
+              <h2 className="text-xl font-black tracking-tight">
                 {editingRequestId ? "✏️ แก้ไขคำขอสร้างโรงเรียน" : "รายละเอียดโรงเรียน"}
               </h2>
               {editingRequestId && (
@@ -656,9 +651,9 @@ export default function SchoolRequestPage() {
         </form>
 
         {/* Right Column: Status Search & My Requests */}
-        <section className="space-y-6">
+        <section className="space-y-5 lg:pt-1">
           {/* Status Search Card */}
-          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6 space-y-4">
             <div>
               <h2 className="text-lg font-black flex items-center gap-2">
                 <Search className="w-5 h-5 text-primary" />
@@ -711,11 +706,11 @@ export default function SchoolRequestPage() {
                 </div>
               </div>
               {loadingRequests ? (
-                <div className="bg-card border border-border rounded-3xl p-8 text-center">
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
                   <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>
               ) : requests.length === 0 ? (
-                <div className="bg-card border border-border rounded-3xl p-8 text-center text-sm text-muted-foreground font-medium">
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-sm text-muted-foreground font-medium dark:border-slate-700 dark:bg-slate-900/70">
                   <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   ยังไม่มีคำขอในบัญชีนี้
                 </div>
@@ -725,6 +720,7 @@ export default function SchoolRequestPage() {
             </div>
           )}
         </section>
+        </div>
       </main>
 
       {/* Setup Admin Modal */}
