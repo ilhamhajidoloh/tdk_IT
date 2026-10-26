@@ -721,6 +721,12 @@ function AdminPortalContent() {
     return () => { cancelled = true; };
   }, [loading, adminUser, canAccessAdmin, filteredNavItems.length, token, router]);
 
+  // The login success dialog is created before navigation and is not tied to
+  // this page's React tree. Dismiss it when the admin portal is ready.
+  useEffect(() => {
+    if (!initialDataLoading) Swal.close();
+  }, [initialDataLoading]);
+
   useEffect(() => {
     if (token && selectedSchoolId) {
       // Prevent the previous school's tab data from being requested while the

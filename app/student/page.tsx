@@ -184,6 +184,11 @@ export default function StudentPortal() {
     return () => { cancelled = true; };
   }, [loading, user, token, router]);
 
+  // Close the non-dismissible login dialog once the student's initial data is ready.
+  useEffect(() => {
+    if (!initialDataLoading) Swal.close();
+  }, [initialDataLoading]);
+
   useEffect(() => {
     if (!token || !user?.student_id || !activeSettingId || initialDataLoading) return;
     let cancelled = false;

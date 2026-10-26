@@ -6,7 +6,6 @@ import FacebookProvider from "next-auth/providers/facebook";
 import bcrypt from "bcrypt";
 import { createHmac } from "crypto";
 import pool from "@/app/lib/db";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -23,7 +22,6 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          await ensureStatusSchema();
           const result = await pool.query(
             `SELECT u.id, u.username, u.password, u.role, u.school_id, u.student_id,
                     u.homeroom_classroom_id, u.subjects, u.email, u.is_clerical,

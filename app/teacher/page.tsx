@@ -200,6 +200,12 @@ export default function TeacherPortal() {
     return () => { cancelled = true; };
   }, [loading, teacherUser, token, router]);
 
+  // The login success dialog is created on /login and can survive the client
+  // navigation. Close it as soon as this portal has finished its initial load.
+  useEffect(() => {
+    if (!initialDataLoading) Swal.close();
+  }, [initialDataLoading]);
+
   const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
 
   useEffect(() => {
