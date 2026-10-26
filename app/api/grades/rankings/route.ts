@@ -31,11 +31,15 @@ export async function GET(req: NextRequest) {
   }
 
   if (mode === "combined") {
-    return handleCombined(settingId, academic_year, defaultMidMax, defaultFinMax, studentId, includeActivityScores);
+    const response = await handleCombined(settingId, academic_year, defaultMidMax, defaultFinMax, studentId, includeActivityScores);
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    return response;
   }
 
   const termKey = `${settingTerm}/${academic_year}`;
-  return handleSingleTerm(settingId, termKey, defaultMidMax, defaultFinMax, studentId, includeActivityScores);
+  const response = await handleSingleTerm(settingId, termKey, defaultMidMax, defaultFinMax, studentId, includeActivityScores);
+  response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+  return response;
 }
 
 async function handleSingleTerm(settingId: string, termKey: string, defaultMidMax: number, defaultFinMax: number, studentId: string | null, includeActivityScores: boolean) {

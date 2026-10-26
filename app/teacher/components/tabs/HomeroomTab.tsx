@@ -20,6 +20,7 @@ interface HomeroomTabProps {
 
   rankingsLoaded: boolean;
   rankingsData: RankingRow[];
+  onRetryRankings?: () => void;
 }
 
 export default function HomeroomTab({
@@ -37,6 +38,7 @@ export default function HomeroomTab({
   activeSettingId,
   rankingsLoaded,
   rankingsData,
+  onRetryRankings,
 }: HomeroomTabProps) {
   const [selectedStudent, setSelectedStudent] = useState<DBStudent | null>(null);
 
@@ -210,7 +212,7 @@ export default function HomeroomTab({
         </div>
       </div>
 
-      {/* Rankings Loading */}
+      {/* Rankings Loading or Error */}
       {!rankingsLoaded && activeSettingId && (
         <div className="card-modern p-8 text-center">
           <div className="relative w-12 h-12 mx-auto mb-3">
@@ -219,12 +221,34 @@ export default function HomeroomTab({
             <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-cyan-400 border-l-indigo-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
           </div>
           <p className="text-sm text-muted-foreground font-semibold">กำลังโหลดข้อมูลอันดับ...</p>
+          <p className="text-xs text-muted-foreground mt-2">หากใช้เวลานาน อาจเป็นเพราะข้อมูลเทอมนี้มีจำนวนมาก</p>
         </div>
       )}
 
       {/* Rankings Section */}
-      {rankingsLoaded && (
+      {rankingsLoaded && rankingsData.length > 0 && (
         <RankingLists myClassroomId={myClassroomId} homeroomClassName={homeroomClass?.name} rankingsData={rankingsData} />
+      )}
+
+      {/* Rankings Empty State */}
+      {rankingsLoaded && rankingsData.length === 0 && (
+        <div className="card-modern p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-slate-100 to-amber-100 dark:to-amber-500/10 flex items-center justify-center shadow-lg shadow-amber-100/30">
+            <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-1">ไม่พบข้อมูลอันดับ</h3>
+          <p className="text-sm text-muted-foreground mb-4">อาจเป็นเพราะยังไม่มีคะแนนของเทอมนี้ หรือเกิดข้อผิดพลาดในการโหลดข้อมูล</p>
+          {onRetryRankings && (
+            <button
+              onClick={onRetryRankings}
+              className="px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-200/40 transition-all cursor-pointer"
+            >
+              โหลดข้อมูลใหม่
+            </button>
+          )}
+        </div>
       )}
 
       <StudentGradesModal

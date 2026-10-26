@@ -71,6 +71,7 @@ export default function TeacherPortal() {
     school_rank: number; classroom_rank: number; school_total: number; classroom_total: number;
   }[]>([]);
   const [rankingsLoaded, setRankingsLoaded] = useState(false);
+  const [rankingsRetryTrigger, setRankingsRetryTrigger] = useState(0);
   const [combinedAvailable, setCombinedAvailable] = useState(false);
   const [otherTermSettings, setOtherTermSettings] = useState<{ id: number; term: string; academic_year: string }[]>([]);
   const [rankingTermSettingId, setRankingTermSettingId] = useState<number | null>(null);
@@ -232,11 +233,45 @@ export default function TeacherPortal() {
     if (!token || !activeSettingId || activeTab !== "homeroom") return;
     const sid = rankingTermSettingId || activeSettingId;
     setRankingsLoaded(false);
-    fetch(`/api/grades/rankings?settingId=${sid}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } })
-      .catch(console.error);
-  }, [token, activeSettingId, rankingTermSettingId, activeTab]);
+    setRankingsData([]);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+    fetch(`/api/grades/rankings?settingId=${sid}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal
+    })
+      .then(r => {
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRankingsData(data);
+          setRankingsLoaded(true);
+        } else {
+          setRankingsData([]);
+          setRankingsLoaded(true);
+        }
+      })
+      .catch(err => {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          console.error('Rankings request timeout');
+        } else {
+          console.error('Rankings fetch error:', err);
+        }
+        setRankingsData([]);
+        setRankingsLoaded(true);
+      });
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [token, activeSettingId, rankingTermSettingId, activeTab, rankingsRetryTrigger]);
 
   useEffect(() => {
     if (!token || !activeSettingId || !teacherUser || activeTab !== "homeroom") return;
@@ -251,13 +286,26 @@ export default function TeacherPortal() {
     if (!term) return;
 
     let cancelled = false;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+
     Promise.all([
-      fetch(`/api/public/classrooms?settingId=${settingId}`),
-      fetch(`/api/students?settingId=${settingId}`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`/api/subjects?settingId=${settingId}`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`/api/grades?term=${encodeURIComponent(term)}`, { headers: { Authorization: `Bearer ${token}` } }),
+      fetch(`/api/public/classrooms?settingId=${settingId}`, { signal: controller.signal }),
+      fetch(`/api/students?settingId=${settingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal
+      }),
+      fetch(`/api/subjects?settingId=${settingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal
+      }),
+      fetch(`/api/grades?term=${encodeURIComponent(term)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal
+      }),
     ])
       .then(async ([classroomsRes, studentsRes, subjectsRes, gradesRes]) => {
+        clearTimeout(timeoutId);
         const [termClassrooms, termStudents, termSubjects, termGrades] = await Promise.all([
           classroomsRes.ok ? classroomsRes.json() : [],
           studentsRes.ok ? studentsRes.json() : [],
@@ -274,9 +322,27 @@ export default function TeacherPortal() {
           subjects: Array.isArray(termSubjects) ? termSubjects as DBSubject[] : [],
         });
       })
-      .catch(console.error);
+      .catch(err => {
+        clearTimeout(timeoutId);
+        if (err.name !== 'AbortError') {
+          console.error('Homeroom term data fetch error:', err);
+        }
+        if (!cancelled) {
+          setHomeroomTermData({
+            settingId,
+            classroom: null,
+            students: [],
+            grades: [],
+            subjects: [],
+          });
+        }
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
   }, [token, activeSettingId, rankingTermSettingId, activeTab, otherTermSettings, teacherUser, enterTerm]);
 
   useEffect(() => {
@@ -326,6 +392,10 @@ export default function TeacherPortal() {
     });
     setRowScores(newRowScores);
   }, [enterClassroom, enterSubject, enterTerm, students, grades, subjectsList, activeSettingId]);
+
+  const handleRetryRankings = () => {
+    setRankingsRetryTrigger(prev => prev + 1);
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -1333,6 +1403,7 @@ export default function TeacherPortal() {
             activeSettingId={activeSettingId}
             rankingsLoaded={rankingsLoaded}
             rankingsData={rankingsData}
+            onRetryRankings={handleRetryRankings}
           />
         )}
 
