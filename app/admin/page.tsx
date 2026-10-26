@@ -914,6 +914,17 @@ function AdminPortalContent() {
     setEvalClassroomId("");
   };
 
+  useEffect(() => {
+    if (activeTab !== "evaluations" || settingsList.length === 0) return;
+    const selected = settingsList.find(setting => setting.id === evalSettingId);
+    if (String(selected?.term) === "2") return;
+    const current = selected || settingsList.find(setting => setting.is_active) || settingsList[0];
+    const termTwo = settingsList.find(setting =>
+      String(setting.academic_year) === String(current?.academic_year) && String(setting.term) === "2"
+    ) || settingsList.find(setting => String(setting.term) === "2");
+    if (termTwo) handleSelectEvalSetting(termTwo.id);
+  }, [activeTab, evalSettingId, settingsList]);
+
   const handleAddEvalTopic = async () => {
     if (!token || !evalTopicForm.name_th.trim()) return;
     setEvalSavingTopic(true);
@@ -930,6 +941,35 @@ function AdminPortalContent() {
         const data = await res.json();
         Swal.fire("ข้อผิดพลาด", data.error || "ไม่สามารถเพิ่มหัวข้อได้", "error");
       }
+    } finally {
+      setEvalSavingTopic(false);
+    }
+  };
+
+  const handleImportEvalTopics = async (topics: { name_th: string; name_rumi?: string; name_jawi?: string }[]) => {
+    if (!token) return;
+    if (topics.length === 0) {
+      Swal.fire("ไม่พบหัวข้อ", "กรุณาตรวจสอบว่ามีคอลัมน์ชื่อหัวข้อ (ไทย) * และมีข้อมูลอย่างน้อย 1 แถว", "warning");
+      return;
+    }
+    setEvalSavingTopic(true);
+    try {
+      const res = await fetch("/api/evaluations/topics/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ topics }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        Swal.fire("นำเข้าไม่สำเร็จ", data.error || "ไม่สามารถนำเข้าหัวข้อได้", "error");
+        return;
+      }
+      await loadEvalTopics(token);
+      Swal.fire({
+        title: "นำเข้าสำเร็จ",
+        text: `เพิ่ม ${data.created} หัวข้อ${data.skipped ? ` · ข้าม ${data.skipped} หัวข้อที่ซ้ำ` : ""}`,
+        icon: "success",
+      });
     } finally {
       setEvalSavingTopic(false);
     }
@@ -4687,6 +4727,7 @@ function changeFontSize(dir) {
                 onUpdateTopic={handleUpdateEvalTopic}
                 onReorderTopic={handleReorderEvalTopic}
                 onDeleteTopic={handleDeleteEvalTopic}
+                onImportTopics={handleImportEvalTopics}
               />
             )}
 

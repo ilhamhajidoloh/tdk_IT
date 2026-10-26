@@ -54,6 +54,15 @@ export default function TeacherPortal() {
 
   const { user: teacherUser, loading, logout, token, update } = useAuth();
   const [homeroomClass, setHomeroomClass] = useState<DBClassroom | null>(null);
+  // Keep a separate data set for the Homeroom tab. The portal's main data set is
+  // intentionally limited to the current term, while this tab can show past terms.
+  const [homeroomTermData, setHomeroomTermData] = useState<{
+    settingId: number;
+    classroom: DBClassroom | null;
+    students: DBStudent[];
+    grades: DBGrade[];
+    subjects: DBSubject[];
+  } | null>(null);
 
   const [rankingsData, setRankingsData] = useState<{
     student_id: string; student_name: string; student_number: number | null;
@@ -160,6 +169,7 @@ export default function TeacherPortal() {
         setSettingsEndDate(s.end_date ?? "");
         setMidtermMax(s.midterm_max_score ?? 50);
         setFinalMax(s.final_max_score ?? 50);
+        setAttendanceTotalWeeks(Number(s.attendance_total_weeks ?? 0));
         setActiveSettingId(s.id);
         if (Array.isArray(s.schedule_days)) setScheduleDaysConfig(s.schedule_days);
         const todayStr = new Date().toISOString().split("T")[0];
@@ -221,6 +231,47 @@ export default function TeacherPortal() {
       .then(data => { if (Array.isArray(data)) { setRankingsData(data); setRankingsLoaded(true); } })
       .catch(console.error);
   }, [token, activeSettingId, rankingTermSettingId, activeTab]);
+
+  useEffect(() => {
+    if (!token || !activeSettingId || !teacherUser || activeTab !== "homeroom") return;
+
+    const settingId = rankingTermSettingId || activeSettingId;
+    const setting = otherTermSettings.find(item => item.id === settingId);
+    const term = settingId === activeSettingId
+      ? enterTerm
+      : setting
+        ? `${setting.term}/${setting.academic_year}`
+        : "";
+    if (!term) return;
+
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/public/classrooms?settingId=${settingId}`),
+      fetch(`/api/students?settingId=${settingId}`, { headers: { Authorization: `Bearer ${token}` } }),
+      fetch(`/api/subjects?settingId=${settingId}`, { headers: { Authorization: `Bearer ${token}` } }),
+      fetch(`/api/grades?term=${encodeURIComponent(term)}`, { headers: { Authorization: `Bearer ${token}` } }),
+    ])
+      .then(async ([classroomsRes, studentsRes, subjectsRes, gradesRes]) => {
+        const [termClassrooms, termStudents, termSubjects, termGrades] = await Promise.all([
+          classroomsRes.ok ? classroomsRes.json() : [],
+          studentsRes.ok ? studentsRes.json() : [],
+          subjectsRes.ok ? subjectsRes.json() : [],
+          gradesRes.ok ? gradesRes.json() : [],
+        ]);
+        if (cancelled) return;
+        const classroomList = Array.isArray(termClassrooms) ? termClassrooms as DBClassroom[] : [];
+        setHomeroomTermData({
+          settingId,
+          classroom: classroomList.find(item => item.homeroom_teacher_ids?.includes(teacherUser.id)) || null,
+          students: Array.isArray(termStudents) ? termStudents as DBStudent[] : [],
+          grades: Array.isArray(termGrades) ? termGrades as DBGrade[] : [],
+          subjects: Array.isArray(termSubjects) ? termSubjects as DBSubject[] : [],
+        });
+      })
+      .catch(console.error);
+
+    return () => { cancelled = true; };
+  }, [token, activeSettingId, rankingTermSettingId, activeTab, otherTermSettings, teacherUser, enterTerm]);
 
   useEffect(() => {
     if (!token || !activeSettingId || !combinedAvailable || activeTab !== "yearly-average") {
@@ -665,7 +716,6 @@ export default function TeacherPortal() {
     setAttendanceSubjectId(subjectId);
     setAttendanceClassroomId("");
     setAttendanceRows({});
-    setAttendanceTotalWeeks(0);
   };
 
   useEffect(() => {
@@ -811,8 +861,11 @@ export default function TeacherPortal() {
       : targetTermInfo
         ? `${targetTermInfo.term}/${targetTermInfo.academic_year}`
         : undefined;
-    const sg = grades.filter(g => {
-      const subject = subjectsList.find(s =>
+    const isSelectedHomeroomTerm = homeroomTermData?.settingId === targetSettingId;
+    const gradeSource = isSelectedHomeroomTerm ? homeroomTermData.grades : grades;
+    const subjectSource = isSelectedHomeroomTerm ? homeroomTermData.subjects : subjectsList;
+    const sg = gradeSource.filter(g => {
+      const subject = subjectSource.find(s =>
         s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() &&
         s.setting_id === targetSettingId
       );
@@ -821,7 +874,7 @@ export default function TeacherPortal() {
     let totalPoints = 0;
     let totalCredits = 0;
     sg.forEach(g => {
-      const subject = subjectsList.find(s =>
+      const subject = subjectSource.find(s =>
         s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() &&
         s.setting_id === targetSettingId
       );
@@ -855,6 +908,11 @@ export default function TeacherPortal() {
 
   const currentClassroomStudents = students.filter(s => s.classroom_id === enterClassroom);
   const statusStudents = students.filter(s => s.classroom_id === statusClassroom);
+  const displayedHomeroomClass = homeroomTermData?.classroom ?? homeroomClass;
+  const displayedHomeroomStudents = (homeroomTermData?.students ?? students)
+    .filter(s => s.classroom_id === displayedHomeroomClass?.id);
+  const displayedHomeroomGrades = homeroomTermData?.grades ?? grades;
+  const displayedHomeroomSubjects = homeroomTermData?.subjects ?? subjectsList;
   const homeroomStudents = students.filter(s => s.classroom_id === homeroomClass?.id);
 
   const savedCount = currentClassroomStudents.filter(s => {
@@ -1255,11 +1313,11 @@ export default function TeacherPortal() {
 
         {activeTab === "homeroom" && (
           <HomeroomTab
-            homeroomClass={homeroomClass}
-            homeroomStudents={homeroomStudents}
-            grades={grades}
+            homeroomClass={displayedHomeroomClass}
+            homeroomStudents={displayedHomeroomStudents}
+            grades={displayedHomeroomGrades}
             calculateGPAForStudent={calculateGPAForStudent}
-            subjectsList={subjectsList}
+            subjectsList={displayedHomeroomSubjects}
             currentTerm={enterTerm}
             midtermMax={midtermMax}
             finalMax={finalMax}
@@ -1307,6 +1365,14 @@ export default function TeacherPortal() {
             evalActiveTopics={evalActiveTopics}
             evalRecords={evalRecords}
             evalRecordsLoading={evalRecordsLoading}
+            onNavigateBack={() => {
+              if (evalClassroomId) {
+                setEvalClassroomId("");
+              } else {
+                setEvalSubjectId("");
+                setEvalRecords([]);
+              }
+            }}
             onOpenStudent={handleOpenEvalModal}
             onCancelEvaluation={handleCancelEvaluation}
           />

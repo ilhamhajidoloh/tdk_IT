@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { type ChangeEvent, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { type SystemSetting, type DBStudent, type EvaluationTopic, type EvaluationSummaryRow } from "../types";
 import { RWT_TOPICS, RATING_LEVELS, RATING_BADGE_CLASSES, isEvaluationTermOpen } from "../../../lib/evaluation";
 import SectionHeader from "../SectionHeader";
-import TermSelector from "../TermSelector";
 
 interface EvaluationsTabProps {
   settingsList: SystemSetting[];
@@ -28,6 +28,7 @@ interface EvaluationsTabProps {
   onUpdateTopic: (id: string, patch: Partial<{ name_th: string; name_rumi: string; name_jawi: string; sort_order: number; is_active: boolean }>) => void;
   onReorderTopic: (index: number, direction: "up" | "down") => void;
   onDeleteTopic: (id: string) => void;
+  onImportTopics: (topics: { name_th: string; name_rumi?: string; name_jawi?: string }[]) => void;
 }
 
 function RatingBadge({ rating }: { rating: number | undefined }) {
@@ -61,14 +62,17 @@ export default function EvaluationsTab({
   onUpdateTopic,
   onReorderTopic,
   onDeleteTopic,
+  onImportTopics,
 }: EvaluationsTabProps) {
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name_th: "", name_rumi: "", name_jawi: "" });
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const sortedTopics = [...evalTopics].sort((a, b) => a.sort_order - b.sort_order);
   const activeTopics = sortedTopics.filter(t => t.is_active);
 
   const selectedSetting = settingsList.find(s => s.id === evalSettingId);
+  const evaluationSettings = settingsList.filter(setting => String(setting.term) === "2");
   const termOpen = isEvaluationTermOpen(selectedSetting?.term);
 
   const classroomStudents = evalStudents
@@ -89,6 +93,44 @@ export default function EvaluationsTab({
     setEditingTopicId(null);
   };
 
+  const downloadTemplate = (format: "xlsx" | "csv") => {
+    const sheet = XLSX.utils.aoa_to_sheet([["ชื่อหัวข้อ (ไทย) *", "Rumi", "Jawi"]]);
+    if (format === "xlsx") {
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, "หัวข้อคุณลักษณะ");
+      XLSX.writeFile(workbook, "แม่แบบหัวข้อคุณลักษณะ.xlsx");
+      return;
+    }
+    const csv = `\uFEFF${XLSX.utils.sheet_to_csv(sheet)}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "แม่แบบหัวข้อคุณลักษณะ.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: "" });
+      const topics = rows.map(row => ({
+        name_th: String(row["ชื่อหัวข้อ (ไทย) *"] || row["ชื่อหัวข้อ (ไทย)"] || row["ชื่อหัวข้อ"] || row.name_th || "").trim(),
+        name_rumi: String(row.Rumi || row["ชื่อรูมี"] || row.name_rumi || "").trim(),
+        name_jawi: String(row.Jawi || row["ชื่อยาวี"] || row.name_jawi || "").trim(),
+      })).filter(topic => topic.name_th);
+
+      onImportTopics(topics);
+    } catch {
+      alert("ไม่สามารถอ่านไฟล์ได้ กรุณาใช้ไฟล์ .xlsx หรือ .csv ตามแม่แบบ");
+    }
+  };
+
   return (
     <div className="p-8 animate-fade-in-up">
       <SectionHeader
@@ -104,11 +146,20 @@ export default function EvaluationsTab({
         <div className="lg:col-span-2 card-modern overflow-hidden flex flex-col justify-between">
           <div>
             <div className="px-5 py-4 border-b border-border/60 bg-indigo-500/[0.01]">
-              <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-                หัวข้อคุณลักษณะอันพึงประสงค์ (กำหนดโดยแอดมิน)
-              </h3>
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                  หัวข้อคุณลักษณะอันพึงประสงค์ (กำหนดโดยแอดมิน)
+                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button type="button" onClick={() => downloadTemplate("xlsx")} className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-border bg-card hover:bg-muted cursor-pointer">แม่แบบ .xlsx</button>
+                  <button type="button" onClick={() => downloadTemplate("csv")} className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-border bg-card hover:bg-muted cursor-pointer">แม่แบบ .csv</button>
+                  <button type="button" onClick={() => importInputRef.current?.click()} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">นำเข้าไฟล์</button>
+                  <input ref={importInputRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={handleImportFile} />
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">หัวข้อที่คุณสามารถเพิ่ม แก้ไข ปรับลำดับ ปิดใช้งาน หรือลบได้ตามต้องการ</p>
+              <p className="text-[11px] text-subtle-foreground mt-1">ไฟล์นำเข้ารองรับคอลัมน์: ชื่อหัวข้อ (ไทย) *, Rumi, Jawi</p>
             </div>
             <div className="divide-y divide-border max-h-[350px] overflow-y-auto">
               {sortedTopics.length === 0 ? (
@@ -238,7 +289,20 @@ export default function EvaluationsTab({
       </div>
 
       {/* Term / classroom results */}
-      <TermSelector settingsList={settingsList} selectedId={evalSettingId} onSelect={handleSelectEvalSetting} />
+      <div className="card-modern p-4 flex flex-wrap items-center gap-3">
+        <label htmlFor="evaluation-year" className="text-sm font-bold text-foreground">เลือกปีการศึกษา</label>
+        <select
+          id="evaluation-year"
+          value={evalSettingId || ""}
+          onChange={(event) => handleSelectEvalSetting(Number(event.target.value))}
+          className="input-modern px-3 py-2 text-sm font-semibold min-w-48"
+        >
+          {evaluationSettings.map(setting => (
+            <option key={setting.id} value={setting.id}>ปีการศึกษา {setting.academic_year}</option>
+          ))}
+        </select>
+        <span className="text-xs text-muted-foreground">ใช้ข้อมูลการประเมินของเทอม 2 โดยอัตโนมัติ</span>
+      </div>
 
       {!evalSettingId ? (
         <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">

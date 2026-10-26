@@ -21,6 +21,7 @@ interface EvaluateTabProps {
   evalRecords: EvaluationRecord[];
   evalRecordsLoading: boolean;
 
+  onNavigateBack: () => void;
   onOpenStudent: (student: DBStudent) => void;
   onCancelEvaluation: (student: DBStudent) => void;
 }
@@ -41,6 +42,7 @@ export default function EvaluateTab({
   evalActiveTopics,
   evalRecords,
   evalRecordsLoading,
+  onNavigateBack,
   onOpenStudent,
   onCancelEvaluation,
 }: EvaluateTabProps) {
@@ -68,8 +70,21 @@ export default function EvaluateTab({
         </div>
       )}
 
+      {evalSubjectId && (
+        <div className="flex items-center justify-between gap-3 flex-wrap animate-fade-in-up">
+          <button
+            type="button"
+            onClick={onNavigateBack}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card text-sm font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            <span aria-hidden="true">←</span>
+            {evalClassroomId ? "เปลี่ยนห้องเรียน" : "เปลี่ยนรายวิชา"}
+          </button>
+        </div>
+      )}
+
       {/* Step 1: Select Subject */}
-      <div className="card-modern overflow-hidden">
+      {!evalSubjectId && <div className="card-modern overflow-hidden animate-fade-in-up">
         <div className="px-5 py-4 border-b border-border/60 flex items-center gap-3">
           <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200/40">1</span>
           <div>
@@ -104,10 +119,10 @@ export default function EvaluateTab({
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Step 2: Select Classroom */}
-      {evalSubjectId && (
+      {evalSubjectId && !evalClassroomId && (
         <div className="card-modern overflow-hidden animate-fade-in-up">
           <div className="px-5 py-4 border-b border-border/60 flex items-center gap-3">
             <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200/40">2</span>

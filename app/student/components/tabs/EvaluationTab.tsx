@@ -35,6 +35,7 @@ export default function EvaluationTab({
   evalLoading,
 }: EvaluationTabProps) {
   const activeSetting = settingsList.find((s: any) => s.id === activeSettingId);
+  const evaluationSettings = settingsList.filter((s: any) => String(s.term) === "2");
   const termOpen = isEvaluationTermOpen(activeSetting?.term);
   const activeTopics = [...evalTopics].filter(t => t.is_active).sort((a, b) => a.sort_order - b.sort_order);
 
@@ -70,8 +71,8 @@ export default function EvaluationTab({
             if (s) onChangeSetting(s);
           }}
         >
-          {settingsList.map(s => (
-            <option key={s.id} value={s.id}>ปี {s.academic_year} เทอม {s.term}{s.is_active ? " · ปัจจุบัน" : ""}</option>
+          {evaluationSettings.map(s => (
+            <option key={s.id} value={s.id}>ปีการศึกษา {s.academic_year}</option>
           ))}
         </select>
       </div>

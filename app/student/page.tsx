@@ -31,6 +31,42 @@ import EvaluationTab from "./components/tabs/EvaluationTab";
 import NewsTab from "./components/tabs/NewsTab";
 import CalendarTimeline from "../components/CalendarTimeline";
 
+type TermSetting = {
+  id: number;
+  term: string | number;
+  academic_year: string | number;
+  end_date?: string;
+  is_active?: boolean;
+};
+
+// During the first part of a new term, students should keep seeing the
+// completed previous term. Switch to the current term only in its final month.
+function getDefaultStudentTerm<T extends TermSetting>(settings: T[]): T | undefined {
+  const current = settings.find(setting => setting.is_active) || settings[0];
+  if (!current?.end_date) return current;
+
+  const termEnd = new Date(`${current.end_date}T23:59:59`);
+  if (Number.isNaN(termEnd.getTime())) return current;
+
+  const currentTermStartsToDisplay = new Date(termEnd);
+  currentTermStartsToDisplay.setMonth(currentTermStartsToDisplay.getMonth() - 1);
+  if (new Date() >= currentTermStartsToDisplay) return current;
+
+  const compareTermOrder = (left: T, right: T) => {
+    const yearDifference = Number(left.academic_year) - Number(right.academic_year);
+    if (yearDifference !== 0) return yearDifference;
+    return Number(left.term) - Number(right.term);
+  };
+
+  // Find the immediately preceding term even when it belongs to the previous
+  // academic year (for example, 1/2570 should show 2/2569 first).
+  const previousTerm = settings
+    .filter(setting => setting.id !== current.id && compareTermOrder(setting, current) < 0)
+    .sort((left, right) => compareTermOrder(right, left))[0];
+
+  return previousTerm || current;
+}
+
 export default function StudentPortal() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [currentStudent, setCurrentStudent] = useState<DBStudent | null>(null);
@@ -54,6 +90,14 @@ export default function StudentPortal() {
   const [myRanking, setMyRanking] = useState<{ school_rank: number; school_total: number; classroom_rank: number; classroom_total: number } | null>(null);
   const router = useRouter();
   const { user, loading, logout, token, update } = useAuth();
+  // Grade reports may intentionally default to the previous term, but the
+  // student's timetable must always come from the term that is in progress.
+  const currentScheduleSetting = settingsList.find(setting => setting.is_active) || settingsList[0];
+  const currentScheduleSettingId = currentScheduleSetting?.id ?? activeSettingId;
+  const currentScheduleDays = Array.isArray(currentScheduleSetting?.schedule_days)
+    ? currentScheduleSetting.schedule_days
+    : scheduleDaysConfig;
+  const scheduleActiveDays = ALL_DAYS.filter(day => currentScheduleDays.includes(day.value));
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -103,31 +147,37 @@ export default function StudentPortal() {
     let cancelled = false;
     const loadInitialData = async () => {
       setInitialDataLoading(true);
-      const studentRequest = fetch("/api/students", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then((data: DBStudent[]) => {
-        const student = data.find(s => s.student_id === user.student_id);
-        if (student) setCurrentStudent(student);
-      });
-
       const settingsRequest = fetch("/api/public/settings?all=true")
       .then(r => r.json())
-      .then(list => {
+      .then(async list => {
         if (!Array.isArray(list)) return;
         setSettingsList(list);
-        const activeOrLatest = list.find((s: any) => s.is_active) || list[0];
-        if (activeOrLatest) {
-          setActiveSettingId(activeOrLatest.id);
-          setMidtermMax(activeOrLatest.midterm_max_score ?? 50);
-          setFinalMax(activeOrLatest.final_max_score ?? 50);
-          if (Array.isArray(activeOrLatest.schedule_days)) setScheduleDaysConfig(activeOrLatest.schedule_days);
+        const initialSetting = getDefaultStudentTerm(list);
+        const currentTermSetting = list.find((setting: TermSetting) => setting.is_active) || list[0];
+        if (initialSetting) {
+          setActiveSettingId(initialSetting.id);
+          setMidtermMax(initialSetting.midterm_max_score ?? 50);
+          setFinalMax(initialSetting.final_max_score ?? 50);
+          if (Array.isArray(initialSetting.schedule_days)) setScheduleDaysConfig(initialSetting.schedule_days);
         }
-        return activeOrLatest;
+        // The grade tab can initially show a previous term, but a student's
+        // classroom must always be resolved for the current timetable term.
+        if (currentTermSetting?.id) {
+          const studentsResponse = await fetch(`/api/students?settingId=${currentTermSetting.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (studentsResponse.ok) {
+            const students = await studentsResponse.json() as DBStudent[];
+            const student = students.find(item => item.student_id === user.student_id);
+            if (student && !cancelled) setCurrentStudent(student);
+          }
+        }
+        return initialSetting;
       });
 
       // Render the portal after identity and term are known. Each tab fetches
       // only its own data below instead of blocking login on every report.
-      await Promise.allSettled([studentRequest, settingsRequest]);
+      await Promise.allSettled([settingsRequest]);
       if (!cancelled) setInitialDataLoading(false);
     };
     void loadInitialData();
@@ -147,10 +197,10 @@ export default function StudentPortal() {
             fetch("/api/public/classrooms").then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setClassrooms(data); }),
           ]);
         }
-        if (["overview", "schedule"].includes(activeTab)) {
+        if (["overview", "schedule"].includes(activeTab) && currentScheduleSettingId) {
           await Promise.all([
-            fetch(`/api/schedule-periods?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
-            fetch(`/api/schedules?settingId=${activeSettingId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
+            fetch(`/api/schedule-periods?settingId=${currentScheduleSettingId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setSchedulePeriods(data); }),
+            fetch(`/api/schedules?settingId=${currentScheduleSettingId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setScheduleEntries(data); }),
           ]);
         }
       } finally {
@@ -159,7 +209,18 @@ export default function StudentPortal() {
     };
     void loadActiveTab();
     return () => { cancelled = true; };
-  }, [activeSettingId, activeTab, initialDataLoading, token, user?.student_id]);
+  }, [activeSettingId, activeTab, currentScheduleSettingId, initialDataLoading, token, user?.student_id]);
+
+  useEffect(() => {
+    if (activeTab !== "evaluation" || settingsList.length === 0) return;
+    const selected = settingsList.find(setting => setting.id === activeSettingId);
+    if (String(selected?.term) === "2") return;
+    const base = selected || settingsList.find(setting => setting.is_active) || settingsList[0];
+    const termTwo = settingsList.find(setting =>
+      String(setting.academic_year) === String(base?.academic_year) && String(setting.term) === "2"
+    ) || settingsList.find(setting => String(setting.term) === "2");
+    if (termTwo) setActiveSettingId(termTwo.id);
+  }, [activeSettingId, activeTab, settingsList]);
 
   useEffect(() => {
     if (!token || !activeSettingId || activeTab !== "evaluation") return;
@@ -190,8 +251,6 @@ export default function StudentPortal() {
       .then(data => setMyRanking(Array.isArray(data) ? data[0] ?? null : null))
       .catch(() => setMyRanking(null));
   }, [token, activeSettingId, settingsList, activeTab]);
-
-  const ACTIVE_DAYS = ALL_DAYS.filter(d => scheduleDaysConfig.includes(d.value));
 
   const activeSetting = settingsList.find(s => s.id === activeSettingId);
   const activeTermStr = activeSetting ? `${activeSetting.term}/${activeSetting.academic_year}` : "";
@@ -552,7 +611,7 @@ export default function StudentPortal() {
     const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
     const thBase = "padding:5px 8px;background:#1e293b;color:#f8fafc;font-size:10px;font-weight:700;text-align:center;border:1px solid #334155;";
     const periodHeader = `<th style="${thBase}text-align:left;min-width:80px;">คาบ</th>`;
-    const dayHeaders = ACTIVE_DAYS.map(d => `<th style="${thBase}min-width:100px;">วัน${d.label}</th>`).join("");
+    const dayHeaders = scheduleActiveDays.map(d => `<th style="${thBase}min-width:100px;">วัน${d.label}</th>`).join("");
     const rows = schedulePeriods.map(p => {
       const pCell = `<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:11px;font-weight:700;white-space:nowrap;vertical-align:middle;">
         ${p.label ? `<div style="font-size:9px;color:#d97706;font-weight:700;">${p.label}</div>` : ""}
@@ -560,9 +619,9 @@ export default function StudentPortal() {
         <div style="font-size:9px;color:#94a3b8;font-weight:400;">${p.start_time}–${p.end_time}</div>
       </td>`;
       if (p.is_break) {
-        return `<tr>${pCell}<td colspan="${ACTIVE_DAYS.length}" style="padding:5px;text-align:center;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:10px;">${p.label || "พักเบรก"}</td></tr>`;
+        return `<tr>${pCell}<td colspan="${scheduleActiveDays.length}" style="padding:5px;text-align:center;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:10px;">${p.label || "พักเบรก"}</td></tr>`;
       }
-      const cells = ACTIVE_DAYS.map(d => {
+      const cells = scheduleActiveDays.map(d => {
         const entry = myEntries.find(e => Number(e.day_of_week) === d.value && e.period_id === p.id);
         if (!entry) return `<td style="border:1px solid #f1f5f9;min-width:100px;"></td>`;
         const tDisplay = entry.teacher_name || (entry.teacher_names?.join(", ") || "");
@@ -688,7 +747,7 @@ export default function StudentPortal() {
             schedulePeriods={schedulePeriods}
             scheduleEntries={scheduleEntries}
             classroomId={currentStudent.classroom_id}
-            activeDays={ACTIVE_DAYS}
+            activeDays={scheduleActiveDays}
             onExport={handleExportStudentSchedule}
           />
         )}

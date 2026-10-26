@@ -63,15 +63,15 @@ export default function ScheduleTab({ schedulePeriods, myScheduleEntries, active
                       const period = schedulePeriods.find(p => p.id === e.period_id);
                       return (
                         <div key={e.id} className="p-4 flex items-start gap-3 hover:bg-muted/50 transition-colors">
-                          <div className="shrink-0 text-center w-12 py-1 px-1 rounded-xl bg-gradient-to-br from-slate-50 to-indigo-50/50 dark:to-indigo-500/10">
-                            <div className="text-xs font-extrabold text-foreground">คาบ {e.period_no}</div>
-                            <div className="text-[10px] text-muted-foreground">{e.start_time}</div>
-                            <div className="text-[10px] text-muted-foreground">{e.end_time}</div>
+                          <div className="shrink-0 text-center w-12 py-1 px-1 rounded-xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-indigo-50/50 dark:from-slate-700 dark:to-slate-800 dark:border-slate-600">
+                            <div className="text-xs font-extrabold text-foreground dark:text-slate-50">คาบ {e.period_no}</div>
+                            <div className="text-[10px] text-muted-foreground dark:text-slate-300">{e.start_time}</div>
+                            <div className="text-[10px] text-muted-foreground dark:text-slate-300">{e.end_time}</div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-bold text-foreground text-sm truncate">{e.subject_name}</div>
                             <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-xs bg-indigo-50/80 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold px-2 py-0.5 rounded-full border border-indigo-100/60 dark:border-indigo-500/25">
+                              <span className="text-xs bg-indigo-50/80 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-200 font-bold px-2 py-0.5 rounded-full border border-indigo-100/60 dark:border-indigo-400/40">
                                 ห้อง {e.classroom_name}
                               </span>
                               {period?.label && (
