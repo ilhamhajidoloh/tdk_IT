@@ -201,6 +201,47 @@ export async function GET(req: NextRequest) {
       percentage: totalGradeEntries > 0 ? parseFloat(((count * 100) / totalGradeEntries).toFixed(1)) : 0,
     }));
 
+    // Keep the individual observations needed for distribution charts.  We only
+    // return numeric values (not student identities) because the analytics UI
+    // aggregates these into score ranges.
+    const gradedSubjectKeys = new Set(gradedScoreSubjects.map((subject: any) => subject.name.trim().toLowerCase()));
+    const classroomHistogramData = classrooms.map((cls: any) => {
+      const observations = (classroomStudentsMap.get(cls.id) || []).flatMap((std: any) => {
+        const scores = studentSubjectScores.get(std.student_id);
+        if (!scores || scores.size === 0) return [];
+
+        let total = 0;
+        let max = 0;
+        let points = 0;
+        let gradedSubjectCount = 0;
+        scores.forEach((info, subjectKey) => {
+          if (!gradedSubjectKeys.has(subjectKey)) return;
+          total += info.total;
+          max += info.maxScore;
+          points += info.point;
+          gradedSubjectCount++;
+        });
+
+        if (max <= 0 || gradedSubjectCount === 0) return [];
+
+        return [{
+          percentage: Number(((total * 100) / max).toFixed(2)),
+          gpa: Number((points / gradedSubjectCount).toFixed(2)),
+        }];
+      });
+
+      return { classroom_id: cls.id, observations };
+    }).filter((item) => item.observations.length > 0);
+
+    const subjectHistogramData = gradedScoreSubjects.map((subj: any) => {
+      const subjKey = subj.name.trim().toLowerCase();
+      const scores = students.flatMap((std: any) => {
+        const info = studentSubjectScores.get(std.student_id)?.get(subjKey);
+        return info ? [Number(info.total.toFixed(2))] : [];
+      });
+      return { subject_id: subj.id, max_score: subjectMaxMap.get(subjKey) || 100, scores };
+    }).filter((item) => item.scores.length > 0);
+
     // Classroom Comparisons
     const classroomStats = classrooms.map((cls: any) => {
       const clsStudents = classroomStudentsMap.get(cls.id) || [];
@@ -468,6 +509,10 @@ export async function GET(req: NextRequest) {
       kpi: kpiSummary,
       classrooms: classroomStats,
       subjects: subjectStats.filter((subject) => subject.graded_students > 0),
+      histogram: {
+        classrooms: classroomHistogramData,
+        subjects: subjectHistogramData,
+      },
       grade_distribution: gradeDistribution,
       character_topics: characterTopics,
       rwt_topics: rwtTopics,

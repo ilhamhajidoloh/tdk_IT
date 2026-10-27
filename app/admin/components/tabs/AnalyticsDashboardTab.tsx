@@ -121,6 +121,17 @@ interface AnalyticsData {
       raw_avg_score?: number;
     }>;
   }>;
+  histogram: {
+    classrooms: Array<{
+      classroom_id: string;
+      observations: Array<{ percentage: number; gpa: number }>;
+    }>;
+    subjects: Array<{
+      subject_id: string;
+      max_score: number;
+      scores: number[];
+    }>;
+  };
   grade_distribution: Array<{
     grade: string;
     count: number;
@@ -181,8 +192,12 @@ export default function AnalyticsDashboardTab({
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   
-  // Navigation View: "all" (ภาพรวม) | "classrooms" (รายห้อง) | "subjects" (รายวิชา) | "evaluation" (คุณลักษณะ & RWT)
-  const [activeView, setActiveView] = useState<"all" | "classrooms" | "subjects" | "evaluation">("all");
+  // Navigation View: "all" (ภาพรวม) | "classrooms" (รายห้อง) | "subjects" (รายวิชา) | "histogram" | "evaluation"
+  const [activeView, setActiveView] = useState<"all" | "classrooms" | "subjects" | "histogram" | "evaluation">("all");
+  const [histogramMode, setHistogramMode] = useState<"classroom" | "subject">("classroom");
+  const [histogramClassroomId, setHistogramClassroomId] = useState<string>("all");
+  const [histogramClassMetric, setHistogramClassMetric] = useState<"percentage" | "gpa">("percentage");
+  const [histogramSubjectId, setHistogramSubjectId] = useState<string>("");
   
   // Classroom filters & selection
   const [selectedClassroomId, setSelectedClassroomId] = useState<string>("all");
@@ -298,6 +313,38 @@ export default function AnalyticsDashboardTab({
     }));
   }, [data?.rwt_topics]);
 
+  const classroomHistogramData = useMemo(() => {
+    if (!data?.histogram) return [];
+    const observations = data.histogram.classrooms
+      .filter((item) => histogramClassroomId === "all" || item.classroom_id === histogramClassroomId)
+      .flatMap((item) => item.observations);
+    const step = histogramClassMetric === "percentage" ? 10 : 0.5;
+    const ceiling = histogramClassMetric === "percentage" ? 100 : 4;
+    return Array.from({ length: ceiling / step }, (_, index) => {
+      const start = index * step;
+      const end = start + step;
+      const count = observations.filter(({ percentage, gpa }) => {
+        const value = histogramClassMetric === "percentage" ? percentage : gpa;
+        return index === ceiling / step - 1 ? value >= start && value <= end : value >= start && value < end;
+      }).length;
+      return { range: `${start}-${end}${histogramClassMetric === "percentage" ? "%" : ""}`, students: count };
+    });
+  }, [data?.histogram, histogramClassroomId, histogramClassMetric]);
+
+  const subjectHistogramData = useMemo(() => {
+    if (!data?.histogram) return [];
+    const item = data.histogram.subjects.find((subject) => subject.subject_id === histogramSubjectId)
+      ?? data.histogram.subjects[0];
+    if (!item) return [];
+    const step = Math.max(1, Math.ceil(item.max_score / 10));
+    return Array.from({ length: 10 }, (_, index) => {
+      const start = index * step;
+      const end = index === 9 ? item.max_score : Math.min(item.max_score, start + step);
+      const count = item.scores.filter((score) => index === 9 ? score >= start && score <= end : score >= start && score < end).length;
+      return { range: `${start}-${end}`, students: count };
+    });
+  }, [data?.histogram, histogramSubjectId]);
+
   return (
     <div className="p-6 md:p-8 space-y-8 animate-fade-in-up">
       {/* 1. Header Section */}
@@ -376,6 +423,18 @@ export default function AnalyticsDashboardTab({
                 {data.subjects.length}
               </span>
             )}
+          </button> : null}
+
+          {data?.histogram && (data.histogram.classrooms.length > 0 || data.histogram.subjects.length > 0) ? <button
+            onClick={() => setActiveView("histogram")}
+            className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+              activeView === "histogram"
+                ? "bg-amber-500 text-white shadow-md shadow-amber-500/20"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>ฮิสโทแกรมคะแนน</span>
           </button> : null}
 
           <button
@@ -589,6 +648,94 @@ export default function AnalyticsDashboardTab({
                 </div>
               </div>
             </div>
+          )}
+
+          {activeView === "histogram" && (
+            <section className="space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-amber-500/20 pb-4">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 shrink-0 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-foreground">ฮิสโทแกรมการกระจายคะแนน</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">ดูจำนวนนักเรียนในแต่ละช่วงคะแนน เพื่อเห็นการกระจายผลสัมฤทธิ์ได้ชัดเจนขึ้น</p>
+                  </div>
+                </div>
+                <div className="flex rounded-xl bg-muted/70 p-1 text-sm font-bold">
+                  <button onClick={() => setHistogramMode("classroom")} className={`px-3 py-2 rounded-lg transition ${histogramMode === "classroom" ? "bg-card text-indigo-600 shadow-sm" : "text-muted-foreground"}`}>แยกตามชั้นเรียน</button>
+                  <button onClick={() => setHistogramMode("subject")} className={`px-3 py-2 rounded-lg transition ${histogramMode === "subject" ? "bg-card text-emerald-600 shadow-sm" : "text-muted-foreground"}`}>แยกตามรายวิชา</button>
+                </div>
+              </div>
+
+              {histogramMode === "classroom" ? (
+                <div className="card-modern p-5 md:p-6">
+                  <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
+                    <div>
+                      <h4 className="font-black text-foreground">การกระจายผลการเรียนรายชั้น</h4>
+                      <p className="text-xs text-muted-foreground mt-1">อิงจากเปอร์เซ็นต์รวม หรือเกรดเฉลี่ย (GPA) ของนักเรียนแต่ละคน</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <select value={histogramClassroomId} onChange={(e) => setHistogramClassroomId(e.target.value)} className="input-modern py-2 px-3 text-sm rounded-xl font-medium">
+                        <option value="all">ทุกชั้นเรียน</option>
+                        {data.classrooms.map((classroom) => <option key={classroom.classroom_id} value={classroom.classroom_id}>{getClassroomName(classroom)}</option>)}
+                      </select>
+                      <select value={histogramClassMetric} onChange={(e) => setHistogramClassMetric(e.target.value as "percentage" | "gpa")} className="input-modern py-2 px-3 text-sm rounded-xl font-medium">
+                        <option value="percentage">เปอร์เซ็นต์รวม</option>
+                        <option value="gpa">เกรดเฉลี่ย (GPA)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="h-[320px]" role="img" aria-label="ฮิสโทแกรมการกระจายผลการเรียนรายชั้น">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={classroomHistogramData} margin={{ top: 12, right: 12, left: -18, bottom: 42 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border" />
+                        <XAxis dataKey="range" angle={-40} textAnchor="end" interval={0} tick={{ fontSize: 11 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          formatter={(value) => [`${value} คน`, "จำนวนนักเรียน"]}
+                          contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "0.75rem", color: "#111827" }}
+                          labelStyle={{ color: "#111827", fontWeight: 800 }}
+                          itemStyle={{ color: "#047857", fontWeight: 700 }}
+                        />
+                        <Bar dataKey="students" name="จำนวนนักเรียน" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : (
+                <div className="card-modern p-5 md:p-6">
+                  <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
+                    <div>
+                      <h4 className="font-black text-foreground">การกระจายคะแนนรวมรายวิชา</h4>
+                      <p className="text-xs text-muted-foreground mt-1">อิงคะแนนรวมจริงของนักเรียนแต่ละคน ไม่ปรับเป็นเปอร์เซ็นต์</p>
+                    </div>
+                    <select value={histogramSubjectId || data.histogram.subjects[0]?.subject_id || ""} onChange={(e) => setHistogramSubjectId(e.target.value)} className="input-modern py-2 px-3 text-sm rounded-xl font-medium min-w-[220px]">
+                      {data.histogram.subjects.map((item) => {
+                        const subject = data.subjects.find((value) => value.subject_id === item.subject_id);
+                        return <option key={item.subject_id} value={item.subject_id}>{subject?.subject_name ?? "รายวิชา"} (เต็ม {item.max_score})</option>;
+                      })}
+                    </select>
+                  </div>
+                  <div className="h-[320px]" role="img" aria-label="ฮิสโทแกรมการกระจายคะแนนรวมรายวิชา">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={subjectHistogramData} margin={{ top: 12, right: 12, left: -18, bottom: 42 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border" />
+                        <XAxis dataKey="range" angle={-40} textAnchor="end" interval={0} tick={{ fontSize: 11 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          formatter={(value) => [`${value} คน`, "จำนวนนักเรียน"]}
+                          contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "0.75rem", color: "#111827" }}
+                          labelStyle={{ color: "#111827", fontWeight: 800 }}
+                          itemStyle={{ color: "#047857", fontWeight: 700 }}
+                        />
+                        <Bar dataKey="students" name="จำนวนนักเรียน" fill="#10b981" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </section>
           )}
 
           {/* ========================================================================= */}
