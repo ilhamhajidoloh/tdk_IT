@@ -1009,8 +1009,8 @@ export default function AchievementTab({
           </div>
 
           {/* Toggle Switch */}
-          <div className="lg:col-span-3 flex lg:justify-end items-center pt-2 lg:pt-0">
-            <label className="relative inline-flex items-center cursor-pointer select-none">
+          <div className="lg:col-span-3 flex items-center pt-2 lg:justify-end lg:pt-0">
+            <label className="relative inline-flex max-w-full items-center cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={includeActivity}
@@ -1018,7 +1018,7 @@ export default function AchievementTab({
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              <span className="ml-3 text-xs font-bold text-foreground">
+              <span className="ml-3 min-w-0 text-xs font-bold text-foreground">
                 รวมวิชากิจกรรม (ที่มีคะแนน)
               </span>
             </label>
