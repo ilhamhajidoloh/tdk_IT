@@ -968,9 +968,9 @@ export default function AchievementTab({
 
       {/* Control & Options Card */}
       <div className="bg-card border border-border p-6 rounded-3xl space-y-4 shadow-sm">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <div className="flex flex-wrap items-center gap-6">
           {/* Term Selector */}
-          <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-border pb-4 lg:pb-0 lg:pr-6">
+          <div className="min-w-0 flex-[5_1_300px] border-b border-border pb-4 xl:border-b-0 xl:border-r xl:pb-0 xl:pr-6">
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
               เลือกปีการศึกษา / ภาคเรียน
             </label>
@@ -982,7 +982,7 @@ export default function AchievementTab({
           </div>
 
           {/* Title & Agency inputs */}
-          <div className="lg:col-span-4 space-y-3">
+          <div className="min-w-0 flex-[4_1_260px] space-y-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                 หัวข้อรายงาน (Report Title)
@@ -1009,16 +1009,16 @@ export default function AchievementTab({
           </div>
 
           {/* Toggle Switch */}
-          <div className="lg:col-span-3 flex items-center pt-2 lg:justify-end lg:pt-0">
-            <label className="relative inline-flex max-w-full items-center cursor-pointer select-none">
+          <div className="flex flex-[3_1_220px] items-center pt-2 xl:justify-end xl:pt-0">
+            <label className="inline-flex max-w-full items-center gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={includeActivity}
                 onChange={(e) => setIncludeActivity(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              <span className="ml-3 min-w-0 text-xs font-bold text-foreground">
+              <div className="relative h-6 w-11 shrink-0 rounded-full bg-muted peer peer-focus:outline-none peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-white after:transition-all after:content-['']"></div>
+              <span className="min-w-0 text-xs font-bold text-foreground">
                 รวมวิชากิจกรรม (ที่มีคะแนน)
               </span>
             </label>
