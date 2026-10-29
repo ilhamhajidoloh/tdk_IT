@@ -1,10 +1,13 @@
 import pool from "./db";
 
 let migrationDone = false;
+let migrationPromise: Promise<void> | null = null;
 
 export async function ensureStatusSchema() {
   if (migrationDone) return;
-  try {
+  if (!migrationPromise) {
+    migrationPromise = (async () => {
+      try {
     // system_settings columns
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS academic_head VARCHAR");
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS highest_grade_level VARCHAR");
@@ -120,7 +123,12 @@ export async function ensureStatusSchema() {
     `);
 
     migrationDone = true;
-  } catch (err) {
-    console.error("Error in ensureStatusSchema migration:", err);
+      } catch (err) {
+        console.error("Error in ensureStatusSchema migration:", err);
+      } finally {
+        migrationPromise = null;
+      }
+    })();
   }
+  return migrationPromise;
 }

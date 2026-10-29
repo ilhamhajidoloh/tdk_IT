@@ -13,14 +13,25 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const current = (document.documentElement.getAttribute("data-theme") as Theme) || "light";
+    const current = (document.documentElement.getAttribute("data-theme") as Theme) || 
+      (document.documentElement.classList.contains("dark") ? "dark" : "light");
     setTheme(current);
+    if (current === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     setMounted(true);
   }, []);
 
   const toggle = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
+    if (next === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     try {
       localStorage.setItem("theme", next);
     } catch {}

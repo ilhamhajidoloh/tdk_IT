@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { generateSubdomain } from "@/app/lib/format";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 const DEFAULT_MODULES = {
   news: true,
@@ -21,7 +20,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await ensureStatusSchema();
     const result = await pool.query(
       "SELECT id, name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules, deletion_requested, deletion_requested_at, created_at, updated_at FROM public.schools ORDER BY name ASC"
     );
@@ -38,7 +36,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await ensureStatusSchema();
     const body = await req.json();
     const { name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules } = body;
 

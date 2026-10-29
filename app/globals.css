@@ -4,7 +4,7 @@
    THEME ENGINE — Modern SaaS Dashboard (Light / Dark)
    Toggle driven by [data-theme="dark"] on <html>.
    ========================================================================= */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
 
 :root {
   /* Surfaces */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import {
@@ -27,12 +27,25 @@ import {
   Clock3,
   Upload,
   X,
-  User
+  User,
+  Copy,
+  ExternalLink,
+  ChevronRight,
+  Filter,
+  CheckSquare,
+  Square,
+  AlertTriangle,
+  RefreshCw,
+  Globe
 } from "lucide-react";
 import { useAuth } from "../lib/useAuth";
 import ThemeToggle from "../components/ThemeToggle";
 import { slugify, generateSubdomain } from "../lib/format";
 import { getSchoolLogoUrl } from "../components/SchoolBrand";
+
+// ==========================================
+// TYPE DEFINITIONS (API Logic Preserved)
+// ==========================================
 
 interface EnabledModules {
   news?: boolean;
@@ -93,6 +106,16 @@ interface SchoolRequest {
   reviewed_at?: string | null;
 }
 
+const MODULE_DEFINITIONS: { key: keyof EnabledModules; label: string; desc: string }[] = [
+  { key: "news", label: "ข่าวสารประชาสัมพันธ์", desc: "ประกาศและข่าวสารกิจกรรมของโรงเรียน" },
+  { key: "duty", label: "เวรครูและแม่ครัว", desc: "ตารางเวรปฏิบัติหน้าที่ประจำสัปดาห์" },
+  { key: "attendance", label: "เช็คชื่อเข้าเรียน", desc: "ระบบบันทึกเวลาและการเข้าแถวของนักเรียน" },
+  { key: "evaluations", label: "ประเมินคุณลักษณะ", desc: "การประเมินพฤติกรรมและคุณลักษณะอันพึงประสงค์" },
+  { key: "correspondence", label: "หนังสือราชการ", desc: "ระบบสารบรรณและหนังสือรับ-ส่งภายใน" },
+  { key: "grades", label: "คะแนน เกรด & อันดับ", desc: "บันทึกผลการเรียนและการจัดอันดับ" },
+  { key: "schedule", label: "ตารางเรียน & คาบสอน", desc: "ตารางสอนครูและตารางเรียนประจำห้อง" },
+];
+
 export default function SuperAdminPage() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
@@ -102,7 +125,10 @@ export default function SuperAdminPage() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [schoolRequests, setSchoolRequests] = useState<SchoolRequest[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [requestFilter, setRequestFilter] = useState<"all" | "pending" | "approved" | "denied">("all");
+  const [copiedSubdomain, setCopiedSubdomain] = useState<string | null>(null);
 
   // School Modal State
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
@@ -186,22 +212,29 @@ export default function SuperAdminPage() {
     }
   };
 
-  const loadTabData = async (tab: "schools" | "admins" | "requests") => {
-    setLoadingData(true);
+  const loadAllData = async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setLoadingData(true);
+    }
     try {
-      if (tab === "schools") await fetchSchools();
-      if (tab === "admins") await fetchAdmins();
-      if (tab === "requests") await fetchSchoolRequests();
+      await Promise.all([
+        fetchSchools(),
+        fetchAdmins(),
+        fetchSchoolRequests(),
+      ]);
     } finally {
       setLoadingData(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     if (user?.role === "super_admin") {
-      void loadTabData(activeTab);
+      void loadAllData();
     }
-  }, [user, activeTab]);
+  }, [user]);
 
   // --- SCHOOL ACTIONS ---
   const openAddSchoolModal = () => {
@@ -240,25 +273,21 @@ export default function SuperAdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
     if (!validTypes.includes(file.type)) {
       Swal.fire("ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพ (JPG, PNG, WebP, SVG)", "error");
       return;
     }
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       Swal.fire("ไฟล์ใหญ่เกินไป", "ขนาดสูงสุด 5MB", "error");
       return;
     }
 
-    // Show preview
     const reader = new FileReader();
     reader.onload = (e) => setLogoPreview(e.target?.result as string);
     reader.readAsDataURL(file);
 
-    // Upload to server
     setIsUploadingLogo(true);
     const promise = (async () => {
       const formData = new FormData();
@@ -283,10 +312,10 @@ export default function SuperAdminPage() {
 
     try {
       await promise;
-      Swal.fire("สำเร็จ", "อัพโหลดโลโก้เรียบร้อยแล้ว", "success");
+      Swal.fire("สำเร็จ", "อัปโหลดโลโก้เรียบร้อยแล้ว", "success");
     } catch (error: any) {
       console.error("Logo upload error:", error);
-      Swal.fire("เกิดข้อผิดพลาด", error.message || "ไม่สามารถอัพโหลดโลโก้ได้", "error");
+      Swal.fire("เกิดข้อผิดพลาด", error.message || "ไม่สามารถอัปโหลดโลโก้ได้", "error");
       setLogoPreview("");
     } finally {
       setIsUploadingLogo(false);
@@ -321,7 +350,6 @@ export default function SuperAdminPage() {
     }
 
     try {
-      // If logo is currently uploading in background, wait for it to finish!
       let currentDriveId = schoolLogoDriveFileId.trim() || null;
       let currentLogoUrl = schoolLogoUrl.trim() || null;
 
@@ -359,8 +387,6 @@ export default function SuperAdminPage() {
         enabled_modules: enabledModules,
       };
 
-      console.log("Saving school with payload:", payload);
-
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -377,12 +403,12 @@ export default function SuperAdminPage() {
         const createAdminConfirm = await Swal.fire({
           icon: "success",
           title: "🎉 สร้างโรงเรียนสำเร็จ!",
-          html: `โรงเรียน <strong>${data.name}</strong> ถูกเพิ่มและพร้อมแสดงผลบนหน้าหลักแล้ว<br/><br/><strong>ต้องการสร้างบัญชีผู้ดูแลระบบ (Admin) สำหรับโรงเรียนนี้เลยหรือไม่?</strong>`,
+          html: `โรงเรียน <strong>${data.name}</strong> ถูกเพิ่มและพร้อมแสดงผลแล้ว<br/><br/><strong>ต้องการสร้างบัญชีผู้ดูแลระบบ (Admin) สำหรับโรงเรียนนี้เลยหรือไม่?</strong>`,
           showCancelButton: true,
           confirmButtonText: "สร้างบัญชี Admin ทันที",
           cancelButtonText: "ไว้สร้างภายหลัง",
           confirmButtonColor: "#4f46e5",
-          cancelButtonColor: "#6b7280",
+          cancelButtonColor: "#64748b",
         });
 
         if (createAdminConfirm.isConfirmed) {
@@ -440,13 +466,13 @@ export default function SuperAdminPage() {
 
     const result = await Swal.fire({
       title: `⚠️ ลบโรงเรียน "${school.name}" ถาวร?`,
-      html: `<p class="text-sm text-gray-600">การดำเนินการนี้<strong>ไม่สามารถย้อนกลับได้</strong><br/>ข้อมูลนักเรียน ครู คะแนน และข้อมูลทั้งหมดของโรงเรียนนี้จะถูกลบออกจากระบบอย่างถาวร</p>`,
+      html: `<p class="text-sm text-slate-600 dark:text-slate-400">การดำเนินการนี้<strong>ไม่สามารถย้อนกลับได้</strong><br/>ข้อมูลนักเรียน ครู คะแนน และข้อมูลทั้งหมดจะถูกลบอย่างถาวร</p>`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "ยืนยัน ลบถาวร",
       cancelButtonText: "ยกเลิก",
       confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#6b7280",
+      cancelButtonColor: "#64748b",
       input: "text",
       inputLabel: `พิมพ์ชื่อโรงเรียน "${school.name}" เพื่อยืนยัน`,
       inputPlaceholder: school.name,
@@ -595,7 +621,7 @@ export default function SuperAdminPage() {
           confirmButtonText: "สร้างบัญชี Admin ทันที",
           cancelButtonText: "ไว้สร้างภายหลัง",
           confirmButtonColor: "#4f46e5",
-          cancelButtonColor: "#6b7280",
+          cancelButtonColor: "#64748b",
         });
 
         if (createAdminConfirm.isConfirmed) {
@@ -615,26 +641,46 @@ export default function SuperAdminPage() {
     }
   };
 
-  const filteredSchools = schools.filter(
-    (s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.subdomain.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.name_en && s.name_en.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const copySubdomain = (sub: string) => {
+    navigator.clipboard.writeText(`?school=${sub}`);
+    setCopiedSubdomain(sub);
+    setTimeout(() => setCopiedSubdomain(null), 2000);
+  };
 
-  const filteredAdmins = admins.filter(
-    (a) =>
-      a.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (a.email && a.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (a.school_name && a.school_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-  const filteredRequests = schoolRequests.filter(
-    (request) =>
-      request.school_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.subdomain.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (request.requester_username || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (request.requester_email || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filtered queries
+  const filteredSchools = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return schools.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.subdomain.toLowerCase().includes(q) ||
+        (s.name_en && s.name_en.toLowerCase().includes(q))
+    );
+  }, [schools, searchQuery]);
+
+  const filteredAdmins = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return admins.filter(
+      (a) =>
+        a.username.toLowerCase().includes(q) ||
+        (a.email && a.email.toLowerCase().includes(q)) ||
+        (a.school_name && a.school_name.toLowerCase().includes(q))
+    );
+  }, [admins, searchQuery]);
+
+  const filteredRequests = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return schoolRequests.filter((request) => {
+      const matchesSearch =
+        request.school_name.toLowerCase().includes(q) ||
+        request.subdomain.toLowerCase().includes(q) ||
+        (request.requester_username || "").toLowerCase().includes(q) ||
+        (request.requester_email || "").toLowerCase().includes(q);
+
+      if (requestFilter === "all") return matchesSearch;
+      return matchesSearch && request.status === requestFilter;
+    });
+  }, [schoolRequests, searchQuery, requestFilter]);
 
   const activeSchoolsCount = schools.filter((s) => s.is_active).length;
   const schoolAdminsCount = admins.filter((a) => a.role === "admin").length;
@@ -642,46 +688,71 @@ export default function SuperAdminPage() {
 
   if (loading || !user || loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-muted-foreground">กำลังโหลดข้อมูล Super Admin...</span>
+          <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">กำลังเตรียมระบบ Super Admin...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col antialiased">
-      {/* Super Admin Top Header */}
-      <header className="border-b border-border bg-card/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <ShieldCheck className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 selection:bg-indigo-600 selection:text-white dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans transition-colors">
+      
+      {/* =========================================================================
+          Top Bar: Super Admin Portal Header
+          ========================================================================= */}
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/85 dark:bg-slate-900/85 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+          
+          {/* Brand & Portal Title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-            <div>
-              <h1 className="font-extrabold text-lg tracking-tight text-foreground">
-                Super Admin Portal
-              </h1>
-              <p className="text-xs text-amber-500 dark:text-amber-400 font-bold uppercase tracking-wider">
-                Platform Control & Multi-School Governance
+            <div className="min-w-0 leading-tight">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                  Super Admin Portal
+                </h1>
+                <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  ผู้ดูแลสูงสุด
+                </span>
+              </div>
+              <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                การบริหารจัดการเครือข่ายโรงเรียนและผู้ดูแลระบบ
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-
+          {/* Quick Action Tools */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Refresh Data */}
             <button
-              onClick={() => router.push("/super-admin/profile")}
-              title="โปรไฟล์"
-              className="flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 border border-border transition-all shrink-0"
+              onClick={() => void loadAllData(true)}
+              disabled={isRefreshing}
+              title="รีเฟรชข้อมูล"
+              className="p-2 sm:px-3 sm:py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 rounded-xl border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5 disabled:opacity-50"
             >
-              <User className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-indigo-600 dark:text-indigo-400" : ""}`} />
+              <span className="hidden sm:inline">รีเฟรช</span>
             </button>
 
-            {/* Social Mail Link Button */}
+            <ThemeToggle />
+
+            {/* Profile Navigation */}
+            <button
+              onClick={() => router.push("/super-admin/profile")}
+              title="โปรไฟล์ผู้ดูแลระบบ"
+              className="p-2 sm:px-3 sm:py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 rounded-xl border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5"
+            >
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">โปรไฟล์</span>
+            </button>
+
+            {/* Social Account Linking */}
             <button
               onClick={async () => {
                 if (user?.email) {
@@ -693,7 +764,7 @@ export default function SuperAdminPage() {
                     confirmButtonText: "ยกเลิกการเชื่อมต่อ",
                     cancelButtonText: "ปิด",
                     confirmButtonColor: "#ef4444",
-                    cancelButtonColor: "#6b7280",
+                    cancelButtonColor: "#64748b",
                   });
                   if (result.isConfirmed) {
                     Swal.fire({ title: "กำลังดำเนินการ...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
@@ -714,7 +785,7 @@ export default function SuperAdminPage() {
                     cancelButtonText: "ยกเลิก",
                     html: `
                       <div class="flex flex-col gap-3 mt-4 text-left">
-                        <button id="sa-link-google" class="flex items-center gap-3 w-full px-5 py-3 rounded-xl border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all font-semibold cursor-pointer">
+                        <button id="sa-link-google" class="flex items-center gap-3 w-full px-5 py-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all font-semibold cursor-pointer">
                           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -723,11 +794,11 @@ export default function SuperAdminPage() {
                           </svg>
                           <span class="text-sm">เชื่อมต่อกับ Google</span>
                         </button>
-                        <button id="sa-link-line" class="flex items-center gap-3 w-full px-5 py-3 rounded-xl border border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all font-semibold cursor-pointer">
+                        <button id="sa-link-line" class="flex items-center gap-3 w-full px-5 py-3 rounded-xl border border-slate-200 hover:border-green-400 hover:bg-green-50 transition-all font-semibold cursor-pointer">
                           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="#06C755"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.070 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                           <span class="text-sm">เชื่อมต่อกับ LINE</span>
                         </button>
-                        <button id="sa-link-facebook" class="flex items-center gap-3 w-full px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all font-semibold cursor-pointer">
+                        <button id="sa-link-facebook" class="flex items-center gap-3 w-full px-5 py-3 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all font-semibold cursor-pointer">
                           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                           <span class="text-sm">เชื่อมต่อกับ Facebook</span>
                         </button>
@@ -742,16 +813,16 @@ export default function SuperAdminPage() {
                 }
               }}
               title={user?.email ? `เชื่อมต่ออีเมล: ${user.email}` : "เชื่อมต่อบัญชีโซเชียล"}
-              className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all shrink-0 border ${
+              className={`p-2 rounded-xl transition border ${
                 user?.email
-                  ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10"
-                  : "text-muted-foreground border-border hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
+                  ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40"
+                  : "text-slate-500 border-slate-200 dark:border-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <Mail className="w-4 h-4" />
             </button>
 
-            {/* Change Password Button */}
+            {/* Change Password */}
             <button
               onClick={async () => {
                 const { value: newPassword } = await Swal.fire({
@@ -772,241 +843,365 @@ export default function SuperAdminPage() {
                 }
               }}
               title="เปลี่ยนรหัสผ่าน"
-              className="flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 transition-all shrink-0 border border-border"
+              className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition border border-slate-200 dark:border-slate-700"
             >
               <Key className="w-4 h-4" />
             </button>
 
+            {/* Logout */}
             <button
               onClick={logout}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30 text-xs font-bold transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 text-xs font-bold transition active:scale-95"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>ออกจากระบบ</span>
+              <span className="hidden sm:inline">ออกจากระบบ</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 space-y-8">
-        {/* Stats Row */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="p-6 rounded-3xl bg-card border border-border flex items-center gap-4 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 flex items-center justify-center text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-500/30">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-foreground">{schools.length}</span>
-              <span className="text-xs text-muted-foreground block font-semibold">โรงเรียนในระบบ</span>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-card border border-border flex items-center gap-4 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/30">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-foreground">{activeSchoolsCount}</span>
-              <span className="text-xs text-muted-foreground block font-semibold">โรงเรียนที่เปิดใช้งาน</span>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-card border border-border flex items-center gap-4 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/30">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-foreground">{schoolAdminsCount}</span>
-              <span className="text-xs text-muted-foreground block font-semibold">แอดมินประจำโรงเรียน</span>
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-card border border-border flex items-center gap-4 shadow-sm">
-            <div className="w-12 h-12 rounded-2xl bg-sky-500/15 flex items-center justify-center text-sky-600 dark:text-sky-400 ring-1 ring-sky-500/30">
-              <ClipboardList className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-foreground">{pendingRequestsCount}</span>
-              <span className="text-xs text-muted-foreground block font-semibold">คำขอรอพิจารณา</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Selection & Actions */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-border">
-          <div className="flex items-center gap-2 p-1.5 bg-card border border-border rounded-2xl shadow-sm">
-            <button
-              onClick={() => setActiveTab("schools")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === "schools"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              <span>จัดการโรงเรียน ({schools.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("admins")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === "admins"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>จัดการแอดมินโรงเรียน ({schoolAdminsCount})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("requests")}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === "requests"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              <ClipboardList className="w-4 h-4" />
-              <span>คำขอสร้างโรงเรียน ({pendingRequestsCount})</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={activeTab === "schools" ? "ค้นหาชื่อ หรือ subdomain..." : activeTab === "admins" ? "ค้นหาแอดมิน หรือโรงเรียน..." : "ค้นหาคำขอ ชื่อโรงเรียน หรือผู้ส่ง..."}
-                className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
-              />
+      {/* =========================================================================
+          Dashboard Overview Metrics
+          ========================================================================= */}
+      <section className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            
+            {/* Metric 1 */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {schools.length}
+                </p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  โรงเรียนในระบบ
+                </p>
+              </div>
             </div>
 
-            {activeTab === "schools" ? (
-              <button
-                onClick={openAddSchoolModal}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-md shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                <span>เพิ่มโรงเรียนใหม่</span>
-              </button>
-            ) : activeTab === "admins" ? (
-              <button
-                onClick={() => openAddAdminModal()}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shrink-0"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>เพิ่มแอดมินประจำโรงเรียน</span>
-              </button>
-            ) : null}
+            {/* Metric 2 */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {activeSchoolsCount}
+                </p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  โรงเรียนที่เปิดใช้งาน
+                </p>
+              </div>
+            </div>
+
+            {/* Metric 3 */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {schoolAdminsCount}
+                </p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  แอดมินประจำโรงเรียน
+                </p>
+              </div>
+            </div>
+
+            {/* Metric 4 */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 relative">
+                <ClipboardList className="w-5 h-5" />
+                {pendingRequestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                    {pendingRequestsCount}
+                  </p>
+                  {pendingRequestsCount > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-500 text-white">
+                      ใหม่
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  คำขอรอพิจารณา
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
+      </section>
 
-        {/* TAB 1: SCHOOLS MANAGEMENT */}
+      {/* =========================================================================
+          Segmented Navigation & Action Bar
+          ========================================================================= */}
+      <div className="sticky top-16 z-30 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 py-3 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            
+            {/* Segmented Tab Controls */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => setActiveTab("schools")}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                  activeTab === "schools"
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50"
+                }`}
+              >
+                <Building2 className="w-4 h-4 shrink-0" />
+                <span>จัดการโรงเรียน</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  activeTab === "schools"
+                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                    : "bg-slate-300/60 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                }`}>
+                  {schools.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("admins")}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                  activeTab === "admins"
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50"
+                }`}
+              >
+                <UserCheck className="w-4 h-4 shrink-0" />
+                <span>จัดการแอดมิน</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  activeTab === "admins"
+                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                    : "bg-slate-300/60 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                }`}>
+                  {schoolAdminsCount}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("requests")}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                  activeTab === "requests"
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50"
+                }`}
+              >
+                <ClipboardList className="w-4 h-4 shrink-0" />
+                <span>คำขอสร้างโรงเรียน</span>
+                {pendingRequestsCount > 0 ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse">
+                    {pendingRequestsCount}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-300/60 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    {schoolRequests.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Search Input & Action Button */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={
+                    activeTab === "schools"
+                      ? "ค้นหาชื่อ หรือ subdomain..."
+                      : activeTab === "admins"
+                      ? "ค้นหาชื่อ หรือโรงเรียน..."
+                      : "ค้นหาคำขอ หรือผู้ส่ง..."
+                  }
+                  className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-xs"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {activeTab === "schools" && (
+                <button
+                  onClick={openAddSchoolModal}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs shrink-0 active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">เพิ่มโรงเรียนใหม่</span>
+                  <span className="sm:hidden">เพิ่ม</span>
+                </button>
+              )}
+
+              {activeTab === "admins" && (
+                <button
+                  onClick={() => openAddAdminModal()}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs shrink-0 active:scale-95"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="hidden sm:inline">เพิ่มแอดมินใหม่</span>
+                  <span className="sm:hidden">เพิ่ม</span>
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          Main Content Container
+          ========================================================================= */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        
+        {/* =========================================================================
+            TAB 1: SCHOOLS MANAGEMENT
+            ========================================================================= */}
         {activeTab === "schools" && (
           loadingData ? (
-            <div className="text-center py-16">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">กำลังโหลดรายการโรงเรียน...</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-64 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 animate-pulse" />
+              ))}
             </div>
           ) : filteredSchools.length === 0 ? (
-            <div className="text-center py-16 bg-card border border-border rounded-3xl shadow-sm">
-              <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-semibold text-muted-foreground">ไม่พบโรงเรียนที่ตรงกับคำค้นหา</p>
+            <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-12 text-center shadow-xs">
+              <Building2 className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {searchQuery ? `ไม่พบโรงเรียนที่ตรงกับ "${searchQuery}"` : "ยังไม่มีโรงเรียนในระบบ"}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {searchQuery ? "ลองตรวจสอบตัวสะกด หรือค้นหาด้วยคำอื่น" : "เริ่มต้นเพิ่มโรงเรียนแรกของคุณเข้าสู่แพลตฟอร์ม"}
+              </p>
+              {!searchQuery && (
+                <button
+                  onClick={openAddSchoolModal}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-xs hover:bg-indigo-700 transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  เพิ่มโรงเรียนใหม่
+                </button>
+              )}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredSchools.map((school) => {
                 const schoolAdmins = admins.filter((a) => a.school_id === school.id && a.role === "admin");
                 return (
                   <div
                     key={school.id}
-                    className={`rounded-3xl border p-6 flex flex-col justify-between transition-all shadow-sm ${
+                    className={`rounded-3xl border p-5 sm:p-6 flex flex-col justify-between transition-all shadow-xs ${
                       school.is_active
-                        ? "bg-card border-border hover:border-primary/40"
-                        : "bg-muted/40 border-border/60 opacity-75"
+                        ? "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-800"
+                        : "bg-slate-50/80 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-800/60 opacity-80"
                     }`}
                   >
                     <div className="space-y-4">
-                      {/* Header */}
+                      {/* Card Header: Logo, Name & Status */}
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
                           {school.logo_drive_file_id || school.logo_url ? (
                             <img
                               src={getSchoolLogoUrl(school.logo_drive_file_id, school.logo_url)}
                               alt={school.name}
-                              className="w-12 h-12 rounded-2xl object-cover ring-2 ring-primary/20 shrink-0"
+                              className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-0.5 shrink-0 shadow-xs"
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-lg shadow-md shrink-0">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center font-black text-lg shrink-0">
                               {school.name.trim().charAt(0) || "S"}
                             </div>
                           )}
-                          <div>
-                            <h3 className="font-extrabold text-base text-foreground">{school.name}</h3>
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-base text-slate-900 dark:text-white leading-snug line-clamp-1">
+                              {school.name}
+                            </h3>
                             {school.name_en && (
-                              <p className="text-xs text-muted-foreground font-medium">{school.name_en}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
+                                {school.name_en}
+                              </p>
+                            )}
+                            {school.name_jawi && (
+                              <p dir="rtl" className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5 font-normal">
+                                {school.name_jawi}
+                              </p>
                             )}
                           </div>
                         </div>
 
                         <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+                          className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border ${
                             school.is_active
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                              : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50"
+                              : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-900/50"
                           }`}
                         >
-                          {school.is_active ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                          <span className={`w-1.5 h-1.5 rounded-full ${school.is_active ? "bg-emerald-500" : "bg-rose-500"}`} />
                           {school.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน"}
                         </span>
                       </div>
 
-                      {/* Subdomain & Info */}
-                      <div className="p-3.5 rounded-2xl bg-muted/60 border border-border/80 space-y-2 text-xs">
-                        <div className="flex items-center justify-between text-muted-foreground">
+                      {/* Subdomain & Key Info */}
+                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-2 text-xs">
+                        <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
                           <span>Subdomain:</span>
-                          <code className="text-primary font-bold bg-primary/10 px-2 py-0.5 rounded font-mono">
-                            ?school={school.subdomain}
-                          </code>
+                          <button
+                            onClick={() => copySubdomain(school.subdomain)}
+                            className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 hover:border-indigo-400 flex items-center gap-1 transition"
+                            title="คัดลอกพารามิเตอร์ URL"
+                          >
+                            <span>?school={school.subdomain}</span>
+                            {copiedSubdomain === school.subdomain ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3 opacity-60" />
+                            )}
+                          </button>
                         </div>
 
-                        <div className="flex items-center justify-between text-muted-foreground">
-                          <span>แอดมินดูแลประจำโรงเรียน:</span>
-                          <span className="font-bold text-amber-600 dark:text-amber-400">{schoolAdmins.length} บัญชี</span>
+                        <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                          <span>แอดมินประจำโรงเรียน:</span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {schoolAdmins.length} บัญชี
+                          </span>
                         </div>
 
                         {school.address && (
-                          <div className="flex items-center gap-1.5 text-muted-foreground truncate pt-1">
-                            <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 truncate pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+                            <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                             <span className="truncate">{school.address}</span>
                           </div>
                         )}
 
-                        {/* Enabled Feature Badges */}
-                        <div className="pt-2 border-t border-border/60">
-                          <span className="text-[11px] font-bold text-muted-foreground block mb-1.5">
+                        {/* Enabled Feature Flags Checklist */}
+                        <div className="pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1.5">
                             สิทธิ์ระบบที่เปิดใช้งาน:
                           </span>
                           <div className="flex flex-wrap gap-1">
-                            {[
-                              { key: "news", label: "ข่าวสาร" },
-                              { key: "duty", label: "เวรครู-แม่ครัว" },
-                              { key: "attendance", label: "เช็คชื่อ" },
-                              { key: "evaluations", label: "ประเมินคุณลักษณะ" },
-                              { key: "correspondence", label: "หนังสือรับ-ส่ง" },
-                              { key: "grades", label: "เกรด&คะแนน" },
-                              { key: "schedule", label: "ตารางเรียน" },
-                            ].map((mod) => {
-                              const isEnabled = school.enabled_modules?.[mod.key as keyof EnabledModules] !== false;
+                            {MODULE_DEFINITIONS.map((mod) => {
+                              const isEnabled = school.enabled_modules?.[mod.key] !== false;
                               return (
                                 <span
                                   key={mod.key}
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
                                     isEnabled
-                                      ? "bg-primary/10 text-primary border-primary/20"
-                                      : "bg-muted/40 text-muted-foreground/60 border-border line-through"
+                                      ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 line-through opacity-60"
                                   }`}
                                 >
                                   {mod.label}
@@ -1015,61 +1210,63 @@ export default function SuperAdminPage() {
                             })}
                           </div>
                         </div>
+
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="pt-6 mt-4 border-t border-border space-y-2">
+                    {/* Action Toolbar */}
+                    <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
                       <button
                         onClick={() => openAddAdminModal(school.id)}
-                        className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+                        className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-sm active:scale-98"
                       >
-                        <UserPlus className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4 text-white" />
                         <span>เพิ่มแอดมินประจำโรงเรียนนี้</span>
                       </button>
 
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => openEditSchoolModal(school)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-card hover:bg-muted text-foreground text-xs font-bold border border-border transition-colors"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 transition shadow-xs"
                         >
                           <Edit className="w-3.5 h-3.5 text-amber-500" />
-                          <span>แก้ไขข้อมูล & กำหนดสิทธิ์สวิตช์ระบบ</span>
+                          <span>แก้ไขข้อมูล & โมดูล</span>
                         </button>
 
                         <button
                           onClick={() => handleToggleSchoolActive(school)}
-                          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold border transition-colors ${
+                          className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition shadow-xs ${
                             school.is_active
-                              ? "bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30"
-                              : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                              ? "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 dark:text-rose-300 border-rose-200 dark:border-rose-900/50"
+                              : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50"
                           }`}
                         >
                           {school.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
                         </button>
                       </div>
 
-                      {/* Delete School Button — enabled only when deletion_requested */}
+                      {/* Delete School Button */}
                       <button
                         onClick={() => school.deletion_requested && handleDeleteSchool(school)}
                         disabled={!school.deletion_requested}
                         title={
                           school.deletion_requested
-                            ? `แอดมินโรงเรียนส่งคำขอลบแล้ว กดเพื่อลบถาวร`
-                            : "รอการส่งคำขอลบจากแอดมินโรงเรียน"
+                            ? "แอดมินโรงเรียนส่งคำขอลบแล้ว คลิกเพื่อลบถาวร"
+                            : "ต้องให้แอดมินโรงเรียนส่งคำขอลบก่อน จึงจะสามารถลบถาวรได้"
                         }
-                        className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition-colors ${
+                        className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition ${
                           school.deletion_requested
-                            ? "bg-red-600 hover:bg-red-700 text-white border-red-600 cursor-pointer"
-                            : "bg-muted/40 text-muted-foreground/50 border-border/50 cursor-not-allowed opacity-60"
+                            ? "bg-rose-600 hover:bg-rose-700 text-white border-rose-600 cursor-pointer shadow-sm animate-pulse"
+                            : "bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-600 border-slate-200/50 dark:border-slate-800 cursor-not-allowed opacity-60"
                         }`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         {school.deletion_requested
-                          ? `⚠️ ลบถาวร (มีคำขอจากแอดมิน)`
+                          ? "⚠️ ยืนยันลบถาวร (มีคำขอจากโรงเรียน)"
                           : "ลบโรงเรียน (รอคำขอจากแอดมิน)"}
                       </button>
                     </div>
+
                   </div>
                 );
               })}
@@ -1077,140 +1274,274 @@ export default function SuperAdminPage() {
           )
         )}
 
-        {/* TAB 2: SCHOOL CREATION REQUESTS */}
+        {/* =========================================================================
+            TAB 2: SCHOOL CREATION REQUESTS
+            ========================================================================= */}
         {activeTab === "requests" && (
-          loadingData ? (
-            <div className="text-center py-16">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">กำลังโหลดคำขอ...</p>
+          <div className="space-y-4">
+            
+            {/* Filter Sub-Tabs */}
+            <div className="flex items-center gap-2 pb-2 overflow-x-auto">
+              {[
+                { key: "all", label: "ทั้งหมด", count: schoolRequests.length },
+                { key: "pending", label: "รอพิจารณา", count: pendingRequestsCount },
+                { key: "approved", label: "อนุมัติแล้ว", count: schoolRequests.filter((r) => r.status === "approved").length },
+                { key: "denied", label: "ไม่อนุมัติ", count: schoolRequests.filter((r) => r.status === "denied").length },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setRequestFilter(f.key as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
+                    requestFilter === f.key
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent shadow-xs"
+                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <span>{f.label}</span>
+                  <span className="text-[10px] opacity-75 font-mono">({f.count})</span>
+                </button>
+              ))}
             </div>
-          ) : filteredRequests.length === 0 ? (
-            <div className="text-center py-16 bg-card border border-border rounded-3xl shadow-sm">
-              <ClipboardList className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-semibold text-muted-foreground">ไม่พบคำขอสร้างโรงเรียน</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredRequests.map((request) => {
-                const pending = request.status === "pending";
-                const enabled = request.requested_modules || DEFAULT_ENABLED_MODULES;
-                return (
-                  <article key={request.id} className="bg-card border border-border rounded-3xl p-6 shadow-sm">
-                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
-                      <div className="space-y-4 min-w-0">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                            <Building2 className="w-6 h-6" />
+
+            {loadingData ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="h-44 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 animate-pulse" />
+                ))}
+              </div>
+            ) : filteredRequests.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-12 text-center shadow-xs">
+                <ClipboardList className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  ไม่พบคำขอสร้างโรงเรียน
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  เมื่อมีผู้ส่งคำขอเพิ่มโรงเรียนใหม่ จะปรากฏรายการให้พิจารณาที่นี่
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredRequests.map((request) => {
+                  const isPending = request.status === "pending";
+                  const enabled = request.requested_modules || DEFAULT_ENABLED_MODULES;
+
+                  return (
+                    <article
+                      key={request.id}
+                      className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4"
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
+                        
+                        <div className="space-y-3.5 min-w-0 flex-1">
+                          
+                          {/* Header info */}
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center shrink-0">
+                              <Building2 className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+                                  {request.school_name}
+                                </h3>
+                                <code className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/50">
+                                  ?school={request.subdomain}
+                                </code>
+                              </div>
+                              {request.school_name_en && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                  {request.school_name_en}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-black text-lg">{request.school_name}</h3>
-                            {request.school_name_en && <p className="text-xs text-muted-foreground">{request.school_name_en}</p>}
-                            <code className="text-xs text-primary font-bold">?school={request.subdomain}</code>
+
+                          {/* Requester & Contact Details Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 text-xs">
+                            <div>
+                              <span className="text-slate-400 dark:text-slate-500 block text-[11px]">ผู้ส่งคำขอ</span>
+                              <span className="font-bold text-slate-900 dark:text-white truncate block">
+                                {request.requester_username || "-"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 dark:text-slate-500 block text-[11px]">อีเมลผู้ส่ง</span>
+                              <span className="font-bold text-slate-900 dark:text-white truncate block">
+                                {request.requester_email || "-"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 dark:text-slate-500 block text-[11px]">เบอร์ติดต่อ</span>
+                              <span className="font-bold text-slate-900 dark:text-white truncate block">
+                                {request.phone || "-"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 dark:text-slate-500 block text-[11px]">อีเมลโรงเรียน</span>
+                              <span className="font-bold text-slate-900 dark:text-white truncate block">
+                                {request.email || "-"}
+                              </span>
+                            </div>
                           </div>
+
+                          {request.address && (
+                            <p className="text-xs text-slate-600 dark:text-slate-300">
+                              <span className="font-bold text-slate-900 dark:text-white">ที่อยู่:</span> {request.address}
+                            </p>
+                          )}
+
+                          {request.reason && (
+                            <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
+                              <span className="font-bold text-slate-900 dark:text-white">เหตุผลหรือรายละเอียดเพิ่มเติม:</span> {request.reason}
+                            </p>
+                          )}
+
+                          {/* Requested modules */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {MODULE_DEFINITIONS.map((mod) => (
+                              <span
+                                key={mod.key}
+                                className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold ${
+                                  enabled[mod.key] !== false
+                                    ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 line-through opacity-60"
+                                }`}
+                              >
+                                {mod.label}
+                              </span>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                            <span>ส่งเมื่อ: {new Date(request.created_at).toLocaleString("th-TH")}</span>
+                          </div>
+
+                          {request.review_note && (
+                            <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-3 text-xs text-amber-800 dark:text-amber-300">
+                              <span className="font-bold">หมายเหตุการพิจารณา:</span> {request.review_note}
+                            </div>
+                          )}
+
                         </div>
 
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                          <div><span className="text-muted-foreground block">ผู้ส่งคำขอ</span><span className="font-bold">{request.requester_username || "-"}</span></div>
-                          <div><span className="text-muted-foreground block">อีเมลผู้ส่ง</span><span className="font-bold break-all">{request.requester_email || "-"}</span></div>
-                          <div><span className="text-muted-foreground block">เบอร์ติดต่อโรงเรียน</span><span className="font-bold">{request.phone || "-"}</span></div>
-                          <div><span className="text-muted-foreground block">อีเมลโรงเรียน</span><span className="font-bold break-all">{request.email || "-"}</span></div>
+                        {/* Status badge & Approval actions */}
+                        <div className="flex flex-col gap-2.5 sm:min-w-44 shrink-0">
+                          <span
+                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                              request.status === "approved"
+                                ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50"
+                                : request.status === "denied"
+                                ? "text-rose-700 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-900/50"
+                                : "text-amber-700 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800/50"
+                            }`}
+                          >
+                            {request.status === "pending" ? (
+                              <Clock3 className="w-3.5 h-3.5 text-amber-500" />
+                            ) : request.status === "approved" ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                            ) : (
+                              <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                            )}
+                            {request.status === "pending"
+                              ? "รอการพิจารณา"
+                              : request.status === "approved"
+                              ? "อนุมัติแล้ว"
+                              : "ไม่อนุมัติ"}
+                          </span>
+
+                          {isPending && (
+                            <div className="flex flex-col gap-2 pt-1">
+                              <button
+                                onClick={() => handleReviewSchoolRequest(request, "approved")}
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs"
+                              >
+                                <Check className="w-4 h-4" />
+                                อนุมัติคำขอ
+                              </button>
+                              <button
+                                onClick={() => handleReviewSchoolRequest(request, "denied")}
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 text-xs font-bold transition"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                                ไม่อนุมัติ
+                              </button>
+                            </div>
+                          )}
                         </div>
 
-                        {request.address && <p className="text-xs text-muted-foreground"><span className="font-bold text-foreground">ที่อยู่:</span> {request.address}</p>}
-                        {request.reason && <p className="text-xs text-muted-foreground whitespace-pre-wrap"><span className="font-bold text-foreground">รายละเอียดเพิ่มเติม:</span> {request.reason}</p>}
-
-                        <div className="flex flex-wrap gap-1.5">
-                          {[
-                            ["news", "ข่าวสาร"], ["duty", "เวรครู"], ["attendance", "เช็กชื่อ"],
-                            ["evaluations", "ประเมิน"], ["correspondence", "หนังสือรับ-ส่ง"],
-                            ["grades", "เกรด"], ["schedule", "ตารางเรียน"],
-                          ].map(([key, label]) => (
-                            <span key={key} className={`text-[10px] px-2 py-1 rounded-lg border font-bold ${enabled[key as keyof EnabledModules] !== false ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border line-through"}`}>
-                              {label}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">ส่งเมื่อ {new Date(request.created_at).toLocaleString("th-TH")}</p>
-                        {request.review_note && <div className="rounded-xl bg-muted/60 border border-border p-3 text-xs"><span className="font-bold">หมายเหตุการพิจารณา:</span> {request.review_note}</div>}
                       </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
 
-                      <div className="flex flex-col gap-2 lg:min-w-40">
-                        <span className={`inline-flex justify-center items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold ${request.status === "approved" ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" : request.status === "denied" ? "text-red-600 bg-red-500/10 border-red-500/20" : "text-amber-600 bg-amber-500/10 border-amber-500/20"}`}>
-                          {request.status === "pending" ? <Clock3 className="w-3.5 h-3.5" /> : request.status === "approved" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                          {request.status === "pending" ? "รอพิจารณา" : request.status === "approved" ? "อนุมัติแล้ว" : "ไม่อนุมัติ"}
-                        </span>
-                        {pending && (
-                          <>
-                            <button onClick={() => handleReviewSchoolRequest(request, "approved")} className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"><Check className="w-4 h-4" />อนุมัติ</button>
-                            <button onClick={() => handleReviewSchoolRequest(request, "denied")} className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/30 text-xs font-bold"><Ban className="w-4 h-4" />ไม่อนุมัติ</button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )
+          </div>
         )}
 
-        {/* TAB 3: SCHOOL ADMINS MANAGEMENT */}
+        {/* =========================================================================
+            TAB 3: SCHOOL ADMINS MANAGEMENT
+            ========================================================================= */}
         {activeTab === "admins" && (
           loadingData ? (
-            <div className="text-center py-16">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">กำลังโหลดรายการผู้ดูแลระบบ...</p>
-            </div>
+            <div className="h-64 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 animate-pulse" />
           ) : (
-            <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-              <div className="p-6 border-b border-border flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
+              
+              {/* Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h3 className="font-extrabold text-lg text-foreground">รายชื่อแอดมินประจำโรงเรียน</h3>
-                  <p className="text-xs text-muted-foreground">สร้างและจัดการสิทธิ์แอดมินประจำแต่ละโรงเรียน</p>
+                  <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+                    รายชื่อผู้ดูแลระบบประจำโรงเรียน
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    กำหนดและจัดการสิทธิ์แอดมินประจำแต่ละสถานศึกษา
+                  </p>
                 </div>
-
                 <button
                   onClick={() => openAddAdminModal()}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>เพิ่มแอดมินใหม่</span>
+                  <span className="hidden sm:inline">เพิ่มแอดมินใหม่</span>
+                  <span className="sm:hidden">เพิ่ม</span>
                 </button>
               </div>
 
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full text-left text-xs text-foreground">
-                  <thead className="bg-muted/60 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border">
+              {/* Table view for Desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-200/80 dark:border-slate-800">
                     <tr>
-                      <th className="px-6 py-4 font-bold">ชื่อผู้ใช้ (Username)</th>
-                      <th className="px-6 py-4 font-bold">บทบาท</th>
-                      <th className="px-6 py-4 font-bold">โรงเรียนที่ดูแล</th>
-                      <th className="px-6 py-4 font-bold">อีเมลติดต่อ</th>
-                      <th className="px-6 py-4 font-bold text-right">จัดการ</th>
+                      <th className="px-6 py-3.5 font-bold">ชื่อผู้ใช้ (Username)</th>
+                      <th className="px-6 py-3.5 font-bold">บทบาท</th>
+                      <th className="px-6 py-3.5 font-bold">โรงเรียนที่ดูแล</th>
+                      <th className="px-6 py-3.5 font-bold">อีเมลติดต่อ</th>
+                      <th className="px-6 py-3.5 font-bold text-right">จัดการ</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-900 dark:text-slate-100">
                     {filteredAdmins.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                          ไม่พบผู้ดูแลระบบ
+                        <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                          ไม่พบผู้ดูแลระบบที่ค้นหา
                         </td>
                       </tr>
                     ) : (
                       filteredAdmins.map((admin) => (
-                        <tr key={admin.id} className="hover:bg-muted/40 transition-colors">
-                          <td className="px-6 py-4 font-bold text-foreground flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                        <tr key={admin.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-6 py-4 font-bold flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
                               <ShieldCheck className="w-4 h-4" />
                             </div>
-                            <span>{admin.username}</span>
+                            <span className="font-mono text-sm">{admin.username}</span>
                           </td>
                           <td className="px-6 py-4">
                             <span
-                              className={`inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                              className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                                 admin.role === "super_admin"
-                                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                  : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800/50"
+                                  : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50"
                               }`}
                             >
                               {admin.role === "super_admin" ? "Super Admin" : "School Admin"}
@@ -1221,30 +1552,34 @@ export default function SuperAdminPage() {
                               <span className="text-amber-600 dark:text-amber-400 font-bold">ทุกโรงเรียน (Platform)</span>
                             ) : (
                               <div>
-                                <span className="font-bold text-foreground">{admin.school_name || "ไม่ระบุ"}</span>
+                                <span className="font-bold text-slate-900 dark:text-white">
+                                  {admin.school_name || "ไม่ระบุ"}
+                                </span>
                                 {admin.subdomain && (
-                                  <span className="text-[11px] text-muted-foreground block font-mono">
+                                  <span className="text-[11px] text-slate-400 dark:text-slate-500 block font-mono">
                                     ?school={admin.subdomain}
                                   </span>
                                 )}
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-muted-foreground">{admin.email || "-"}</td>
+                          <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
+                            {admin.email || "—"}
+                          </td>
                           <td className="px-6 py-4 text-right">
                             {admin.role !== "super_admin" && (
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   onClick={() => openEditAdminModal(admin)}
-                                  className="p-1.5 rounded-lg bg-card hover:bg-muted text-amber-500 border border-border shadow-sm"
+                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 transition"
                                   title="แก้ไข / รีเซ็ตรหัสผ่าน"
                                 >
                                   <Key className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteAdmin(admin)}
-                                  className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30"
-                                  title="ลบผู้ใช้งาน"
+                                  className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 transition"
+                                  title="ลบแอดมิน"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1257,147 +1592,201 @@ export default function SuperAdminPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Cards for Mobile view */}
               <div className="space-y-3 p-4 md:hidden">
                 {filteredAdmins.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">ไม่พบผู้ดูแลระบบ</div>
+                  <div className="py-8 text-center text-xs text-slate-400">ไม่พบผู้ดูแลระบบ</div>
                 ) : (
                   filteredAdmins.map((admin) => (
-                    <article key={admin.id} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                            <ShieldCheck className="h-4 w-4" />
+                    <article key={admin.id} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
+                            <ShieldCheck className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate font-bold text-foreground">{admin.username}</div>
-                            <div className="truncate text-xs text-muted-foreground">{admin.email || "-"}</div>
+                            <p className="font-mono font-bold text-sm text-slate-900 dark:text-white truncate">
+                              {admin.username}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {admin.email || "—"}
+                            </p>
                           </div>
                         </div>
-                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${admin.role === "super_admin" ? "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400" : "border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"}`}>
+                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                          admin.role === "super_admin"
+                            ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200"
+                            : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200"
+                        }`}>
                           {admin.role === "super_admin" ? "Super Admin" : "School Admin"}
                         </span>
                       </div>
-                      <div className="mt-3 border-t border-border pt-3 text-xs">
-                        <div className="text-muted-foreground">โรงเรียนที่ดูแล</div>
-                        <div className="mt-1 font-bold text-foreground">{admin.role === "super_admin" ? "ทุกโรงเรียน (Platform)" : admin.school_name || "ไม่ระบุ"}</div>
-                        {admin.subdomain && <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">?school={admin.subdomain}</div>}
-                      </div>
-                      {admin.role !== "super_admin" && (
-                        <div className="mt-3 flex justify-end gap-2 border-t border-border pt-3">
-                          <button onClick={() => openEditAdminModal(admin)} className="rounded-lg border border-border bg-card p-2 text-amber-500 shadow-sm hover:bg-muted" title="แก้ไข"><Key className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => handleDeleteAdmin(admin)} className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-red-600 hover:bg-red-500/20 dark:text-red-400" title="ลบ"><Trash2 className="h-3.5 w-3.5" /></button>
+
+                      <div className="border-t border-slate-200/60 dark:border-slate-700/60 pt-2 text-xs flex items-center justify-between">
+                        <div>
+                          <span className="text-slate-400 text-[11px] block">สังกัดโรงเรียน:</span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {admin.role === "super_admin" ? "ทุกโรงเรียน (Platform)" : admin.school_name || "ไม่ระบุ"}
+                          </span>
                         </div>
-                      )}
+
+                        {admin.role !== "super_admin" && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => openEditAdminModal(admin)}
+                              className="p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-amber-600 shadow-xs"
+                              title="แก้ไข"
+                            >
+                              <Key className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAdmin(admin)}
+                              className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:border-rose-900/50 shadow-xs"
+                              title="ลบ"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </article>
                   ))
                 )}
               </div>
+
             </div>
           )
         )}
+
       </main>
 
-      {/* Modal: Add/Edit School */}
+      {/* =========================================================================
+          MODAL 1: ADD / EDIT SCHOOL
+          ========================================================================= */}
       {isSchoolModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in-up overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
           onClick={() => setIsSchoolModalOpen(false)}
         >
           <div
-            className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden my-auto"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden my-auto max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center justify-between">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 relative shrink-0">
+              <button
+                onClick={() => setIsSchoolModalOpen(false)}
+                className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white">
+                <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-lg">
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                     {editingSchool ? "แก้ไขข้อมูลโรงเรียน" : "เพิ่มโรงเรียนใหม่"}
                   </h3>
-                  <p className="text-xs text-white/80 font-medium">กรอกรายละเอียดของโรงเรียน</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    กำหนดรายละเอียดสถานศึกษาและสิทธิ์การใช้งานระบบ
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsSchoolModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-xs"
-              >
-                ✕
-              </button>
             </div>
 
-            <form onSubmit={handleSaveSchool} className="p-6 space-y-4 text-xs">
+            {/* Modal Form Body */}
+            <form onSubmit={handleSaveSchool} className="p-5 sm:p-6 space-y-4 overflow-y-auto text-xs">
+              
+              {/* Name TH */}
               <div>
-                <label className="block text-foreground font-bold mb-1">ชื่อโรงเรียน (ภาษาไทย) *</label>
+                <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                  ชื่อโรงเรียน (ภาษาไทย) *
+                </label>
                 <input
                   type="text"
                   value={schoolName}
                   onChange={(e) => setSchoolName(e.target.value)}
                   placeholder="เช่น โรงเรียนบ้านนาวิทยา"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-foreground font-bold mb-1">ชื่อโรงเรียน (ภาษามลายูรูมี)</label>
-                <input
-                  type="text"
-                  value={schoolNameEn}
-                  onChange={(e) => handleSchoolNameEnChange(e.target.value)}
-                  placeholder="Contoh: Sekolah Bannawittaya"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
-                />
+              {/* Name EN & JAWI */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                    ชื่อโรงเรียน (ภาษามลายูรูมี)
+                  </label>
+                  <input
+                    type="text"
+                    value={schoolNameEn}
+                    onChange={(e) => handleSchoolNameEnChange(e.target.value)}
+                    placeholder="Contoh: Sekolah Bannawittaya"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                    ชื่อโรงเรียน (ภาษามลายูยาวี)
+                  </label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={schoolNameJawi}
+                    onChange={(e) => setSchoolNameJawi(e.target.value)}
+                    placeholder="چونتوه: سکوله بناويتايا"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                  />
+                </div>
               </div>
 
+              {/* Subdomain */}
               <div>
-                <label className="block text-foreground font-bold mb-1">ชื่อโรงเรียน (ภาษามลายูยาวี)</label>
-                <input
-                  type="text"
-                  dir="rtl"
-                  value={schoolNameJawi}
-                  onChange={(e) => setSchoolNameJawi(e.target.value)}
-                  placeholder="چونتوه: سکوله بناويتايا"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
-                />
+                <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                  Subdomain (ถ้าปล่อยว่าง จะสร้างจากชื่อภาษาอังกฤษอัตโนมัติ)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={schoolSubdomain}
+                    onChange={(e) => setSchoolSubdomain(e.target.value)}
+                    placeholder="เช่น bannawittaya"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition font-mono"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  เข้าถึงผ่าน URL ตัวอย่าง: <span className="font-mono">?school=subdomain</span>
+                </p>
               </div>
 
+              {/* School Logo */}
               <div>
-                <label className="block text-foreground font-bold mb-1">Subdomain (ถ้าไม่ระบุ จะสร้างจากชื่อภาษาอังกฤษให้อัตโนมัติ)</label>
-                <input
-                  type="text"
-                  value={schoolSubdomain}
-                  onChange={(e) => setSchoolSubdomain(e.target.value)}
-                  placeholder="เช่น bannawittaya"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary font-mono"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">ใช้สำหรับเข้าถึงระบบผ่าน URL: `?school=subdomain`</p>
-              </div>
+                <label className="block text-slate-900 dark:text-white font-bold mb-1.5">
+                  โลโก้สถานศึกษา
+                </label>
 
-              <div>
-                <label className="block text-foreground font-bold mb-1">โลโก้โรงเรียน</label>
-
-                {/* Show current/preview logo */}
                 {(logoPreview || schoolLogoDriveFileId || schoolLogoUrl) && (
-                  <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-border mb-3">
+                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 mb-3 bg-white dark:bg-slate-800 p-1">
                     <img
                       src={logoPreview || getSchoolLogoUrl(schoolLogoDriveFileId, schoolLogoUrl)}
                       alt="Logo Preview"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded-xl"
                       onError={(e) => { e.currentTarget.src = "/logo.jpg"; }}
                     />
                     <button
                       type="button"
                       onClick={handleRemoveLogo}
-                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      className="absolute top-1.5 right-1.5 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition"
+                      title="ลบโลโก้"
                     >
                       <X className="w-3 h-3" />
                     </button>
                   </div>
                 )}
 
-                {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1407,88 +1796,85 @@ export default function SuperAdminPage() {
                   disabled={isUploadingLogo}
                 />
 
-                {/* Upload button */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingLogo}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition disabled:opacity-50"
                 >
-                  <Upload className="w-4 h-4" />
-                  {isUploadingLogo ? "กำลังอัพโหลด..." : "เลือกไฟล์โลโก้"}
+                  <Upload className="w-3.5 h-3.5" />
+                  {isUploadingLogo ? "กำลังอัปโหลดโลโก้..." : "เลือกไฟล์รูปภาพโลโก้"}
                 </button>
-
-                <p className="text-xs text-muted-foreground mt-2">
-                  รองรับ: JPG, PNG, WebP, SVG (สูงสุด 5MB)
+                <p className="text-[11px] text-slate-400 mt-1">
+                  รองรับ: JPG, PNG, WebP, SVG (ขนาดสูงสุด 5MB)
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Contact Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-foreground font-bold mb-1">เบอร์โทรศัพท์</label>
+                  <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                    เบอร์โทรศัพท์
+                  </label>
                   <input
                     type="text"
                     value={schoolPhone}
                     onChange={(e) => setSchoolPhone(e.target.value)}
-                    placeholder="02-XXX-XXXX"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                    placeholder="เช่น 073-XXX-XXX"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-foreground font-bold mb-1">อีเมลติดต่อ</label>
+                  <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                    อีเมลติดต่อ
+                  </label>
                   <input
                     type="email"
                     value={schoolEmail}
                     onChange={(e) => setSchoolEmail(e.target.value)}
-                    placeholder="contact@school.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                    placeholder="contact@school.ac.th"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                   />
                 </div>
               </div>
 
+              {/* Address */}
               <div>
-                <label className="block text-foreground font-bold mb-1">ที่อยู่โรงเรียน</label>
+                <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                  ที่อยู่สถานศึกษา
+                </label>
                 <textarea
                   value={schoolAddress}
                   onChange={(e) => setSchoolAddress(e.target.value)}
-                  placeholder="ที่อยู่โรงเรียน..."
+                  placeholder="ระบุที่ตั้ง ตำบล อำเภอ จังหวัด..."
                   rows={2}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                 />
               </div>
 
-              {/* Feature Modules Toggle */}
-              <div className="pt-2 border-t border-border space-y-3">
-                <div>
-                  <label className="block text-foreground font-extrabold text-xs">
-                    กำหนดสิทธิ์ฟังก์ชันการใช้งาน (Module Feature Flags)
-                  </label>
-                  <p className="text-[11px] text-muted-foreground">
-                    เลือกเปิด-ปิดการใช้งานแต่ละระบบย่อยของโรงเรียนนี้
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  {[
-                    { key: "news", label: "📰 ข่าวประชาสัมพันธ์" },
-                    { key: "duty", label: "📌 เวรครู-แม่ครัว" },
-                    { key: "attendance", label: "⏱️ เช็คชื่อเข้าเรียน" },
-                    { key: "evaluations", label: "⭐ ประเมินคุณลักษณะ" },
-                    { key: "correspondence", label: "📬 หนังสือรับ-ส่ง" },
-                    { key: "grades", label: "📊 คะแนน เกรด & อันดับ" },
-                    { key: "schedule", label: "📅 จัดการตารางเรียน" },
-                  ].map((mod) => {
-                    const isChecked = enabledModules[mod.key as keyof EnabledModules] !== false;
+              {/* Module Feature Flags */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <label className="block text-slate-900 dark:text-white font-bold text-xs">
+                  สิทธิ์การเปิด-ปิดฟังก์ชันใช้งาน (Module Feature Flags)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {MODULE_DEFINITIONS.map((mod) => {
+                    const isChecked = enabledModules[mod.key] !== false;
                     return (
                       <label
                         key={mod.key}
-                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
+                        className={`flex items-start justify-between p-3 rounded-2xl border transition cursor-pointer ${
                           isChecked
-                            ? "bg-primary/10 border-primary/30 text-foreground font-bold"
-                            : "bg-muted/30 border-border text-muted-foreground opacity-60"
+                            ? "bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/60"
+                            : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60"
                         }`}
                       >
-                        <span className="text-xs">{mod.label}</span>
+                        <div className="min-w-0 pr-2">
+                          <p className={`text-xs font-bold leading-tight ${isChecked ? "text-indigo-950 dark:text-indigo-200" : "text-slate-500"}`}>
+                            {mod.label}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{mod.desc}</p>
+                        </div>
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -1498,7 +1884,7 @@ export default function SuperAdminPage() {
                               [mod.key]: e.target.checked,
                             }))
                           }
-                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                          className="mt-0.5 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600"
                         />
                       </label>
                     );
@@ -1506,74 +1892,84 @@ export default function SuperAdminPage() {
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-border">
+              {/* Modal Footer */}
+              <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsSchoolModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold"
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={isUploadingLogo}
-                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm transition disabled:opacity-50 flex items-center gap-2"
                 >
                   {isUploadingLogo ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>กำลังอัปโหลดโลโก้...</span>
+                      <span>กำลังอัปโหลด...</span>
                     </>
                   ) : (
                     <span>บันทึกข้อมูลโรงเรียน</span>
                   )}
                 </button>
               </div>
+
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal: Add/Edit Admin */}
+      {/* =========================================================================
+          MODAL 2: ADD / EDIT ADMIN
+          ========================================================================= */}
       {isAdminModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-fade-in-up overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
           onClick={() => setIsAdminModalOpen(false)}
         >
           <div
-            className="bg-card border border-border rounded-3xl shadow-2xl w-full max-w-md overflow-hidden my-auto"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 relative">
+              <button
+                onClick={() => setIsAdminModalOpen(false)}
+                className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white">
+                <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-lg">
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                     {editingAdmin ? "แก้ไขแอดมินประจำโรงเรียน" : "เพิ่มแอดมินประจำโรงเรียน"}
                   </h3>
-                  <p className="text-xs text-white/80 font-medium">ระบุบัญชีผู้ใช้และกำหนดโรงเรียนที่ดูแล</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    กำหนดบัญชีและโรงเรียนที่รับผิดชอบ
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsAdminModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-xs"
-              >
-                ✕
-              </button>
             </div>
 
-            <form onSubmit={handleSaveAdmin} className="p-6 space-y-4 text-xs">
+            {/* Modal Body */}
+            <form onSubmit={handleSaveAdmin} className="p-5 sm:p-6 space-y-4 text-xs">
               <div>
-                <label className="block text-foreground font-bold mb-1">สังกัดโรงเรียน *</label>
+                <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                  สังกัดโรงเรียน *
+                </label>
                 <select
                   value={adminSchoolId}
                   onChange={(e) => setAdminSchoolId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                   required
                 >
-                  <option value="" disabled>-- เลือกโรงเรียน --</option>
+                  <option value="" disabled>-- กรุณาเลือกโรงเรียน --</option>
                   {schools.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} (?school={s.subdomain})
@@ -1583,61 +1979,66 @@ export default function SuperAdminPage() {
               </div>
 
               <div>
-                <label className="block text-foreground font-bold mb-1">ชื่อผู้ใช้ (Username) *</label>
+                <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                  ชื่อผู้ใช้ (Username) *
+                </label>
                 <input
                   type="text"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
-                  placeholder="เช่น admin_school1"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500 font-mono"
+                  placeholder="เช่น admin_bannawittaya"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition font-mono"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-foreground font-bold mb-1">
-                  {editingAdmin ? "รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่ต้องการเปลี่ยน)" : "รหัสผ่าน *"}
+                <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                  {editingAdmin ? "รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)" : "รหัสผ่าน *"}
                 </label>
                 <input
                   type="password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="กรอกรหัสผ่าน"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500"
+                  placeholder="กรอกรหัสผ่านอย่างน้อย 6 ตัวอักษร"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                   required={!editingAdmin}
                 />
               </div>
 
               <div>
-                <label className="block text-foreground font-bold mb-1">อีเมลติดต่อ (ถ้ามี)</label>
+                <label className="block text-slate-900 dark:text-white font-bold mb-1">
+                  อีเมลติดต่อ (ถ้ามี)
+                </label>
                 <input
                   type="email"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin@school.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500"
+                  placeholder="admin@school.ac.th"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
                 />
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-border">
+              <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAdminModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold"
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm transition"
                 >
-                  บันทึกแอดมิน
+                  {editingAdmin ? "บันทึกการแก้ไข" : "สร้างบัญชีแอดมิน"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }

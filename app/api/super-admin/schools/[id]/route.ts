@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { deleteFileFromDrive } from "@/app/lib/googleDrive";
-import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function PUT(
   req: NextRequest,
@@ -16,7 +15,6 @@ export async function PUT(
   const { id } = await params;
 
   try {
-    await ensureStatusSchema();
     const body = await req.json();
     const { name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules } = body;
 
