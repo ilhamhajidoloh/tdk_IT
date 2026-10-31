@@ -4040,8 +4040,8 @@ function changeFontSize(dir) {
               <div><strong>${exportSumActivityScores ? t("คะแนนรวมทั้งหมด") : t("คะแนนรวมวิชาหลัก")}:</strong> ${st.totalMainScore} / ${st.maxPossibleMain}</div>
               <div><strong>${t("คิดเป็นร้อยละ")}:</strong> <span style="color:#2563eb;">${st.percentage.toFixed(1)}%</span></div>
               <div><strong>${t("เกรดเฉลี่ย (GPA)")}:</strong> <span style="color:#059669;">${st.gpa.toFixed(2)}</span></div>
-              <div><strong>${t("อันดับในห้องเรียน")}:</strong> ${t("อันดับที่")} ${st.rank} / ${classStudents.length}</div>
-              <div><strong>${t("อันดับในโรงเรียน")}:</strong> ${t("อันดับที่")} ${st.schoolRank} / ${allStudentRows.length}</div>
+              <div><strong>${t("อันดับในห้องเรียน")}:</strong> ${t("อันดับที่")} ${st.rank}</div>
+              <div><strong>${t("อันดับในโรงเรียน")}:</strong> ${t("อันดับที่")} ${st.schoolRank}</div>
             </div>
 
             ${buildEvalSectionHTML(st.student_id)}

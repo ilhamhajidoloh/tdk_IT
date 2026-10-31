@@ -257,8 +257,8 @@ export default function GradesTab({
       ["หน่วยกิตรวม", gpaCredits],
       ["คะแนนรวม", `${totalEarnedScore}/${totalPossibleScore}`],
       ["เปอร์เซ็นต์รวม", `${overallPercent}%`],
-      ["อันดับในห้อง", ranking ? `${ranking.classroom_rank}/${ranking.classroom_total}` : "-"],
-      ["อันดับในโรงเรียน", ranking ? `${ranking.school_rank}/${ranking.school_total}` : "-"],
+      ["อันดับในห้อง", ranking ? `${ranking.classroom_rank}` : "-"],
+      ["อันดับในโรงเรียน", ranking ? `${ranking.school_rank}` : "-"],
       [],
     ];
     const worksheet = XLSX.utils.aoa_to_sheet(summaryRows);
@@ -456,8 +456,8 @@ export default function GradesTab({
         `<span>${triLabel("คะแนนรวมทั้งหมด", "Jumlah Keseluruhan", "جومله كسلوروهان")}: ${totalEarnedScore}/${totalPossibleScore}</span>`,
         `<span>${triLabel("คิดเป็นร้อยละ", "Peratus", "ڤراتوس")}: ${overallPercent}%</span>`,
         `<span>${triLabel("เกรดเฉลี่ย (GPA)", "Purata Nilai Gred", "ڤوراتا نيلاي ݢريد")}: ${escapeHtml(gpaValue)}</span>`,
-        `<span>${triLabel("อันดับในห้องเรียน", "Kedudukan Dalam Kelas", "كدودوقن دالم كلس")}: ${ranking ? `${ranking.classroom_rank}/${ranking.classroom_total}` : "-"}</span>`,
-        `<span>${triLabel("อันดับในโรงเรียน", "Kedudukan Dalam Sekolah", "كدودوقن دالم سكوله")}: ${ranking ? `${ranking.school_rank}/${ranking.school_total}` : "-"}</span>`,
+        `<span>${triLabel("อันดับในห้องเรียน", "Kedudukan Dalam Kelas", "كدودوقن دالم كلس")}: ${ranking ? `${ranking.classroom_rank}` : "-"}</span>`,
+        `<span>${triLabel("อันดับในโรงเรียน", "Kedudukan Dalam Sekolah", "كدودوقن دالم سكوله")}: ${ranking ? `${ranking.school_rank}` : "-"}</span>`,
       ].join("");
     }
     const style = pdfDocument.createElement("style");
