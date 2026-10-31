@@ -1,5 +1,7 @@
 import { type DBUser, type DBStudent } from "../types";
 import ModalPortal from "@/app/components/ModalPortal";
+import { useState } from "react";
+import { TEACHER_PRESET_COLORS, resolveTeacherColor } from "@/app/lib/teacherColor";
 
 interface UserModalProps {
   isOpen: boolean;
@@ -23,6 +25,8 @@ interface UserModalProps {
   onSave: () => void;
   isClerical: boolean;
   setIsClerical: (isClerical: boolean) => void;
+  color?: string;
+  setColor?: (color: string) => void;
 }
 
 export default function UserModal({
@@ -47,7 +51,11 @@ export default function UserModal({
   onSave,
   isClerical,
   setIsClerical,
+  color = "#1d4ed8",
+  setColor,
 }: UserModalProps) {
+  const [colorPickerMode, setColorPickerMode] = useState<"basic" | "advance">("basic");
+  const resolvedCurrentColor = resolveTeacherColor(color || "#1d4ed8");
   if (!isOpen) return null;
 
   return (
@@ -388,6 +396,152 @@ export default function UserModal({
                     อนุญาตให้เข้าถึงการจัดการหนังสือรับ-ส่งในระบบ
                   </span>
                 </div>
+              </div>
+
+              {/* Teacher Color Selection (Basic & Advance) */}
+              <div className="p-3.5 bg-muted/40 rounded-2xl border border-border space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">🎨</span>
+                    <label className="text-xs font-bold text-foreground">
+                      สีประจำตัวครู (สำหรับตารางเรียน)
+                    </label>
+                  </div>
+                  {/* Mode Toggle Tabs */}
+                  <div className="inline-flex p-0.5 rounded-lg bg-muted border border-border self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setColorPickerMode("basic")}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                        colorPickerMode === "basic"
+                          ? "bg-card text-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Basic (สีแนะนำ)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setColorPickerMode("advance")}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                        colorPickerMode === "advance"
+                          ? "bg-card text-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Advance (กำหนดเอง)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Preview Badge */}
+                <div
+                  className="px-3 py-2 rounded-xl border flex items-center justify-between shadow-xs transition-colors"
+                  style={{
+                    backgroundColor: resolvedCurrentColor.bg,
+                    borderColor: resolvedCurrentColor.border,
+                    color: resolvedCurrentColor.text,
+                  }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                      style={{ backgroundColor: resolvedCurrentColor.text }}
+                    />
+                    <span className="text-xs font-bold truncate">
+                      ตัวอย่าง: {name || username || "ครูผู้สอน"}
+                    </span>
+                  </div>
+                  <span
+                    className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-md shrink-0 ml-2"
+                    style={{
+                      backgroundColor: resolvedCurrentColor.text === "#ffffff" ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.45)",
+                    }}
+                  >
+                    {resolvedCurrentColor.bg}
+                  </span>
+                </div>
+
+                {colorPickerMode === "basic" ? (
+                  /* Basic Mode: Preset Swatches */
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-8 gap-1.5 pt-0.5">
+                      {TEACHER_PRESET_COLORS.map((preset) => {
+                        const isSelected = color?.toLowerCase() === preset.bg.toLowerCase();
+                        return (
+                          <button
+                            key={preset.bg}
+                            type="button"
+                            onClick={() => setColor?.(preset.bg)}
+                            className={`h-7 rounded-lg border-2 transition-all cursor-pointer flex items-center justify-center ${
+                              isSelected
+                                ? "scale-110 border-foreground shadow-md ring-2 ring-indigo-400 z-10"
+                                : "border-transparent hover:scale-105 opacity-90 hover:opacity-100"
+                            }`}
+                            style={{ backgroundColor: preset.bg }}
+                            title={preset.name ? `${preset.name} (${preset.bg})` : preset.bg}
+                          >
+                            {isSelected && (
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill={preset.text}>
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-semibold">
+                      คลิกเพื่อเลือกโทนสีมาตรฐานที่อ่านง่ายและตัดกับข้อความในตารางเรียน
+                    </p>
+                  </div>
+                ) : (
+                  /* Advance Mode: Color picker input + Hex code text input */
+                  <div className="space-y-2 pt-0.5">
+                    <div className="flex items-center gap-2">
+                      {/* Native Color Picker trigger */}
+                      <label
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted cursor-pointer transition-colors flex-1"
+                        title="คลิกเพื่อเปิดกล่องเลือกสีอิสระ"
+                      >
+                        <input
+                          type="color"
+                          value={color?.startsWith("#") && color.length === 7 ? color : "#1d4ed8"}
+                          onChange={(e) => setColor?.(e.target.value)}
+                          className="w-7 h-7 rounded-lg border-0 cursor-pointer bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-0"
+                        />
+                        <div className="flex flex-col text-left">
+                          <span className="text-xs font-bold text-foreground leading-tight">เปิด Color Picker</span>
+                          <span className="text-[10px] text-muted-foreground">เลือกเฉดสีอิสระจากวงล้อสี</span>
+                        </div>
+                      </label>
+
+                      {/* Hex code input */}
+                      <div className="w-32">
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-xs font-mono font-bold text-muted-foreground">
+                            #
+                          </span>
+                          <input
+                            type="text"
+                            maxLength={7}
+                            placeholder="1D4ED8"
+                            value={color?.replace(/^#/, "") || ""}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9a-fA-F]/g, "");
+                              if (val.length <= 6) {
+                                setColor?.(`#${val}`);
+                              }
+                            }}
+                            className="w-full pl-6 pr-2 py-2 rounded-xl border border-border bg-card text-foreground font-mono text-xs font-bold uppercase tracking-wider focus:ring-2 focus:ring-indigo-400 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-semibold">
+                      เลือกสีจาก Color Picker หรือวางรหัสสี Hex (#RRGGBB) ตามต้องการ
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

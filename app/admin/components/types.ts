@@ -16,6 +16,7 @@ export interface DBUser {
   status?: "active" | "graduated" | "resigned" | "disabled" | "expired";
   resigned_at?: string | null;
   resignation_reason?: string | null;
+  color?: string | null;
 }
 
 export interface DBStudent {

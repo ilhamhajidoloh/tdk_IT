@@ -27,6 +27,7 @@ import {
   ALL_DAYS,
 } from "./components/types";
 import { RWT_TOPICS, isEvaluationTermOpen, getTopicNameLabel, getRwtTopicLabel, getRatingLabel } from "../lib/evaluation";
+import { resolveTeacherColor } from "../lib/teacherColor";
 import CopySubjectsModal from "./components/modals/CopySubjectsModal";
 import CopyClassroomsModal from "./components/modals/CopyClassroomsModal";
 import AssignStudentsModal from "./components/modals/AssignStudentsModal";
@@ -362,6 +363,7 @@ function AdminPortalContent() {
   const [studentId, setStudentId] = useState("");
   const [email, setEmail] = useState("");
   const [isClerical, setIsClerical] = useState(false);
+  const [teacherColor, setTeacherColor] = useState<string>("#1d4ed8");
   const [validationError, setValidationError] = useState("");
   const [homeroomTeacherClassroom, setHomeroomTeacherClassroom] = useState<DBClassroom | null>(null);
 
@@ -2849,6 +2851,21 @@ function AdminPortalContent() {
     return getClassroomName(classroom, (lang as any) || "th");
   }
 
+  const handleUpdateTeacherColor = async (teacherId: string, color: string) => {
+    try {
+      const res = await fetch(`/api/users/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ color }),
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === teacherId ? { ...u, color } : u));
+      }
+    } catch (e) {
+      console.error("Failed to update teacher color", e);
+    }
+  };
+
   const handleExportSchedule = (type: "overview" | "classroom" | "teacher") => {
     if (!selectedSubjectSettingId || schedulePeriods.length === 0) return;
     const setting = settingsList.find((s: any) => s.id === selectedSubjectSettingId);
@@ -2935,7 +2952,9 @@ function AdminPortalContent() {
     scheduleEntries.forEach(e => {
       const teacher = getTeacherIdentity(e);
       if (teacher && !colorMap.has(teacher.key)) {
-        colorMap.set(teacher.key, getTeacherColor(ci++));
+        const teacherId = teacher.key.startsWith("id:") ? teacher.key.slice(3) : null;
+        const matchedUser = users.find((u: DBUser) => (teacherId && u.id === teacherId) || u.username === teacher.label);
+        colorMap.set(teacher.key, resolveTeacherColor(matchedUser?.color, ci++));
         teacherLabels.set(teacher.key, teacher.label);
       }
     });
@@ -4293,6 +4312,7 @@ function changeFontSize(dir) {
     setStudentId(user.student_id || "");
     setEmail(user.email || "");
     setIsClerical(user.is_clerical || false);
+    setTeacherColor(user.color || "#1d4ed8");
     setValidationError("");
     setIsUserModalOpen(true);
   };
@@ -4307,6 +4327,7 @@ function changeFontSize(dir) {
     setStudentId("");
     setEmail("");
     setIsClerical(false);
+    setTeacherColor("#1d4ed8");
     setValidationError("");
     setIsUserModalOpen(true);
   };
@@ -4390,6 +4411,7 @@ function changeFontSize(dir) {
       ...(role === "student" ? { student_id: studentId === "none" ? null : (studentId.trim() || undefined) } : {}),
       ...(role === "teacher" ? {
         is_clerical: isClerical,
+        color: teacherColor || null,
       } : {}),
     };
 
@@ -4489,6 +4511,7 @@ function changeFontSize(dir) {
             {activeTab === "users" && (
               <UsersTab
                 users={users}
+                onUpdateTeacherColor={handleUpdateTeacherColor}
                 fileInputRef={fileInputRef}
                 handleImportUsers={handleImportUsers}
                 handleDownloadTemplate={handleDownloadTemplate}
@@ -4597,6 +4620,7 @@ function changeFontSize(dir) {
                 handleScheduleCellChange={handleScheduleCellChange}
                 handleScheduleTeacherChange={handleScheduleTeacherChange}
                 users={users}
+                onUpdateTeacherColor={handleUpdateTeacherColor}
               />
             )}
 
@@ -4819,6 +4843,8 @@ function changeFontSize(dir) {
         onSave={handleSaveUserSubmit}
         isClerical={isClerical}
         setIsClerical={setIsClerical}
+        color={teacherColor}
+        setColor={setTeacherColor}
       />
 
       <HomeroomTeacherModal

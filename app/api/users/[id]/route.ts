@@ -24,6 +24,7 @@ export async function PUT(
     status,
     resignation_reason,
     replacement_teacher_id,
+    color,
   } = await req.json();
   const finalEmail = email?.trim() || null;
 
@@ -33,7 +34,7 @@ export async function PUT(
 
   // ดึงข้อมูลผู้ใช้งานเดิมก่อน
   const oldUserRow = await pool.query(
-    "SELECT student_id, role, COALESCE(status, 'active') AS status FROM users WHERE id = $1",
+    "SELECT student_id, role, color, COALESCE(status, 'active') AS status FROM users WHERE id = $1",
     [id]
   );
   if (oldUserRow.rows.length === 0) {
@@ -43,6 +44,7 @@ export async function PUT(
   const oldStudentId = oldUserRow.rows[0].student_id;
   // Ordinary profile edits must not accidentally reactivate a resigned teacher.
   const statusVal = status || oldUserRow.rows[0].status || 'active';
+  const colorVal = color !== undefined ? (typeof color === "string" ? (color.trim() || null) : null) : oldUserRow.rows[0].color;
 
   if (role === "admin" && oldRole !== "admin") {
     return NextResponse.json(
@@ -76,17 +78,17 @@ export async function PUT(
     if (password?.trim()) {
       const hashedPassword = await bcrypt.hash(password.trim(), 10);
       result = await pool.query(
-        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7, is_clerical = $8, status = $10::varchar, resigned_at = CASE WHEN $10::varchar = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $11
+        `UPDATE users SET username = $1, password = $2, role = $3, student_id = $4, homeroom_classroom_id = $5, subjects = $6, email = $7, is_clerical = $8, status = $10::varchar, resigned_at = CASE WHEN $10::varchar = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $11, color = $12
          WHERE id = $9
-         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason`,
-        [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null]
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason, color`,
+        [username.trim(), hashedPassword, role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null, colorVal]
       );
     } else {
       result = await pool.query(
-        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6, is_clerical = $7, status = $9::varchar, resigned_at = CASE WHEN $9::varchar = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $10
+        `UPDATE users SET username = $1, role = $2, student_id = $3, homeroom_classroom_id = $4, subjects = $5, email = $6, is_clerical = $7, status = $9::varchar, resigned_at = CASE WHEN $9::varchar = 'resigned' THEN NOW() ELSE resigned_at END, resignation_reason = $10, color = $11
          WHERE id = $8
-         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason`,
-        [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null]
+         RETURNING id, username, email, role, student_id, homeroom_classroom_id, subjects, is_clerical, status, resigned_at, resignation_reason, color`,
+        [username.trim(), role, student_id ?? null, homeroom_classroom_id ?? null, subjects ?? null, finalEmail, is_clerical ?? false, id, statusVal, resignation_reason ?? null, colorVal]
       );
     }
   } catch (err) {
@@ -200,4 +202,26 @@ export async function DELETE(
 
   await pool.query("DELETE FROM users WHERE id = $1", [id]);
   return NextResponse.json({ success: true });
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const permError = await requirePermission(req, "users.edit");
+  if (permError) return permError;
+
+  const { id } = await params;
+  const { color } = await req.json();
+
+  await ensureStatusSchema();
+  const finalColor = typeof color === "string" && color.trim() ? color.trim() : null;
+  const result = await pool.query(
+    "UPDATE users SET color = $1 WHERE id = $2 RETURNING id, username, role, color",
+    [finalColor, id]
+  );
+  if (result.rows.length === 0) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  return NextResponse.json(result.rows[0]);
 }

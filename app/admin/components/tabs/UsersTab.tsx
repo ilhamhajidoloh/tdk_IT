@@ -31,6 +31,7 @@ interface UsersTabProps {
   usersPerPage: number;
   setUsersPerPage: (limit: number) => void;
   totalUserPages: number;
+  onUpdateTeacherColor?: (teacherId: string, color: string) => void;
 }
 
 export default function UsersTab({
@@ -58,6 +59,7 @@ export default function UsersTab({
   usersPerPage,
   setUsersPerPage,
   totalUserPages,
+  onUpdateTeacherColor,
 }: UsersTabProps) {
   return (
     <div className="p-8">
@@ -253,6 +255,20 @@ export default function UsersTab({
                 </td>
                 <td className="px-6 py-4">
                   <div className="font-semibold text-foreground flex items-center gap-1.5">
+                    {u.role === "teacher" && (
+                      <label
+                        className="relative w-4 h-4 rounded-full inline-flex items-center justify-center border border-black/20 shrink-0 shadow-sm cursor-pointer hover:scale-125 transition-transform overflow-hidden"
+                        style={{ backgroundColor: u.color || "#1d4ed8" }}
+                        title="คลิกเพื่อเปลี่ยนสีประจำตัวครู"
+                      >
+                        <input
+                          type="color"
+                          value={u.color || "#1d4ed8"}
+                          onChange={(e) => onUpdateTeacherColor?.(u.id, e.target.value)}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                        />
+                      </label>
+                    )}
                     {u.username}
                     {u.role === "teacher" && u.is_clerical && (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50">
@@ -354,6 +370,20 @@ export default function UsersTab({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-foreground break-all flex items-center gap-1.5">
+                  {u.role === "teacher" && (
+                    <label
+                      className="relative w-4 h-4 rounded-full inline-flex items-center justify-center border border-black/20 shrink-0 shadow-sm cursor-pointer hover:scale-125 transition-transform overflow-hidden"
+                      style={{ backgroundColor: u.color || "#1d4ed8" }}
+                      title="คลิกเพื่อเปลี่ยนสีประจำตัวครู"
+                    >
+                      <input
+                        type="color"
+                        value={u.color || "#1d4ed8"}
+                        onChange={(e) => onUpdateTeacherColor?.(u.id, e.target.value)}
+                        className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                      />
+                    </label>
+                  )}
                   {u.username}
                   {u.role === "teacher" && u.is_clerical && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50 shrink-0">

@@ -2,6 +2,7 @@ import { type SchedulePeriod, type ScheduleEntry, type SystemSetting, type DBSub
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
 import PermissionGate from "@/app/components/PermissionGate";
+import { resolveTeacherColor } from "@/app/lib/teacherColor";
 
 interface ScheduleTabProps {
   settingsList: SystemSetting[];
@@ -44,6 +45,7 @@ interface ScheduleTabProps {
     existingEntryId?: string
   ) => void;
   users: DBUser[];
+  onUpdateTeacherColor?: (teacherId: string, color: string) => void;
 }
 
 export default function ScheduleTab({
@@ -66,6 +68,7 @@ export default function ScheduleTab({
   handleScheduleCellChange,
   handleScheduleTeacherChange,
   users,
+  onUpdateTeacherColor,
 }: ScheduleTabProps) {
   const activeSettingObj = settingsList.find(s => s.id === selectedSubjectSettingId);
   const activeDaysConfig = Array.isArray(activeSettingObj?.schedule_days)
@@ -270,6 +273,57 @@ export default function ScheduleTab({
               </button>
             </PermissionGate>
           </div>
+
+          {/* Teacher Colors Config */}
+          {users.filter(u => u.role === "teacher" && u.status !== "resigned").length > 0 && (
+            <div className="mt-4 pt-5 border-t border-border">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <span className="text-lg">🎨</span>
+                  สีประจำตัวครูผู้สอน (Teacher Colors)
+                </h3>
+                <span className="text-xs text-muted-foreground font-semibold">
+                  คลิกที่ไอคอน 🎨 เพื่อเปลี่ยนสีประจำตัวครู (บันทึกลงฐานข้อมูลทันที)
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {users
+                  .filter((u) => u.role === "teacher" && u.status !== "resigned")
+                  .map((t, idx) => {
+                    const resolved = resolveTeacherColor(t.color, idx);
+                    return (
+                      <div
+                        key={t.id}
+                        className="relative group inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl border transition-all shadow-xs"
+                        style={{
+                          backgroundColor: resolved.bg,
+                          borderColor: resolved.border,
+                          color: resolved.text,
+                        }}
+                      >
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs"
+                          style={{ backgroundColor: resolved.text }}
+                        />
+                        <span className="text-xs font-bold leading-none">{t.username}</span>
+                        <label
+                          className="relative inline-flex items-center justify-center w-5 h-5 rounded-lg bg-black/20 hover:bg-black/40 text-white cursor-pointer transition-colors"
+                          title="คลิกเพื่อเปลี่ยนสี"
+                        >
+                          <input
+                            type="color"
+                            value={t.color || resolved.bg}
+                            onChange={(e) => onUpdateTeacherColor?.(t.id, e.target.value)}
+                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                          />
+                          <span className="text-[10px]">🎨</span>
+                        </label>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
 
           {/* Export Schedule */}
           {schedulePeriods.length > 0 && scheduleEntries.length > 0 && (

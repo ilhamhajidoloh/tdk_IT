@@ -54,6 +54,7 @@ export async function ensureStatusSchema() {
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS resignation_reason TEXT");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_co_admin BOOLEAN DEFAULT FALSE");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_permissions JSONB DEFAULT NULL");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS color VARCHAR(50) DEFAULT NULL");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_users_is_co_admin ON users(is_co_admin) WHERE is_co_admin = TRUE");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_users_permissions ON users USING GIN (admin_permissions)");
 

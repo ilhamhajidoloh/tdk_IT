@@ -3,6 +3,7 @@ import pool from "@/app/lib/db";
 import bcrypt from "bcrypt";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 async function hasSubjectTeachersTable(): Promise<boolean> {
   try {
@@ -16,6 +17,7 @@ async function hasSubjectTeachersTable(): Promise<boolean> {
 import { verifyCoAdminOrAdmin } from "@/app/lib/verifyAdmin";
 
 export async function GET(req: NextRequest) {
+  await ensureStatusSchema();
   if (!(await verifyCoAdminOrAdmin(req))) {
     const permError = await requirePermission(req, "users.view");
     if (permError) return permError;
@@ -55,6 +57,7 @@ export async function GET(req: NextRequest) {
         u.student_id, 
         u.homeroom_classroom_id,
         u.is_clerical,
+        u.color,
         COALESCE(u.status, 'active') AS status,
         u.resigned_at,
         u.resignation_reason,
@@ -82,6 +85,7 @@ export async function GET(req: NextRequest) {
         u.student_id, 
         u.homeroom_classroom_id,
         u.is_clerical,
+        u.color,
         COALESCE(u.status, 'active') AS status,
         u.resigned_at,
         u.resignation_reason,
@@ -110,13 +114,14 @@ export async function POST(req: NextRequest) {
   const context = await getSchoolContext(req);
   let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
-  const { name, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical } = await req.json();
+  const { name, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical, color } = await req.json();
 
   let finalName = name?.trim();
   let finalUsername = username?.trim();
   let finalPassword = password?.trim();
   let finalStudentId = student_id?.trim();
   const finalEmail = email?.trim() || null;
+  const finalColor = typeof color === "string" && color.trim() ? color.trim() : null;
 
   if (role === "student") {
     if (!finalStudentId) {
@@ -144,10 +149,10 @@ export async function POST(req: NextRequest) {
   try {
     const hashedPassword = await bcrypt.hash(finalPassword, 10);
     const result = await pool.query(
-      `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, email, is_clerical, school_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, username, role, student_id, homeroom_classroom_id, email, is_clerical, school_id`,
-      [finalUsername, hashedPassword, role, finalStudentId || null, homeroom_classroom_id || null, finalEmail, is_clerical || false, schoolId]
+      `INSERT INTO users (username, password, role, student_id, homeroom_classroom_id, email, is_clerical, color, school_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, username, role, student_id, homeroom_classroom_id, email, is_clerical, color, school_id`,
+      [finalUsername, hashedPassword, role, finalStudentId || null, homeroom_classroom_id || null, finalEmail, is_clerical || false, finalColor, schoolId]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
