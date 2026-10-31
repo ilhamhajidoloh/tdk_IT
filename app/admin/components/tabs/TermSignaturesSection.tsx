@@ -14,7 +14,9 @@ import {
   AlertCircle,
   Database,
   Cloud,
-  FileSignature
+  FileSignature,
+  PenTool,
+  Check
 } from "lucide-react";
 
 interface TeacherSignatureItem {
@@ -50,6 +52,16 @@ export default function TermSignaturesSection({
   const [uploadingAcademic, setUploadingAcademic] = useState(false);
   const [uploadingTeacherId, setUploadingTeacherId] = useState<string | null>(null);
   const [cacheBuster, setCacheBuster] = useState<number>(Date.now());
+  const [padModal, setPadModal] = useState<{
+    isOpen: boolean;
+    type: "academic_head" | "teacher";
+    teacherId?: string;
+    title: string;
+  }>({
+    isOpen: false,
+    type: "academic_head",
+    title: "",
+  });
 
   const academicFileInputRef = useRef<HTMLInputElement | null>(null);
   const teacherFileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -97,13 +109,22 @@ export default function TermSignaturesSection({
   const handleUploadAcademicSignature = async (file: File) => {
     if (!token || !selectedSettingId) return;
 
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-      Swal.fire("ชนิดไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์ภาพ PNG, JPEG หรือ WebP", "error");
+    const isSupported =
+      ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"].includes(file.type) ||
+      file.name.toLowerCase().endsWith(".heic") ||
+      file.name.toLowerCase().endsWith(".heif") ||
+      file.name.toLowerCase().endsWith(".png") ||
+      file.name.toLowerCase().endsWith(".jpg") ||
+      file.name.toLowerCase().endsWith(".jpeg") ||
+      file.name.toLowerCase().endsWith(".webp");
+
+    if (!isSupported) {
+      Swal.fire("ชนิดไฟล์ไม่ถูกต้อง", "รองรับไฟล์ PNG, JPEG, WebP และไฟล์จาก iPad/iPhone (HEIC)", "error");
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      Swal.fire("ขนาดไฟล์ใหญ่เกินไป", "ขนาดไฟล์ต้องไม่เกิน 2MB", "error");
+    if (file.size > 10 * 1024 * 1024) {
+      Swal.fire("ขนาดไฟล์ใหญ่เกินไป", "ขนาดไฟล์ต้องไม่เกิน 10MB", "error");
       return;
     }
 
@@ -184,13 +205,22 @@ export default function TermSignaturesSection({
   const handleUploadTeacherSignature = async (teacherId: string, file: File) => {
     if (!token || !selectedSettingId) return;
 
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-      Swal.fire("ชนิดไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์ภาพ PNG, JPEG หรือ WebP", "error");
+    const isSupported =
+      ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"].includes(file.type) ||
+      file.name.toLowerCase().endsWith(".heic") ||
+      file.name.toLowerCase().endsWith(".heif") ||
+      file.name.toLowerCase().endsWith(".png") ||
+      file.name.toLowerCase().endsWith(".jpg") ||
+      file.name.toLowerCase().endsWith(".jpeg") ||
+      file.name.toLowerCase().endsWith(".webp");
+
+    if (!isSupported) {
+      Swal.fire("ชนิดไฟล์ไม่ถูกต้อง", "รองรับไฟล์ PNG, JPEG, WebP และไฟล์จาก iPad/iPhone (HEIC)", "error");
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      Swal.fire("ขนาดไฟล์ใหญ่เกินไป", "ขนาดไฟล์ต้องไม่เกิน 2MB", "error");
+    if (file.size > 10 * 1024 * 1024) {
+      Swal.fire("ขนาดไฟล์ใหญ่เกินไป", "ขนาดไฟล์ต้องไม่เกิน 10MB", "error");
       return;
     }
 
@@ -400,7 +430,7 @@ export default function TermSignaturesSection({
             <input
               type="file"
               ref={academicFileInputRef}
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -420,7 +450,21 @@ export default function TermSignaturesSection({
                 ) : (
                   <Upload className="w-3.5 h-3.5" />
                 )}
-                {hasAcademicSignature ? "เปลี่ยนไฟล์ลายเซ็น" : "อัปโหลดไฟล์ลายเซ็น"}
+                {hasAcademicSignature ? "เปลี่ยนไฟล์" : "อัปโหลดไฟล์"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPadModal({
+                  isOpen: true,
+                  type: "academic_head",
+                  title: "หัวหน้าฝ่ายวิชาการ (" + (currentSetting?.academic_head || "ประจำเทอม") + ")"
+                })}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                title="วาดลายเซ็นด้วย Apple Pencil หรือนิ้วมือบน iPad/iPhone"
+              >
+                <PenTool className="w-3.5 h-3.5" />
+                วาดด้วย Apple Pencil / นิ้วมือ
               </button>
 
               {hasAcademicSignature && (
@@ -446,7 +490,7 @@ export default function TermSignaturesSection({
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              💡 แนะนำ: ไฟล์ภาพ PNG แบบไม่มีพื้นหลัง (Transparent background) ขนาดไม่เกิน 2MB
+              📱 รองรับ iPad/iPhone เต็มรูปแบบ: รูปถ่าย HEIC/HEIF จากกล้อง, คลังภาพ, หรือไฟล์ PNG/JPEG (แปลงไฟล์ให้อัตโนมัติ)
             </p>
           </div>
         </div>
@@ -622,7 +666,7 @@ export default function TermSignaturesSection({
                             ref={(el) => {
                               teacherFileInputRefs.current[teacher.id] = el;
                             }}
-                            accept="image/png,image/jpeg,image/webp"
+                            accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp"
                             className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
@@ -634,7 +678,8 @@ export default function TermSignaturesSection({
                             type="button"
                             onClick={() => teacherFileInputRefs.current[teacher.id]?.click()}
                             disabled={isUploadingThis}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                            title="อัปโหลดไฟล์รูปภาพหรือไฟล์จาก iPad/iPhone"
                           >
                             {isUploadingThis ? (
                               <RefreshCw className="w-3 h-3 animate-spin" />
@@ -642,6 +687,21 @@ export default function TermSignaturesSection({
                               <Upload className="w-3 h-3" />
                             )}
                             {teacher.has_signature ? "เปลี่ยน" : "อัปโหลด"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setPadModal({
+                              isOpen: true,
+                              type: "teacher",
+                              teacherId: teacher.id,
+                              title: "ครู " + teacher.name
+                            })}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                            title="วาดลายเซ็นด้วย Apple Pencil หรือนิ้วมือ"
+                          >
+                            <PenTool className="w-3 h-3" />
+                            วาด
                           </button>
 
                           {teacher.has_signature && (
@@ -662,6 +722,211 @@ export default function TermSignaturesSection({
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+
+      {/* Signature Pad Modal for iPad / iPhone / Desktop */}
+      <SignaturePadModal
+        isOpen={padModal.isOpen}
+        title={padModal.title}
+        onClose={() => setPadModal({ ...padModal, isOpen: false })}
+        onSave={async (file) => {
+          if (padModal.type === "academic_head") {
+            await handleUploadAcademicSignature(file);
+          } else if (padModal.teacherId) {
+            await handleUploadTeacherSignature(padModal.teacherId, file);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+function SignaturePadModal({
+  isOpen,
+  onClose,
+  onSave,
+  title,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (file: File) => Promise<void>;
+  title: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 2.8;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      }
+      setHasDrawn(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    if ("touches" in e) {
+      const touch = e.touches[0];
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const { x, y } = getPos(e);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+    setHasDrawn(true);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    if (!isDrawing || !canvasRef.current) return;
+    const { x, y } = getPos(e);
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = (e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) e.preventDefault();
+    setIsDrawing(false);
+  };
+
+  const handleClear = () => {
+    if (!canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+    setHasDrawn(false);
+  };
+
+  const handleSave = () => {
+    if (!canvasRef.current || !hasDrawn) return;
+    setSaving(true);
+    canvasRef.current.toBlob(async (blob) => {
+      if (blob) {
+        const file = new File([blob], "digital_signature.png", { type: "image/png" });
+        await onSave(file);
+      }
+      setSaving(false);
+      onClose();
+    }, "image/png");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-card border border-border rounded-3xl p-6 shadow-2xl max-w-lg w-full space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
+              <PenTool className="w-5 h-5" />
+            </span>
+            <div>
+              <h3 className="font-bold text-base text-foreground">วาดลายเซ็น (Apple Pencil / Touch)</h3>
+              <p className="text-xs text-muted-foreground">{title}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="text-xs text-muted-foreground flex items-center gap-2">
+          <span>✍️ ใช้ Apple Pencil, ปากกาสไตลัส หรือนิ้วมือวาดลายเซ็นลงในกรอบด้านล่าง</span>
+        </div>
+
+        <div
+          className="rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-600/50 bg-white dark:bg-slate-900 p-2 relative overflow-hidden flex items-center justify-center"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02)), repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 25%, #ffffff 25%, #ffffff 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02))",
+            backgroundSize: "16px 16px",
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            width={520}
+            height={220}
+            className="w-full h-44 rounded-xl cursor-crosshair touch-none"
+            style={{ touchAction: "none" }}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+          />
+          {!hasDrawn && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-muted-foreground/40 font-bold text-sm select-none">
+              จรด Apple Pencil หรือนิ้วเพื่อเซ็นชื่อตรงนี้
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={!hasDrawn}
+            className="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer disabled:opacity-40"
+          >
+            ล้างกระดาน
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-xs font-semibold text-muted-foreground transition-all cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!hasDrawn || saving}
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+            >
+              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              บันทึกและอัปโหลด
+            </button>
+          </div>
         </div>
       </div>
     </div>

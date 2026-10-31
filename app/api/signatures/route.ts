@@ -3,9 +3,9 @@ import pool from "@/app/lib/db";
 import { ensureStatusSchema } from "@/app/lib/statusMigration";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { uploadSignatureToOracle, deleteSignatureFromOracle, getOracleStorageConfig } from "@/app/lib/oracleStorage";
+import { processSignatureImage, ALLOWED_IMAGE_MIMES, isHeicFile } from "@/app/lib/imageProcessing";
 
-const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"];
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (รองรับรูปถ่ายความละเอียดสูงจาก iPhone/iPad)
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,16 +38,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    const arrayBuffer = await file.arrayBuffer();
+    const rawBuffer = Buffer.from(arrayBuffer);
+    const timestamp = Date.now();
+
+    const isSupported =
+      ALLOWED_IMAGE_MIMES.includes(file.type) ||
+      isHeicFile(rawBuffer, file.name, file.type);
+
+    if (!isSupported) {
       return NextResponse.json(
-        { error: "Invalid file format. Only PNG, JPEG, and WebP are allowed." },
+        { error: "Invalid file format. Only PNG, JPEG, WebP, and HEIC/HEIF (iOS) are allowed." },
         { status: 400 }
       );
     }
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "File size exceeds 2MB limit." },
+        { error: "File size exceeds 10MB limit." },
         { status: 400 }
       );
     }
@@ -60,9 +68,12 @@ export async function POST(req: NextRequest) {
       schoolId = "00000000-0000-0000-0000-000000000001";
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const timestamp = Date.now();
+    // Process & convert image (convert HEIC from iPhone/iPad to PNG)
+    const { buffer, contentType } = await processSignatureImage(
+      rawBuffer,
+      file.name,
+      file.type
+    );
 
     if (type === "academic_head") {
       // Must have permission to edit settings
@@ -71,7 +82,7 @@ export async function POST(req: NextRequest) {
       }
 
       const key = `signatures/schools/${schoolId}/terms/${settingId}/academic_head_${timestamp}.png`;
-      await uploadSignatureToOracle(buffer, key, file.type);
+      await uploadSignatureToOracle(buffer, key, contentType);
 
       // Fetch previous key to delete old file if exists
       const oldRes = await pool.query(
@@ -111,7 +122,7 @@ export async function POST(req: NextRequest) {
       }
 
       const key = `signatures/schools/${schoolId}/terms/${settingId}/teachers/${teacherId}_${timestamp}.png`;
-      await uploadSignatureToOracle(buffer, key, file.type);
+      await uploadSignatureToOracle(buffer, key, contentType);
 
       // Check old key
       const oldRes = await pool.query(
