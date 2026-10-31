@@ -474,7 +474,7 @@ function AdminPortalContent() {
   // Export Classroom & Individual Scores State
   const [exportMode, setExportMode] = useState<"classroom" | "individual">("classroom");
   const [exportType, setExportType] = useState<"term" | "yearly">("term");
-  const [exportSettingId, setExportSettingId] = useState<number | null>(null);
+  const [exportSettingId, setExportSettingId] = useState<number | string | null>(null);
   const [exportClassroomId, setExportClassroomId] = useState<string>("");
   const [exportStudentId, setExportStudentId] = useState<string>("all");
   const [includeActivitySubjects, setIncludeActivitySubjects] = useState<boolean>(false);
@@ -518,7 +518,7 @@ function AdminPortalContent() {
       return;
     }
 
-    const setting = settingsList.find(s => s.id === exportSettingId);
+    const setting = settingsList.find(s => String(s.id) === String(exportSettingId));
     if (!setting) return;
 
     // TEMP DIAGNOSTIC — remove once the "reloads on classroom change" report is resolved.
@@ -3477,7 +3477,7 @@ function changeFontSize(dir) {
       return;
     }
 
-    const setting = settingsList.find(s => s.id === exportSettingId);
+    const setting = settingsList.find(s => String(s.id) === String(exportSettingId));
     const classroom = exportClassrooms.find(c => c.id === exportClassroomId);
     if (!setting || !classroom) {
       Swal.fire("ข้อผิดพลาด", "ไม่พบข้อมูลชั้นเรียนหรือปีการศึกษา", "error");

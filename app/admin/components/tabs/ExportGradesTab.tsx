@@ -7,8 +7,8 @@ interface ExportGradesTabProps {
   setExportMode: (mode: "classroom" | "individual") => void;
   exportLanguage: "th" | "ms-rumi" | "ms-jawi";
   setExportLanguage: (lang: "th" | "ms-rumi" | "ms-jawi") => void;
-  exportSettingId: number | null;
-  setExportSettingId: (id: number | null) => void;
+  exportSettingId: number | string | null;
+  setExportSettingId: (id: any) => void;
   exportClassroomId: string;
   setExportClassroomId: (id: string) => void;
   exportStudentId: string;
@@ -27,7 +27,7 @@ interface ExportGradesTabProps {
     name_thai?: string | null;
     name_rumi?: string | null;
     name_jawi?: string | null;
-    setting_id?: number | null;
+    setting_id?: number | string | null;
   }[];
   students: DBStudent[];
   moveExportSubjectUp: (index: number) => void;
@@ -225,8 +225,12 @@ export default function ExportGradesTab({
               ปีการศึกษา / เทอม <span className="text-red-500">*</span>
             </label>
             <select
-              value={exportSettingId || ""}
-              onChange={(e) => setExportSettingId(Number(e.target.value) || null)}
+              value={exportSettingId ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                const found = settingsList.find((s) => String(s.id) === String(val));
+                setExportSettingId(found ? found.id : (val || null));
+              }}
               className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
             >
               {exportType === "yearly" ? (
@@ -256,7 +260,7 @@ export default function ExportGradesTab({
             >
               <option value="">-- เลือกชั้นเรียน --</option>
               {classrooms
-                .filter((c) => exportType === "yearly" || !exportSettingId || c.setting_id === exportSettingId)
+                .filter((c) => exportType === "yearly" || !exportSettingId || String(c.setting_id) === String(exportSettingId))
                 .map((c) => {
                   const prefix = exportLanguage === "ms-jawi" ? "كلس " : exportLanguage === "ms-rumi" ? "Kelas " : "ชั้น ";
                   const cName = getClassroomName(c, exportLanguage);
