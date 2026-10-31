@@ -4,6 +4,7 @@ import { type SystemSetting } from "../types";
 import { formatThaiDateRange } from "../../../lib/format";
 import SectionHeader from "../SectionHeader";
 import PermissionGate from "@/app/components/PermissionGate";
+import TermSignaturesSection from "./TermSignaturesSection";
 
 interface SettingsTabProps {
   settingsList: SystemSetting[];
@@ -17,10 +18,11 @@ interface SettingsTabProps {
   handleDeleteSetting: (id: string, name: string) => void;
   classrooms?: { id: string; name: string }[];
   token?: string | null;
+  schoolId?: string;
   onSettingsUpdated?: () => void;
 }
 
-type SettingsSubTab = "general" | "translations";
+type SettingsSubTab = "general" | "translations" | "signatures";
 
 function toDateTimeLocalValue(value?: string | null) {
   if (!value) return "";
@@ -42,6 +44,7 @@ export default function SettingsTab({
   handleDeleteSetting,
   classrooms = [],
   token,
+  schoolId,
   onSettingsUpdated,
 }: SettingsTabProps) {
   const [subTab, setSubTab] = useState<SettingsSubTab>("general");
@@ -287,6 +290,16 @@ export default function SettingsTab({
           }`}
         >
           🌐 คำแปลภาษาในระบบ (Dictionary)
+        </button>
+        <button
+          onClick={() => setSubTab("signatures")}
+          className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+            subTab === "signatures"
+              ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+              : "text-muted-foreground hover:text-foreground hover:bg-card"
+          }`}
+        >
+          ✍️ ลายเซ็นประจำภาคเรียน (Signatures)
         </button>
       </div>
 
@@ -686,6 +699,16 @@ export default function SettingsTab({
 
       {/* Translations Sub-Tab (System Dictionary) */}
       {subTab === "translations" && <SystemTranslationsSection token={token} />}
+
+      {/* Term Signatures Sub-Tab */}
+      {subTab === "signatures" && (
+        <TermSignaturesSection
+          settingsList={settingsList}
+          token={token}
+          schoolId={schoolId}
+          onSettingsUpdated={onSettingsUpdated}
+        />
+      )}
     </div>
   );
 }

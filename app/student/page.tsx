@@ -721,6 +721,7 @@ export default function StudentPortal() {
             studentNumber={currentStudent.student_number}
             classroomName={formatClassroomOption(classroom)}
             homeroomTeacherNames={classroom?.homeroom_teacher_names || []}
+            homeroomTeacherIds={classroom?.homeroom_teacher_ids || []}
             schoolId={user?.school_id}
             activeTermStr={activeTermStr}
             academicHead={activeSetting?.academic_head || null}

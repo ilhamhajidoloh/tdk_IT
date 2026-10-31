@@ -200,6 +200,7 @@ export interface SystemSetting {
   grade_release_date?: string | null;
   is_ranking_released?: boolean;
   academic_head?: string | null;
+  academic_head_signature_key?: string | null;
   attendance_total_weeks?: number;
 }
 

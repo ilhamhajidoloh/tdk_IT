@@ -25,6 +25,7 @@ function formatRow(row: Record<string, unknown>) {
     is_grade_released: row.is_grade_released !== false,
     grade_release_date: row.grade_release_date ? String(row.grade_release_date) : null,
     is_ranking_released: row.is_ranking_released === true,
+    academic_head_signature_key: row.academic_head_signature_key ? String(row.academic_head_signature_key) : null,
     attendance_total_weeks: Number(row.attendance_total_weeks ?? 0),
   };
 }
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await pool.query(
-    "SELECT id, academic_year, term, start_date, end_date, academic_head, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, attendance_total_weeks, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
+    "SELECT id, academic_year, term, start_date, end_date, academic_head, academic_head_signature_key, midterm_max_score, final_max_score, schedule_days, highest_grade_level, data_retention_years, auto_cleanup_enabled, is_grade_released, grade_release_date, is_ranking_released, attendance_total_weeks, (CURRENT_DATE >= start_date AND CURRENT_DATE <= end_date) AS is_active FROM system_settings WHERE school_id = $1 OR school_id IS NULL ORDER BY academic_year DESC, term DESC",
     [schoolId]
   );
   return NextResponse.json(result.rows.map(formatRow));

@@ -20,6 +20,7 @@ export async function ensureStatusSchema() {
     // Attendance is recorded as yearly totals, not a daily log.  This value is
     // deliberately shared by every term in the same academic year.
     await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS attendance_total_weeks INTEGER DEFAULT 0");
+    await pool.query("ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS academic_head_signature_key VARCHAR(255) DEFAULT NULL");
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS attendance_yearly_summaries (
@@ -121,6 +122,24 @@ export async function ensureStatusSchema() {
         grade_summary_json JSONB,
         created_at TIMESTAMP DEFAULT NOW()
       );
+    `);
+
+    // Term-based signatures for teachers and staff
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS teacher_term_signatures (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        school_id UUID NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        setting_id BIGINT NOT NULL REFERENCES system_settings(id) ON DELETE CASCADE,
+        signature_key VARCHAR(255) NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now(),
+        CONSTRAINT unique_teacher_term_signature UNIQUE (user_id, setting_id)
+      );
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_teacher_term_signatures_school_setting 
+      ON teacher_term_signatures(school_id, setting_id);
     `);
 
     migrationDone = true;

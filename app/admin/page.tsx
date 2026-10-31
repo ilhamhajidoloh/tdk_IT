@@ -3508,6 +3508,14 @@ function changeFontSize(dir) {
       ? classroom.homeroom_teacher_names.join(", ")
       : "........................................................";
 
+    const academicHeadSigImg = setting.academic_head_signature_key
+      ? `<img src="/api/signatures/proxy?type=academic_head&id=${setting.id}" style="max-height:44px;max-width:130px;object-fit:contain;" onerror="this.style.visibility='hidden'" />`
+      : "";
+
+    const homeroomTeacherSigImg = (classroom.homeroom_teacher_ids && classroom.homeroom_teacher_ids.length === 1)
+      ? `<img src="/api/signatures/proxy?type=teacher&id=${classroom.homeroom_teacher_ids[0]}&settingId=${setting.id}" style="max-height:44px;max-width:130px;object-fit:contain;" onerror="this.style.visibility='hidden'" />`
+      : "";
+
     const selectedSubjects = exportSubjectList.filter(s => exportSelectedSubjectIds.includes(s.id));
     if (selectedSubjects.length === 0) {
       Swal.fire("ข้อผิดพลาด", "กรุณาเลือกวิชาเรียนอย่างน้อย 1 วิชาที่ต้องการส่งออก", "warning");
@@ -3873,9 +3881,10 @@ function changeFontSize(dir) {
             .meta { display: flex; justify-content: space-between; font-size: calc(12px * var(--fs)); color: #64748b; margin-bottom: 12px; font-weight: 500; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
             th { background: #f1f5f9; color: #1e293b; font-weight: 700; }
-            .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding: 0 40px; page-break-inside: avoid; }
-            .sig-box { text-align: center; width: 220px; }
-            .sig-line { border-bottom: 1px dotted #94a3b8; margin-top: 40px; margin-bottom: 6px; }
+            .signatures { display: flex; justify-content: space-around; margin-top: 30px; padding: 0 40px; page-break-inside: avoid; }
+            .sig-box { text-align: center; width: 220px; display: flex; flex-direction: column; align-items: center; }
+            .sig-slot { height: 46px; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+            .sig-line { width: 180px; border-bottom: 1px dotted #94a3b8; margin: 4px auto 6px; }
             :root { --fs: 1; }
             .toolbar { position: fixed; top: 16px; ${exportLanguage === "ms-jawi" ? "left: 16px;" : "right: 16px;"} display: flex; align-items: center; gap: 8px; z-index: 100; }
             .fs-group { display: flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 4px 6px; box-shadow: 0 4px 12px rgba(15,23,42,0.08); font-size: 12px; font-weight: 600; color: #334155; }
@@ -3949,11 +3958,13 @@ function changeFontSize(dir) {
 
           <div class="signatures">
             <div class="sig-box">
+              <div class="sig-slot">${homeroomTeacherSigImg}</div>
               <div class="sig-line"></div>
               <div style="font-size:calc(12px * var(--fs));font-weight:bold;">( ${homeroomTeacherNames} )</div>
               <div style="font-size:calc(11px * var(--fs));color:#64748b;margin-top:2px;">${t("ครูประจำชั้น")}</div>
             </div>
             <div class="sig-box">
+              <div class="sig-slot">${academicHeadSigImg}</div>
               <div class="sig-line"></div>
               <div style="font-size:calc(12px * var(--fs));font-weight:bold;">( ${setting.academic_head || "........................................................"} )</div>
               <div style="font-size:calc(11px * var(--fs));color:#64748b;margin-top:2px;">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
@@ -4008,13 +4019,13 @@ function changeFontSize(dir) {
 
           return `
             <tr>
-              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${idx + 1}</td>
-              <td dir="auto" style="padding:8px 12px;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:600;text-align:${alignLeftOrRight};">${getSubjectDisplayName(sub, exportLanguage)}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${sub.subject_type === "activity" ? "-" : sub.credit_hours}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${midText}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${finText}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:bold;">${totalText}</td>
-              <td style="padding:8px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:extrabold;color:${sc?.isActivity ? '#0f172a' : '#4f46e5'};">${gradeText}</td>
+              <td style="padding:3.5px 5px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${idx + 1}</td>
+              <td dir="auto" style="padding:3.5px 8px;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:600;text-align:${alignLeftOrRight};">${getSubjectDisplayName(sub, exportLanguage)}</td>
+              <td style="padding:3.5px 5px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${sub.subject_type === "activity" ? "-" : sub.credit_hours}</td>
+              <td style="padding:3.5px 5px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${midText}</td>
+              <td style="padding:3.5px 5px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));">${finText}</td>
+              <td style="padding:3.5px 5px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:bold;">${totalText}</td>
+              <td style="padding:3.5px 5px;text-align:center;border:1px solid #000;font-size:calc(12px * var(--fs));font-weight:extrabold;color:${sc?.isActivity ? '#0f172a' : '#4f46e5'};">${gradeText}</td>
             </tr>
           `;
         }).join("");
@@ -4067,11 +4078,13 @@ function changeFontSize(dir) {
 
             <div class="signatures">
               <div class="sig-box">
+                <div class="sig-slot">${homeroomTeacherSigImg}</div>
                 <div class="sig-line"></div>
                 <div><b>( ${homeroomTeacherNames} )</b></div>
                 <div class="sig-role">${t("ครูประจำชั้น")}</div>
               </div>
               <div class="sig-box">
+                <div class="sig-slot">${academicHeadSigImg}</div>
                 <div class="sig-line"></div>
                 <div><b>( ${setting.academic_head || "........................................................"} )</b></div>
                 <div class="sig-role">${t("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ")}</div>
@@ -4140,61 +4153,66 @@ function changeFontSize(dir) {
             .fs-val { min-width: 42px; text-align: center; color: #4f46e5; }
             .report-card {
               width: 210mm;
-              min-height: 297mm;
-              margin: 0;
+              height: 297mm;
+              max-height: 297mm;
+              margin: 10px auto;
               background: #fff;
-              padding: 15mm 19mm;
+              padding: 10mm 15mm;
               transform-origin: top center;
               border: 0;
               box-sizing: border-box;
+              overflow: hidden;
+              page-break-inside: avoid;
+              break-inside: avoid;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             }
             .header {
               text-align: center;
-              padding-top: 7mm;
-              margin-bottom: 5mm;
+              padding-top: 2mm;
+              margin-bottom: 2.5mm;
             }
             .logo {
-              width: 50px;
-              height: 50px;
+              width: 46px;
+              height: 46px;
               object-fit: contain;
-              margin-bottom: 3px;
+              margin-bottom: 2px;
             }
             :root { --fs: 1; }
             .school {
               font-size: calc(14px * var(--fs));
               font-weight: 400;
-              margin: 0 0 3px;
+              margin: 0 0 2px;
             }
             .header h1 {
-              font-size: calc(17px * var(--fs));
+              font-size: calc(16px * var(--fs));
               font-weight: 600;
               margin: 0;
             }
             .header h2 {
               font-size: calc(12px * var(--fs));
               font-weight: 400;
-              margin: 3px 0 0;
+              margin: 2px 0 0;
               color: #555;
             }
             .student-info {
               display: grid;
               grid-template-columns: 1fr 1fr;
               gap: 2px 18px;
-              margin: 5mm 0;
-              padding: 3mm 0;
+              margin: 2.5mm 0;
+              padding: 2mm 0;
               font-size: calc(12px * var(--fs));
             }
-            .info-row { line-height: 1.4; }
+            .info-row { line-height: 1.35; }
             table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 20px;
-              font-size: calc(12px * var(--fs));
+              margin-bottom: 2.5mm;
+              font-size: calc(11.5px * var(--fs));
             }
             th, td {
               border: 1px solid #000;
-              padding: 2.2px 3px;
-              line-height: 1.25;
+              padding: 3px 4px;
+              line-height: 1.2;
               background: #fff;
               text-align: center;
             }
@@ -4202,23 +4220,38 @@ function changeFontSize(dir) {
             .summary {
               margin-top: 0;
               border: 1px solid #000;
-              padding: 3mm;
-              font-size: calc(12px * var(--fs));
+              padding: 2.5mm 3.5mm;
+              font-size: calc(11.5px * var(--fs));
               display: grid;
               grid-template-columns: repeat(2, 1fr);
-              gap: 8px;
+              gap: 3px 8px;
             }
             .signatures {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 35mm;
-              margin-top: 16mm;
+              display: flex;
+              justify-content: space-around;
+              margin-top: 5mm;
               font-size: calc(12px * var(--fs));
               text-align: center;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .sig-box {
+              width: 220px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            }
+            .sig-slot {
+              height: 46px;
+              width: 100%;
+              display: flex;
+              align-items: flex-end;
+              justify-content: center;
             }
             .sig-line {
-              border-top: 1px solid #000;
-              margin: 18mm 8mm 3px;
+              width: 180px;
+              border-top: 1px dotted #000;
+              margin: 4px auto 5px;
             }
             .sig-role {
               font-size: calc(11px * var(--fs));
@@ -4228,15 +4261,45 @@ function changeFontSize(dir) {
             .eval-section {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
-              gap: 16px;
-              margin-bottom: 20px;
+              gap: 12px;
+              margin-bottom: 2.5mm;
             }
-            .page-break { page-break-after: always; }
+            .page-break {
+              page-break-after: always;
+              break-after: page;
+            }
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
             @media print {
-              body { background: #fff; margin: 5mm; }
-              .toolbar { display: none; }
-              .report-card { margin: 0; padding: 15mm 19mm; border: 0; }
-              @page { size: A4 portrait; margin: 5mm; }
+              body {
+                background: #fff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              .toolbar {
+                display: none !important;
+              }
+              .report-card {
+                margin: 0 auto !important;
+                padding: 10mm 15mm !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                border: 0 !important;
+                box-shadow: none !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .page-break {
+                page-break-after: always !important;
+                break-after: page !important;
+              }
             }
           </style>
         </head>
@@ -4774,6 +4837,7 @@ function changeFontSize(dir) {
                 handleDeleteSetting={handleDeleteSetting}
                 classrooms={classrooms}
                 token={token}
+                schoolId={selectedSchoolId || (adminUser as { school_id?: string } | null)?.school_id || "main"}
                 onSettingsUpdated={() => token && loadSettings(token)}
               />
             )}
