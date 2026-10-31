@@ -743,6 +743,52 @@ export default function TermSignaturesSection({
   );
 }
 
+function cropSignatureCanvas(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const data = imgData.data;
+
+  let minX = width;
+  let minY = height;
+  let maxX = 0;
+  let maxY = 0;
+  let found = false;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const alpha = data[(y * width + x) * 4 + 3];
+      if (alpha > 10) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        found = true;
+      }
+    }
+  }
+
+  if (!found) return canvas;
+
+  const padding = 24;
+  const cropX = Math.max(0, minX - padding);
+  const cropY = Math.max(0, minY - padding);
+  const cropW = Math.min(width - cropX, maxX - minX + padding * 2);
+  const cropH = Math.min(height - cropY, maxY - minY + padding * 2);
+
+  const cropped = document.createElement("canvas");
+  cropped.width = cropW;
+  cropped.height = cropH;
+  const cropCtx = cropped.getContext("2d");
+  if (cropCtx) {
+    cropCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+  }
+  return cropped;
+}
+
 function SignaturePadModal({
   isOpen,
   onClose,
@@ -754,43 +800,73 @@ function SignaturePadModal({
   onSave: (file: File) => Promise<void>;
   title: string;
 }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [strokeColor, setStrokeColor] = useState<string>("#000000");
+  const [strokeWidth, setStrokeWidth] = useState<number>(3.5);
+
+  const initCanvas = () => {
+    if (!canvasRef.current || !containerRef.current) return;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 2;
+
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.scale(dpr, dpr);
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    }
+    setHasDrawn(false);
+  };
 
   useEffect(() => {
-    if (isOpen && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 2.8;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-      }
-      setHasDrawn(false);
+    if (isOpen) {
+      const timer = setTimeout(initCanvas, 60);
+      window.addEventListener("resize", initCanvas);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener("resize", initCanvas);
+      };
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext("2d");
+      if (ctx) {
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = strokeWidth;
+      }
+    }
+  }, [strokeColor, strokeWidth]);
 
   if (!isOpen) return null;
 
   const getPos = (e: React.MouseEvent | React.TouchEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = canvasRef.current.width / rect.width;
-    const scaleY = canvasRef.current.height / rect.height;
     if ("touches" in e) {
       const touch = e.touches[0];
       return {
-        x: (touch.clientX - rect.left) * scaleX,
-        y: (touch.clientY - rect.top) * scaleY,
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
       };
     }
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
     };
   };
 
@@ -823,10 +899,11 @@ function SignaturePadModal({
   };
 
   const handleClear = () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
     const ctx = canvasRef.current.getContext("2d");
     if (ctx) {
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      ctx.clearRect(0, 0, rect.width, rect.height);
     }
     setHasDrawn(false);
   };
@@ -834,7 +911,8 @@ function SignaturePadModal({
   const handleSave = () => {
     if (!canvasRef.current || !hasDrawn) return;
     setSaving(true);
-    canvasRef.current.toBlob(async (blob) => {
+    const cropped = cropSignatureCanvas(canvasRef.current);
+    cropped.toBlob(async (blob) => {
       if (blob) {
         const file = new File([blob], "digital_signature.png", { type: "image/png" });
         await onSave(file);
@@ -845,44 +923,125 @@ function SignaturePadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-card border border-border rounded-3xl p-6 shadow-2xl max-w-lg w-full space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/85 backdrop-blur-md p-2 sm:p-5 select-none animate-fade-in">
+      <div className="flex-1 flex flex-col bg-card border border-border rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
+        
+        {/* Full-width Top Header Bar */}
+        <div className="px-4 sm:px-6 py-3.5 border-b border-border bg-card flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3">
             <span className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
               <PenTool className="w-5 h-5" />
             </span>
             <div>
-              <h3 className="font-bold text-base text-foreground">วาดลายเซ็น (Apple Pencil / Touch)</h3>
-              <p className="text-xs text-muted-foreground">{title}</p>
+              <h3 className="font-extrabold text-sm sm:text-base text-foreground flex items-center gap-2">
+                วาดลายเซ็นดิจิทัลเต็มหน้าจอ
+                <span className="text-xs font-normal text-muted-foreground hidden sm:inline">
+                  (Apple Pencil / Stylus / Touch)
+                </span>
+              </h3>
+              <p className="text-xs text-muted-foreground font-medium">
+                ลงนามสำหรับ: <b className="text-foreground">{title}</b>
+              </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground text-sm font-bold p-1 cursor-pointer"
-          >
-            ✕
-          </button>
+
+          {/* Tool Controls: Colors and Pen Size */}
+          <div className="flex items-center gap-3">
+            {/* Color choices */}
+            <div className="flex items-center gap-1.5 p-1 bg-muted rounded-xl border border-border">
+              <button
+                type="button"
+                onClick={() => setStrokeColor("#000000")}
+                className={`w-6 h-6 rounded-lg transition-all ${
+                  strokeColor === "#000000"
+                    ? "ring-2 ring-indigo-500 scale-110 shadow-sm"
+                    : "opacity-60 hover:opacity-100"
+                }`}
+                style={{ backgroundColor: "#000000" }}
+                title="หมึกสีดำ"
+              />
+              <button
+                type="button"
+                onClick={() => setStrokeColor("#1d4ed8")}
+                className={`w-6 h-6 rounded-lg transition-all ${
+                  strokeColor === "#1d4ed8"
+                    ? "ring-2 ring-indigo-500 scale-110 shadow-sm"
+                    : "opacity-60 hover:opacity-100"
+                }`}
+                style={{ backgroundColor: "#1d4ed8" }}
+                title="หมึกสีน้ำเงิน"
+              />
+            </div>
+
+            {/* Thickness choices */}
+            <div className="flex items-center gap-1 p-1 bg-muted rounded-xl border border-border text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setStrokeWidth(2.5)}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  strokeWidth === 2.5
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                บาง
+              </button>
+              <button
+                type="button"
+                onClick={() => setStrokeWidth(3.8)}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  strokeWidth === 3.8
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                ปกติ
+              </button>
+              <button
+                type="button"
+                onClick={() => setStrokeWidth(5.5)}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  strokeWidth === 5.5
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                หนา
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all text-sm font-bold cursor-pointer"
+              title="ปิด"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
-        <div className="text-xs text-muted-foreground flex items-center gap-2">
-          <span>✍️ ใช้ Apple Pencil, ปากกาสไตลัส หรือนิ้วมือวาดลายเซ็นลงในกรอบด้านล่าง</span>
-        </div>
-
+        {/* Full Screen Drawing Canvas Area */}
         <div
-          className="rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-600/50 bg-white dark:bg-slate-900 p-2 relative overflow-hidden flex items-center justify-center"
+          ref={containerRef}
+          className="flex-1 w-full relative bg-white dark:bg-slate-900 overflow-hidden flex items-center justify-center cursor-crosshair touch-none"
           style={{
+            touchAction: "none",
             backgroundImage:
-              "repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02)), repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 25%, #ffffff 25%, #ffffff 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02))",
-            backgroundSize: "16px 16px",
+              "repeating-linear-gradient(45deg, rgba(0,0,0,0.015) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.015) 75%, rgba(0,0,0,0.015)), repeating-linear-gradient(45deg, rgba(0,0,0,0.015) 25%, #ffffff 25%, #ffffff 75%, rgba(0,0,0,0.015) 75%, rgba(0,0,0,0.015))",
+            backgroundSize: "20px 20px",
           }}
         >
+          {/* Guide baseline */}
+          <div className="absolute left-12 right-12 bottom-1/4 border-b-2 border-dashed border-slate-300 dark:border-slate-700 pointer-events-none flex justify-end">
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-1 select-none">
+              ✍️ เส้นบอกแนวการเซ็นชื่อ (ระบบจะตัดเฉพาะรูปลายเซ็นให้อัตโนมัติ)
+            </span>
+          </div>
+
           <canvas
             ref={canvasRef}
-            width={520}
-            height={220}
-            className="w-full h-44 rounded-xl cursor-crosshair touch-none"
+            className="absolute inset-0 touch-none"
             style={{ touchAction: "none" }}
             onMouseDown={startDrawing}
             onMouseMove={draw}
@@ -892,28 +1051,36 @@ function SignaturePadModal({
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
           />
+
           {!hasDrawn && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-muted-foreground/40 font-bold text-sm select-none">
-              จรด Apple Pencil หรือนิ้วเพื่อเซ็นชื่อตรงนี้
+            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-slate-400/60 dark:text-slate-500/50 select-none">
+              <PenTool className="w-12 h-12 mb-2 stroke-1 animate-bounce" />
+              <p className="font-bold text-base sm:text-lg">
+                จรด Apple Pencil หรือนิ้วมือเพื่อวาดลายเซ็นบนพื้นที่นี้ได้อย่างอิสระ
+              </p>
+              <p className="text-xs mt-1">
+                มีพื้นที่กว้างขวางเต็มหน้าจอ เซ็นชื่อได้อย่างสบายมือ
+              </p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        {/* Full-width Bottom Action Toolbar */}
+        <div className="px-4 sm:px-6 py-3.5 border-t border-border bg-card flex items-center justify-between gap-3 shrink-0">
           <button
             type="button"
             onClick={handleClear}
             disabled={!hasDrawn}
-            className="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer disabled:opacity-40"
+            className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-xs sm:text-sm font-semibold text-foreground transition-all cursor-pointer disabled:opacity-40"
           >
-            ล้างกระดาน
+            ล้างกระดานวาดใหม่
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-xs font-semibold text-muted-foreground transition-all cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-xs sm:text-sm font-semibold text-muted-foreground transition-all cursor-pointer"
             >
               ยกเลิก
             </button>
@@ -921,15 +1088,19 @@ function SignaturePadModal({
               type="button"
               onClick={handleSave}
               disabled={!hasDrawn || saving}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer disabled:opacity-40 flex items-center gap-2"
             >
-              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              บันทึกและอัปโหลด
+              {saving ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              บันทึกและส่งขึ้น Oracle Storage
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
 }
-
