@@ -1290,7 +1290,7 @@ function AdminPortalContent() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        popup: "rounded-3xl border border-border/50 p-4 sm:p-6 md:p-8 shadow-xl bg-card max-w-md w-[92vw] sm:w-full",
         title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
@@ -1416,7 +1416,7 @@ function AdminPortalContent() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        popup: "rounded-3xl border border-border/50 p-4 sm:p-6 md:p-8 shadow-xl bg-card max-w-md w-[92vw] sm:w-full",
         title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
@@ -2147,7 +2147,7 @@ function AdminPortalContent() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        popup: "rounded-3xl border border-border/50 p-4 sm:p-6 md:p-8 shadow-xl bg-card max-w-md w-[92vw] sm:w-full",
         title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
@@ -2222,7 +2222,7 @@ function AdminPortalContent() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        popup: "rounded-3xl border border-border/50 p-4 sm:p-6 md:p-8 shadow-xl bg-card max-w-md w-[92vw] sm:w-full",
         title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
@@ -2360,7 +2360,7 @@ function AdminPortalContent() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        popup: "rounded-3xl border border-border/50 p-4 sm:p-6 md:p-8 shadow-xl bg-card max-w-md w-[92vw] sm:w-full",
         title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"
@@ -2509,7 +2509,7 @@ function AdminPortalContent() {
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-border/50 p-8 shadow-xl bg-card max-w-md w-full",
+        popup: "rounded-3xl border border-border/50 p-4 sm:p-6 md:p-8 shadow-xl bg-card max-w-md w-[92vw] sm:w-full",
         title: "text-2xl font-extrabold text-foreground mb-4",
         confirmButton: "bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md text-sm cursor-pointer mr-3",
         cancelButton: "bg-muted hover:bg-muted text-muted-foreground font-bold px-6 py-3 rounded-xl transition-all text-sm cursor-pointer"

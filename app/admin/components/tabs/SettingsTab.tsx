@@ -182,8 +182,8 @@ export default function SettingsTab({
       cancelButtonText: "ยกเลิก",
       buttonsStyling: false,
       customClass: {
-        popup: "rounded-3xl border border-border/50 p-6 shadow-2xl bg-card max-w-md w-full",
-        title: "text-xl font-extrabold text-foreground mb-1",
+        popup: "rounded-3xl border border-border/50 p-4 sm:p-6 shadow-2xl bg-card max-w-md w-[92vw] sm:w-full",
+        title: "text-lg sm:text-xl font-extrabold text-foreground mb-1",
         confirmButton:
           "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md text-xs cursor-pointer mr-2",
         cancelButton:
@@ -247,7 +247,7 @@ export default function SettingsTab({
   };
 
   return (
-    <div className="p-8">
+    <div className="p-3.5 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
       <SectionHeader
         icon="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
         color="slate"
@@ -258,65 +258,68 @@ export default function SettingsTab({
           <PermissionGate permission="settings.academic_year">
             <button
               onClick={handleAddSetting}
-              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer text-sm"
+              className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-4 sm:px-5 py-2.5 rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 border-0 cursor-pointer text-xs sm:text-sm"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              เพิ่มปีการศึกษา / เทอม
+              <span>เพิ่มปีการศึกษา / เทอม</span>
             </button>
           </PermissionGate>
         )}
       </SectionHeader>
 
-      {/* Sub-Tab Navigation */}
-      <div className="flex gap-2 mb-6 p-1 bg-muted rounded-xl border border-border">
+      {/* Sub-Tab Navigation (Desktop / Tablet / Mobile responsive) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 p-1.5 bg-muted/90 rounded-2xl border border-border">
         <button
           onClick={() => setSubTab("general")}
-          className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
             subTab === "general"
               ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
               : "text-muted-foreground hover:text-foreground hover:bg-card"
           }`}
         >
-          ⚙️ ปีการศึกษา & การตั้งค่าระบบ
+          <span>⚙️</span>
+          <span className="truncate">ปีการศึกษา & การตั้งค่า</span>
         </button>
         <button
           onClick={() => setSubTab("translations")}
-          className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
             subTab === "translations"
               ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
               : "text-muted-foreground hover:text-foreground hover:bg-card"
           }`}
         >
-          🌐 คำแปลภาษาในระบบ (Dictionary)
+          <span>🌐</span>
+          <span className="truncate">คำแปลภาษา (Dictionary)</span>
         </button>
         <button
           onClick={() => setSubTab("signatures")}
-          className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
             subTab === "signatures"
               ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
               : "text-muted-foreground hover:text-foreground hover:bg-card"
           }`}
         >
-          ✍️ ลายเซ็นประจำภาคเรียน (Signatures)
+          <span>✍️</span>
+          <span className="truncate">ลายเซ็นประจำภาคเรียน</span>
         </button>
       </div>
 
       {/* General Settings Sub-Tab */}
       {subTab === "general" && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Current Active Period Overview Card */}
-          <div className="p-6 bg-gradient-to-r from-indigo-50/80 dark:from-indigo-500/10 to-violet-50/80 dark:to-violet-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/25 animate-fade-in-up">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-4 sm:p-6 bg-gradient-to-r from-indigo-50/80 dark:from-indigo-500/10 to-violet-50/80 dark:to-violet-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/25 animate-fade-in-up">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
+                  <span className="text-[11px] sm:text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
                     ภาคเรียนที่เปิดใช้งานปัจจุบัน (Active Term)
                   </span>
                 </div>
-                <h3 className="text-xl font-extrabold text-foreground mt-1">
+                <h3 className="text-lg sm:text-xl font-extrabold text-foreground mt-1">
                   ปีการศึกษา {adminYear || "-"} · ภาคเรียนที่ {adminTerm || "-"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -327,7 +330,7 @@ export default function SettingsTab({
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 self-start sm:self-auto">
                 <span
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold ${
                     isGradingActive
@@ -345,30 +348,30 @@ export default function SettingsTab({
           </div>
 
           <PermissionGate permission="settings.academic_year">
-            <div className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-amber-200/80 bg-amber-50/60 dark:bg-amber-500/10 dark:border-amber-500/30">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border border-amber-200/80 bg-amber-50/60 dark:bg-amber-500/10 dark:border-amber-500/30">
               <div>
                 <div className="font-bold text-sm text-foreground">จำนวนสัปดาห์การมาเรียนรายปี</div>
                 <div className="text-xs text-muted-foreground mt-1">กำหนดครั้งเดียว ใช้ร่วมกันทั้งเทอม 1 และเทอม 2</div>
               </div>
-              <button onClick={handleAttendanceWeeks} className="shrink-0 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm">ตั้งค่าจำนวนสัปดาห์</button>
+              <button onClick={handleAttendanceWeeks} className="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm cursor-pointer transition-colors shadow-sm">ตั้งค่าจำนวนสัปดาห์</button>
             </div>
           </PermissionGate>
 
           {/* Settings List */}
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-border animate-fade-in-up">
-            <table className="w-full text-left">
-              <thead className="bg-muted text-muted-foreground">
+          {/* Desktop & Tablet Table */}
+          <div className="hidden md:block overflow-x-auto rounded-2xl border border-border bg-card animate-fade-in-up">
+            <table className="w-full text-left min-w-[760px]">
+              <thead className="bg-muted/80 text-muted-foreground text-xs uppercase">
                 <tr>
-                  <th className="px-6 py-4 font-bold">ปีการศึกษา / เทอม</th>
-                  <th className="px-6 py-4 font-bold">ช่วงเวลากรอกคะแนน</th>
-                  <th className="px-6 py-4 font-bold text-center">คะแนนเต็ม (เก็บ/สอบ)</th>
-                  <th className="px-6 py-4 font-bold text-center">📢 ประกาศผลการเรียน</th>
-                  <th className="px-6 py-4 font-bold text-center">สถานะ</th>
-                  <th className="px-6 py-4 font-bold text-center">จัดการ</th>
+                  <th className="px-5 py-3.5 font-bold">ปีการศึกษา / เทอม</th>
+                  <th className="px-5 py-3.5 font-bold">ช่วงเวลากรอกคะแนน</th>
+                  <th className="px-5 py-3.5 font-bold text-center">คะแนนเต็ม (เก็บ/สอบ)</th>
+                  <th className="px-5 py-3.5 font-bold text-center">📢 ประกาศผลการเรียน</th>
+                  <th className="px-5 py-3.5 font-bold text-center">สถานะ</th>
+                  <th className="px-5 py-3.5 font-bold text-center">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border text-sm">
                 {settingsList.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-subtle-foreground font-semibold">
@@ -391,16 +394,16 @@ export default function SettingsTab({
                     return (
                       <tr
                         key={s.id}
-                        className={`hover:bg-muted/50 ${s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""}`}
+                        className={`hover:bg-muted/40 transition-colors ${s.is_active ? "bg-indigo-50/25 dark:bg-indigo-500/10" : ""}`}
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-5 py-3.5">
                           <div className="font-bold text-foreground">ปีการศึกษา {s.academic_year}</div>
                           <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
                             ภาคเรียนที่ (เทอม) {s.term}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-foreground font-semibold">
+                        <td className="px-5 py-3.5">
+                          <div className="text-xs sm:text-sm text-foreground font-semibold">
                             {formatThaiDateRange(s.start_date, s.end_date)}
                           </div>
                           <div className="text-[10px] text-subtle-foreground font-semibold mt-0.5">
@@ -415,10 +418,10 @@ export default function SettingsTab({
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center text-sm font-semibold text-foreground">
+                        <td className="px-5 py-3.5 text-center text-xs sm:text-sm font-semibold text-foreground">
                           {s.midterm_max_score ?? 50} / {s.final_max_score ?? 50}
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           <div className="flex flex-col items-center justify-center gap-1.5">
                             <span
                               className={`text-[11px] font-extrabold px-3 py-1 rounded-full border shadow-sm ${
@@ -457,7 +460,7 @@ export default function SettingsTab({
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           {s.is_active ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -473,7 +476,7 @@ export default function SettingsTab({
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-5 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <PermissionGate permission="settings.edit">
                               <button
@@ -505,10 +508,10 @@ export default function SettingsTab({
             </table>
           </div>
 
-          {/* Mobile Cards */}
+          {/* Mobile Cards (< md) */}
           <div className="md:hidden space-y-3 animate-fade-in-up">
             {settingsList.length === 0 ? (
-              <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
+              <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold text-xs sm:text-sm">
                 ไม่มีข้อมูลปีการศึกษาในระบบ
               </div>
             ) : (
@@ -527,61 +530,66 @@ export default function SettingsTab({
                 return (
                   <div
                     key={s.id}
-                    className={`card-modern p-4 space-y-3 ${
-                      s.is_active ? "bg-indigo-50/20 dark:bg-indigo-500/10" : ""
+                    className={`card-modern p-4 space-y-3 rounded-2xl border border-border bg-card shadow-sm ${
+                      s.is_active ? "ring-2 ring-indigo-500/30 bg-indigo-50/15 dark:bg-indigo-500/10" : ""
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="font-bold text-foreground">ปีการศึกษา {s.academic_year}</div>
-                        <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+                        <div className="font-bold text-foreground text-sm sm:text-base">ปีการศึกษา {s.academic_year}</div>
+                        <div className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
                           ภาคเรียนที่ (เทอม) {s.term}
                         </div>
                       </div>
                       {s.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                           กำลังใช้งาน
                         </span>
                       ) : isWaiting ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shrink-0">
                           รอเปิดใช้งาน
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-muted text-muted-foreground border border-border shrink-0">
                           สิ้นสุดแล้ว
                         </span>
                       )}
                     </div>
 
                     <div className="pt-2 border-t border-border space-y-1">
-                      <div className="text-sm text-foreground font-semibold">
+                      <div className="text-xs sm:text-sm text-foreground font-semibold">
                         {formatThaiDateRange(s.start_date, s.end_date)}
                       </div>
-                      <div className="text-[10px] text-subtle-foreground font-semibold">
-                        {isPeriodActive ? (
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                            ● กำลังอยู่ในช่วงเวลากรอกคะแนน
-                          </span>
-                        ) : (
-                          <span className="text-rose-500 dark:text-rose-400 font-bold">
-                            ● อยู่นอกช่วงเวลากรอกคะแนน
-                          </span>
-                        )}
+                      <div className="text-[10px] text-subtle-foreground font-semibold flex items-center justify-between">
+                        <span>
+                          {isPeriodActive ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              ● กำลังอยู่ในช่วงเวลากรอกคะแนน
+                            </span>
+                          ) : (
+                            <span className="text-rose-500 dark:text-rose-400 font-bold">
+                              ● อยู่นอกช่วงเวลากรอกคะแนน
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-muted-foreground font-bold">
+                          คะแนนเต็ม: {s.midterm_max_score ?? 50}/{s.final_max_score ?? 50}
+                        </span>
                       </div>
                     </div>
 
                     {/* Mobile Grade Release Button */}
-                    <div className="p-3 bg-amber-50/50 dark:bg-amber-500/10 rounded-xl border border-amber-200/60 dark:border-amber-500/20 flex items-center justify-between gap-2">
+                    <div className="p-3 bg-amber-50/50 dark:bg-amber-500/10 rounded-xl border border-amber-200/60 dark:border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                       <div>
                         <div className="text-xs font-bold text-foreground">📢 ประกาศผลการเรียน:</div>
                         <div className="text-[11px] font-bold mt-0.5">
                           <span
                             className={
                               isCurrentlyVisibleToStudent
-                                ? "text-emerald-600"
+                                ? "text-emerald-600 dark:text-emerald-400"
                                 : hasReleaseDate
-                                ? "text-amber-600"
+                                ? "text-amber-600 dark:text-amber-400"
                                 : "text-muted-foreground"
                             }
                           >
@@ -600,16 +608,16 @@ export default function SettingsTab({
                       </div>
                       <button
                         onClick={() => handleOpenReleaseModal(s)}
-                        className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all border-0 shrink-0 cursor-pointer"
+                        className="w-full sm:w-auto px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all border-0 shrink-0 cursor-pointer flex items-center justify-center gap-1"
                       >
-                        ⚙️ ตั้งเวลา
+                        ⚙️ ตั้งเวลา/เปิด-ปิด
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
                       <button
                         onClick={() => handleEditSetting(s)}
-                        className="flex-1 py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-xl transition-colors border-0 cursor-pointer text-center"
+                        className="flex-1 py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-xl transition-colors border-0 cursor-pointer text-center"
                       >
                         แก้ไขข้อมูล
                       </button>
@@ -618,7 +626,7 @@ export default function SettingsTab({
                           onClick={() =>
                             handleDeleteSetting(s.id, `ปี ${s.academic_year} เทอม ${s.term}`)
                           }
-                          className="py-2 px-4 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-colors border-0 cursor-pointer"
+                          className="py-2 px-4 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-500 dark:text-red-400 font-bold text-xs rounded-xl transition-colors border-0 cursor-pointer"
                         >
                           ลบ
                         </button>
@@ -632,7 +640,7 @@ export default function SettingsTab({
 
           {/* ⚠️ Danger Zone: Request School Deletion */}
           <PermissionGate requireFullAdmin>
-            <div className="mt-10 p-6 rounded-2xl border-2 border-red-500/30 bg-red-500/5 space-y-3">
+            <div className="mt-8 sm:mt-10 p-4 sm:p-6 rounded-2xl border-2 border-red-500/30 bg-red-500/5 space-y-3">
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -680,7 +688,7 @@ export default function SettingsTab({
                     Swal.fire("ข้อผิดพลาด", d.error || "ไม่สามารถส่งคำขอได้", "error");
                   }
                 }}
-                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border-0"
+                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer border-0 shadow-md"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -976,7 +984,7 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
 
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl border border-indigo-200 dark:border-indigo-500/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-200 dark:border-indigo-500/30">
         <div>
           <div className="font-bold text-indigo-900 dark:text-indigo-200 text-sm">
             🌐 คำแปลภาษาในระบบ (System Terms & UI Words)
@@ -986,16 +994,16 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
           </div>
         </div>
         <PermissionGate permission="settings.translations">
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto">
             <button
               onClick={handleInitDefaultTerms}
-              className="px-3.5 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+              className="w-full sm:w-auto justify-center px-3.5 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
             >
               <span>📥 นำเข้าคำศัพท์ระบบเริ่มต้น</span>
             </button>
             <button
               onClick={handleAddNew}
-              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer border-0 flex items-center gap-1.5"
+              className="w-full sm:w-auto justify-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer border-0 flex items-center gap-1.5"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1006,44 +1014,45 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
         </PermissionGate>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
         <input
           type="text"
           placeholder="ค้นหา Key หรือคำแปล..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-xs px-3.5 py-2 border border-border bg-card rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-full sm:max-w-xs px-3.5 py-2.5 border border-border bg-card rounded-xl text-xs sm:text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
         />
-        <span className="text-xs font-semibold text-muted-foreground">
+        <span className="text-xs font-semibold text-muted-foreground self-end sm:self-auto">
           ทั้งหมด {filtered.length} คำศัพท์
         </span>
       </div>
 
-      <div className="rounded-xl border border-border p-2 md:overflow-x-auto md:p-0">
-        <table className="block w-full text-left text-sm md:table [&_>thead]:hidden md:[&_>thead]:table-header-group [&_>tbody]:block md:[&_>tbody]:table-row-group [&_>tbody>tr]:mb-3 [&_>tbody>tr]:block [&_>tbody>tr]:rounded-xl [&_>tbody>tr]:border [&_>tbody>tr]:border-border md:[&_>tbody>tr]:table-row md:[&_>tbody>tr]:border-0 [&_>tbody>tr>td]:block [&_>tbody>tr>td]:px-4 [&_>tbody>tr>td]:py-2 md:[&_>tbody>tr>td]:table-cell md:[&_>tbody>tr>td]:px-4 md:[&_>tbody>tr>td]:py-3">
-          <thead className="bg-muted text-muted-foreground">
+      {/* Desktop & Tablet Table (md and up) */}
+      <div className="hidden md:block overflow-x-auto rounded-2xl border border-border bg-card">
+        <table className="w-full text-left text-sm min-w-[700px]">
+          <thead className="bg-muted/80 text-muted-foreground text-xs uppercase">
             <tr>
-              <th className="px-4 py-3 font-bold">Key (รหัสอ้างอิง)</th>
-              <th className="px-4 py-3 font-bold">ภาษาไทย</th>
-              <th className="px-4 py-3 font-bold">Bahasa Melayu (Rumi)</th>
-              <th className="px-4 py-3 font-bold">Bahasa Melayu (Jawi)</th>
-              <th className="px-4 py-3 font-bold text-center">จัดการ</th>
+              <th className="px-5 py-3.5 font-bold">Key (รหัสอ้างอิง)</th>
+              <th className="px-5 py-3.5 font-bold">ภาษาไทย</th>
+              <th className="px-5 py-3.5 font-bold">Bahasa Melayu (Rumi)</th>
+              <th className="px-5 py-3.5 font-bold">Bahasa Melayu (Jawi)</th>
+              <th className="px-5 py-3.5 font-bold text-center">จัดการ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-subtle-foreground font-semibold">
+                <td colSpan={5} className="px-5 py-8 text-center text-subtle-foreground font-semibold text-xs sm:text-sm">
                   ยังไม่มีคำศัพท์ในระบบ กด &quot;นำเข้าคำศัพท์ระบบเริ่มต้น&quot; หรือ &quot;เพิ่มคำศัพท์ใหม่&quot;
                 </td>
               </tr>
             ) : (
               filtered.map((entry) => (
-                <tr key={entry.id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400 font-bold">
+                <tr key={entry.id} className="hover:bg-muted/40 transition-colors">
+                  <td className="px-5 py-3.5 font-mono text-xs text-indigo-600 dark:text-indigo-400 font-bold">
                     {entry.key}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5">
                     {editingId === entry.id ? (
                       <input
                         type="text"
@@ -1055,7 +1064,7 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
                       <span className="text-foreground font-semibold">{entry.thai}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5">
                     {editingId === entry.id ? (
                       <input
                         type="text"
@@ -1067,7 +1076,7 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
                       <span className="text-muted-foreground font-medium">{entry.malay_rumi || "—"}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5">
                     {editingId === entry.id ? (
                       <input
                         type="text"
@@ -1082,7 +1091,7 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-5 py-3.5 text-center">
                     {editingId === entry.id ? (
                       <div className="flex items-center justify-center gap-1.5">
                         <button
@@ -1122,6 +1131,126 @@ function SystemTranslationsSection({ token }: { token?: string | null }) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards (< md) */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground bg-muted/50 rounded-2xl border border-dashed border-border text-xs sm:text-sm font-semibold">
+            ยังไม่มีคำศัพท์ในระบบ กด &quot;นำเข้าคำศัพท์ระบบเริ่มต้น&quot; หรือ &quot;เพิ่มคำศัพท์ใหม่&quot;
+          </div>
+        ) : (
+          filtered.map((entry) => {
+            const isEditing = editingId === entry.id;
+
+            return (
+              <div
+                key={entry.id}
+                className="p-4 rounded-2xl border border-border bg-card shadow-sm space-y-3"
+              >
+                {/* Header: Key & Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-500/30">
+                    🔑 {entry.key}
+                  </span>
+
+                  {!isEditing && (
+                    <div className="flex items-center gap-1.5">
+                      <PermissionGate permission="settings.translations">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(entry)}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100 transition-colors cursor-pointer border-0"
+                        >
+                          แก้ไข
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(entry.id, entry.key)}
+                          className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-100 transition-colors cursor-pointer border-0"
+                        >
+                          ลบ
+                        </button>
+                      </PermissionGate>
+                    </div>
+                  )}
+                </div>
+
+                {/* Body: Translation fields or editing inputs */}
+                {isEditing ? (
+                  <div className="space-y-2.5 pt-2 border-t border-border">
+                    <div>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        🇹🇭 ภาษาไทย
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.thai}
+                        onChange={(e) => setEditForm({ ...editForm, thai: e.target.value })}
+                        className="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-500/40 bg-card rounded-xl text-xs sm:text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        🇲🇾 Bahasa Melayu (Rumi)
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.malay_rumi}
+                        onChange={(e) => setEditForm({ ...editForm, malay_rumi: e.target.value })}
+                        className="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-500/40 bg-card rounded-xl text-xs sm:text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        📖 Bahasa Melayu (Jawi)
+                      </label>
+                      <input
+                        type="text"
+                        dir="rtl"
+                        value={editForm.malay_jawi}
+                        onChange={(e) => setEditForm({ ...editForm, malay_jawi: e.target.value })}
+                        className="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-500/40 bg-card rounded-xl text-xs sm:text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSave(entry.id)}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer border-0"
+                      >
+                        บันทึก
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="flex-1 py-2 bg-muted text-muted-foreground hover:bg-muted/80 rounded-xl text-xs font-bold transition-all cursor-pointer border-0"
+                      >
+                        ยกเลิก
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 pt-2 border-t border-border text-xs sm:text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium text-xs">🇹🇭 ภาษาไทย:</span>
+                      <span className="font-bold text-foreground text-right">{entry.thai || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium text-xs">🇲🇾 Rumi:</span>
+                      <span className="font-semibold text-muted-foreground text-right">{entry.malay_rumi || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium text-xs">📖 Jawi:</span>
+                      <span className="font-bold text-foreground text-right" dir="rtl">{entry.malay_jawi || "—"}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

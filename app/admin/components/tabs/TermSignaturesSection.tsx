@@ -333,16 +333,16 @@ export default function TermSignaturesSection({
     : "";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Info & Term Selector */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
                 <FileSignature className="w-5 h-5" />
               </span>
-              <h3 className="text-lg font-bold text-foreground">
+              <h3 className="text-base sm:text-lg font-bold text-foreground">
                 จัดการลายเซ็นดิจิทัลประจำภาคเรียน
               </h3>
             </div>
@@ -351,14 +351,14 @@ export default function TermSignaturesSection({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
             <label className="text-xs font-bold text-foreground whitespace-nowrap">
               เลือกภาคเรียน:
             </label>
             <select
               value={selectedSettingId}
               onChange={(e) => setSelectedSettingId(e.target.value)}
-              className="px-3.5 py-2 rounded-xl border border-border bg-card text-foreground font-semibold text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground font-semibold text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
             >
               {settingsList.map((s) => (
                 <option key={s.id} value={String(s.id)}>
@@ -370,7 +370,7 @@ export default function TermSignaturesSection({
         </div>
 
         {/* Oracle Storage Banner Info */}
-        <div className="mt-4 flex items-center gap-3 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-xs text-emerald-800 dark:text-emerald-300">
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-3 p-3 sm:p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-xs text-emerald-800 dark:text-emerald-300">
           <Cloud className="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="flex-1">
             <b>ระบบจัดเก็บ Oracle Storage พร้อมใช้งาน:</b> ลายเซ็นที่อัปโหลดจะถูกนำไปแสดงผลบนเอกสารสรุปผลการเรียน (Report Card) และเอกสารออกเกรดประจำเทอมโดยอัตโนมัติ
@@ -379,10 +379,10 @@ export default function TermSignaturesSection({
       </div>
 
       {/* Section 1: Academic Head Signature */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
               <span>👑 ลายเซ็นหัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ</span>
               {hasAcademicSignature ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-500/30">
@@ -400,10 +400,10 @@ export default function TermSignaturesSection({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-xl border border-dashed border-border bg-muted/20">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-4 sm:gap-6 p-4 rounded-xl border border-dashed border-border bg-muted/20">
           {/* Signature Preview Box */}
           <div 
-            className="w-56 h-28 rounded-xl border border-border bg-white dark:bg-card flex items-center justify-center p-2 relative overflow-hidden shadow-inner"
+            className="w-full max-w-[260px] sm:w-56 h-28 rounded-xl border border-border bg-white dark:bg-card flex items-center justify-center p-2 relative overflow-hidden shadow-inner shrink-0"
             style={{
               backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.03) 75%, rgba(0,0,0,0.03)), repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 25%, #ffffff 25%, #ffffff 75%, rgba(0,0,0,0.03) 75%, rgba(0,0,0,0.03))",
               backgroundSize: "16px 16px",
@@ -426,7 +426,7 @@ export default function TermSignaturesSection({
           </div>
 
           {/* Upload / Manage Actions */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5 w-full sm:w-auto">
             <input
               type="file"
               ref={academicFileInputRef}
@@ -438,12 +438,12 @@ export default function TermSignaturesSection({
               }}
             />
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full">
               <button
                 type="button"
                 onClick={() => academicFileInputRef.current?.click()}
                 disabled={uploadingAcademic}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50"
               >
                 {uploadingAcademic ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -460,7 +460,7 @@ export default function TermSignaturesSection({
                   type: "academic_head",
                   title: "หัวหน้าฝ่ายวิชาการ (" + (currentSetting?.academic_head || "ประจำเทอม") + ")"
                 })}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
                 title="วาดลายเซ็นด้วย Apple Pencil หรือนิ้วมือบน iPad/iPhone"
               >
                 <PenTool className="w-3.5 h-3.5" />
@@ -468,11 +468,11 @@ export default function TermSignaturesSection({
               </button>
 
               {hasAcademicSignature && (
-                <>
+                <div className="flex items-center gap-1.5 self-center">
                   <button
                     type="button"
                     onClick={() => viewSignatureModal("ลายเซ็นหัวหน้าฝ่ายวิชาการ", academicSignatureUrl)}
-                    className="p-2 rounded-xl bg-card border border-border hover:bg-muted text-foreground transition-all cursor-pointer"
+                    className="p-2.5 rounded-xl bg-card border border-border hover:bg-muted text-foreground transition-all cursor-pointer shadow-sm"
                     title="ดูรูปขยาย"
                   >
                     <Eye className="w-4 h-4" />
@@ -480,12 +480,12 @@ export default function TermSignaturesSection({
                   <button
                     type="button"
                     onClick={handleDeleteAcademicSignature}
-                    className="p-2 rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-200 dark:border-red-500/30 transition-all cursor-pointer"
+                    className="p-2.5 rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-200 dark:border-red-500/30 transition-all cursor-pointer"
                     title="ลบลายเซ็น"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                </>
+                </div>
               )}
             </div>
 
@@ -497,10 +497,10 @@ export default function TermSignaturesSection({
       </div>
 
       {/* Section 2: Teachers Signatures */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <h4 className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
               <span>👨‍🏫 ลายเซ็นครูผู้สอนประจำภาคเรียน</span>
               <span className="text-xs font-medium text-muted-foreground">
                 ({uploadedCount}/{totalTeachers} คน)
@@ -523,7 +523,7 @@ export default function TermSignaturesSection({
         </div>
 
         {/* Filters and Search */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-2">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -531,15 +531,15 @@ export default function TermSignaturesSection({
               placeholder="ค้นหาชื่อครู..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-indigo-500 outline-none"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 p-1 bg-muted rounded-xl border border-border text-xs">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-muted rounded-xl border border-border text-xs w-full sm:w-auto sm:flex sm:items-center">
             <button
               type="button"
               onClick={() => setFilterStatus("all")}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all text-center truncate ${
                 filterStatus === "all"
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -550,18 +550,18 @@ export default function TermSignaturesSection({
             <button
               type="button"
               onClick={() => setFilterStatus("uploaded")}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all text-center truncate ${
                 filterStatus === "uploaded"
                   ? "bg-emerald-500 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              มีลายเซ็นแล้ว ({uploadedCount})
+              มีลายเซ็น ({uploadedCount})
             </button>
             <button
               type="button"
               onClick={() => setFilterStatus("missing")}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold transition-all text-center truncate ${
                 filterStatus === "missing"
                   ? "bg-amber-500 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -572,10 +572,10 @@ export default function TermSignaturesSection({
           </div>
         </div>
 
-        {/* Teachers Table / List */}
-        <div className="border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-muted/50 text-muted-foreground font-bold border-b border-border">
+        {/* Teachers Desktop & Tablet Table (md and up) */}
+        <div className="hidden md:block border border-border rounded-xl overflow-x-auto bg-card">
+          <table className="w-full text-xs text-left min-w-[640px]">
+            <thead className="bg-muted/60 text-muted-foreground font-bold border-b border-border">
               <tr>
                 <th className="py-3 px-4">ครูผู้สอน</th>
                 <th className="py-3 px-4 text-center">สถานะลายเซ็น</th>
@@ -722,6 +722,145 @@ export default function TermSignaturesSection({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Teachers Mobile Cards (< md) */}
+        <div className="md:hidden space-y-3">
+          {loadingTeachers ? (
+            <div className="py-8 text-center text-muted-foreground bg-muted/40 rounded-2xl border border-dashed border-border text-xs">
+              <div className="flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                กำลังโหลดข้อมูลครูผู้สอน...
+              </div>
+            </div>
+          ) : filteredTeachers.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground bg-muted/40 rounded-2xl border border-dashed border-border text-xs">
+              ไม่พบข้อมูลครูผู้สอนตามเงื่อนไขที่ค้นหา
+            </div>
+          ) : (
+            filteredTeachers.map((teacher) => {
+              const teacherSigUrl = teacher.has_signature
+                ? `/api/signatures/proxy?type=teacher&id=${teacher.id}&settingId=${selectedSettingId}&t=${cacheBuster}`
+                : null;
+              const isUploadingThis = uploadingTeacherId === teacher.id;
+
+              return (
+                <div
+                  key={teacher.id}
+                  className="p-4 rounded-2xl border border-border bg-card shadow-sm space-y-3"
+                >
+                  {/* Top info row */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm"
+                        style={{ backgroundColor: teacher.color || "#6366f1" }}
+                      >
+                        {teacher.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-bold text-foreground text-sm">{teacher.name}</div>
+                        {teacher.email && (
+                          <div className="text-[11px] text-muted-foreground">{teacher.email}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {teacher.has_signature ? (
+                      <span className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-500/30 text-[10px] shrink-0">
+                        <CheckCircle2 className="w-3 h-3" /> มีลายเซ็น
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] shrink-0">
+                        ยังไม่มี
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Signature Preview Area on Mobile */}
+                  {teacherSigUrl ? (
+                    <div
+                      onClick={() => viewSignatureModal(`ลายเซ็นของ ${teacher.name}`, teacherSigUrl)}
+                      className="w-full h-20 rounded-xl border border-border bg-white dark:bg-card p-1.5 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 transition-all shadow-inner relative group"
+                      style={{
+                        backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.03) 75%, rgba(0,0,0,0.03)), repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 25%, #ffffff 25%, #ffffff 75%, rgba(0,0,0,0.03) 75%, rgba(0,0,0,0.03))",
+                        backgroundSize: "12px 12px",
+                      }}
+                      title="แตะเพื่อดูรูปขยาย"
+                    >
+                      <img
+                        src={teacherSigUrl}
+                        alt={teacher.name}
+                        className="max-h-14 max-w-full object-contain"
+                      />
+                      <span className="text-[10px] text-muted-foreground font-semibold mt-0.5 flex items-center gap-1">
+                        <Eye className="w-3 h-3" /> แตะเพื่อดูรูปขยาย
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="w-full py-3 rounded-xl border border-dashed border-border bg-muted/20 text-center text-[11px] text-muted-foreground">
+                      ยังไม่มีไฟล์ลายเซ็นสำหรับเทอมนี้
+                    </div>
+                  )}
+
+                  {/* Mobile Action Buttons */}
+                  <div className="pt-2 border-t border-border flex items-center gap-2">
+                    <input
+                      type="file"
+                      ref={(el) => {
+                        teacherFileInputRefs.current[teacher.id] = el;
+                      }}
+                      accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadTeacherSignature(teacher.id, file);
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => teacherFileInputRefs.current[teacher.id]?.click()}
+                      disabled={isUploadingThis}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isUploadingThis ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Upload className="w-3 h-3" />
+                      )}
+                      {teacher.has_signature ? "เปลี่ยนไฟล์" : "อัปโหลด"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPadModal({
+                        isOpen: true,
+                        type: "teacher",
+                        teacherId: teacher.id,
+                        title: "ครู " + teacher.name
+                      })}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                    >
+                      <PenTool className="w-3 h-3" />
+                      วาดลายเซ็น
+                    </button>
+
+                    {teacher.has_signature && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTeacherSignature(teacher.id, teacher.name)}
+                        className="p-2 rounded-xl bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-200 dark:border-red-500/30 transition-all cursor-pointer shrink-0"
+                        title="ลบลายเซ็น"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -927,32 +1066,32 @@ function SignaturePadModal({
       <div className="flex-1 flex flex-col bg-card border border-border rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
         
         {/* Full-width Top Header Bar */}
-        <div className="px-4 sm:px-6 py-3.5 border-b border-border bg-card flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <PenTool className="w-5 h-5" />
+        <div className="px-3.5 sm:px-6 py-3 border-b border-border bg-card flex items-center justify-between gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span className="p-1.5 sm:p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl shrink-0">
+              <PenTool className="w-4 h-4 sm:w-5 sm:h-5" />
             </span>
-            <div>
-              <h3 className="font-extrabold text-sm sm:text-base text-foreground flex items-center gap-2">
-                วาดลายเซ็นดิจิทัลเต็มหน้าจอ
+            <div className="min-w-0">
+              <h3 className="font-extrabold text-xs sm:text-base text-foreground truncate flex items-center gap-2">
+                วาดลายเซ็นดิจิทัล
                 <span className="text-xs font-normal text-muted-foreground hidden sm:inline">
                   (Apple Pencil / Stylus / Touch)
                 </span>
               </h3>
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate">
                 ลงนามสำหรับ: <b className="text-foreground">{title}</b>
               </p>
             </div>
           </div>
 
           {/* Tool Controls: Colors and Pen Size */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Color choices */}
-            <div className="flex items-center gap-1.5 p-1 bg-muted rounded-xl border border-border">
+            <div className="flex items-center gap-1 p-1 bg-muted rounded-xl border border-border">
               <button
                 type="button"
                 onClick={() => setStrokeColor("#000000")}
-                className={`w-6 h-6 rounded-lg transition-all ${
+                className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg transition-all ${
                   strokeColor === "#000000"
                     ? "ring-2 ring-indigo-500 scale-110 shadow-sm"
                     : "opacity-60 hover:opacity-100"
@@ -963,7 +1102,7 @@ function SignaturePadModal({
               <button
                 type="button"
                 onClick={() => setStrokeColor("#1d4ed8")}
-                className={`w-6 h-6 rounded-lg transition-all ${
+                className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg transition-all ${
                   strokeColor === "#1d4ed8"
                     ? "ring-2 ring-indigo-500 scale-110 shadow-sm"
                     : "opacity-60 hover:opacity-100"
@@ -974,11 +1113,11 @@ function SignaturePadModal({
             </div>
 
             {/* Thickness choices */}
-            <div className="flex items-center gap-1 p-1 bg-muted rounded-xl border border-border text-xs font-bold">
+            <div className="flex items-center gap-0.5 sm:gap-1 p-1 bg-muted rounded-xl border border-border text-[11px] sm:text-xs font-bold">
               <button
                 type="button"
                 onClick={() => setStrokeWidth(2.5)}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg transition-all ${
                   strokeWidth === 2.5
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -989,7 +1128,7 @@ function SignaturePadModal({
               <button
                 type="button"
                 onClick={() => setStrokeWidth(3.8)}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg transition-all ${
                   strokeWidth === 3.8
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -1000,7 +1139,7 @@ function SignaturePadModal({
               <button
                 type="button"
                 onClick={() => setStrokeWidth(5.5)}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg transition-all ${
                   strokeWidth === 5.5
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -1013,7 +1152,7 @@ function SignaturePadModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all text-sm font-bold cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-all text-xs sm:text-sm font-bold cursor-pointer"
               title="ปิด"
             >
               ✕
@@ -1033,9 +1172,9 @@ function SignaturePadModal({
           }}
         >
           {/* Guide baseline */}
-          <div className="absolute left-12 right-12 bottom-1/4 border-b-2 border-dashed border-slate-300 dark:border-slate-700 pointer-events-none flex justify-end">
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-1 select-none">
-              ✍️ เส้นบอกแนวการเซ็นชื่อ (ระบบจะตัดเฉพาะรูปลายเซ็นให้อัตโนมัติ)
+          <div className="absolute left-6 sm:left-12 right-6 sm:right-12 bottom-1/4 border-b-2 border-dashed border-slate-300 dark:border-slate-700 pointer-events-none flex justify-end">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-1 select-none">
+              ✍️ เส้นบอกแนวการเซ็นชื่อ (ระบบตัดขอบให้อัตโนมัติ)
             </span>
           </div>
 
@@ -1053,12 +1192,12 @@ function SignaturePadModal({
           />
 
           {!hasDrawn && (
-            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-slate-400/60 dark:text-slate-500/50 select-none">
-              <PenTool className="w-12 h-12 mb-2 stroke-1 animate-bounce" />
-              <p className="font-bold text-base sm:text-lg">
+            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-slate-400/60 dark:text-slate-500/50 select-none p-4 text-center">
+              <PenTool className="w-10 h-10 sm:w-12 sm:h-12 mb-2 stroke-1 animate-bounce" />
+              <p className="font-bold text-sm sm:text-lg">
                 จรด Apple Pencil หรือนิ้วมือเพื่อวาดลายเซ็นบนพื้นที่นี้ได้อย่างอิสระ
               </p>
-              <p className="text-xs mt-1">
+              <p className="text-[11px] sm:text-xs mt-1">
                 มีพื้นที่กว้างขวางเต็มหน้าจอ เซ็นชื่อได้อย่างสบายมือ
               </p>
             </div>
@@ -1066,21 +1205,21 @@ function SignaturePadModal({
         </div>
 
         {/* Full-width Bottom Action Toolbar */}
-        <div className="px-4 sm:px-6 py-3.5 border-t border-border bg-card flex items-center justify-between gap-3 shrink-0">
+        <div className="px-3.5 sm:px-6 py-3 border-t border-border bg-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={handleClear}
             disabled={!hasDrawn}
-            className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-xs sm:text-sm font-semibold text-foreground transition-all cursor-pointer disabled:opacity-40"
+            className="order-2 sm:order-1 px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-xs sm:text-sm font-semibold text-foreground transition-all cursor-pointer disabled:opacity-40 text-center"
           >
             ล้างกระดานวาดใหม่
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="order-1 sm:order-2 flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-xs sm:text-sm font-semibold text-muted-foreground transition-all cursor-pointer"
+              className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-xs sm:text-sm font-semibold text-muted-foreground transition-all cursor-pointer text-center"
             >
               ยกเลิก
             </button>
@@ -1088,14 +1227,14 @@ function SignaturePadModal({
               type="button"
               onClick={handleSave}
               disabled={!hasDrawn || saving}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer disabled:opacity-40 flex items-center gap-2"
+              className="flex-1 sm:flex-initial px-5 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer disabled:opacity-40 flex items-center justify-center gap-2 text-center"
             >
               {saving ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
                 <Check className="w-4 h-4" />
               )}
-              บันทึกและส่งขึ้น Oracle Storage
+              บันทึกและส่งขึ้น Cloud
             </button>
           </div>
         </div>
