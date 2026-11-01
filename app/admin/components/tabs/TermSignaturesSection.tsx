@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import { SystemSetting } from "../types";
+import ModalPortal from "@/app/components/ModalPortal";
 import { 
   FileCheck, 
   Upload, 
@@ -972,9 +973,12 @@ function SignaturePadModal({
 
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(initCanvas, 60);
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const timer = setTimeout(initCanvas, 80);
       window.addEventListener("resize", initCanvas);
       return () => {
+        document.body.style.overflow = originalOverflow;
         clearTimeout(timer);
         window.removeEventListener("resize", initCanvas);
       };
@@ -1062,8 +1066,9 @@ function SignaturePadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/85 backdrop-blur-md p-2 sm:p-5 select-none animate-fade-in">
-      <div className="flex-1 flex flex-col bg-card border border-border rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
+    <ModalPortal>
+      <div className="fixed inset-0 z-[999999] flex flex-col bg-slate-950/85 backdrop-blur-md p-0 sm:p-3 md:p-6 select-none animate-fade-in w-screen h-screen">
+        <div className="flex-1 flex flex-col bg-card border border-border sm:rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden h-full max-h-full">
         
         {/* Full-width Top Header Bar */}
         <div className="px-3.5 sm:px-6 py-3 border-b border-border bg-card flex items-center justify-between gap-2.5 shrink-0">
@@ -1241,5 +1246,6 @@ function SignaturePadModal({
 
       </div>
     </div>
+    </ModalPortal>
   );
 }
