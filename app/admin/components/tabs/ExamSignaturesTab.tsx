@@ -95,9 +95,41 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
     [classroomId, classrooms],
   );
 
+  // ดึงเฉพาะรายวิชาที่มีการเก็บคะแนน และมีการสอนในชั้นเรียนที่เลือก
+  // โดยวิชาที่สอนในชั้นเรียนนั้นแต่ไม่เก็บคะแนน (อยู่ใน score_disabled_classroom_ids) จะไม่ถูกดึงมาแสดง
+  const availableSubjects = useMemo(() => {
+    return subjects.filter((subject) => {
+      // 1. ต้องเป็นรายวิชาที่มีการเก็บคะแนน (คะแนนเต็มรวม > 0)
+      const totalMaxScore = (Number(subject.midterm_max_score) || 0) + (Number(subject.final_max_score) || 0);
+      if (totalMaxScore <= 0) return false;
+
+      // 2. ตรวจสอบห้องเรียนที่สอนและเปิดให้เก็บคะแนน
+      const assignedClassroomIds = subject.classroom_ids || [];
+      const disabledClassroomIds = subject.score_disabled_classroom_ids || [];
+      const scoreEnabledClassroomIds = assignedClassroomIds.filter(
+        (id) => !disabledClassroomIds.includes(id)
+      );
+
+      if (scoreEnabledClassroomIds.length === 0) return false;
+
+      // 3. กรองตามห้องเรียนที่เลือก
+      if (classroomId === "all") {
+        return classrooms.some((c) => scoreEnabledClassroomIds.includes(c.id));
+      }
+
+      return scoreEnabledClassroomIds.includes(classroomId);
+    });
+  }, [subjects, classroomId, classrooms]);
+
+  useEffect(() => {
+    setSelectedSubjectIds((previous) =>
+      previous.filter((id) => availableSubjects.some((subject) => subject.id === id))
+    );
+  }, [availableSubjects]);
+
   const selectedSubjects = useMemo(
-    () => subjects.filter((subject) => selectedSubjectIds.includes(subject.id)),
-    [subjects, selectedSubjectIds],
+    () => availableSubjects.filter((subject) => selectedSubjectIds.includes(subject.id)),
+    [availableSubjects, selectedSubjectIds],
   );
 
   const getSubjectName = (subject: DBSubject) => {
@@ -118,23 +150,32 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
 
   const printDocument = () => {
     if (!selectedClassrooms.length || !selectedSubjects.length) return;
-    const pages = selectedSubjects.flatMap((subject) => selectedClassrooms
-      .filter((classroom) => !subject.classroom_ids?.length || subject.classroom_ids.includes(classroom.id))
-      .map((classroom) => {
-      const roomStudents = students
-        .filter((student) => student.classroom_id === classroom.id && student.status !== "graduated" && student.status !== "resigned")
-        .sort((a, b) => (a.student_number ?? Number.MAX_SAFE_INTEGER) - (b.student_number ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, "th"));
-      const rows = roomStudents.map((student, index) => `<tr>
-        <td>${escapeHtml(student.student_number ?? index + 1)}</td><td>${escapeHtml(student.student_id)}</td>
-        <td class="name">${escapeHtml(student.name)}</td><td class="score"></td><td class="score"></td><td class="score"></td><td class="signature"></td></tr>`).join("") || `<tr><td colspan="7" class="empty">${text.noStudents}</td></tr>`;
-      return `<section class="page" dir="${direction}">
-        <h1>${escapeHtml(schoolName || " ")}</h1><h2>${text.examSheet}</h2>
-        <div class="details"><span><b>${text.class}:</b> ${escapeHtml(getClassroomName(classroom, language))}</span>
-          <span><b>${text.examName}:</b> ${escapeHtml(getSubjectName(subject))}</span><span><b>${text.examDate}:</b> ${escapeHtml(examDate || "-")}</span></div>
-        <table><thead><tr><th>${text.no}</th><th>${text.id}</th><th>${text.name}</th><th>${text.coursework}</th><th>${text.examScore}</th><th>${text.scoreTotal}</th><th>${text.signature}</th></tr></thead>
-        <tbody>${rows}</tbody></table><p class="total">${text.total}: ${roomStudents.length} ${text.students}</p>
-        <div class="signatures"><div>${text.invigilator} ................................................</div><div>${text.teacher} ................................................</div></div></section>`;
-      })).join("");
+    const pages = selectedSubjects.flatMap((subject) => {
+      const assignedClassroomIds = subject.classroom_ids || [];
+      const disabledClassroomIds = subject.score_disabled_classroom_ids || [];
+
+      return selectedClassrooms
+        .filter((classroom) =>
+          assignedClassroomIds.includes(classroom.id) &&
+          !disabledClassroomIds.includes(classroom.id)
+        )
+        .map((classroom) => {
+          const roomStudents = students
+            .filter((student) => student.classroom_id === classroom.id && student.status !== "graduated" && student.status !== "resigned")
+            .sort((a, b) => (a.student_number ?? Number.MAX_SAFE_INTEGER) - (b.student_number ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, "th"));
+          const rows = roomStudents.map((student, index) => `<tr>
+            <td>${escapeHtml(student.student_number ?? index + 1)}</td><td>${escapeHtml(student.student_id)}</td>
+            <td class="name">${escapeHtml(student.name)}</td><td class="score"></td><td class="score"></td><td class="score"></td><td class="signature"></td></tr>`).join("") || `<tr><td colspan="7" class="empty">${text.noStudents}</td></tr>`;
+          return `<section class="page" dir="${direction}">
+            <h1>${escapeHtml(schoolName || " ")}</h1><h2>${text.examSheet}</h2>
+            <div class="details"><span><b>${text.class}:</b> ${escapeHtml(getClassroomName(classroom, language))}</span>
+              <span><b>${text.examName}:</b> ${escapeHtml(getSubjectName(subject))}</span><span><b>${text.examDate}:</b> ${escapeHtml(examDate || "-")}</span></div>
+            <table><thead><tr><th>${text.no}</th><th>${text.id}</th><th>${text.name}</th><th>${text.coursework}</th><th>${text.examScore}</th><th>${text.scoreTotal}</th><th>${text.signature}</th></tr></thead>
+            <tbody>${rows}</tbody></table><p class="total">${text.total}: ${roomStudents.length} ${text.students}</p>
+            <div class="signatures"><div>${text.invigilator} ................................................</div><div>${text.teacher} ................................................</div></div></section>`;
+        });
+    }).join("");
+    if (!pages) return;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!doctype html><html lang="${language === "th" ? "th" : "ms"}" dir="${direction}"><head><meta charset="utf-8"><title>${text.examSheet}</title>
@@ -162,9 +203,9 @@ export default function ExamSignaturesTab({ settingsList, token, schoolId }: {
         <label className="text-sm font-bold text-foreground">{text.date}<input type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 font-medium" /></label>
       </div>
       <div>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><label className="text-sm font-bold text-foreground">{text.subjects}</label><div className="flex items-center gap-2"><button type="button" onClick={() => setSelectedSubjectIds(subjects.map((subject) => subject.id))} disabled={subjects.length === 0 || selectedSubjectIds.length === subjects.length} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 disabled:opacity-50 cursor-pointer">{text.selectAll}</button><button type="button" onClick={() => setSelectedSubjectIds([])} disabled={selectedSubjectIds.length === 0} className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-bold text-muted-foreground disabled:opacity-50 cursor-pointer">{text.clearSelection}</button><span className="text-xs text-muted-foreground">{selectedSubjectIds.length} / {subjects.length}</span></div></div>
-        {subjects.length === 0 ? <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{loading ? text.loading : text.noSubjects}</p> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-          {subjects.map((subject) => <label key={subject.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium cursor-pointer"><input type="checkbox" checked={selectedSubjectIds.includes(subject.id)} onChange={(event) => setSelectedSubjectIds((previous) => event.target.checked ? [...previous, subject.id] : previous.filter((id) => id !== subject.id))} className="h-4 w-4 accent-indigo-600" /><span dir={language === "ms-jawi" ? "rtl" : "ltr"}>{getSubjectName(subject)}</span></label>)}
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><label className="text-sm font-bold text-foreground">{text.subjects}</label><div className="flex items-center gap-2"><button type="button" onClick={() => setSelectedSubjectIds(availableSubjects.map((subject) => subject.id))} disabled={availableSubjects.length === 0 || selectedSubjectIds.length === availableSubjects.length} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 disabled:opacity-50 cursor-pointer">{text.selectAll}</button><button type="button" onClick={() => setSelectedSubjectIds([])} disabled={selectedSubjectIds.length === 0} className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-bold text-muted-foreground disabled:opacity-50 cursor-pointer">{text.clearSelection}</button><span className="text-xs text-muted-foreground">{selectedSubjectIds.length} / {availableSubjects.length}</span></div></div>
+        {availableSubjects.length === 0 ? <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{loading ? text.loading : text.noSubjects}</p> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+          {availableSubjects.map((subject) => <label key={subject.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium cursor-pointer"><input type="checkbox" checked={selectedSubjectIds.includes(subject.id)} onChange={(event) => setSelectedSubjectIds((previous) => event.target.checked ? [...previous, subject.id] : previous.filter((id) => id !== subject.id))} className="h-4 w-4 accent-indigo-600" /><span dir={language === "ms-jawi" ? "rtl" : "ltr"}>{getSubjectName(subject)}</span></label>)}
         </div>}
       </div>
       <p className="text-sm text-muted-foreground">{loading ? text.loading : `${selectedClassrooms.length} ${text.room} · ${students.filter((student) => classroomId === "all" || student.classroom_id === classroomId).length} ${text.students}`}</p>
