@@ -17,7 +17,8 @@ import {
   Cloud,
   FileSignature,
   PenTool,
-  Check
+  Check,
+  Copy
 } from "lucide-react";
 
 interface TeacherSignatureItem {
@@ -51,6 +52,8 @@ export default function TermSignaturesSection({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "uploaded" | "missing">("all");
   const [uploadingAcademic, setUploadingAcademic] = useState(false);
+  const [copyingAcademic, setCopyingAcademic] = useState(false);
+  const [copyingTeacherId, setCopyingTeacherId] = useState<string | null>(null);
   const [uploadingTeacherId, setUploadingTeacherId] = useState<string | null>(null);
   const [cacheBuster, setCacheBuster] = useState<number>(Date.now());
   const [padModal, setPadModal] = useState<{
@@ -203,6 +206,58 @@ export default function TermSignaturesSection({
     }
   };
 
+  const handleCopyTeacherSignatureToAcademic = async (teacher?: TeacherSignatureItem) => {
+    if (!token || !selectedSettingId) return;
+
+    const confirm = await Swal.fire({
+      title: "คัดลอกลายเซ็นเดิม?",
+      text: teacher
+        ? `ระบบจะนำลายเซ็นล่าสุดของ ${teacher.name} มาใช้เป็นลายเซ็นหัวหน้าฝ่ายวิชาการของภาคเรียนนี้`
+        : "ระบบจะนำลายเซ็นของหัวหน้าฝ่ายคนเดิมจากภาคเรียนก่อนมาใช้ในภาคเรียนนี้",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "คัดลอกลายเซ็น",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#059669",
+    });
+    if (!confirm.isConfirmed) return;
+
+    setCopyingAcademic(true);
+    try {
+      const res = await fetch("/api/signatures/copy", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          settingId: selectedSettingId,
+          ...(teacher ? { teacherId: teacher.id } : {}),
+          ...(schoolId ? { schoolId } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || data.details || "ไม่สามารถคัดลอกลายเซ็นได้");
+      }
+
+      setCacheBuster(Date.now());
+      await onSettingsUpdated?.();
+      await loadTeachers();
+      Swal.fire({
+        icon: "success",
+        title: "คัดลอกลายเซ็นสำเร็จ",
+        text: `นำลายเซ็นจากภาคเรียน ${data.sourceTerm} มาใช้เรียบร้อยแล้ว`,
+        timer: 2200,
+        showConfirmButton: false,
+      });
+    } catch (err: unknown) {
+      Swal.fire("เกิดข้อผิดพลาด", (err as Error).message, "error");
+    } finally {
+      setCopyingAcademic(false);
+    }
+  };
+
   const handleUploadTeacherSignature = async (teacherId: string, file: File) => {
     if (!token || !selectedSettingId) return;
 
@@ -261,6 +316,56 @@ export default function TermSignaturesSection({
       if (teacherFileInputRefs.current[teacherId]) {
         teacherFileInputRefs.current[teacherId]!.value = "";
       }
+    }
+  };
+
+  const handleCopyPreviousTeacherSignature = async (teacher: TeacherSignatureItem) => {
+    if (!token || !selectedSettingId) return;
+
+    const confirm = await Swal.fire({
+      title: `คัดลอกลายเซ็นของ ${teacher.name}?`,
+      text: "ระบบจะนำลายเซ็นล่าสุดจากภาคเรียนก่อนมาใช้ในภาคเรียนที่เลือก",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "คัดลอกลายเซ็น",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#059669",
+    });
+    if (!confirm.isConfirmed) return;
+
+    setCopyingTeacherId(teacher.id);
+    try {
+      const res = await fetch("/api/signatures/copy", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          targetType: "teacher",
+          settingId: selectedSettingId,
+          teacherId: teacher.id,
+          ...(schoolId ? { schoolId } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || data.details || "ไม่สามารถคัดลอกลายเซ็นได้");
+      }
+
+      setCacheBuster(Date.now());
+      await loadTeachers();
+      Swal.fire({
+        icon: "success",
+        title: "คัดลอกลายเซ็นสำเร็จ",
+        text: `นำลายเซ็นจากภาคเรียน ${data.sourceTerm} มาใช้เรียบร้อยแล้ว`,
+        timer: 2200,
+        showConfirmButton: false,
+      });
+    } catch (err: unknown) {
+      Swal.fire("เกิดข้อผิดพลาด", (err as Error).message, "error");
+    } finally {
+      setCopyingTeacherId(null);
     }
   };
 
@@ -329,6 +434,14 @@ export default function TermSignaturesSection({
   const totalTeachers = teachers.length;
   const uploadedCount = teachers.filter((t) => t.has_signature).length;
   const hasAcademicSignature = Boolean(currentSetting?.academic_head_signature_key);
+  const normalizePersonName = (value?: string | null) =>
+    String(value || "").normalize("NFKC").replace(/\s+/g, "").toLocaleLowerCase("th-TH");
+  const matchingAcademicTeacher = currentSetting?.academic_head
+    ? teachers.find(
+        (teacher) =>
+          normalizePersonName(teacher.name) === normalizePersonName(currentSetting.academic_head)
+      )
+    : undefined;
   const academicSignatureUrl = selectedSettingId
     ? `/api/signatures/proxy?type=academic_head&id=${selectedSettingId}&t=${cacheBuster}`
     : "";
@@ -466,6 +579,21 @@ export default function TermSignaturesSection({
               >
                 <PenTool className="w-3.5 h-3.5" />
                 วาดด้วย Apple Pencil / นิ้วมือ
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCopyTeacherSignatureToAcademic(matchingAcademicTeacher)}
+                disabled={copyingAcademic || uploadingAcademic || !currentSetting?.academic_head}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50"
+                title="ใช้ลายเซ็นของหัวหน้าฝ่ายคนเดิมจากภาคเรียนก่อน หรือใช้ลายเซ็นครูเมื่อชื่อบัญชีตรงกัน"
+              >
+                {copyingAcademic ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                คัดลอกลายเซ็นเดิม
               </button>
 
               {hasAcademicSignature && (
@@ -606,6 +734,7 @@ export default function TermSignaturesSection({
                     ? `/api/signatures/proxy?type=teacher&id=${teacher.id}&settingId=${selectedSettingId}&t=${cacheBuster}`
                     : null;
                   const isUploadingThis = uploadingTeacherId === teacher.id;
+                  const isCopyingThis = copyingTeacherId === teacher.id;
 
                   return (
                     <tr key={teacher.id} className="hover:bg-muted/30 transition-colors">
@@ -705,6 +834,21 @@ export default function TermSignaturesSection({
                             วาด
                           </button>
 
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPreviousTeacherSignature(teacher)}
+                            disabled={isCopyingThis || isUploadingThis}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                            title="คัดลอกลายเซ็นล่าสุดของครูจากภาคเรียนก่อน"
+                          >
+                            {isCopyingThis ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            คัดลอกเดิม
+                          </button>
+
                           {teacher.has_signature && (
                             <button
                               type="button"
@@ -744,6 +888,7 @@ export default function TermSignaturesSection({
                 ? `/api/signatures/proxy?type=teacher&id=${teacher.id}&settingId=${selectedSettingId}&t=${cacheBuster}`
                 : null;
               const isUploadingThis = uploadingTeacherId === teacher.id;
+              const isCopyingThis = copyingTeacherId === teacher.id;
 
               return (
                 <div
@@ -805,7 +950,7 @@ export default function TermSignaturesSection({
                   )}
 
                   {/* Mobile Action Buttons */}
-                  <div className="pt-2 border-t border-border flex items-center gap-2">
+                  <div className="pt-2 border-t border-border grid grid-cols-2 gap-2">
                     <input
                       type="file"
                       ref={(el) => {
@@ -845,6 +990,20 @@ export default function TermSignaturesSection({
                     >
                       <PenTool className="w-3 h-3" />
                       วาดลายเซ็น
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPreviousTeacherSignature(teacher)}
+                      disabled={isCopyingThis || isUploadingThis}
+                      className="inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isCopyingThis ? (
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                      คัดลอกเดิม
                     </button>
 
                     {teacher.has_signature && (
