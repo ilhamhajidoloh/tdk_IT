@@ -3865,10 +3865,9 @@ function changeFontSize(dir) {
       fallbackScore: number | null
     ): { passed: boolean; hasScore: boolean } => {
       const subKey = sub.name?.trim().toLowerCase();
-      const subCode = sub.code?.trim().toLowerCase();
       const matchSub = (g: any) => {
         const gSub = g.subject?.trim().toLowerCase();
-        return gSub === subKey || (subCode && gSub === subCode);
+        return gSub === subKey;
       };
 
       // ตรวจสอบว่าในฐานข้อมูลมีการบันทึกคะแนนของวิชานี้สำหรับนักเรียนในห้องนี้หรือไม่
@@ -3878,8 +3877,7 @@ function changeFontSize(dir) {
 
       const sameSubjects = allYearSubjectsList.filter(s => {
         const sName = s.name?.trim().toLowerCase();
-        const sCode = s.code?.trim().toLowerCase();
-        return sName === subKey || (subCode && sCode === subCode);
+        return sName === subKey;
       });
 
       const t1Sub = sameSubjects.find(s => term1Setting && s.setting_id === term1Setting.id) || sameSubjects[0];
@@ -3937,7 +3935,17 @@ function changeFontSize(dir) {
       let term2MaxSum = 0;
       let hasT2 = false;
 
-      const subjectScores: Record<string, { total: number | null; midterm: number | null; final: number | null; maxScore: number; gradeStr: string; isActivity: boolean; passed?: boolean }> = {};
+      const subjectScores: Record<string, {
+        total: number | null;
+        midterm: number | null;
+        final: number | null;
+        term1Score: number | null;
+        term2Score: number | null;
+        maxScore: number;
+        gradeStr: string;
+        isActivity: boolean;
+        passed?: boolean;
+      }> = {};
 
       selectedSubjects.forEach(sub => {
         const subKey = sub.name?.trim().toLowerCase();
@@ -3956,7 +3964,7 @@ function changeFontSize(dir) {
         if (exportType === "yearly") {
           const matchSub = (g: any) => {
             const gSub = g.subject?.trim().toLowerCase();
-            return gSub === subKey || (sub.code && gSub === sub.code.trim().toLowerCase());
+            return gSub === subKey;
           };
           const gT1 = allGrades.find(g => g.student_id === st.student_id && g.term === term1Key && matchSub(g));
           const gT2 = allGrades.find(g => g.student_id === st.student_id && g.term === term2Key && matchSub(g));
@@ -3970,8 +3978,7 @@ function changeFontSize(dir) {
 
         const sameSubs = allYearSubjectsList.filter(s => {
           const sName = s.name?.trim().toLowerCase();
-          const sCode = s.code?.trim().toLowerCase();
-          return sName === subKey || (sub.code && sCode === sub.code.trim().toLowerCase());
+          return sName === subKey;
         });
         const t1SubObj = sameSubs.find(s => term1Setting && s.setting_id === term1Setting.id) || sameSubs[0];
         const t2SubObj = sameSubs.find(s => term2Setting && s.setting_id === term2Setting.id) || sameSubs[1] || sameSubs[0];
@@ -4819,10 +4826,9 @@ function changeFontSize(dir) {
           if (classActivitySubjects.length > 0) {
             activitiesListHTML = classActivitySubjects.map(sub => {
               const subKey = sub.name?.trim().toLowerCase();
-              const subCode = sub.code?.trim().toLowerCase();
               const matchSub = (g: any) => {
                 const gSub = g.subject?.trim().toLowerCase();
-                return gSub === subKey || (subCode && gSub === subCode);
+                return gSub === subKey;
               };
               const gT1 = allGrades.find(g => g.student_id === st.student_id && g.term === term1Key && matchSub(g));
               const gT2 = allGrades.find(g => g.student_id === st.student_id && g.term === term2Key && matchSub(g));
@@ -5384,8 +5390,8 @@ function changeFontSize(dir) {
           `;
         }).join("");
 
-        const titleText = exportType === "yearly" ? `${t("ใบรายงานผลการเรียนรายบุคคล")} (${t("เฉลี่ยทั้งปี")})` : t("ใบรายงานผลการเรียนรายบุคคล");
-        const subtitleText = exportType === "yearly" ? `${t("ปีการศึกษา")} ${setting.academic_year} (${t("เฉลี่ยทั้งปี")})` : `${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}`;
+        const titleText = t("ใบรายงานผลการเรียนรายบุคคล");
+        const subtitleText = `${t("ปีการศึกษา")} ${setting.academic_year} ${t("ภาคเรียนที่")} ${setting.term}`;
 
         return `
           <div class="report-card ${sIdx < targetStudents.length - 1 ? 'page-break' : ''}">
@@ -5452,7 +5458,7 @@ function changeFontSize(dir) {
         <!DOCTYPE html>
         <html dir="${langDir}" lang="${exportLanguage === "ms-jawi" ? "ms-Arab" : exportLanguage}">
         <head>
-          <title>${exportType === "yearly" ? `${t("ใบรายงานผลการเรียนรายบุคคล")} (${t("เฉลี่ยทั้งปี")})` : t("ใบรายงานผลการเรียนรายบุคคล")} - ${t("ชั้น")} ${classroom.name}</title>
+          <title>${t("ใบรายงานผลการเรียนรายบุคคล")} - ${t("ชั้น")} ${classroom.name}</title>
           <meta charset="utf-8" />
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;600;700&display=swap');
