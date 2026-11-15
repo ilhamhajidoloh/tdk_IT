@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     LEFT JOIN subject_teachers stch ON stch.subject_id = s.id
     LEFT JOIN users u ON u.id = stch.user_id
     LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
-    LEFT JOIN classrooms c ON c.id = sc.classroom_id
+    LEFT JOIN classrooms c ON c.id = sc.classroom_id AND c.setting_id = s.setting_id
     LEFT JOIN classroom_students cs2 ON cs2.classroom_id = sc.classroom_id AND cs2.setting_id = s.setting_id
     LEFT JOIN students st ON st.id = cs2.student_id
     LEFT JOIN grades g ON g.student_id = st.student_id AND g.subject = s.name AND g.term = $2

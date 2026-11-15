@@ -202,6 +202,8 @@ export interface SystemSetting {
   academic_head?: string | null;
   academic_head_signature_key?: string | null;
   attendance_total_weeks?: number;
+  midterm_max_score?: number | null;
+  final_max_score?: number | null;
 }
 
 export const ALL_DAYS = [

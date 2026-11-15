@@ -59,7 +59,7 @@ async function handleSingleTerm(settingId: string, termKey: string, defaultMidMa
               c.name AS classroom_name, c.name_thai AS classroom_name_thai, c.name_rumi AS classroom_name_rumi, c.name_jawi AS classroom_name_jawi
        FROM students st
        JOIN classroom_students cs ON cs.student_id = st.id
-       JOIN classrooms c ON c.id = cs.classroom_id
+       JOIN classrooms c ON c.id = cs.classroom_id AND c.setting_id = cs.setting_id
        WHERE cs.setting_id = $1
        ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
       [settingId]
@@ -124,7 +124,7 @@ async function handleCombined(settingId: string, academicYear: string, defaultMi
               c.name AS classroom_name, c.name_thai AS classroom_name_thai, c.name_rumi AS classroom_name_rumi, c.name_jawi AS classroom_name_jawi
        FROM students st
        JOIN classroom_students cs ON cs.student_id = st.id
-       JOIN classrooms c ON c.id = cs.classroom_id
+       JOIN classrooms c ON c.id = cs.classroom_id AND c.setting_id = cs.setting_id
        WHERE cs.setting_id = ANY($1)
        ORDER BY c.name, cs.student_number NULLS LAST, st.name`,
       [settingIds]

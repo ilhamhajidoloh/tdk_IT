@@ -210,6 +210,9 @@ export default function AnalyticsDashboardTab({
   const [subjectSortOrder, setSubjectSortOrder] = useState<"desc" | "asc" | "pass_rate">("desc");
   const [selectedSubject, setSelectedSubject] = useState<AnalyticsData["subjects"][number] | null>(null);
 
+  const selectedSetting = settingsList.find((setting) => setting.id === selectedSettingId);
+  const isAnnualEvaluationTerm = String(selectedSetting?.term ?? data?.term) === "2";
+
   useEffect(() => {
     if (!selectedSettingId && settingsList.length > 0) {
       const active = settingsList.find((s) => s.is_active);
@@ -358,7 +361,12 @@ export default function AnalyticsDashboardTab({
           <TermSelector
             settingsList={settingsList}
             selectedId={selectedSettingId}
-            onSelect={(id) => setSelectedSettingId(id)}
+            onSelect={(id) => {
+              if (String(settingsList.find((setting) => setting.id === id)?.term) !== "2") {
+                setActiveView("all");
+              }
+              setSelectedSettingId(id);
+            }}
           />
           <button
             onClick={loadAnalyticsData}
@@ -437,17 +445,19 @@ export default function AnalyticsDashboardTab({
             <span>ฮิสโทแกรมคะแนน</span>
           </button> : null}
 
-          <button
-            onClick={() => setActiveView("evaluation")}
-            className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
-              activeView === "evaluation"
-                ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Award className="w-4 h-4" />
-            <span>คุณลักษณะ & RWT</span>
-          </button>
+          {isAnnualEvaluationTerm && (
+            <button
+              onClick={() => setActiveView("evaluation")}
+              className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                activeView === "evaluation"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/20"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Award className="w-4 h-4" />
+              <span>คุณลักษณะ & RWT</span>
+            </button>
+          )}
         </div>
 
         {/* Global Classroom Filter if on Overview or Classroom tabs */}
@@ -546,8 +556,8 @@ export default function AnalyticsDashboardTab({
               </div>
             </div>
 
-            {/* KPI 4: Character Pass Rate */}
-            <div className="card-modern p-5 border-l-4 border-l-purple-600 relative overflow-hidden group hover:shadow-md transition">
+            {/* KPI 4: Character Pass Rate (annual result, shown in term 2 only) */}
+            {isAnnualEvaluationTerm && <div className="card-modern p-5 border-l-4 border-l-purple-600 relative overflow-hidden group hover:shadow-md transition">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">ผ่านการประเมินคุณลักษณะฯ</p>
@@ -562,7 +572,7 @@ export default function AnalyticsDashboardTab({
                   <Award className="w-6 h-6" />
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
 
           {/* 4. Executive Highlights Comparison Banner (จุดเด่น vs จุดที่ควรพัฒนา) */}
@@ -1452,7 +1462,7 @@ export default function AnalyticsDashboardTab({
           {/* ========================================================================= */}
           {/* SECTION BLOCK C: 🌟 คุณลักษณะอันพึงประสงค์ & RWT (Evaluation Block)          */}
           {/* ========================================================================= */}
-          {(activeView === "all" || activeView === "evaluation") && (
+          {isAnnualEvaluationTerm && (activeView === "all" || activeView === "evaluation") && (
             <div className="space-y-6 pt-6">
               {/* Section Header Banner */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-purple-500/20 pb-3">
@@ -1465,7 +1475,7 @@ export default function AnalyticsDashboardTab({
                       การประเมินคุณลักษณะอันพึงประสงค์ & RWT (อ่าน คิดวิเคราะห์ เขียน)
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      สัดส่วนผลการประเมินระดับ ดีเยี่ยม (3), ดี (2), ผ่าน (1) และ ไม่ผ่าน (0) แยกตามหัวข้อสมรรถนะ
+                      สถิติรวมทั้งปีการศึกษา {data.academic_year} จากผลประเมินภาคเรียนที่ 2 แยกตามหัวข้อสมรรถนะ
                     </p>
                   </div>
                 </div>
@@ -1498,7 +1508,7 @@ export default function AnalyticsDashboardTab({
                   <div className="h-[320px] w-full">
                     {characterChartData.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                        ยังไม่มีข้อมูลการประเมินคุณลักษณะฯ ในภาคเรียนนี้
+                        ยังไม่มีข้อมูลการประเมินคุณลักษณะฯ ประจำปีการศึกษานี้
                       </div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
@@ -1537,20 +1547,20 @@ export default function AnalyticsDashboardTab({
                 <div className="card-modern p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-extrabold text-foreground text-base">
-                      การอ่าน คิดวิเคราะห์ และเขียน (RWT 5 ด้าน)
+                      การอ่าน คิดวิเคราะห์ และเขียน (RWT)
                     </h4>
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600">
                       ผ่านเฉลี่ย {data.kpi.rwt_pass_rate}%
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mb-4">
-                    สัดส่วนระดับผลการประเมินตามสมรรถนะสำคัญของผู้เรียน 5 ด้าน
+                    สัดส่วนระดับผลการประเมินตามการอ่าน คิดวิเคราะห์ และเขียน (Reading, Thinking, Writing)
                   </p>
 
                   <div className="h-[320px] w-full">
                     {rwtChartData.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                        ยังไม่มีข้อมูลการประเมิน RWT ในภาคเรียนนี้
+                        ยังไม่มีข้อมูลการประเมิน RWT ประจำปีการศึกษานี้
                       </div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">

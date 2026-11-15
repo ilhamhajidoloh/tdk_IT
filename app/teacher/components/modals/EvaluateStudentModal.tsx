@@ -82,7 +82,7 @@ export default function EvaluateStudentModal({
 
           <div>
             <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">การอ่าน คิดวิเคราะห์ และเขียน</div>
-            {RWT_TOPICS.map(rt => renderRow(`rwt:${rt.key}`, rt.th))}
+            {RWT_TOPICS.map(rt => renderRow(`rwt:${rt.key}`, `${rt.th} / ${rt.rumi} / ${rt.jawi}`))}
           </div>
         </div>
 

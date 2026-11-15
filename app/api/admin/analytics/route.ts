@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       term: settingTerm,
       midterm_max_score: defaultMidMax,
       final_max_score: defaultFinMax,
+      school_id: schoolId,
     } = settingRes.rows[0];
     const termKey = `${settingTerm}/${academic_year}`;
 
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
                 c.name_thai AS classroom_name_thai, c.name_rumi AS classroom_name_rumi, c.name_jawi AS classroom_name_jawi
          FROM students st
          JOIN classroom_students cs ON cs.student_id = st.id
-         JOIN classrooms c ON c.id = cs.classroom_id
+         JOIN classrooms c ON c.id = cs.classroom_id AND c.setting_id = cs.setting_id
          WHERE cs.setting_id = $1`,
         [settingId]
       ),
@@ -104,14 +105,17 @@ export async function GET(req: NextRequest) {
 
     // 4. Fetch Evaluation Records
     let evalRecords: any[] = [];
-    const subjectIds = subjects.map((s: any) => s.id);
-    if (subjectIds.length > 0) {
+    // The evaluation recorded in term 2 is the official annual result. Read it
+    // by school/year instead of the currently selected term's subject list so
+    // the chart remains a whole-academic-year statistic.
+    if (String(settingTerm) === "2") {
       const evalRes = await pool.query(
         `SELECT er.student_id, er.category, er.topic_key, MAX(er.rating) AS rating
          FROM evaluation_records er
-         WHERE er.subject_id = ANY($1)
+         WHERE er.term = $1
+           AND (er.school_id = $2 OR er.school_id IS NULL)
          GROUP BY er.student_id, er.category, er.topic_key`,
-        [subjectIds]
+        [`2/${academic_year}`, schoolId]
       );
       evalRecords = evalRes.rows;
     }

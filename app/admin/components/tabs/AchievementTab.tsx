@@ -2,8 +2,37 @@
 
 import { useState, useEffect, useMemo, Fragment } from "react";
 import Swal from "sweetalert2";
+import {
+  Award,
+  BookOpen,
+  Calendar,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+  Globe,
+  GraduationCap,
+  Info,
+  Layers,
+  Printer,
+  RotateCcw,
+  Save,
+  School,
+  Search,
+  Settings,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
+  Users,
+  X,
+  AlertCircle,
+  Eye,
+  Sliders,
+} from "lucide-react";
 import { type SystemSetting } from "../types";
-import TermSelector from "../TermSelector";
 import { getClassroomName } from "@/app/lib/classroom";
 
 interface SubjectHeader {
@@ -68,15 +97,17 @@ interface AchievementTabProps {
   token: string | null;
 }
 
+// Built-in preset translations for Islamic / Tadika Subjects (Thai -> Rumi & Arabic)
 const DEFAULT_ARABIC_MAP: Record<string, { thai: string; rumi: string; arabic: string }> = {
   "อัลกุรอาน": { thai: "อัลกุรอาน", rumi: "Al-Quran", arabic: "القرآن الكريم" },
+  "กุรอาน": { thai: "อัลกุรอาน", rumi: "Al-Quran", arabic: "القرآن الكريم" },
+  "อัตตัฟซีร": { thai: "อัตตัฟซีร", rumi: "Al-Tafsir", arabic: "التفسير" },
   "อัลฮะดีษ": { thai: "อัลฮะดีษ", rumi: "Al-Hadith", arabic: "الحديث الشريف" },
-  "การอ่าน": { thai: "การอ่านตัจญ์วีด", rumi: "Tilawah & Tajweed", arabic: "التلاوة والتجويد" },
-  "อักขระวิธี": { thai: "อักขระวิธี (ตัจญ์วีด)", rumi: "Tajweed", arabic: "التجويد" },
-  "ฟิกฮ์": { thai: "ฟิกฮ์ (ศาสนบัญญัติ)", rumi: "Fiqh", arabic: "الفقه" },
-  "อัลฟิกฮ์": { thai: "ฟิกฮ์ (ศาสนบัญญัติ)", rumi: "Fiqh", arabic: "الفقه" },
-  "เตาฮีด": { thai: "เตาฮีด (หลักการศรัทธา)", rumi: "Tauhid", arabic: "التوحيد" },
-  "อัลเตาฮีด": { thai: "เตาฮีด (หลักการศรัทธา)", rumi: "Tauhid", arabic: "التوحيد" },
+  "ฮะดีษ": { thai: "อัลฮะดีษ", rumi: "Al-Hadith", arabic: "الحديث الشريف" },
+  "อัลเตาฮีด": { thai: "อัลเตาฮีด (หลักศรัทธา)", rumi: "Al-Tauhid", arabic: "التوحيد" },
+  "เตาฮีด": { thai: "เตาฮีด (หลักศรัทธา)", rumi: "Al-Tauhid", arabic: "التوحيد" },
+  "อัลฟิกฮ์": { thai: "อัลฟิกฮ์ (นิติศาสตร์อิสลาม)", rumi: "Al-Fiqh", arabic: "الفقه الإسلامي" },
+  "ฟิกฮ์": { thai: "ฟิกฮ์ (นิติศาสตร์อิสลาม)", rumi: "Al-Fiqh", arabic: "الفقه الإسلامي" },
   "ประวัติศาสตร์": { thai: "ประวัติศาสตร์อิสลาม", rumi: "Tarikh", arabic: "التاريخ الإسلامي" },
   "สิระฮ์": { thai: "สิระฮ์ (ชีวประวัติ)", rumi: "Sirah", arabic: "السيرة النبوية" },
   "ภาษามลายู": { thai: "ภาษามลายู", rumi: "Bahasa Melayu", arabic: "اللغة الجاوية" },
@@ -97,6 +128,8 @@ export default function AchievementTab({
   const [reportTitle, setReportTitle] = useState<string>("รายงานสรุปผลสัมฤทธิ์ทางการเรียน");
   const [agencyName, setAgencyName] = useState<string>("");
   const [includeActivity, setIncludeActivity] = useState<boolean>(false);
+  const [showReportDetails, setShowReportDetails] = useState<boolean>(false);
+  const [mobileViewMode, setMobileViewMode] = useState<"cards" | "table">("cards");
 
   // Feature 1: Classroom calculation selection
   const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
@@ -330,9 +363,7 @@ export default function AchievementTab({
     }
   };
 
-  // Recalculate every displayed row from raw scores. This keeps the on-screen
-  // table, print view, and exports on the same Excel-compatible formula even
-  // if an older API response contains pre-calculated percentages.
+  // Recalculate every displayed row from raw scores.
   const calculatedMatrixRows = useMemo(() => {
     if (!data) return [];
 
@@ -361,8 +392,6 @@ export default function AchievementTab({
           subject_name: sourceStat?.subject_name || subject.name,
           total_score: totalScore,
           max_possible_score: maxPossibleScore,
-          // Keep full precision for the Excel-style summary calculation;
-          // rendering applies its own two-decimal display format.
           avg_percentage: avgPercentage,
         };
       });
@@ -387,8 +416,6 @@ export default function AchievementTab({
   }, [calculatedMatrixRows, selectedClassroomIds]);
 
   // Dynamic Filtering: Recalculate summary totals for selected classrooms.
-  // The summary percentages intentionally mirror the current Excel template:
-  // each selected classroom contributes one equally weighted percentage.
   const filteredSchoolSummary = useMemo(() => {
     if (!data) {
       return {
@@ -418,8 +445,6 @@ export default function AchievementTab({
         }
       });
 
-      // Keep raw/max totals for exports, while the shown percentage follows
-      // the Excel template's SUM(class percentages) / number of classrooms.
       const maxPossibleScore = filteredMatrixRows.reduce(
         (sum, row) => sum + (row.subject_stats.find((stat) => stat.subject_id === subj.id)?.max_possible_score || 0),
         0
@@ -460,412 +485,258 @@ export default function AchievementTab({
       return;
     }
 
-    const subjectHeadersHtml = data.subjects
+    const title = reportTitle || "รายงานสรุปผลสัมฤทธิ์ทางการเรียน";
+    const agency = agencyName ? `<div style="font-size: 14px; font-weight: 600; margin-bottom: 2px;">${agencyName}</div>` : "";
+    const termInfo = `ปีการศึกษา ${data.academic_year} ภาคเรียนที่ ${data.term}`;
+
+    const headersTopHtml = data.subjects
       .map(
-        (s) => `
-        <th colspan="2" style="text-align: center; font-size: 11px; border: 1px solid #4b5563; padding: 6px; background-color: #f3f4f6;">
-          <strong>${getSubjectName(s)}</strong><br/>
-          <span style="font-weight: normal; font-size: 10px; color: #4b5563;">(เต็ม ${s.max_score} คะแนน)</span>
-        </th>
-      `
+        (s) =>
+          `<th colspan="2" style="border: 1px solid #1e293b; padding: 6px 4px; background: #f8fafc; font-size: 11px; text-align: center;">
+            ${getSubjectName(s)}<br/>
+            <span style="font-size: 9px; font-weight: normal; color: #475569;">(เต็ม ${s.max_score})</span>
+          </th>`
       )
       .join("");
 
-    const subjectSubHeadersHtml = data.subjects
+    const headersSubHtml = data.subjects
       .map(
-        () => `
-        <th style="font-size: 10px; border: 1px solid #4b5563; padding: 4px; text-align: center; background-color: #f9fafb;">รวมดิบ</th>
-        <th style="font-size: 10px; border: 1px solid #4b5563; padding: 4px; text-align: center; background-color: #f9fafb;">เฉลี่ย (%)</th>
-      `
+        () =>
+          `<th style="border: 1px solid #1e293b; padding: 4px 2px; font-size: 10px; text-align: right; background: #f1f5f9;">รวม</th>
+           <th style="border: 1px solid #1e293b; padding: 4px 2px; font-size: 10px; text-align: right; background: #f1f5f9; color: #b45309;">%</th>`
       )
       .join("");
 
-    const bodyRowsHtml = filteredMatrixRows
-      .map(
-        (row, idx) => `
-        <tr>
-          <td style="text-align: center; border: 1px solid #4b5563; padding: 5px;">${idx + 1}</td>
-          <td style="font-weight: bold; border: 1px solid #4b5563; padding: 5px;">${getClassroomName(row, globalActiveLang)}</td>
-          <td style="text-align: center; border: 1px solid #4b5563; padding: 5px; font-weight: bold;">${row.student_count}</td>
-          ${row.subject_stats
-            .map(
-              (st) => `
-              <td style="text-align: right; border: 1px solid #4b5563; padding: 5px;">${st.total_score.toLocaleString()}</td>
-              <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px;">${st.avg_percentage.toFixed(2)}%</td>
-            `
-            )
-            .join("")}
-          <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px; background-color: #f8fafc;">${row.total_all_subjects.toLocaleString()}</td>
-          <td style="text-align: right; font-weight: bold; border: 1px solid #4b5563; padding: 5px; background-color: #f8fafc;">${row.overall_avg_percentage.toFixed(2)}%</td>
-        </tr>
-      `
-      )
-      .join("");
-
-    const footerRowHtml = `
-      <tr style="background-color: #e2e8f0; color: #0f172a; font-weight: bold;">
-        <td colspan="2" style="text-align: center; border: 1px solid #4b5563; padding: 8px;">รวมทั้งหมด (${filteredMatrixRows.length} ระดับชั้น)</td>
-        <td style="text-align: center; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${filteredSchoolSummary.total_students}</td>
-        ${filteredSchoolSummary.subject_stats
+    const rowsHtml = filteredMatrixRows
+      .map((row, idx) => {
+        const statsCols = row.subject_stats
           .map(
-            (st) => `
-            <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${st.total_score.toLocaleString()}</td>
-            <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${st.avg_percentage.toFixed(2)}%</td>
-          `
+            (st) =>
+              `<td style="border: 1px solid #cbd5e1; padding: 5px 4px; text-align: right; font-family: monospace; font-size: 11px;">
+                ${st.total_score.toLocaleString()}
+              </td>
+              <td style="border: 1px solid #cbd5e1; padding: 5px 4px; text-align: right; font-family: monospace; font-size: 11px; font-weight: bold; color: ${
+                st.avg_percentage >= 50 ? "#047857" : "#be123c"
+              }">
+                ${st.avg_percentage.toFixed(2)}%
+              </td>`
           )
-          .join("")}
-        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px;">${filteredSchoolSummary.total_all_subjects.toLocaleString()}</td>
-        <td style="text-align: right; border: 1px solid #4b5563; padding: 8px; font-size: 13px;">${filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%</td>
-      </tr>
-    `;
+          .join("");
 
-    const htmlContent = `<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <title>${reportTitle}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Amiri', 'Cairo', 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Inter', 'Sarabun', 'TH Sarabun New', sans-serif;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    body {
-      padding: 24px;
-      color: #111827;
-      background: #fff;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-    .print-btn {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      padding: 10px 20px;
-      background: #4f46e5;
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 13px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(79,70,229,0.35);
-      z-index: 9999;
-    }
-    .header-container {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .header-title {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .header-agency {
-      font-size: 15px;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 4px;
-    }
-    .header-subtitle {
-      font-size: 14px;
-      color: #4b5563;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-      font-size: 11px;
-    }
-    th, td {
-      border: 1px solid #4b5563;
-      padding: 6px;
-    }
-    th {
-      background-color: #f3f4f6;
-      font-weight: 700;
-    }
-    .formula-box {
-      margin-top: 20px;
-      padding: 12px 16px;
-      border: 1px dashed #6b7280;
-      border-radius: 8px;
-      font-size: 11px;
-      color: #374151;
-      background: #f9fafb;
-    }
-    .footer-signatures {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 40px;
-      page-break-inside: avoid;
-    }
-    .signature-box {
-      text-align: center;
-      width: 260px;
-      font-size: 12px;
-      line-height: 1.8;
-    }
-    @media print {
-      .print-btn { display: none !important; }
-      @page {
-        size: A4 landscape;
-        margin: 10mm;
-      }
-      body {
-        padding: 0;
-      }
-    }
-  </style>
-</head>
-<body>
-  <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+        return `<tr>
+          <td style="border: 1px solid #cbd5e1; padding: 5px 4px; text-align: center; font-size: 11px;">${idx + 1}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 5px 8px; font-weight: bold; font-size: 11px;">${getClassroomName(row, globalActiveLang)}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 5px 4px; text-align: center; font-weight: bold; font-size: 11px;">${row.student_count}</td>
+          ${statsCols}
+          <td style="border: 1px solid #cbd5e1; padding: 5px 4px; text-align: right; font-family: monospace; font-size: 11px; font-weight: bold; background: #f8fafc;">
+            ${row.total_all_subjects.toLocaleString()}
+          </td>
+          <td style="border: 1px solid #cbd5e1; padding: 5px 4px; text-align: right; font-family: monospace; font-size: 11px; font-weight: bold; color: #4338ca; background: #f5f3ff;">
+            ${row.overall_avg_percentage.toFixed(2)}%
+          </td>
+        </tr>`;
+      })
+      .join("");
 
-  <div class="header-container">
-    <div class="header-title">${reportTitle}</div>
-    ${agencyName ? `<div class="header-agency">${agencyName}</div>` : ""}
-    <div class="header-subtitle">ภาคเรียนที่ ${data.term} ประจำปีการศึกษา ${data.academic_year}</div>
-  </div>
+    const summaryStatsCols = filteredSchoolSummary.subject_stats
+      .map(
+        (st) =>
+          `<td style="border: 1px solid #1e293b; padding: 6px 4px; text-align: right; font-family: monospace; font-size: 11px;">
+            ${st.total_score.toLocaleString()}
+          </td>
+          <td style="border: 1px solid #1e293b; padding: 6px 4px; text-align: right; font-family: monospace; font-size: 11px; font-weight: bold; color: #f59e0b;">
+            ${st.avg_percentage.toFixed(2)}%
+          </td>`
+      )
+      .join("");
 
-  <table>
-    <thead>
-      <tr>
-        <th rowspan="2" style="width: 40px; text-align: center;">ที่</th>
-        <th rowspan="2" style="width: 120px; text-align: center;">ระดับชั้น</th>
-        <th rowspan="2" style="width: 90px; text-align: center;">จำนวนนักเรียน<br/>ทั้งชั้น (คน)</th>
-        ${subjectHeadersHtml}
-        <th colspan="2" style="text-align: center; background-color: #f1f5f9; color: #0f172a;">คะแนนรวมทุกวิชา</th>
-      </tr>
-      <tr>
-        ${subjectSubHeadersHtml}
-        <th style="font-size: 10px; text-align: center; background-color: #f8fafc; color: #0f172a;">รวมดิบ</th>
-        <th style="font-size: 10px; text-align: center; background-color: #f8fafc; color: #0f172a;">เฉลี่ยรวม (%)</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${bodyRowsHtml}
-      ${footerRowHtml}
-    </tbody>
-  </table>
+    const summaryRowHtml = `<tr style="background: #1e1b4b; color: white; font-weight: bold;">
+      <td colspan="2" style="border: 1px solid #1e293b; padding: 6px 8px; text-align: center; font-size: 11px;">
+        รวมทั้งหมด (${filteredMatrixRows.length} ระดับชั้น)
+      </td>
+      <td style="border: 1px solid #1e293b; padding: 6px 4px; text-align: center; font-size: 11px;">
+        ${filteredSchoolSummary.total_students}
+      </td>
+      ${summaryStatsCols}
+      <td style="border: 1px solid #1e293b; padding: 6px 4px; text-align: right; font-family: monospace; font-size: 11px;">
+        ${filteredSchoolSummary.total_all_subjects.toLocaleString()}
+      </td>
+      <td style="border: 1px solid #1e293b; padding: 6px 4px; text-align: right; font-family: monospace; font-size: 11px; color: #facc15;">
+        ${filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%
+      </td>
+    </tr>`;
 
-  <div class="formula-box">
-    <strong>คำอธิบายสูตรการคำนวณ:</strong><br/>
-    1. <em>คะแนนรวมดิบทั้งชั้น</em> = ผลรวมคะแนนสอบของนักเรียนทุกคนในห้องเรียนนั้น<br/>
-    2. <em>คะแนนเฉลี่ยร้อยละ (%) วิชา</em> = (คะแนนรวมทั้งชั้น × 100) ÷ (จำนวนนักเรียนทั้งชั้น × คะแนนเต็มวิชา)<br/>
-    3. <em>คะแนนเฉลี่ยรวม (%) ทุกวิชา</em> = (คะแนนรวมทุกวิชา × 100) ÷ (จำนวนนักเรียนทั้งชั้น × คะแนนเต็มรวมทุกวิชา)
-  </div>
-
-  <div class="footer-signatures">
-    <div class="signature-box">
-      <p>ลงชื่อ..........................................................ผู้จัดทำ</p>
-      <p style="margin-top: 2px;">( ........................................................... )</p>
-      <p>ตำแหน่ง เจ้าหน้าที่วัดผล / นายทะเบียน</p>
-      <p style="margin-top: 4px;">วันที่ ......./......./.......</p>
-    </div>
-    <div class="signature-box">
-      <p>ลงชื่อ..........................................................ผู้ตรวจสอบ</p>
-      <p style="margin-top: 2px;">( ........................................................... )</p>
-      <p>ตำแหน่ง หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ</p>
-      <p style="margin-top: 4px;">วันที่ ......./......./.......</p>
-    </div>
-  </div>
-</body>
-</html>`;
+    const printHtml = `<!DOCTYPE html>
+    <html lang="th">
+    <head>
+      <meta charset="utf-8">
+      <title>${title} - ${termInfo}</title>
+      <style>
+        @page { size: A4 landscape; margin: 10mm; }
+        body { font-family: 'Sarabun', 'Noto Sans Thai', Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; background: #fff; }
+        .report-header { text-align: center; margin-bottom: 12px; }
+        .report-title { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
+        .report-sub { font-size: 12px; color: #475569; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+        th, td { border: 1px solid #94a3b8; }
+        .signature-section { margin-top: 25px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+        .signature-box { width: 220px; text-align: center; font-size: 11px; line-height: 1.6; }
+      </style>
+    </head>
+    <body>
+      <div class="report-header">
+        ${agency}
+        <div class="report-title">${title}</div>
+        <div class="report-sub">${termInfo} ${includeActivity ? "(รวมวิชากิจกรรม)" : ""}</div>
+      </div>
+      <table>
+        <thead>
+          <tr style="background: #0f172a; color: white;">
+            <th rowspan="2" style="border: 1px solid #0f172a; padding: 6px 2px; width: 30px; text-align: center;">ที่</th>
+            <th rowspan="2" style="border: 1px solid #0f172a; padding: 6px 8px; text-align: left; width: 110px;">ระดับชั้น</th>
+            <th rowspan="2" style="border: 1px solid #0f172a; padding: 6px 4px; text-align: center; width: 65px;">จำนวน<br/>นักเรียน</th>
+            ${headersTopHtml}
+            <th colspan="2" style="border: 1px solid #0f172a; padding: 6px 4px; background: #3730a3; text-align: center;">รวมทุกวิชา</th>
+          </tr>
+          <tr style="background: #1e293b; color: #cbd5e1;">
+            ${headersSubHtml}
+            <th style="border: 1px solid #1e293b; padding: 4px 2px; text-align: right; background: #312e81; color: white;">รวม</th>
+            <th style="border: 1px solid #1e293b; padding: 4px 2px; text-align: right; background: #312e81; color: #facc15;">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+        <tfoot>
+          ${summaryRowHtml}
+        </tfoot>
+      </table>
+      <div class="signature-section">
+        <div class="signature-box">
+          <div>ลงชื่อ..........................................................</div>
+          <div>(..........................................................)</div>
+          <div>เจ้าหน้าที่ฝ่ายวิชาการ / วัดผล</div>
+          <div>วันที่........เดือน....................พ.ศ. ........</div>
+        </div>
+        <div class="signature-box">
+          <div>ลงชื่อ..........................................................</div>
+          <div>(..........................................................)</div>
+          <div>ผู้อำนวยการ / หัวหน้าสถานศึกษา</div>
+          <div>วันที่........เดือน....................พ.ศ. ........</div>
+        </div>
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+    </html>`;
 
     const printWin = window.open("", "_blank");
     if (printWin) {
-      printWin.document.write(htmlContent);
+      printWin.document.open();
+      printWin.document.write(printHtml);
       printWin.document.close();
-    } else {
-      Swal.fire("แจ้งเตือน", "กรุณายินยอมให้เปิด Pop-up เพื่อพิมพ์รายงาน", "warning");
     }
   };
 
-  // Print PDF Term Report (A4 Portrait - รายงานรายเทอม รูปแบบฝั่งนักเรียน)
-  const handlePrintTermReport = () => {
-    if (!data || filteredMatrixRows.length === 0) {
-      Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนที่ต้องการคำนวณอย่างน้อย 1 ห้อง", "warning");
-      return;
-    }
+  // Export to Excel (Full matrix calculations)
+  const handleExportExcel = async () => {
+    if (!data || filteredMatrixRows.length === 0) return;
+    try {
+      const XLSX = await import("xlsx");
+      const title = reportTitle || "รายงานสรุปผลสัมฤทธิ์ทางการเรียน";
+      const termInfo = `ปีการศึกษา ${data.academic_year} ภาคเรียนที่ ${data.term}`;
 
-    const escapeHtml = (value: unknown) => String(value ?? "")
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
+      const headerRow1: string[] = ["ที่", "ระดับชั้น", "จำนวนนักเรียน"];
+      const headerRow2: string[] = ["", "", ""];
 
-    const text = (thai: string, rumi: string, jawi: string) => {
-      if (globalActiveLang === "arabic") return jawi;
-      if (globalActiveLang === "rumi") return rumi;
-      return thai;
-    };
-
-    const isJawi = globalActiveLang === "arabic";
-    const dir = isJawi ? "rtl" : "ltr";
-
-    // Build table rows for each classroom
-    const classroomRows = filteredMatrixRows.map((row, idx) => {
-      const subjectCells = row.subject_stats.map((st) => {
-        return `<td>${st.total_score.toLocaleString()}</td><td>${st.avg_percentage.toFixed(2)}%</td>`;
-      }).join("");
-
-      return `<tr>
-        <td>${idx + 1}</td>
-        <td class="classroom-cell">${escapeHtml(getClassroomName(row, globalActiveLang))}</td>
-        <td>${row.student_count}</td>
-        ${subjectCells}
-        <td>${row.total_all_subjects.toLocaleString()}</td>
-        <td>${row.overall_avg_percentage.toFixed(2)}%</td>
-      </tr>`;
-    }).join("");
-
-    // Build summary row
-    const summaryCells = filteredSchoolSummary.subject_stats.map((st) => {
-      return `<td>${st.total_score.toLocaleString()}</td><td>${st.avg_percentage.toFixed(2)}%</td>`;
-    }).join("");
-
-    const summaryRow = `<tr style="background-color: #e2e8f0; font-weight: bold;">
-      <td colspan="2" style="text-align: center;">${escapeHtml(text("รวมทั้งหมด", "Jumlah Keseluruhan", "جومله کسلوروهان"))} (${filteredMatrixRows.length} ${escapeHtml(text("ชั้น", "Kelas", "کلس"))})</td>
-      <td>${filteredSchoolSummary.total_students}</td>
-      ${summaryCells}
-      <td>${filteredSchoolSummary.total_all_subjects.toLocaleString()}</td>
-      <td>${filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%</td>
-    </tr>`;
-
-    // Build subject headers
-    const subjectHeaders = data.subjects.map((s) => {
-      return `<th colspan="2">${escapeHtml(getSubjectName(s))}<br/><span style="font-size: 10px;">(${escapeHtml(text("เต็ม", "Penuh", "ڤنوه"))} ${s.max_score})</span></th>`;
-    }).join("");
-
-    const subjectSubHeaders = data.subjects.map(() => {
-      return `<th>${escapeHtml(text("รวม", "Jumlah", "جومله"))}</th><th>${escapeHtml(text("เฉลี่ย", "Purata", "ڤوراتا"))} (%)</th>`;
-    }).join("");
-
-    const win = window.open("", "_blank");
-    if (!win) {
-      Swal.fire("แจ้งเตือน", "กรุณายินยอมให้เปิด Pop-up เพื่อพิมพ์รายงาน", "warning");
-      return;
-    }
-
-    win.document.write(`<!doctype html><html lang="${isJawi ? "ms-Arab" : globalActiveLang === "rumi" ? "ms" : "th"}" dir="${dir}"><head><meta charset="utf-8"><title>${escapeHtml(text("รายงานผลสัมฤทธิ์รายเทอม", "Laporan Pencapaian Penggal", "لاڤورن ڤنچاڤاين ڤڠݢل"))}</title><style>@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&family=Sarabun:wght@400;600;700&display=swap');*{box-sizing:border-box}body{margin:0;background:#eee;font-family:${isJawi ? "'Noto Naskh Arabic'" : "Sarabun"},sans-serif;color:#111}.toolbar{position:fixed;top:12px;right:12px;z-index:2}.toolbar button{border:0;border-radius:7px;padding:9px 14px;background:#1d4ed8;color:white;font-weight:700}.page{width:210mm;min-height:297mm;margin:10px auto;background:#fff;padding:13mm 15mm;text-align:${isJawi ? "right" : "left"}}.head{text-align:center;border-top:1px solid #000;padding-top:7mm;margin-bottom:5mm}.school{font-size:14px;font-weight:400;margin:0}.title{font-size:17px;font-weight:600}.term{font-size:12px}.info{display:grid;grid-template-columns:1fr;gap:2px;margin:5mm 0;padding:3mm 0;font-size:12px}table{border-collapse:collapse;width:100%;font-size:11px;table-layout:auto}th,td{border:1px solid #000;padding:2.2px 3px;line-height:1.25;background:#fff;text-align:center}th{font-weight:600}.classroom-cell{text-align:${isJawi ? "right" : "left"};white-space:nowrap}.summary{margin-top:0;border:1px solid #000;border-top:0;padding:3mm;font-size:12px;text-align:center}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:35mm;margin-top:16mm;font-size:12px;text-align:center}.line{border-top:1px solid #000;margin:18mm 8mm 3px}.footer{margin-top:16mm;font-size:9px;text-align:center}@media print{body{background:#fff}.toolbar{display:none}.page{margin:0;padding:10mm 14mm}@page{size:A4 portrait;margin:0}}</style></head><body><div class="toolbar"><button onclick="window.print()">${escapeHtml(text("พิมพ์ / บันทึก PDF", "Cetak / Simpan PDF", "چيتق / سيمڤن PDF"))}</button></div><main class="page"><header class="head"><div class="school">${escapeHtml(agencyName || data.school_name || "")}</div><div class="title">${escapeHtml(text("รายงานผลสัมฤทธิ์ทางการเรียนรายเทอม", "Laporan Pencapaian Akademik Penggal", "لاڤورن ڤنچاڤاين اکناديميك ڤڠݢل"))}</div><div class="term">${escapeHtml(text("ภาคเรียนที่", "Penggal", "ڤڠݢل"))} ${data.term} ${escapeHtml(text("ประจำปีการศึกษา", "Sesi Akademik", "سيسي اکناديميك"))} ${data.academic_year}</div></header><section class="info"><div><b>${escapeHtml(text("หัวข้อรายงาน", "Tajuk Laporan", "تاجوق لاڤورن"))}:</b> ${escapeHtml(reportTitle)}</div></section><table><thead><tr><th rowspan="2">${escapeHtml(text("ที่", "Bil.", "بيل."))}</th><th rowspan="2">${escapeHtml(text("ระดับชั้น", "Kelas", "کلس"))}</th><th rowspan="2">${escapeHtml(text("จำนวนนักเรียน", "Bilangan Pelajar", "بيلاڠن ڤلاجر"))}<br/>${escapeHtml(text("(คน)", "(Orang)", "(اورڠ)"))}</th>${subjectHeaders}<th colspan="2">${escapeHtml(text("คะแนนรวมทุกวิชา", "Jumlah Markah Semua Subjek", "جومله مرکه سموا سوبجيک"))}</th></tr><tr>${subjectSubHeaders}<th>${escapeHtml(text("รวม", "Jumlah", "جومله"))}</th><th>${escapeHtml(text("เฉลี่ย", "Purata", "ڤوراتا"))} (%)</th></tr></thead><tbody>${classroomRows}${summaryRow}</tbody></table><div class="summary"><strong>${escapeHtml(text("สรุปภาพรวม", "Ringkasan Keseluruhan", "ريڠکاسن کسلوروهان"))}:</strong><br/>${escapeHtml(text("นักเรียนทั้งหมด", "Jumlah Pelajar", "جومله ڤلاجر"))}: ${filteredSchoolSummary.total_students} &nbsp;|&nbsp; ${escapeHtml(text("คะแนนรวม", "Jumlah Markah", "جومله مرکه"))}: ${filteredSchoolSummary.total_all_subjects} &nbsp;|&nbsp; ${escapeHtml(text("เฉลี่ยรวม", "Purata Keseluruhan", "ڤوراتا کسلوروهان"))}: ${filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%</div><section class="signatures"><div><div class="line"></div><b>( ........................................................... )</b><br/>${escapeHtml(text("ผู้จัดทำรายงาน", "Penyedia Laporan", "ڤڽديا لاڤورن"))}</div><div><div class="line"></div><b>( ........................................................... )</b><br/>${escapeHtml(text("หัวหน้าฝ่ายวิชาการ / ผู้อำนวยการ", "Ketua Bahagian Akademik / Pengetua", "کتوا بهاݢين اکناديميك / ڤڠتوا"))}</div></section><div class="footer">${escapeHtml(text("พิมพ์จากระบบสารสนเทศโรงเรียน", "Dijana oleh sistem maklumat sekolah", "ديجانا اوليه سيستم معلومت سکوله"))}</div></main></body></html>`);
-    win.document.close();
-  };
-
-  // CSV Export
-  const handleExportCSV = () => {
-    if (!data || filteredMatrixRows.length === 0) {
-      Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนอย่างน้อย 1 ห้องเพื่อส่งออกข้อมูล", "warning");
-      return;
-    }
-
-    let csvContent = "\uFEFF"; // UTF-8 BOM
-    csvContent += `"${reportTitle} - ภาคเรียนที่ ${data.term} ประจำปีการศึกษา ${data.academic_year}"\n\n`;
-
-    // Header row 1
-    let row1 = ["ที่", "ระดับชั้น", "จำนวนนักเรียนทั้งชั้น (คน)"];
-    data.subjects.forEach((s) => {
-      const sName = getSubjectName(s);
-      row1.push(`"${sName} (คะแนนรวม)"`, `"${sName} (เฉลี่ย %)"`);
-    });
-    row1.push('"คะแนนรวมทุกวิชา"', '"เฉลี่ยรวม (%)"');
-    csvContent += row1.join(",") + "\n";
-
-    // Body rows
-    filteredMatrixRows.forEach((row, idx) => {
-      let r = [idx + 1, `"${getClassroomName(row, globalActiveLang)}"`, row.student_count];
-      row.subject_stats.forEach((st) => {
-        r.push(st.total_score, `${st.avg_percentage}%`);
+      data.subjects.forEach((subj) => {
+        const sName = `${getSubjectName(subj)} (เต็ม ${subj.max_score})`;
+        headerRow1.push(sName, "");
+        headerRow2.push("รวมดิบ", "เฉลี่ย (%)");
       });
-      r.push(row.total_all_subjects, `${row.overall_avg_percentage}%`);
-      csvContent += r.join(",") + "\n";
+
+      headerRow1.push("คะแนนรวมทุกวิชา", "");
+      headerRow2.push("รวมดิบ", "เฉลี่ยรวม (%)");
+
+      const dataRows: (string | number)[][] = filteredMatrixRows.map((row, idx) => {
+        const r: (string | number)[] = [idx + 1, getClassroomName(row, globalActiveLang), row.student_count];
+        row.subject_stats.forEach((st) => {
+          r.push(st.total_score, Number(st.avg_percentage.toFixed(2)));
+        });
+        r.push(row.total_all_subjects, Number(row.overall_avg_percentage.toFixed(2)));
+        return r;
+      });
+
+      const summaryRow: (string | number)[] = [
+        "",
+        `รวมทั้งหมด (${filteredMatrixRows.length} ระดับชั้น)`,
+        filteredSchoolSummary.total_students,
+      ];
+      filteredSchoolSummary.subject_stats.forEach((st) => {
+        summaryRow.push(st.total_score, Number(st.avg_percentage.toFixed(2)));
+      });
+      summaryRow.push(
+        filteredSchoolSummary.total_all_subjects,
+        Number(filteredSchoolSummary.overall_avg_percentage.toFixed(2))
+      );
+
+      const aoa = [
+        [title],
+        [agencyName || data.school_name || ""],
+        [termInfo + (includeActivity ? " (รวมวิชากิจกรรม)" : "")],
+        [],
+        headerRow1,
+        headerRow2,
+        ...dataRows,
+        summaryRow,
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "ผลสัมฤทธิ์");
+
+      const fileName = `${title}_${data.academic_year}_เทอม${data.term}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    } catch (e) {
+      console.error("Excel export error:", e);
+      Swal.fire("ผิดพลาด", "ไม่สามารถส่งออก Excel ได้", "error");
+    }
+  };
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    if (!data || filteredMatrixRows.length === 0) return;
+    const title = reportTitle || "รายงานสรุปผลสัมฤทธิ์ทางการเรียน";
+    const header1 = ["ที่", "ระดับชั้น", "จำนวนนักเรียน"];
+    data.subjects.forEach((subj) => {
+      header1.push(`"${getSubjectName(subj)} (รวมดิบ)"`, `"${getSubjectName(subj)} (เฉลี่ย %)"`);
+    });
+    header1.push("คะแนนรวมทุกวิชารวมดิบ", "คะแนนเฉลี่ยรวมทุกวิชาร้อยละ");
+
+    const rows = filteredMatrixRows.map((row, idx) => {
+      const r = [idx + 1, `"${getClassroomName(row, globalActiveLang)}"`, row.student_count];
+      row.subject_stats.forEach((st) => {
+        r.push(st.total_score, st.avg_percentage.toFixed(2));
+      });
+      r.push(row.total_all_subjects, row.overall_avg_percentage.toFixed(2));
+      return r.join(",");
     });
 
-    // Summary row
-    let sumRow = ['"รวมทั้งหมด"', `"${filteredMatrixRows.length} ระดับชั้น"`, filteredSchoolSummary.total_students];
+    const sumRow = ["", `"รวมทั้งหมด (${filteredMatrixRows.length} ชั้น)"`, filteredSchoolSummary.total_students];
     filteredSchoolSummary.subject_stats.forEach((st) => {
-      sumRow.push(st.total_score, `${st.avg_percentage}%`);
+      sumRow.push(st.total_score, st.avg_percentage.toFixed(2));
     });
-    sumRow.push(filteredSchoolSummary.total_all_subjects, `${filteredSchoolSummary.overall_avg_percentage}%`);
-    csvContent += sumRow.join(",") + "\n";
+    sumRow.push(filteredSchoolSummary.total_all_subjects, filteredSchoolSummary.overall_avg_percentage.toFixed(2));
 
+    const csvContent = "\uFEFF" + [header1.join(","), ...rows, sumRow.join(",")].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `รายงานผลสัมฤทธิ์_${data.term}_${data.academic_year}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Excel Export - use an HTML workbook so the downloaded file keeps the report layout in Excel.
-  const handleExportExcel = () => {
-    if (!data || filteredMatrixRows.length === 0) {
-      Swal.fire("แจ้งเตือน", "กรุณาเลือกระดับชั้นเรียนอย่างน้อย 1 ห้องเพื่อส่งออกข้อมูล", "warning");
-      return;
-    }
-
-    const escapeHtml = (value: string | number) => String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-    const formatPercent = (value: number) => `${Number(value || 0).toFixed(2)}%`;
-    const columns = ["ที่", "ระดับชั้น", "จำนวนนักเรียน (คน)"];
-    data.subjects.forEach((subject) => {
-      const subjectName = getSubjectName(subject);
-      columns.push(`${subjectName} (คะแนนรวม)`, `${subjectName} (เฉลี่ย %)`);
-    });
-    columns.push("คะแนนรวมทุกวิชา", "เฉลี่ยรวม (%)");
-
-    const tableHead = columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
-    const tableRows = filteredMatrixRows.map((row, index) => {
-      const cells = [
-        index + 1,
-        getClassroomName(row, globalActiveLang),
-        row.student_count,
-        ...row.subject_stats.flatMap((stat) => [stat.total_score, formatPercent(stat.avg_percentage)]),
-        row.total_all_subjects,
-        formatPercent(row.overall_avg_percentage),
-      ];
-      return `<tr>${cells.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`;
-    }).join("");
-    const summaryCells = [
-      "รวมทั้งหมด",
-      `${filteredMatrixRows.length} ห้องเรียน`,
-      filteredSchoolSummary.total_students,
-      ...filteredSchoolSummary.subject_stats.flatMap((stat) => [stat.total_score, formatPercent(stat.avg_percentage)]),
-      filteredSchoolSummary.total_all_subjects,
-      formatPercent(filteredSchoolSummary.overall_avg_percentage),
-    ];
-
-    const reportSubtitle = `ภาคเรียนที่ ${data.term} ประจำปีการศึกษา ${data.academic_year}`;
-    const excelHtml = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><style>
-  @page { size: landscape; margin: 0.45in; }
-  body { font-family: Tahoma, Arial, sans-serif; color: #172033; }
-  .title { font-size: 20pt; font-weight: 700; color: #312e81; text-align: center; padding: 16px 8px 4px; }
-  .subtitle { font-size: 12pt; color: #475569; text-align: center; padding: 4px 8px 18px; }
-  table { border-collapse: collapse; width: 100%; table-layout: auto; }
-  th { background: #4338ca; color: #ffffff; border: 1px solid #312e81; padding: 10px 8px; text-align: center; vertical-align: middle; font-weight: 700; white-space: normal; }
-  td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; }
-  td:nth-child(2) { text-align: left; min-width: 150px; font-weight: 600; }
-  tr:nth-child(even) td { background: #f8fafc; }
-  .summary td { background: #e0e7ff !important; border-color: #818cf8; color: #312e81; font-weight: 700; }
-</style></head><body>
-  <div class="title">${escapeHtml(reportTitle)}</div>
-  <div class="subtitle">${escapeHtml(reportSubtitle)}</div>
-  <table><thead><tr>${tableHead}</tr></thead><tbody>${tableRows}<tr class="summary">${summaryCells.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr></tbody></table>
-</body></html>`;
-
-    const blob = new Blob(["\ufeff", excelHtml], { type: "application/vnd.ms-excel;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `รายงานผลสัมฤทธิ์_${data.term}_${data.academic_year}.xls`);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${title}_${data.academic_year}_${data.term}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -873,248 +744,320 @@ export default function AchievementTab({
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 animate-fade-in-up">
-      {/* Page Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card border border-border p-6 rounded-3xl shadow-sm">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold mb-2">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Academic Achievement Matrix
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">รายงานสรุปผลสัมฤทธิ์ทางการเรียน</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            ตารางวิเคราะห์คะแนนรวม และคะแนนเฉลี่ยร้อยละ (%) แยกตามระดับชั้นและรายวิชา
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-          {/* Quick Language Selector */}
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-xl border border-border">
-            <button
-              type="button"
-              onClick={() => setGlobalActiveLang("thai")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-                globalActiveLang === "thai"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              🇹🇭 ไทย
-            </button>
-            <button
-              type="button"
-              onClick={() => setGlobalActiveLang("rumi")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-                globalActiveLang === "rumi"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              🇲🇾 Rumi
-            </button>
-            <button
-              type="button"
-              onClick={() => setGlobalActiveLang("arabic")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-0 ${
-                globalActiveLang === "arabic"
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              🇸🇦 Jawi / อาหรับ
-            </button>
+    <div className="p-3 sm:p-5 md:p-6 lg:p-8 space-y-5 max-w-7xl mx-auto animate-fade-in-up pb-16">
+      {/* =========================================================================
+          SECTION 1: TOP EXECUTIVE COMMAND BAR (Title, Language, Actions)
+          ========================================================================= */}
+      <div className="card-modern p-4 sm:p-6 border border-border/80 shadow-sm space-y-4">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30">
+                <TrendingUp className="w-3.5 h-3.5" />
+                Academic Matrix Report
+              </span>
+              {data && (
+                <span className="text-xs font-semibold text-muted-foreground">
+                  ปีการศึกษา {data.academic_year} · ภาคเรียนที่ {data.term}
+                </span>
+              )}
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+              รายงานสรุปผลสัมฤทธิ์ทางการเรียน
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              ตารางวิเคราะห์คะแนนรวมและคะแนนเฉลี่ยร้อยละ (%) ทุกระดับชั้นและรายวิชา
+            </p>
           </div>
 
-          <button
-            onClick={() => setShowSubjectModal(true)}
-            disabled={!data || loading}
-            className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
-          >
-            ⚙️ ปรับแต่งชื่อวิชา
-          </button>
-          <button
-            onClick={handleExportCSV}
-            disabled={!data || loading || filteredMatrixRows.length === 0}
-            className="w-full sm:w-auto bg-card hover:bg-muted text-foreground border border-border font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
-          >
-            <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            ส่งออก CSV
-          </button>
-          <button
-            onClick={handleExportExcel}
-            disabled={!data || loading || filteredMatrixRows.length === 0}
-            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm cursor-pointer disabled:opacity-50"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            ส่งออก Excel
-          </button>
-          <button
-            onClick={handlePrintReport}
-            disabled={!data || loading || filteredMatrixRows.length === 0}
-            className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-sm border-0 cursor-pointer disabled:opacity-50"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            🖨️ พิมพ์รายงาน (A4 Landscape)
-          </button>
+          {/* Action Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Language Switcher */}
+            <div className="inline-flex p-1 bg-muted rounded-xl border border-border text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setGlobalActiveLang("thai")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  globalActiveLang === "thai"
+                    ? "bg-indigo-600 text-white shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🇹🇭 ไทย
+              </button>
+              <button
+                type="button"
+                onClick={() => setGlobalActiveLang("rumi")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  globalActiveLang === "rumi"
+                    ? "bg-indigo-600 text-white shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🇲🇾 Rumi
+              </button>
+              <button
+                type="button"
+                onClick={() => setGlobalActiveLang("arabic")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  globalActiveLang === "arabic"
+                    ? "bg-indigo-600 text-white shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🇸🇦 Jawi
+              </button>
+            </div>
+
+            {/* Config & Exports */}
+            <button
+              type="button"
+              onClick={() => setShowSubjectModal(true)}
+              disabled={!data || loading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 transition-all cursor-pointer disabled:opacity-40"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>ปรับแต่งชื่อวิชา</span>
+            </button>
+
+            <div className="inline-flex rounded-xl border border-border bg-card overflow-hidden shadow-2xs">
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                disabled={!data || loading || filteredMatrixRows.length === 0}
+                className="px-3 py-2 text-xs font-bold text-foreground hover:bg-muted border-r border-border transition-colors cursor-pointer disabled:opacity-40"
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                disabled={!data || loading || filteredMatrixRows.length === 0}
+                className="px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors cursor-pointer disabled:opacity-40"
+              >
+                Excel
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePrintReport}
+              disabled={!data || loading || filteredMatrixRows.length === 0}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all active:scale-98"
+            >
+              <Printer className="w-4 h-4" />
+              <span>พิมพ์รายงาน A4</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Control & Options Card */}
-      <div className="bg-card border border-border p-6 rounded-3xl space-y-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-6">
-          {/* Term Selector */}
-          <div className="min-w-0 flex-[5_1_300px] border-b border-border pb-4 xl:border-b-0 xl:border-r xl:pb-0 xl:pr-6">
-            <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-              เลือกปีการศึกษา / ภาคเรียน
-            </label>
-            <TermSelector
-              settingsList={settingsList}
-              selectedId={selectedSettingId}
-              onSelect={setSelectedSettingId}
-            />
+      {/* =========================================================================
+          SECTION 2: CONSOLIDATED CONTROL & FILTER CONSOLE (Clean, unified card)
+          ========================================================================= */}
+      <div className="card-modern p-4 sm:p-5 border border-border/80 shadow-xs space-y-4">
+        {/* Row 1: Academic Year / Term selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-bold text-foreground">เลือกปีการศึกษา / ภาคเรียน:</span>
           </div>
 
-          {/* Title & Agency inputs */}
-          <div className="min-w-0 flex-[4_1_260px] space-y-3">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                หัวข้อรายงาน (Report Title)
-              </label>
+          <div className="flex flex-wrap gap-1.5">
+            {settingsList.length === 0 ? (
+              <span className="text-xs text-muted-foreground">ไม่มีข้อมูลปีการศึกษา</span>
+            ) : (
+              settingsList.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSelectedSettingId(s.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    selectedSettingId === s.id
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                      : "bg-muted/40 text-muted-foreground border-border hover:border-indigo-400 hover:text-foreground"
+                  }`}
+                >
+                  ปี {s.academic_year} เทอม {s.term}
+                  {s.is_active && (
+                    <span
+                      className={`ml-1.5 text-[10px] px-1 py-0.2 rounded-full ${
+                        selectedSettingId === s.id
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                      }`}
+                    >
+                      Active
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Classroom Scope Filter Chips - FULL TEXT VISIBLE, NEVER CUT OFF! */}
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-foreground">
+                🏫 เลือกระดับชั้นที่นำมาคำนวณ ({selectedClassroomIds.length}/{data?.matrix_rows.length || 0} ชั้น):
+              </span>
+              <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                (คลิกเพื่อเปิด/ปิดระดับชั้นที่ต้องการสรุป)
+              </span>
+            </div>
+            {data && data.matrix_rows.length > 0 && (
+              <button
+                type="button"
+                onClick={handleSelectAllClassrooms}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                {selectedClassroomIds.length === data.matrix_rows.length ? "✕ ยกเลิกทั้งหมด" : "✓ เลือกทุกระดับชั้น"}
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {!data || data.matrix_rows.length === 0 ? (
+              <span className="text-xs text-muted-foreground py-1">ไม่มีข้อมูลระดับชั้นเรียน</span>
+            ) : (
+              data.matrix_rows.map((row) => {
+                const isSelected = selectedClassroomIds.includes(row.classroom_id);
+                const name = getClassroomName(row, globalActiveLang);
+                return (
+                  <button
+                    key={row.classroom_id}
+                    type="button"
+                    onClick={() => handleToggleClassroom(row.classroom_id)}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer select-none ${
+                      isSelected
+                        ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-xs"
+                        : "bg-muted/30 text-muted-foreground border-border hover:border-indigo-400 hover:text-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 rounded-md flex items-center justify-center text-[9px] font-bold ${
+                        isSelected ? "bg-white text-indigo-600" : "border border-border text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span>{name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        isSelected ? "bg-white/20 text-white" : "bg-muted text-subtle-foreground"
+                      }`}
+                    >
+                      {row.student_count} คน
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Row 3: Options (Activity switch + Report header drawer toggle) */}
+        <div className="pt-3 border-t border-border/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeActivity}
+              onChange={(e) => setIncludeActivity(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="relative h-5 w-9 shrink-0 rounded-full bg-muted-foreground/20 peer peer-focus:outline-none peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all" />
+            <span className="font-semibold text-foreground">รวมวิชากิจกรรมพัฒนาผู้เรียน (ที่มีคะแนน)</span>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => setShowReportDetails(!showReportDetails)}
+            className="text-xs font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 cursor-pointer py-1 px-2 rounded-lg hover:bg-muted transition-colors"
+          >
+            <span>✏️ ปรับแต่งหัวกระดาษรายงาน (ชื่อเรื่อง / สังกัด)</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showReportDetails ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+
+        {/* Collapsible Panel for Report Title & Agency */}
+        {showReportDetails && (
+          <div className="p-3.5 bg-muted/30 rounded-xl border border-border grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground">หัวข้อรายงาน (Report Title):</label>
               <input
                 type="text"
                 value={reportTitle}
                 onChange={(e) => setReportTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="รายงานสรุปผลสัมฤทธิ์ทางการเรียน"
+                className="input-modern !py-1.5 !px-3 text-xs"
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                ชื่อสถานศึกษา / สังกัด (ถ้ามี)
-              </label>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground">ชื่อสถานศึกษา / สังกัด (สำหรับหัวกระดาษพิมพ์):</label>
               <input
                 type="text"
-                placeholder={data?.school_name || "เช่น ศูนย์ตาดีกายันนาตุลฆุลดี หรือ โรงเรียน..."}
                 value={agencyName}
                 onChange={(e) => setAgencyName(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-border bg-background text-foreground text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder={data?.school_name || "เช่น ศูนย์ตาดีกา..."}
+                className="input-modern !py-1.5 !px-3 text-xs"
               />
-            </div>
-          </div>
-
-          {/* Toggle Switch */}
-          <div className="flex flex-[3_1_220px] items-center pt-2 xl:justify-end xl:pt-0">
-            <label className="inline-flex max-w-full items-center gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={includeActivity}
-                onChange={(e) => setIncludeActivity(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="relative h-6 w-11 shrink-0 rounded-full bg-muted peer peer-focus:outline-none peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-white after:transition-all after:content-['']"></div>
-              <span className="min-w-0 text-xs font-bold text-foreground">
-                รวมวิชากิจกรรม (ที่มีคะแนน)
-              </span>
-            </label>
-          </div>
-        </div>
-
-        {/* Feature 1: Classroom Selection Filter Bar */}
-        {data && data.matrix_rows.length > 0 && (
-          <div className="pt-4 border-t border-border space-y-2">
-            <div className="flex flex-wrap justify-between items-center gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <span>🏫 เลือกระดับชั้นเรียนที่ต้องการคำนวณ:</span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
-                  ({selectedClassroomIds.length} / {data.matrix_rows.length} ชั้น)
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={handleSelectAllClassrooms}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 cursor-pointer underline"
-              >
-                {selectedClassroomIds.length === data.matrix_rows.length ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-1">
-              {data.matrix_rows.map((row) => {
-                const isSelected = selectedClassroomIds.includes(row.classroom_id);
-                return (
-                  <button
-                    key={`cls-btn-${row.classroom_id}`}
-                    type="button"
-                    onClick={() => handleToggleClassroom(row.classroom_id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer select-none ${
-                      isSelected
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                        : "bg-background text-muted-foreground border-border hover:border-indigo-400"
-                    }`}
-                  >
-                    <span className={`w-3.5 h-3.5 rounded-md flex items-center justify-center text-[10px] ${
-                      isSelected ? "bg-white text-indigo-600" : "border border-border"
-                    }`}>
-                      {isSelected ? "✓" : ""}
-                    </span>
-                    <span>{getClassroomName(row, globalActiveLang)}</span>
-                    <span className={`text-[10px] opacity-80 font-mono ${isSelected ? "text-indigo-100" : "text-muted-foreground"}`}>
-                      ({row.student_count} คน)
-                    </span>
-                  </button>
-                );
-              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* KPI Cards */}
+      {/* =========================================================================
+          SECTION 3: KPI METRICS (Clean 4-column summary strip)
+          ========================================================================= */}
       {data && data.matrix_rows.length > 0 && data.subjects.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shrink-0">
-              👥
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="card-modern p-3.5 border border-border/80 flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4" />
             </div>
-            <div>
-              <div className="text-[11px] font-semibold text-muted-foreground">นักเรียนที่เลือก</div>
-              <div className="text-lg font-extrabold text-foreground">{filteredSchoolSummary.total_students} คน</div>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
-              🏫
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-muted-foreground">ระดับชั้นที่คำนวณ</div>
-              <div className="text-lg font-extrabold text-foreground">{filteredMatrixRows.length} / {data.matrix_rows.length} ชั้น</div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold text-muted-foreground truncate">นักเรียนที่คำนวณ</div>
+              <div className="text-base sm:text-lg font-extrabold text-foreground truncate">
+                {filteredSchoolSummary.total_students} <span className="text-xs font-normal text-muted-foreground">คน</span>
+              </div>
             </div>
           </div>
 
-          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
-              📚
+          <div className="card-modern p-3.5 border border-border/80 flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <School className="w-4 h-4" />
             </div>
-            <div>
-              <div className="text-[11px] font-semibold text-muted-foreground">จำนวนรายวิชา</div>
-              <div className="text-lg font-extrabold text-foreground">{data.subjects.length} วิชา</div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold text-muted-foreground truncate">ระดับชั้นที่เลือก</div>
+              <div className="text-base sm:text-lg font-extrabold text-foreground truncate">
+                {filteredMatrixRows.length} <span className="text-xs font-normal text-muted-foreground">/ {data.matrix_rows.length} ชั้น</span>
+              </div>
             </div>
           </div>
 
-          <div className="bg-card border border-border p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
-              📈
+          <div className="card-modern p-3.5 border border-border/80 flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <BookOpen className="w-4 h-4" />
             </div>
-            <div>
-              <div className="text-[11px] font-semibold text-muted-foreground">เฉลี่ยรวมภาพรวม</div>
-              <div className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold text-muted-foreground truncate">จำนวนรายวิชา</div>
+              <div className="text-base sm:text-lg font-extrabold text-foreground truncate">
+                {data.subjects.length} <span className="text-xs font-normal text-muted-foreground">วิชา</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card-modern p-3.5 border border-border/80 flex items-center gap-3 shadow-2xs">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold text-muted-foreground truncate">เฉลี่ยรวมภาพรวม</div>
+              <div className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 truncate">
                 {filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%
               </div>
             </div>
@@ -1122,73 +1065,158 @@ export default function AchievementTab({
         </div>
       )}
 
-      {/* Main Matrix Table */}
+      {/* =========================================================================
+          SECTION 4: ACADEMIC ACHIEVEMENT MATRIX (Main Report Table)
+          ========================================================================= */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-16 bg-card border border-border rounded-3xl">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-3"></div>
+        <div className="card-modern p-16 text-center border border-border shadow-sm">
+          <div className="inline-block w-9 h-9 border-4 border-indigo-200 dark:border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
           <p className="text-sm font-semibold text-muted-foreground">กำลังคำนวณสถิติผลสัมฤทธิ์...</p>
         </div>
       ) : !data || data.matrix_rows.length === 0 ? (
-        <div className="p-16 text-center bg-card border border-border rounded-3xl">
-          <p className="text-muted-foreground text-sm">ไม่พบข้อมูลคะแนนในภาคเรียนที่เลือก</p>
+        <div className="card-modern p-16 text-center border border-dashed border-border shadow-sm">
+          <BookOpen className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+          <h4 className="font-bold text-foreground text-base">ไม่พบข้อมูลคะแนนในภาคเรียนที่เลือก</h4>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+            กรุณาเลือกปีการศึกษาและภาคเรียนที่มีการบันทึกคะแนนเรียบร้อยแล้ว
+          </p>
         </div>
       ) : filteredMatrixRows.length === 0 ? (
-        <div className="p-16 text-center bg-card border border-border rounded-3xl space-y-2">
-          <p className="text-lg font-bold text-foreground">ไม่ได้เลือกระดับชั้นเรียนสำหรับการคำนวณ</p>
-          <p className="text-sm text-muted-foreground">กรุณาติ๊กเลือกห้องเรียนในแถบตัวเลือกด้านบนอย่างน้อย 1 ห้อง</p>
+        <div className="card-modern p-16 text-center border border-dashed border-border shadow-sm space-y-3">
+          <AlertCircle className="w-12 h-12 text-amber-500/50 mx-auto" />
+          <h4 className="font-bold text-foreground text-base">ไม่ได้เลือกระดับชั้นเรียนสำหรับการคำนวณ</h4>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            กรุณาติ๊กเลือกระดับชั้นเรียนในกล่องด้านบนอย่างน้อย 1 ห้อง เพื่อประมวลผลตารางผลสัมฤทธิ์
+          </p>
           <button
             type="button"
             onClick={handleSelectAllClassrooms}
-            className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold cursor-pointer"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-sm"
           >
             เลือกทุกระดับชั้น
           </button>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
-          <div className="hidden overflow-x-auto md:block">
+        <div className="card-modern overflow-hidden border border-border/80 shadow-sm">
+          {/* Mobile View Toggle Bar */}
+          <div className="md:hidden p-3 border-b border-border/70 flex items-center justify-between gap-2 bg-muted/20">
+            <span className="text-xs font-bold text-foreground">มุมมองผลสัมฤทธิ์:</span>
+            <div className="inline-flex p-0.5 bg-muted rounded-lg border border-border text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setMobileViewMode("cards")}
+                className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                  mobileViewMode === "cards" ? "bg-card text-foreground shadow-2xs" : "text-muted-foreground"
+                }`}
+              >
+                การ์ดสรุป
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileViewMode("table")}
+                className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                  mobileViewMode === "table" ? "bg-card text-foreground shadow-2xs" : "text-muted-foreground"
+                }`}
+              >
+                ตารางเต็ม
+              </button>
+            </div>
+          </div>
+
+          {/* DESKTOP & TABLET MATRIX TABLE (md:block or mobile table mode) */}
+          <div className={`${mobileViewMode === "table" ? "block" : "hidden md:block"} overflow-x-auto max-h-[720px] overflow-y-auto scrollbar-thin`}>
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-900 text-white font-bold">
-                  <th rowSpan={2} className="px-3 py-3 text-center border-r border-slate-700 min-w-[45px]">ที่</th>
-                  <th rowSpan={2} className="px-4 py-3 border-r border-slate-700 min-w-[130px]">ระดับชั้น</th>
-                  <th rowSpan={2} className="px-3 py-3 text-center border-r border-slate-700 min-w-[100px]">
-                    จำนวนนักเรียน<br/>ทั้งชั้น (คน)
+                {/* Top Tier Headers */}
+                <tr className="bg-slate-800 text-white sticky top-0 z-20">
+                  <th
+                    rowSpan={2}
+                    className="w-12 text-center border-r border-slate-700 py-3 px-2 font-bold text-xs"
+                  >
+                    ที่
                   </th>
+                  <th
+                    rowSpan={2}
+                    className="min-w-[150px] border-r border-slate-700 py-3 px-3.5 font-bold text-xs"
+                  >
+                    ระดับชั้น
+                  </th>
+                  <th
+                    rowSpan={2}
+                    className="min-w-[90px] text-center border-r border-slate-700 py-3 px-2 font-bold text-xs"
+                  >
+                    จำนวนนักเรียน<br />
+                    <span className="font-normal text-[10px] text-slate-300">(คน)</span>
+                  </th>
+
                   {data.subjects.map((subj) => (
-                    <th key={subj.id} colSpan={2} className="px-3 py-2 text-center border-r border-slate-700 border-b border-slate-700 bg-slate-800 text-slate-100">
-                      {getSubjectName(subj)}
-                      <span className="block text-[10px] font-normal text-slate-300">(เต็ม {subj.max_score} คะแนน)</span>
+                    <th
+                      key={subj.id}
+                      colSpan={2}
+                      className="px-3 py-2 text-center border-b border-r border-slate-700 font-bold bg-slate-800 text-slate-100 min-w-[150px]"
+                    >
+                      <div className="truncate font-bold">{getSubjectName(subj)}</div>
+                      <span className="text-[10px] font-normal text-slate-300 block">
+                        (เต็ม {subj.max_score} คะแนน)
+                      </span>
                     </th>
                   ))}
-                  <th colSpan={2} className="px-4 py-2 text-center bg-indigo-700 text-white font-bold">
+
+                  <th
+                    colSpan={2}
+                    className="bg-indigo-700 text-white font-extrabold px-4 py-2 text-center border-b border-indigo-600 min-w-[170px]"
+                  >
                     คะแนนรวมทุกวิชา
                   </th>
                 </tr>
-                <tr className="bg-slate-800 text-slate-300 border-b border-slate-700 text-[11px] font-semibold">
+
+                {/* Sub Tier Headers */}
+                <tr className="bg-slate-700 text-slate-200 text-[11px] font-semibold sticky top-[48px] z-20">
                   {data.subjects.map((subj) => (
                     <Fragment key={`head-sub-${subj.id}`}>
-                      <th className="px-2.5 py-2 text-right border-r border-slate-700 font-mono">รวมดิบ</th>
-                      <th className="px-2.5 py-2 text-right border-r border-slate-700 font-mono text-amber-300">เฉลี่ย (%)</th>
+                      <th className="px-3 py-1.5 text-right border-r border-slate-600 font-mono min-w-[75px]">
+                        รวมดิบ
+                      </th>
+                      <th className="px-3 py-1.5 text-right border-r border-slate-600 text-amber-300 font-mono font-bold min-w-[75px]">
+                        เฉลี่ย (%)
+                      </th>
                     </Fragment>
                   ))}
-                  <th className="px-3 py-2 text-right border-r border-indigo-600 bg-indigo-800 text-white font-mono">รวมดิบ</th>
-                  <th className="px-3 py-2 text-right bg-indigo-800 text-amber-300 font-mono">เฉลี่ยรวม (%)</th>
+                  <th className="px-3.5 py-1.5 text-right border-r border-indigo-600 bg-indigo-800 text-white font-mono min-w-[85px]">
+                    รวมดิบ
+                  </th>
+                  <th className="px-3.5 py-1.5 text-right bg-indigo-800 text-amber-300 font-mono font-bold min-w-[85px]">
+                    เฉลี่ยรวม (%)
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border font-medium">
+
+              <tbody className="divide-y divide-border/70 font-medium">
                 {filteredMatrixRows.map((row, idx) => (
                   <tr key={row.classroom_id} className="hover:bg-muted/40 transition-colors">
-                    <td className="px-3 py-3 text-center border-r border-border text-muted-foreground">{idx + 1}</td>
-                    <td className="px-4 py-3 border-r border-border font-bold text-foreground">{getClassroomName(row, globalActiveLang)}</td>
-                    <td className="px-3 py-3 text-center border-r border-border font-bold text-foreground">{row.student_count}</td>
+                    {/* Col 1: Index */}
+                    <td className="text-center py-3 px-2 border-r border-border text-muted-foreground font-semibold">
+                      {idx + 1}
+                    </td>
+
+                    {/* Col 2: Classroom Name */}
+                    <td className="py-3 px-3.5 border-r border-border font-bold text-foreground whitespace-nowrap">
+                      {getClassroomName(row, globalActiveLang)}
+                    </td>
+
+                    {/* Col 3: Student Count */}
+                    <td className="text-center py-3 px-2 border-r border-border font-bold text-foreground">
+                      {row.student_count}
+                    </td>
+
+                    {/* Subject Columns: Raw Score + Percentage (PLENTY OF PADDING, NO DIGITS CUT OFF!) */}
                     {row.subject_stats.map((st) => (
                       <Fragment key={st.subject_id}>
-                        <td className="px-3 py-3 text-right border-r border-border font-mono text-foreground">
+                        <td className="px-3.5 py-3 text-right border-r border-border/60 font-mono text-foreground whitespace-nowrap">
                           {st.total_score.toLocaleString()}
                         </td>
                         <td
-                          className={`px-3 py-3 text-right border-r border-border font-mono font-bold ${
+                          className={`px-3.5 py-3 text-right border-r border-border font-mono font-bold whitespace-nowrap ${
                             st.avg_percentage >= 50
                               ? "text-emerald-600 dark:text-emerald-400"
                               : "text-rose-600 dark:text-rose-400"
@@ -1198,18 +1226,25 @@ export default function AchievementTab({
                         </td>
                       </Fragment>
                     ))}
-                    <td className="px-3 py-3 text-right border-r border-border font-mono font-bold text-foreground bg-muted/20">
+
+                    {/* Total Columns */}
+                    <td className="px-3.5 py-3 text-right border-r border-border font-mono font-bold text-foreground bg-muted/20 whitespace-nowrap">
                       {row.total_all_subjects.toLocaleString()}
                     </td>
-                    <td className="px-3 py-3 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20">
+                    <td className="px-3.5 py-3 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 whitespace-nowrap">
                       {row.overall_avg_percentage.toFixed(2)}%
                     </td>
                   </tr>
                 ))}
               </tbody>
+
+              {/* Summary Footer */}
               <tfoot>
-                <tr className="bg-indigo-900 text-white font-bold border-t-2 border-indigo-700">
-                  <td colSpan={2} className="px-4 py-3.5 text-center border-r border-indigo-800">
+                <tr className="bg-indigo-950 text-white font-bold border-t-2 border-indigo-700 sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                  <td
+                    colSpan={2}
+                    className="px-4 py-3.5 text-center border-r border-indigo-800 text-xs sm:text-sm whitespace-nowrap"
+                  >
                     รวมทั้งหมด ({filteredMatrixRows.length} ระดับชั้น)
                   </td>
                   <td className="px-3 py-3.5 text-center border-r border-indigo-800 text-sm font-bold">
@@ -1217,55 +1252,141 @@ export default function AchievementTab({
                   </td>
                   {filteredSchoolSummary.subject_stats.map((st) => (
                     <Fragment key={`sch-${st.subject_id}`}>
-                      <td className="px-3 py-3.5 text-right border-r border-indigo-800 font-mono">
+                      <td className="px-3.5 py-3.5 text-right border-r border-indigo-800 font-mono whitespace-nowrap">
                         {st.total_score.toLocaleString()}
                       </td>
-                      <td className="px-3 py-3.5 text-right border-r border-indigo-800 font-mono text-amber-300">
+                      <td className="px-3.5 py-3.5 text-right border-r border-indigo-800 font-mono text-amber-300 font-bold whitespace-nowrap">
                         {st.avg_percentage.toFixed(2)}%
                       </td>
                     </Fragment>
                   ))}
-                  <td className="px-3 py-3.5 text-right border-r border-indigo-800 font-mono">
+                  <td className="px-3.5 py-3.5 text-right border-r border-indigo-800 font-mono bg-indigo-900 whitespace-nowrap">
                     {filteredSchoolSummary.total_all_subjects.toLocaleString()}
                   </td>
-                  <td className="px-3 py-3.5 text-right font-mono text-amber-300 text-sm font-extrabold">
+                  <td className="px-3.5 py-3.5 text-right font-mono text-amber-300 text-sm font-extrabold bg-indigo-900 whitespace-nowrap">
                     {filteredSchoolSummary.overall_avg_percentage.toFixed(2)}%
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
-          <div className="space-y-3 p-4 md:hidden">
-            {filteredMatrixRows.map((row, index) => <article key={row.classroom_id} className="card-modern space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{getClassroomName(row, globalActiveLang)}</div><div className="text-xs text-muted-foreground">{row.student_count} คน</div></div><span className="shrink-0 text-xs font-bold text-muted-foreground">#{index + 1}</span></div><div className="grid grid-cols-2 gap-2 border-y border-border py-3 text-center text-xs"><div><div className="text-muted-foreground">คะแนนรวม</div><div className="mt-1 font-bold text-foreground">{row.total_all_subjects.toLocaleString()}</div></div><div><div className="text-muted-foreground">เฉลี่ยรวม</div><div className="mt-1 font-bold text-indigo-600 dark:text-indigo-400">{row.overall_avg_percentage.toFixed(2)}%</div></div></div><div className="space-y-2">{row.subject_stats.map((stat) => <div key={stat.subject_id} className="flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate text-muted-foreground">{getSubjectName(stat)}</span><span className={stat.avg_percentage >= 50 ? "shrink-0 font-bold text-emerald-600" : "shrink-0 font-bold text-rose-600"}>{stat.avg_percentage.toFixed(2)}%</span></div>)}</div></article>)}
-          </div>
+
+          {/* MOBILE CARDS VIEW (md:hidden when mobileViewMode === "cards") */}
+          {mobileViewMode === "cards" && (
+            <div className="space-y-3.5 p-3.5 sm:p-4 md:hidden">
+              {filteredMatrixRows.map((row, index) => (
+                <article
+                  key={row.classroom_id}
+                  className="card-modern p-4 space-y-3.5 border border-border/80 shadow-xs"
+                >
+                  {/* Classroom Card Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center shrink-0">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-foreground text-sm truncate">
+                          {getClassroomName(row, globalActiveLang)}
+                        </h4>
+                        <div className="text-xs text-muted-foreground">{row.student_count} คน</div>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-extrabold border ${
+                        row.overall_avg_percentage >= 50
+                          ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+                          : "bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"
+                      }`}
+                    >
+                      เฉลี่ย {row.overall_avg_percentage.toFixed(2)}%
+                    </span>
+                  </div>
+
+                  {/* Totals Strip */}
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-muted/40 border border-border/50 text-center text-xs">
+                    <div>
+                      <div className="text-muted-foreground text-[11px]">คะแนนรวมดิบ</div>
+                      <div className="font-mono font-bold text-foreground mt-0.5">
+                        {row.total_all_subjects.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground text-[11px]">เฉลี่ยรวมร้อยละ</div>
+                      <div className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                        {row.overall_avg_percentage.toFixed(2)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Subject Breakdown */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                      คะแนนแยกตามรายวิชา:
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {row.subject_stats.map((stat) => (
+                        <div
+                          key={stat.subject_id}
+                          className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background border border-border/60 text-xs"
+                        >
+                          <span className="min-w-0 truncate text-muted-foreground font-medium">
+                            {getSubjectName(stat)}
+                          </span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono text-foreground text-[11px]">
+                              {stat.total_score.toLocaleString()}
+                            </span>
+                            <span
+                              className={`font-mono font-bold ${
+                                stat.avg_percentage >= 50
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              {stat.avg_percentage.toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Feature 2: Modal Manager for Subject Names & Multi-Language JSON */}
+      {/* =========================================================================
+          SECTION 5: MULTI-LANGUAGE SUBJECT MODAL (Clean, modern form)
+          ========================================================================= */}
       {showSubjectModal && data && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <div className="bg-card border border-border rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl animate-scale-up max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
+            <div className="p-4 sm:p-6 border-b border-border flex justify-between items-center bg-muted/20">
               <div>
-                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  🌐 จัดการภาษาชื่อรายวิชา (Thai / Rumi / Arabic JSON)
+                <h3 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-indigo-500" />
+                  จัดการภาษาชื่อรายวิชา (Thai / Rumi / Arabic)
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  ป้อนชื่อภาษาไทย ภาษาอักษรรูมี (Rumi) และอักษรอาหรับ (Arabic) สำหรับวิชาที่ระบบดึงมา ทั้งหมดจะถูกจัดเก็บลงในฐานข้อมูล PostgreSQL
+                  ป้อนชื่อภาษาไทย ภาษาอักษรรูมี (Rumi) และอักษรอาหรับ/ยาวี (Arabic/Jawi) บันทึกลงฐานข้อมูล PostgreSQL
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowSubjectModal(false)}
-                className="text-muted-foreground hover:text-foreground text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted"
+                className="text-muted-foreground hover:text-foreground text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               {/* Global Display Language Selector */}
-              <div className="bg-card border border-border p-4 rounded-2xl space-y-2">
+              <div className="bg-muted/30 border border-border p-4 rounded-2xl space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                   เลือกภาษาหลักที่จะให้แสดงในรายงาน ณ ปัจจุบัน:
                 </label>
@@ -1275,8 +1396,8 @@ export default function AchievementTab({
                     onClick={() => setGlobalActiveLang("thai")}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                       globalActiveLang === "thai"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                        : "bg-background text-foreground border-border hover:border-indigo-400"
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                        : "bg-card text-foreground border-border hover:border-indigo-400"
                     }`}
                   >
                     🇹🇭 ภาษาไทย (Thai)
@@ -1286,8 +1407,8 @@ export default function AchievementTab({
                     onClick={() => setGlobalActiveLang("rumi")}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                       globalActiveLang === "rumi"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                        : "bg-background text-foreground border-border hover:border-indigo-400"
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                        : "bg-card text-foreground border-border hover:border-indigo-400"
                     }`}
                   >
                     🔤 Rumi / English
@@ -1297,8 +1418,8 @@ export default function AchievementTab({
                     onClick={() => setGlobalActiveLang("arabic")}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                       globalActiveLang === "arabic"
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                        : "bg-background text-foreground border-border hover:border-indigo-400"
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                        : "bg-card text-foreground border-border hover:border-indigo-400"
                     }`}
                   >
                     🇸🇦 อักษรอาหรับ (Arabic / Jawi)
@@ -1311,16 +1432,18 @@ export default function AchievementTab({
                   <button
                     type="button"
                     onClick={handleApplyArabicPresets}
-                    className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
-                    ✨ เติมชื่อพรีเซ็ตอัตโนมัติ (Presets)
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>เติมชื่อพรีเซ็ตอัตโนมัติ (Presets)</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleResetSubjectNames}
-                    className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
-                    🔄 ล้างชื่อทั้งหมด
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>ล้างชื่อทั้งหมด</span>
                   </button>
                 </div>
                 <span className="text-[11px] font-semibold text-muted-foreground">
@@ -1329,24 +1452,29 @@ export default function AchievementTab({
               </div>
 
               {/* Multi-Language Subject Inputs */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {data.subjects.map((subj) => {
                   const entry = customSubjectNames[subj.id] || {};
                   return (
-                    <div key={`mod-subj-${subj.id}`} className="bg-muted/30 p-4 rounded-2xl border border-border space-y-3">
+                    <div
+                      key={`mod-subj-${subj.id}`}
+                      className="bg-card p-3.5 sm:p-4 rounded-2xl border border-border/80 space-y-3 shadow-2xs"
+                    >
                       <div className="flex justify-between items-center border-b border-border/60 pb-2">
                         <div>
                           <span className="text-sm font-bold text-foreground">{subj.name}</span>
-                          <span className="text-[10px] text-muted-foreground ml-2">(เต็ม {subj.max_score} คะแนน)</span>
+                          <span className="text-[10px] text-muted-foreground ml-2">
+                            (เต็ม {subj.max_score} คะแนน)
+                          </span>
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-background border border-border text-muted-foreground">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted border border-border text-muted-foreground">
                           แสดงปัจจุบัน: {getSubjectName(subj)}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-muted-foreground block">
                             🇹🇭 ภาษาไทย (thai)
                           </label>
                           <input
@@ -1362,11 +1490,11 @@ export default function AchievementTab({
                                 },
                               }))
                             }
-                            className="w-full px-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="input-modern px-3 py-1.5 text-xs font-medium"
                           />
                         </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-muted-foreground block">
                             🔤 Rumi / English (rumi)
                           </label>
                           <input
@@ -1382,11 +1510,11 @@ export default function AchievementTab({
                                 },
                               }))
                             }
-                            className="w-full px-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="input-modern px-3 py-1.5 text-xs font-medium"
                           />
                         </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-muted-foreground block">
                             🇸🇦 อักษรอาหรับ (arabic)
                           </label>
                           <input
@@ -1403,7 +1531,7 @@ export default function AchievementTab({
                                 },
                               }))
                             }
-                            className="w-full px-3 py-1.5 rounded-xl border border-border bg-background text-foreground text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="input-modern px-3 py-1.5 text-xs font-medium"
                           />
                         </div>
                       </div>
@@ -1424,9 +1552,9 @@ export default function AchievementTab({
               <button
                 type="button"
                 onClick={handleSaveSubjectNames}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer"
               >
-                <span>💾</span>
+                <Save className="w-3.5 h-3.5" />
                 <span>บันทึกลงฐานข้อมูล (PostgreSQL)</span>
               </button>
             </div>

@@ -159,6 +159,7 @@ export default function StudentsTab({
         selectedId={selectedSettingId}
         onSelect={(id) => {
           setSelectedSettingId(id);
+          setStudentFilterClassroomId("unassigned");
           if (token) {
             loadClassrooms(id, token);
             loadStudents(id, token);

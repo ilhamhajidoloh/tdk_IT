@@ -1,4 +1,4 @@
-import { type SystemSetting, type DBStudent, type DBSubject } from "../types";
+﻿import { type SystemSetting, type DBStudent, type DBSubject } from "../types";
 import SectionHeader from "../SectionHeader";
 import { getClassroomName } from "@/app/lib/classroom";
 
@@ -258,9 +258,13 @@ export default function ExportGradesTab({
               onChange={(e) => setExportClassroomId(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold focus:ring-2 focus:ring-indigo-400 outline-none"
             >
-              <option value="">-- เลือกชั้นเรียน --</option>
+              {classrooms.length === 0 ? (
+                <option value="">-- ไม่พบชั้นเรียนที่มีนักเรียนและบันทึกคะแนน --</option>
+              ) : (
+                <option value="">-- เลือกชั้นเรียน --</option>
+              )}
               {classrooms
-                .filter((c) => exportType === "yearly" || !exportSettingId || String(c.setting_id) === String(exportSettingId))
+                .filter((c) => exportType === "yearly" || !exportSettingId || !c.setting_id || String(c.setting_id) === String(exportSettingId))
                 .map((c) => {
                   const prefix = exportLanguage === "ms-jawi" ? "كلس " : exportLanguage === "ms-rumi" ? "Kelas " : "ชั้น ";
                   const cName = getClassroomName(c, exportLanguage);
@@ -271,6 +275,9 @@ export default function ExportGradesTab({
                   );
                 })}
             </select>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              * แสดงเฉพาะชั้นเรียนที่มีนักเรียนและมีการเก็บคะแนนแล้ว
+            </p>
           </div>
         </div>
 
@@ -358,10 +365,15 @@ export default function ExportGradesTab({
 
         {/* Subject Order Section */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              จัดลำดับวิชาเรียน (อยู่หน้า ➔ อยู่หลัง)
-            </label>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+            <div>
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                จัดลำดับวิชาเรียน (อยู่หน้า ➔ อยู่หลัง)
+              </label>
+              <span className="text-[11px] text-muted-foreground">
+                * แสดงเฉพาะวิชาที่มีการเก็บคะแนนในชั้นเรียนนี้แล้ว
+              </span>
+            </div>
             <span className="text-xs text-subtle-foreground font-semibold">
               เลือก {exportSelectedSubjectIds.length} / {exportSubjectList.length} วิชา
             </span>
@@ -369,7 +381,7 @@ export default function ExportGradesTab({
 
           {exportSubjectList.length === 0 ? (
             <div className="p-6 text-center text-subtle-foreground text-xs font-semibold border border-dashed border-border rounded-2xl bg-card">
-              {exportClassroomId ? "ไม่มีวิชาเรียนในชั้นเรียนนี้" : "กรุณาเลือกชั้นเรียนด้านบน"}
+              {exportClassroomId ? "ไม่พบวิชาเรียนที่มีการเก็บคะแนนในชั้นเรียนนี้" : "กรุณาเลือกชั้นเรียนด้านบน"}
             </div>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto pr-1">

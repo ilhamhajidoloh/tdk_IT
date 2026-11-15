@@ -28,10 +28,14 @@ export async function GET(req: NextRequest) {
   if (!schoolId) schoolId = "00000000-0000-0000-0000-000000000001";
 
   const settingId = req.nextUrl.searchParams.get("settingId");
+  if (!settingId) {
+    return NextResponse.json(
+      { error: "settingId is required to load classrooms for a specific academic year and term" },
+      { status: 400 }
+    );
+  }
 
-  let result;
-  if (settingId) {
-    result = await pool.query(
+  const result = await pool.query(
       `SELECT c.*, s.academic_year, s.term,
         COALESCE((SELECT array_agg(cht.teacher_id::text ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_ids,
         COALESCE((SELECT array_agg(u.username ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_names,
@@ -42,19 +46,6 @@ export async function GET(req: NextRequest) {
        ORDER BY c.name`,
       [schoolId, settingId]
     );
-  } else {
-    result = await pool.query(
-      `SELECT c.*, s.academic_year, s.term,
-        COALESCE((SELECT array_agg(cht.teacher_id::text ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_ids,
-        COALESCE((SELECT array_agg(u.username ORDER BY u.username) FROM classroom_homeroom_teachers cht JOIN users u ON u.id = cht.teacher_id WHERE cht.classroom_id = c.id), ARRAY[]::text[]) AS homeroom_teacher_names,
-        (SELECT COUNT(*) FROM classroom_students cs WHERE cs.classroom_id = c.id AND cs.setting_id = c.setting_id) AS student_count
-       FROM classrooms c
-       LEFT JOIN system_settings s ON c.setting_id = s.id
-       WHERE (c.school_id = $1 OR c.school_id IS NULL)
-       ORDER BY s.academic_year DESC, s.term DESC, c.name`,
-      [schoolId]
-    );
-  }
 
   return NextResponse.json(result.rows);
 }
