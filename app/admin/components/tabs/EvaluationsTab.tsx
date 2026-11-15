@@ -527,18 +527,18 @@ export default function EvaluationsTab({
               <div className="hidden md:block card-modern overflow-hidden border border-border/80 shadow-sm">
                 <div className="overflow-x-auto max-h-[660px] overflow-y-auto scrollbar-thin">
                   <table className="w-full text-sm border-separate border-spacing-0">
-                    <thead>
+                    <thead className="sticky top-0 z-20 bg-card shadow-xs">
                       {/* Top Tier Headers */}
                       <tr>
                         <th
                           rowSpan={2}
-                          className="sticky top-0 left-0 z-30 bg-muted/95 backdrop-blur-md border-b-2 border-r border-border text-center font-bold text-xs text-muted-foreground w-12 py-3 px-2 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]"
+                          className="border-b-2 border-r border-border text-center font-bold text-xs text-muted-foreground w-12 py-3 px-2 bg-muted"
                         >
                           #
                         </th>
                         <th
                           rowSpan={2}
-                          className="sticky top-0 left-12 z-30 bg-muted/95 backdrop-blur-md border-b-2 border-r-2 border-border font-bold text-xs text-muted-foreground min-w-[200px] max-w-[240px] py-3 px-4 text-left shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]"
+                          className="border-b-2 border-r-2 border-border font-bold text-xs text-muted-foreground min-w-[210px] max-w-[250px] py-3 px-3 text-left bg-muted"
                         >
                           ชื่อ-สกุล / รหัสนักเรียน
                         </th>
@@ -546,22 +546,28 @@ export default function EvaluationsTab({
                         {activeTopics.length > 0 && (
                           <th
                             colSpan={activeTopics.length}
-                            className="sticky top-0 z-20 bg-gradient-to-r from-indigo-50/90 to-violet-50/90 dark:from-indigo-950/40 dark:to-violet-950/40 text-indigo-700 dark:text-indigo-300 font-extrabold border-b border-r-2 border-border py-2 px-3 text-center text-xs tracking-wide"
+                            className="bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-extrabold border-b border-r-2 border-border py-2 px-3 text-left text-xs tracking-wide"
                           >
-                            คุณลักษณะอันพึงประสงค์ (แอดมินกำหนด)
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                              <span className="truncate">คุณลักษณะอันพึงประสงค์ (แอดมินกำหนด · {activeTopics.length} หัวข้อ)</span>
+                            </div>
                           </th>
                         )}
 
                         <th
                           colSpan={RWT_TOPICS.length}
-                          className="sticky top-0 z-20 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-700 dark:text-emerald-300 font-extrabold border-b border-r border-border py-2 px-3 text-center text-xs tracking-wide"
+                          className="bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-extrabold border-b border-r-2 border-border py-2 px-3 text-left text-xs tracking-wide"
                         >
-                          การอ่าน คิดวิเคราะห์ และเขียน (ระบบกำหนด)
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="truncate">การอ่าน คิดวิเคราะห์ และเขียน (RTW · 3 ด้าน)</span>
+                          </div>
                         </th>
 
                         <th
                           rowSpan={2}
-                          className="sticky top-0 right-0 z-30 bg-muted/95 backdrop-blur-md border-b-2 border-l-2 border-border text-center font-bold text-xs text-muted-foreground w-28 py-3 px-3 shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)]"
+                          className="border-b-2 border-border text-center font-bold text-xs text-muted-foreground min-w-[110px] py-3 px-3 bg-muted/95 backdrop-blur-md"
                         >
                           สถานะ
                         </th>
@@ -572,7 +578,7 @@ export default function EvaluationsTab({
                         {activeTopics.map((t, idx) => (
                           <th
                             key={t.id}
-                            className={`sticky top-[37px] z-20 bg-muted/90 backdrop-blur-md px-2.5 py-2 text-center font-bold text-[11px] min-w-[110px] max-w-[130px] border-b-2 border-border truncate ${
+                            className={`bg-muted/90 px-2.5 py-2 text-center font-bold text-[11px] min-w-[110px] max-w-[140px] border-b-2 border-border truncate ${
                               idx === activeTopics.length - 1 ? "border-r-2 border-border" : "border-r border-border/50"
                             }`}
                             title={t.name_th}
@@ -583,8 +589,8 @@ export default function EvaluationsTab({
                         {RWT_TOPICS.map((rt, idx) => (
                           <th
                             key={rt.key}
-                            className={`sticky top-[37px] z-20 bg-muted/90 backdrop-blur-md px-2 py-2 text-center font-bold text-[11px] min-w-[140px] max-w-[170px] border-b-2 border-border ${
-                              idx < RWT_TOPICS.length - 1 ? "border-r border-border/50" : "border-r border-border"
+                            className={`bg-muted/90 px-2 py-2 text-center font-bold text-[11px] min-w-[140px] max-w-[170px] border-b-2 border-border ${
+                              idx < RWT_TOPICS.length - 1 ? "border-r border-border/50" : "border-r-2 border-border"
                             }`}
                             title={`${rt.th} / ${rt.rumi} / ${rt.jawi}`}
                           >
@@ -609,21 +615,36 @@ export default function EvaluationsTab({
                           const { done, total, isComplete } = getStudentProgress(s.student_id);
                           return (
                             <tr key={s.id} className="group hover:bg-muted/40 transition-colors">
-                              {/* Sticky Column 1: Index */}
-                              <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/70 border-b border-r border-border/60 text-center text-xs font-semibold py-2.5 px-2 text-muted-foreground shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]">
+                              {/* Column 1: Index */}
+                              <td className="border-b border-r border-border/60 text-center text-xs font-semibold py-2.5 px-2 text-muted-foreground bg-card group-hover:bg-muted/70">
                                 {idx + 1}
                               </td>
 
-                              {/* Sticky Column 2: Name & ID */}
-                              <td className="sticky left-12 z-10 bg-card group-hover:bg-muted/70 border-b border-r-2 border-border py-2.5 px-4 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]">
-                                <div className="font-bold text-foreground text-xs sm:text-sm truncate max-w-[190px]">
-                                  {s.name}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                  <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{s.student_id}</span>
-                                  {s.student_number !== null && (
-                                    <span className="text-subtle-foreground">· เลขที่ {s.student_number}</span>
-                                  )}
+                              {/* Column 2: Name & ID */}
+                              <td className="border-b border-r-2 border-border py-2.5 px-3 bg-card group-hover:bg-muted/70">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-foreground text-xs sm:text-sm truncate max-w-[150px]">
+                                      {s.name}
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                      <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{s.student_id}</span>
+                                      {s.student_number !== null && (
+                                        <span className="text-subtle-foreground">· เลขที่ {s.student_number}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span
+                                    className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${
+                                      isComplete
+                                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30"
+                                        : "bg-muted text-muted-foreground border-border"
+                                    }`}
+                                    title={`ประเมินแล้ว ${done} จาก ${total} หัวข้อ`}
+                                  >
+                                    {isComplete && <Check className="w-2.5 h-2.5" />}
+                                    {done}/{total}
+                                  </span>
                                 </div>
                               </td>
 
@@ -653,17 +674,17 @@ export default function EvaluationsTab({
                                 </td>
                               ))}
 
-                              {/* Sticky Right Column: Status */}
-                              <td className="sticky right-0 z-10 bg-card group-hover:bg-muted/70 border-b border-l-2 border-border text-center py-2.5 px-3 shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)]">
+                              {/* Status Column */}
+                              <td className="bg-card group-hover:bg-muted/70 border-b border-border text-center py-2.5 px-3">
                                 <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${
                                     isComplete
                                       ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
                                       : "bg-muted text-muted-foreground border-border"
                                   }`}
                                 >
                                   {isComplete ? <Check className="w-3 h-3" /> : null}
-                                  {done}/{total}
+                                  {done}/{total} หัวข้อ
                                 </span>
                               </td>
                             </tr>
