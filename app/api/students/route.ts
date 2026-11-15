@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
       `SELECT s.id, s.name, s.student_id, COALESCE(s.status, 'active') AS status, s.graduation_year, s.status_updated_at, s.status_note, s.enrollment_date, s.graduation_date, cs.classroom_id, cs.student_number
        FROM students s
        LEFT JOIN classroom_students cs ON cs.student_id = s.id
-         AND (cs.setting_id = $${settingParamIdx}::bigint OR cs.setting_id IS NULL)
+         AND cs.setting_id = $${settingParamIdx}::bigint
        WHERE (s.school_id = $1 OR s.school_id IS NULL) ${statusClause}
        ORDER BY cs.student_number ASC NULLS LAST, s.name ASC`,
       params

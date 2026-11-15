@@ -85,8 +85,8 @@ export async function GET(req: NextRequest) {
             ${teacherNamesCols}
             cs.day_of_week, cs.period_id, sp.period_no, sp.start_time, sp.end_time, sp.label
      FROM class_schedules cs
-     JOIN classrooms c ON c.id = cs.classroom_id
-     JOIN subjects sub ON sub.id = cs.subject_id
+     JOIN classrooms c ON c.id = cs.classroom_id AND c.setting_id = cs.setting_id
+     JOIN subjects sub ON sub.id = cs.subject_id AND sub.setting_id = cs.setting_id
      LEFT JOIN users u_sub ON u_sub.id = sub.teacher_id
      ${overrideJoin}
      JOIN schedule_periods sp ON sp.id = cs.period_id

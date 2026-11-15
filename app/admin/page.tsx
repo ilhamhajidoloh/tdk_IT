@@ -26,7 +26,7 @@ import {
   EvaluationSummaryRow,
   ALL_DAYS,
 } from "./components/types";
-import { RWT_TOPICS, isEvaluationTermOpen, getTopicNameLabel, getRwtTopicLabel, getRatingLabel } from "../lib/evaluation";
+import { RWT_TOPICS, isEvaluationTermOpen, getTopicNameLabel, getRwtTopicLabel, getRwtTopicCombinedLabel, getRatingLabel } from "../lib/evaluation";
 import { resolveTeacherColor } from "../lib/teacherColor";
 import CopySubjectsModal from "./components/modals/CopySubjectsModal";
 import CopyClassroomsModal from "./components/modals/CopyClassroomsModal";
@@ -150,7 +150,7 @@ function getScoreExportText(key: string, lang: "th" | "ms-rumi" | "ms-jawi") {
     },
     "พิมพ์ / บันทึก PDF": { th: "พิมพ์ / บันทึก PDF", rumi: "Cetak / Simpan PDF", jawi: "چيتق / سيمڤن PDF" },
     "คุณลักษณะอันพึงประสงค์": { th: "คุณลักษณะอันพึงประสงค์", rumi: "Sifat-Sifat Yang Diingini", jawi: "سيفت٢ يڠ دايڠيني" },
-    "การอ่าน คิดวิเคราะห์ และเขียน": { th: "การอ่าน คิดวิเคราะห์ และเขียน", rumi: "Membaca, Pemikiran Analitikal dan Menulis", jawi: "ممباچا، ڤميکيرن اناليتيکل دان منوليس" },
+    "การอ่าน คิดวิเคราะห์ และเขียน": { th: "การอ่าน คิดวิเคราะห์ และเขียน", rumi: "Membaca, Analisis dan Menulis", jawi: "ممباچ، اناليسيس دان منوليس" },
     "หัวข้อ": { th: "หัวข้อ", rumi: "Topik", jawi: "توڤيق" },
     "ผลการประเมิน": { th: "ผลการประเมิน", rumi: "Keputusan Penilaian", jawi: "کڤوتوسن ڤنيلاين" },
     "ขนาดตัวอักษร": { th: "ขนาดตัวอักษร", rumi: "Saiz Fon", jawi: "سايز فون" },
@@ -204,6 +204,11 @@ function AdminPortalContent() {
   const classroomFileInputRef = useRef<HTMLInputElement>(null);
   const autoFixedScheduleEntries = useRef<Set<string>>(new Set());
   const hasHandledAccessFailure = useRef(false);
+  const classroomsRequestRef = useRef(0);
+  const studentsRequestRef = useRef(0);
+  const subjectClassroomsRequestRef = useRef(0);
+  const scoresRequestRef = useRef(0);
+  const evaluationsRequestRef = useRef(0);
   const [adminYear, setAdminYear] = useState("2568");
   const [adminTerm, setAdminTerm] = useState("1");
   const [startDate, setStartDate] = useState("2026-05-01");
@@ -488,7 +493,37 @@ function AdminPortalContent() {
   const [exportStudents, setExportStudents] = useState<DBStudent[]>([]);
   const [exportSubjects, setExportSubjects] = useState<DBSubject[]>([]);
   const [exportClassrooms, setExportClassrooms] = useState<{ id: string; name: string; setting_id?: number | null; homeroom_teacher_ids?: string[]; homeroom_teacher_names?: string[] }[]>([]);
+  const [exportGrades, setExportGrades] = useState<Array<{
+    student_id: string;
+    subject: string;
+    midterm_score: number | null;
+    final_score: number | null;
+    term?: string;
+  }>>([]);
   const [exportDataLoading, setExportDataLoading] = useState(false);
+
+  const normalizeScoredExportSubject = (subject: DBSubject, fallbackSetting: SystemSetting): DBSubject | null => {
+    const subjectSetting = settingsList.find(s => String(s.id) === String(subject.setting_id)) || fallbackSetting;
+    const explicitMidtermMax = Number(subject.midterm_max_score ?? 0);
+    const explicitFinalMax = Number(subject.final_max_score ?? 0);
+    const midtermMax = subject.subject_type === "activity"
+      ? explicitMidtermMax
+      : Number(subject.midterm_max_score ?? subjectSetting.midterm_max_score ?? 50);
+    const finalMax = subject.subject_type === "activity"
+      ? explicitFinalMax
+      : Number(subject.final_max_score ?? subjectSetting.final_max_score ?? 50);
+
+    if (midtermMax + finalMax <= 0) return null;
+
+    const disabledClassroomIds = new Set(subject.score_disabled_classroom_ids || []);
+    return {
+      ...subject,
+      midterm_max_score: midtermMax,
+      final_max_score: finalMax,
+      classroom_ids: (subject.classroom_ids || []).filter(classroomId => !disabledClassroomIds.has(classroomId)),
+      score_disabled_classroom_ids: [],
+    };
+  };
 
   useEffect(() => {
     if (!includeActivitySubjects) {
@@ -510,12 +545,13 @@ function AdminPortalContent() {
     }
   }, [activeTab, exportSettingId, selectedSettingId, selectedSubjectSettingId, gradeStatusSettingId, settingsList]);
 
-  // Load classrooms, students, and subjects for the selected term in export tab
+  // Load classrooms, students, subjects, and grades for the selected term in export tab
   useEffect(() => {
     if (activeTab !== "export-grades" || !exportSettingId || !token) {
       setExportStudents([]);
       setExportSubjects([]);
       setExportClassrooms([]);
+      setExportGrades([]);
       setExportDataLoading(false);
       return;
     }
@@ -523,113 +559,190 @@ function AdminPortalContent() {
     const setting = settingsList.find(s => String(s.id) === String(exportSettingId));
     if (!setting) return;
 
-    // TEMP DIAGNOSTIC — remove once the "reloads on classroom change" report is resolved.
-    console.warn("[export-grades][diagnostic] fetch effect fired", { exportSettingId, exportType, activeTab, settingsListLen: settingsList.length, time: new Date().toISOString() });
-
     let cancelled = false;
     setExportDataLoading(true);
-
-    let classroomsPromise: Promise<unknown>;
-    let studentsPromise: Promise<unknown>;
-    let subjectsPromise: Promise<unknown>;
 
     if (exportType === "yearly") {
       const yearSettings = settingsList.filter(s => s.academic_year === setting.academic_year);
       const schoolParam = getSchoolParam();
+      const termKeys = yearSettings.map(s => `${s.term}/${s.academic_year}`);
 
-      // Fetch classrooms for both terms, deduplicate by name
-      classroomsPromise = Promise.all(yearSettings.map(s =>
+      const classroomsPromise = Promise.all(yearSettings.map(s =>
         fetch(`/api/classrooms?settingId=${s.id}${schoolParam}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
-      )).then(results => {
-        if (cancelled) return;
-        const flatClassrooms = results.flat();
-        const uniqueClassrooms: typeof exportClassrooms = [];
-        const seenNames = new Set<string>();
-        flatClassrooms.forEach((c: any) => {
-          if (!seenNames.has(c.name)) {
-            seenNames.add(c.name);
-            uniqueClassrooms.push(c);
-          }
-        });
-        setExportClassrooms(uniqueClassrooms);
-        setExportClassroomId(prev => (uniqueClassrooms.some(c => c.id === prev) ? prev : (uniqueClassrooms[0]?.id || "")));
-      }).catch(err => console.error("Failed to load export classrooms", err));
+      ));
 
-      // Fetch students for both terms, deduplicate by student_id
-      studentsPromise = Promise.all(yearSettings.map(s =>
+      const studentsPromise = Promise.all(yearSettings.map(s =>
         fetch(`/api/students?settingId=${s.id}${schoolParam}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
-      )).then(results => {
-        if (cancelled) return;
-        const flatStudents = results.flat();
-        const uniqueStudents: DBStudent[] = [];
-        const seenIds = new Set<string>();
-        flatStudents.forEach((s: any) => {
-          if (!seenIds.has(s.student_id)) {
-            seenIds.add(s.student_id);
-            uniqueStudents.push(s);
-          }
-        });
-        setExportStudents(uniqueStudents);
-      }).catch(err => console.error("Failed to load export students", err));
+      ));
 
-      // Fetch subjects for both terms, deduplicate/merge by name
-      subjectsPromise = Promise.all(yearSettings.map(s =>
+      const subjectsPromise = Promise.all(yearSettings.map(s =>
         fetch(`/api/subjects?settingId=${s.id}${schoolParam}`, { headers: { Authorization: `Bearer ${token}` } })
           .then(res => res.ok ? res.json() : [])
-      )).then(results => {
-        if (cancelled) return;
-        const flatSubjects = results.flat();
-        const mergedSubjects: DBSubject[] = [];
-        const seenNames = new Set<string>();
-        flatSubjects.forEach((sub: any) => {
-          const nameKey = sub.name?.trim().toLowerCase();
-          if (!seenNames.has(nameKey)) {
-            seenNames.add(nameKey);
-            const allClassrooms = flatSubjects
-              .filter((s: any) => s.name?.trim().toLowerCase() === nameKey)
-              .flatMap((s: any) => s.classroom_ids || []);
-            mergedSubjects.push({
-              ...sub,
-              classroom_ids: Array.from(new Set(allClassrooms))
+      ));
+
+      const gradesPromise = Promise.all(termKeys.map(tk =>
+        fetch(`/api/grades?term=${encodeURIComponent(tk)}${schoolParam}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(res => res.ok ? res.json() : [])
+      ));
+
+      Promise.all([classroomsPromise, studentsPromise, subjectsPromise, gradesPromise])
+        .then(([classroomsResults, studentsResults, subjectsResults, gradesResults]) => {
+          if (cancelled) return;
+
+          const flatClassrooms = classroomsResults.flat();
+          const flatStudents = studentsResults.flat();
+          const flatSubjects = subjectsResults.flat();
+          const flatGrades: { student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term?: string }[] = gradesResults.flat();
+
+          // 1. Deduplicate classrooms by name & build id map for yearly normalization
+          const uniqueClassrooms: typeof exportClassrooms = [];
+          const seenNames = new Set<string>();
+          const nameToPrimaryClassId = new Map<string, string>();
+          const oldClassIdToPrimaryId = new Map<string, string>();
+
+          flatClassrooms.forEach((c: any) => {
+            if (!seenNames.has(c.name)) {
+              seenNames.add(c.name);
+              uniqueClassrooms.push(c);
+              nameToPrimaryClassId.set(c.name, c.id);
+            }
+          });
+
+          flatClassrooms.forEach((c: any) => {
+            const primaryId = nameToPrimaryClassId.get(c.name);
+            if (primaryId) {
+              oldClassIdToPrimaryId.set(c.id, primaryId);
+            }
+          });
+
+          // 2. Deduplicate students & normalize classroom_id
+          const uniqueStudents: DBStudent[] = [];
+          const seenStudentIds = new Set<string>();
+          flatStudents.forEach((s: any) => {
+            if (!seenStudentIds.has(s.student_id)) {
+              seenStudentIds.add(s.student_id);
+              const normalizedClassId = oldClassIdToPrimaryId.get(s.classroom_id) || s.classroom_id;
+              uniqueStudents.push({
+                ...s,
+                classroom_id: normalizedClassId,
+              });
+            }
+          });
+
+          // 3. Keep only score-enabled subjects, then merge and normalize their
+          // score-enabled classroom assignments across both terms.
+          const normalizedSubjects = flatSubjects
+            .map((subject: DBSubject) => normalizeScoredExportSubject(subject, setting))
+            .filter((subject): subject is DBSubject => subject !== null);
+          const mergedSubjects: DBSubject[] = [];
+          const seenSubNames = new Set<string>();
+          normalizedSubjects.forEach((sub: DBSubject) => {
+            const nameKey = sub.name?.trim().toLowerCase();
+            if (!seenSubNames.has(nameKey)) {
+              seenSubNames.add(nameKey);
+              const allClassrooms = normalizedSubjects
+                .filter((s) => s.name?.trim().toLowerCase() === nameKey)
+                .flatMap((s) => s.classroom_ids || [])
+                .map((cid: string) => oldClassIdToPrimaryId.get(cid) || cid);
+              mergedSubjects.push({
+                ...sub,
+                classroom_ids: Array.from(new Set(allClassrooms)),
+                score_disabled_classroom_ids: [],
+              });
+            }
+          });
+
+          // 4. Keep classrooms that have students and at least one assigned,
+          // score-enabled subject with a recorded score.
+          const eligibleClassrooms = uniqueClassrooms.filter((c) => {
+            const classStudents = uniqueStudents.filter((s) => s.classroom_id === c.id);
+            if (classStudents.length === 0) return false;
+            const classStudentIds = new Set(classStudents.map((s) => s.student_id));
+            return mergedSubjects.some((subject) => {
+              if (!subject.classroom_ids?.includes(c.id)) return false;
+              const subjectName = subject.name?.trim().toLowerCase();
+              return flatGrades.some((grade) =>
+                classStudentIds.has(grade.student_id) &&
+                grade.subject?.trim().toLowerCase() === subjectName &&
+                (grade.midterm_score !== null || grade.final_score !== null)
+              );
             });
-          }
+          });
+
+          setExportClassrooms(eligibleClassrooms);
+          setExportStudents(uniqueStudents);
+          setExportSubjects(mergedSubjects);
+          setExportGrades(flatGrades);
+          setExportClassroomId(prev => (eligibleClassrooms.some(c => c.id === prev) ? prev : (eligibleClassrooms[0]?.id || "")));
+        })
+        .catch(err => console.error("Failed to load yearly export data", err))
+        .finally(() => {
+          if (!cancelled) setExportDataLoading(false);
         });
-        setExportSubjects(mergedSubjects);
-      }).catch(err => console.error("Failed to load export subjects", err));
 
     } else {
       const schoolParam = getSchoolParam();
-      classroomsPromise = fetch(`/api/classrooms?settingId=${exportSettingId}${schoolParam}`, {
+      const termKey = `${setting.term}/${setting.academic_year}`;
+
+      const classroomsPromise = fetch(`/api/classrooms?settingId=${exportSettingId}${schoolParam}`, {
         headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => res.ok ? res.json() : [])
-        .then(data => {
+      }).then(res => res.ok ? res.json() : []);
+
+      const studentsPromise = fetch(`/api/students?settingId=${exportSettingId}${schoolParam}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => res.ok ? res.json() : []);
+
+      const subjectsPromise = fetch(`/api/subjects?settingId=${exportSettingId}${schoolParam}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => res.ok ? res.json() : []);
+
+      const gradesPromise = fetch(`/api/grades?term=${encodeURIComponent(termKey)}${schoolParam}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => res.ok ? res.json() : []);
+
+      Promise.all([classroomsPromise, studentsPromise, subjectsPromise, gradesPromise])
+        .then(([classroomsData, studentsData, subjectsData, gradesData]) => {
           if (cancelled) return;
-          setExportClassrooms(data);
-          setExportClassroomId(prev => (data.some((c: any) => c.id === prev) ? prev : (data[0]?.id || "")));
+
+          const rawClassrooms = (Array.isArray(classroomsData) ? classroomsData : []) as typeof exportClassrooms;
+          const rawStudents = (Array.isArray(studentsData) ? studentsData : []) as DBStudent[];
+          const rawSubjects = (Array.isArray(subjectsData) ? subjectsData : []) as DBSubject[];
+          const rawGrades = (Array.isArray(gradesData) ? gradesData : []) as { student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term?: string }[];
+          const scoredSubjects = rawSubjects
+            .map(subject => normalizeScoredExportSubject(subject, setting))
+            .filter((subject): subject is DBSubject => subject !== null);
+
+          // Filter classrooms by students, score-enabled subject assignment,
+          // and an actual saved score in that subject.
+          const eligibleClassrooms = rawClassrooms.filter((c) => {
+            const classStudents = rawStudents.filter((s) => s.classroom_id === c.id);
+            if (classStudents.length === 0) return false;
+            const classStudentIds = new Set(classStudents.map((s) => s.student_id));
+            return scoredSubjects.some((subject) => {
+              if (!subject.classroom_ids?.includes(c.id)) return false;
+              const subjectName = subject.name?.trim().toLowerCase();
+              return rawGrades.some((grade) => {
+                if (!classStudentIds.has(grade.student_id)) return false;
+                const gradeSubject = grade.subject?.trim().toLowerCase();
+                return gradeSubject === subjectName &&
+                  (grade.midterm_score !== null || grade.final_score !== null);
+              });
+            });
+          });
+
+          setExportClassrooms(eligibleClassrooms);
+          setExportStudents(rawStudents);
+          setExportSubjects(scoredSubjects);
+          setExportGrades(rawGrades);
+          setExportClassroomId(prev => (eligibleClassrooms.some(c => c.id === prev) ? prev : (eligibleClassrooms[0]?.id || "")));
         })
-        .catch(err => console.error("Failed to load export classrooms", err));
-
-      studentsPromise = fetch(`/api/students?settingId=${exportSettingId}${schoolParam}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => res.ok ? res.json() : [])
-        .then(data => { if (!cancelled) setExportStudents(data); })
-        .catch(err => console.error("Failed to load export students", err));
-
-      subjectsPromise = fetch(`/api/subjects?settingId=${exportSettingId}${schoolParam}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => res.ok ? res.json() : [])
-        .then(data => { if (!cancelled) setExportSubjects(data); })
-        .catch(err => console.error("Failed to load export subjects", err));
+        .catch(err => console.error("Failed to load export data", err))
+        .finally(() => {
+          if (!cancelled) setExportDataLoading(false);
+        });
     }
-
-    Promise.allSettled([classroomsPromise, studentsPromise, subjectsPromise]).then(() => {
-      if (!cancelled) setExportDataLoading(false);
-    });
 
     return () => { cancelled = true; };
   }, [activeTab, exportSettingId, exportType, token, settingsList]);
@@ -645,17 +758,31 @@ function AdminPortalContent() {
       setExportSelectedSubjectIds([]);
       return;
     }
+
+    const classStudents = exportStudents.filter(s => s.classroom_id === exportClassroomId);
+    const classStudentIds = new Set(classStudents.map(s => s.student_id));
+
     const subjs = exportSubjects.filter(s => {
       const isForClass = s.classroom_ids?.includes(exportClassroomId);
       if (!isForClass) return false;
-      const hasScores = (Number(s.midterm_max_score) || 0) + (Number(s.final_max_score) || 0) > 0;
-      if (!hasScores) return false;
+
       if (!includeActivitySubjects && s.subject_type === "activity") return false;
-      return true;
+
+      // ดึงเฉพาะ วิชาเรียน ที่มีการเก็บคะแนนเท่านั้น
+      const subName = s.name?.trim().toLowerCase();
+
+      const hasRecordedScore = exportGrades.some(g => {
+        if (!classStudentIds.has(g.student_id)) return false;
+        const gSub = g.subject?.trim().toLowerCase();
+        return gSub === subName && (g.midterm_score !== null || g.final_score !== null);
+      });
+
+      return hasRecordedScore;
     });
+
     setExportSubjectList(subjs);
     setExportSelectedSubjectIds(subjs.map(s => s.id));
-  }, [exportSettingId, exportClassroomId, includeActivitySubjects, exportSubjects]);
+  }, [exportSettingId, exportClassroomId, includeActivitySubjects, exportSubjects, exportStudents, exportGrades]);
 
   useEffect(() => {
     setIsClient(true);
@@ -785,9 +912,12 @@ function AdminPortalContent() {
 
   // นักเรียนต้องโหลดตามเทอม (selectedSettingId) เพราะห้องเรียน/การลงทะเบียนของนักเรียนแยกกันตามเทอม
   const loadStudents = (settingId: number, authToken: string) => {
+    const requestId = ++studentsRequestRef.current;
     return fetch(`/api/students?settingId=${settingId}${getSchoolParam("&")}`, { headers: { Authorization: `Bearer ${authToken}` } })
       .then(r => r.ok ? r.json() : [])
-      .then(setStudents)
+      .then(data => {
+        if (requestId === studentsRequestRef.current) setStudents(data);
+      })
       .catch(err => console.error("loadStudents error:", err));
   };
 
@@ -803,11 +933,15 @@ function AdminPortalContent() {
   };
 
   const loadSubjectClassrooms = async (settingId: number, authToken: string) => {
+    const requestId = ++subjectClassroomsRequestRef.current;
     try {
       const res = await fetch(`/api/classrooms?settingId=${settingId}${getSchoolParam("&")}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      if (res.ok) setSubjectClassrooms(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        if (requestId === subjectClassroomsRequestRef.current) setSubjectClassrooms(data);
+      }
     } catch (err) {
       console.error("loadSubjectClassrooms error:", err);
     }
@@ -855,6 +989,7 @@ function AdminPortalContent() {
   };
 
   const loadStudentScores = async (settingId: number, authToken: string) => {
+    const requestId = ++scoresRequestRef.current;
     setScoresLoading(true);
     try {
       const setting = settingsList.find(s => s.id === settingId);
@@ -871,6 +1006,7 @@ function AdminPortalContent() {
       const students = studentsRes.ok ? await studentsRes.json() : [];
       const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
       const classrooms = classroomsRes.ok ? await classroomsRes.json() : [];
+      if (requestId !== scoresRequestRef.current) return;
       const populatedClassroomIds = new Set(students.map((student: DBStudent) => student.classroom_id));
       const scoreSubjects = subjects.filter((subject: DBSubject) =>
         (Number(subject.midterm_max_score) || 0) + (Number(subject.final_max_score) || 0) > 0
@@ -888,7 +1024,7 @@ function AdminPortalContent() {
     } catch (err) {
       console.error("loadStudentScores error:", err);
     } finally {
-      setScoresLoading(false);
+      if (requestId === scoresRequestRef.current) setScoresLoading(false);
     }
   };
 
@@ -899,6 +1035,7 @@ function AdminPortalContent() {
   };
 
   const loadEvalData = async (settingId: number, authToken: string) => {
+    const requestId = ++evaluationsRequestRef.current;
     setEvalLoading(true);
     try {
       const schoolParam = getSchoolParam();
@@ -907,13 +1044,19 @@ function AdminPortalContent() {
         fetch(`/api/classrooms?settingId=${settingId}${schoolParam}`, { headers: { Authorization: `Bearer ${authToken}` } }),
         fetch(`/api/evaluations/summary?settingId=${settingId}`, { headers: { Authorization: `Bearer ${authToken}` } }),
       ]);
-      setEvalStudents(studentsRes.ok ? await studentsRes.json() : []);
-      setEvalClassrooms(classroomsRes.ok ? await classroomsRes.json() : []);
-      setEvalSummary(summaryRes.ok ? await summaryRes.json() : []);
+      const [nextStudents, nextClassrooms, nextSummary] = await Promise.all([
+        studentsRes.ok ? studentsRes.json() : [],
+        classroomsRes.ok ? classroomsRes.json() : [],
+        summaryRes.ok ? summaryRes.json() : [],
+      ]);
+      if (requestId !== evaluationsRequestRef.current) return;
+      setEvalStudents(nextStudents);
+      setEvalClassrooms(nextClassrooms);
+      setEvalSummary(nextSummary);
     } catch (err) {
       console.error("loadEvalData error:", err);
     } finally {
-      setEvalLoading(false);
+      if (requestId === evaluationsRequestRef.current) setEvalLoading(false);
     }
   };
 
@@ -1099,15 +1242,20 @@ function AdminPortalContent() {
 
   const handleSelectSubjectSetting = (settingId: number) => {
     setSelectedSubjectSettingId(settingId);
+    setScheduleClassroomId("");
   };
 
   const loadClassrooms = async (settingId: number, authToken: string) => {
+    const requestId = ++classroomsRequestRef.current;
     try {
       const schoolParam = selectedSchoolId ? `&school_id=${selectedSchoolId}` : "";
       const res = await fetch(`/api/classrooms?settingId=${settingId}${schoolParam}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      if (res.ok) setClassrooms(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        if (requestId === classroomsRequestRef.current) setClassrooms(data);
+      }
     } catch (err) {
       console.error("loadClassrooms error:", err);
     }
@@ -1167,7 +1315,11 @@ function AdminPortalContent() {
             ]);
             break;
           case "users":
-            await loadUsers(token);
+            await Promise.all([
+              loadUsers(token),
+              loadClassrooms(defaultSettingId, token),
+              loadStudents(defaultSettingId, token),
+            ]);
             break;
           case "classrooms":
             await loadClassrooms(defaultSettingId, token);
@@ -3530,9 +3682,15 @@ function changeFontSize(dir) {
       return;
     }
 
-    let allGrades: { student_id: string; subject: string; midterm_score: number | null; final_score: number | null }[] = [];
+    let allGrades: { student_id: string; subject: string; midterm_score: number | null; final_score: number | null; term?: string }[] = [];
     const gradeMap = new Map<string, Map<string, { midterm: number | null; final: number | null }>>();
     const combinedSubjectMap = new Map<string, DBSubject>();
+    let term1Key = "";
+    let term2Key = "";
+    let term1Setting: any = null;
+    let term2Setting: any = null;
+    let allYearSubjectsList: DBSubject[] = [];
+    const schoolParam = getSchoolParam();
 
     if (exportType === "yearly") {
       const yearSettings = settingsList.filter(s => s.academic_year === setting.academic_year);
@@ -3540,12 +3698,23 @@ function changeFontSize(dir) {
 
       // Fetch grades for both terms
       const gradesPromises = termKeys.map(tk =>
-        fetch(`/api/grades?term=${encodeURIComponent(tk)}`, {
+        fetch(`/api/grades?term=${encodeURIComponent(tk)}${schoolParam}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => res.ok ? res.json() : [])
       );
       const gradesResults = await Promise.all(gradesPromises);
+      gradesResults.forEach((arr: any[], idx) => {
+        const tk = termKeys[idx];
+        arr.forEach(g => {
+          if (!g.term) g.term = tk;
+        });
+      });
       allGrades = gradesResults.flat();
+
+      term1Setting = yearSettings.find(s => String(s.term) === "1");
+      term2Setting = yearSettings.find(s => String(s.term) === "2");
+      term1Key = term1Setting ? `${term1Setting.term}/${term1Setting.academic_year}` : termKeys[0];
+      term2Key = term2Setting ? `${term2Setting.term}/${term2Setting.academic_year}` : termKeys[1];
 
       // Aggregate grades (sum midterm & final scores for the same student and subject)
       allGrades.forEach(g => {
@@ -3568,18 +3737,25 @@ function changeFontSize(dir) {
 
       // Fetch subjects for both terms to calculate combined max scores
       const subjectsPromises = yearSettings.map(s =>
-        fetch(`/api/subjects?settingId=${s.id}`, {
+        fetch(`/api/subjects?settingId=${s.id}${schoolParam}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => res.ok ? res.json() : [])
       );
       const subjectsResults = await Promise.all(subjectsPromises);
       const allYearSubjects = subjectsResults.flat();
+      allYearSubjectsList = allYearSubjects;
 
       selectedSubjects.forEach(sub => {
         const subKey = sub.name?.trim().toLowerCase();
         const sameSubjects = allYearSubjects.filter(s => s.name?.trim().toLowerCase() === subKey);
-        const totalMidMax = sameSubjects.reduce((sum, s) => sum + (Number(s.midterm_max_score) || Number(setting.midterm_max_score) || 50), 0);
-        const totalFinMax = sameSubjects.reduce((sum, s) => sum + (Number(s.final_max_score) || Number(setting.final_max_score) || 50), 0);
+        const totalMidMax = sameSubjects.reduce((sum, s) => {
+          if (sub.subject_type === "activity") return sum + (Number(s.midterm_max_score) || 0);
+          return sum + (Number(s.midterm_max_score) || Number(setting.midterm_max_score) || 50);
+        }, 0);
+        const totalFinMax = sameSubjects.reduce((sum, s) => {
+          if (sub.subject_type === "activity") return sum + (Number(s.final_max_score) || 0);
+          return sum + (Number(s.final_max_score) || Number(setting.final_max_score) || 50);
+        }, 0);
         combinedSubjectMap.set(sub.id, {
           ...sub,
           midterm_max_score: totalMidMax,
@@ -3589,7 +3765,7 @@ function changeFontSize(dir) {
 
     } else {
       const termKey = `${setting.term}/${setting.academic_year}`;
-      const gradesRes = await fetch(`/api/grades?term=${encodeURIComponent(termKey)}`, {
+      const gradesRes = await fetch(`/api/grades?term=${encodeURIComponent(termKey)}${schoolParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       allGrades = gradesRes.ok ? await gradesRes.json() : [];
@@ -3604,7 +3780,23 @@ function changeFontSize(dir) {
     // การประเมินคุณลักษณะอันพึงประสงค์ / อ่าน คิดวิเคราะห์ เขียน — ย้ายมาแสดงเฉพาะรายงานเฉลี่ยทั้งปีการศึกษา
     const showEvaluations = exportType === "yearly" && exportMode === "individual";
     const evalMap = new Map<string, Map<string, number>>();
+    let currentEvalTopics: EvaluationTopic[] = evalTopics;
+
     if (showEvaluations) {
+      // ดึงหัวข้อคุณลักษณะอันพึงประสงค์ที่แอดมินกำหนดโดยตรงจาก API เพื่อให้ได้ข้อมูลล่าสุดเสมอ
+      try {
+        const schoolParam = getSchoolParam("?");
+        const topicsRes = await fetch(`/api/evaluations/topics${schoolParam}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (topicsRes.ok) {
+          currentEvalTopics = await topicsRes.json();
+          setEvalTopics(currentEvalTopics);
+        }
+      } catch (err) {
+        console.error("Failed to load admin eval topics:", err);
+      }
+
       const term2Setting = settingsList.find(s => s.academic_year === setting.academic_year && String(s.term) === "2") || setting;
       const evalRes = await fetch(`/api/evaluations/summary?settingId=${term2Setting.id}&classroomId=${exportClassroomId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -3615,7 +3807,7 @@ function changeFontSize(dir) {
         evalMap.get(r.student_id)!.set(`${r.category}:${r.topic_key}`, r.rating);
       });
     }
-    const activeEvalTopics = evalTopics.filter(tp => tp.is_active).sort((a, b) => a.sort_order - b.sort_order);
+    const activeEvalTopics = (currentEvalTopics || []).filter(tp => tp.is_active !== false).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
     const t = (k: string) => getScoreExportText(k, exportLanguage);
     const langDir = exportLanguage === "ms-jawi" ? "rtl" : "ltr";
@@ -3635,7 +3827,7 @@ function changeFontSize(dir) {
       `).join("");
       const rwtRowsHTML = RWT_TOPICS.map(rt => `
         <tr>
-          <td style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;text-align:${alignLeftOrRight};">${getRwtTopicLabel(rt.key, exportLanguage)}</td>
+          <td style="padding:8px 12px;border:1px solid #cbd5e1;font-size:12px;text-align:${alignLeftOrRight};">${getRwtTopicCombinedLabel(rt.key)}</td>
           <td style="padding:8px;text-align:center;border:1px solid #cbd5e1;font-size:12px;">${ratingCellHTML(sMap?.get(`rwt:${rt.key}`))}</td>
         </tr>
       `).join("");
@@ -3665,12 +3857,85 @@ function changeFontSize(dir) {
       `;
     };
 
+    const evaluateActivitySubject = (
+      sub: DBSubject,
+      studentId: string,
+      t1Score: number | null,
+      t2Score: number | null,
+      fallbackScore: number | null
+    ): { passed: boolean; hasScore: boolean } => {
+      const subKey = sub.name?.trim().toLowerCase();
+      const subCode = sub.code?.trim().toLowerCase();
+      const matchSub = (g: any) => {
+        const gSub = g.subject?.trim().toLowerCase();
+        return gSub === subKey || (subCode && gSub === subCode);
+      };
+
+      // ตรวจสอบว่าในฐานข้อมูลมีการบันทึกคะแนนของวิชานี้สำหรับนักเรียนในห้องนี้หรือไม่
+      const hasAnyScoreInDB = allGrades.some(g =>
+        matchSub(g) && (g.midterm_score !== null || g.final_score !== null)
+      );
+
+      const sameSubjects = allYearSubjectsList.filter(s => {
+        const sName = s.name?.trim().toLowerCase();
+        const sCode = s.code?.trim().toLowerCase();
+        return sName === subKey || (subCode && sCode === subCode);
+      });
+
+      const t1Sub = sameSubjects.find(s => term1Setting && s.setting_id === term1Setting.id) || sameSubjects[0];
+      const t2Sub = sameSubjects.find(s => term2Setting && s.setting_id === term2Setting.id) || sameSubjects[1] || sameSubjects[0];
+
+      const t1Max = t1Sub
+        ? ((Number(t1Sub.midterm_max_score) || 0) + (Number(t1Sub.final_max_score) || 0))
+        : ((Number(sub.midterm_max_score) || 0) + (Number(sub.final_max_score) || 0));
+      const t2Max = t2Sub
+        ? ((Number(t2Sub.midterm_max_score) || 0) + (Number(t2Sub.final_max_score) || 0))
+        : ((Number(sub.midterm_max_score) || 0) + (Number(sub.final_max_score) || 0));
+
+      const hasScoreConfig = (t1Max > 0 || t2Max > 0 || (((Number(sub.midterm_max_score) || 0) + (Number(sub.final_max_score) || 0)) > 0)) && hasAnyScoreInDB;
+
+      // รายวิชาที่ ไม่มีการเก็บคะแนน (ไม่มีการตั้งคะแนนหรือไม่มีการบันทึกคะแนนในฐานข้อมูลเลย) -> default ผ่านไปเลย
+      if (!hasScoreConfig) {
+        return { passed: true, hasScore: false };
+      }
+
+      // รายวิชากิจกรรมที่มีการเก็บคะแนน -> ให้ขึ้นสถานะตามคะแนนในฐานข้อมูล (คำนวณแบบรวม 2 เทอมเสมอตามที่กำหนด)
+      if (exportType === "yearly") {
+        const combinedMax = (t1Max > 0 ? t1Max : 50) + (t2Max > 0 ? t2Max : 50);
+        const totalYearScore = (t1Score ?? 0) + (t2Score ?? 0);
+        const hasAnyTermScore = t1Score !== null || t2Score !== null;
+        if (hasAnyTermScore) {
+          return { passed: combinedMax > 0 ? (totalYearScore / combinedMax) >= 0.5 : true, hasScore: true };
+        } else {
+          // นักเรียนคนนี้ยังไม่มีคะแนนบันทึกเลย -> default ผ่าน
+          return { passed: true, hasScore: false };
+        }
+      } else {
+        // ภาคเรียนเดียว
+        if (fallbackScore !== null) {
+          const maxS = (Number(sub.midterm_max_score) || 0) + (Number(sub.final_max_score) || 0);
+          const effectiveMax = maxS > 0 ? maxS : 50;
+          return { passed: (fallbackScore / effectiveMax) >= 0.5, hasScore: true };
+        } else {
+          return { passed: true, hasScore: false };
+        }
+      }
+    };
+
     const allStudentRows = exportStudents.map(st => {
       const sMap = gradeMap.get(st.student_id) || new Map();
       let totalMainScore = 0;
       let maxPossibleMain = 0;
       let totalGpaPoints = 0;
       let totalCredits = 0;
+
+      let term1Sum = 0;
+      let term1MaxSum = 0;
+      let hasT1 = false;
+
+      let term2Sum = 0;
+      let term2MaxSum = 0;
+      let hasT2 = false;
 
       const subjectScores: Record<string, { total: number | null; midterm: number | null; final: number | null; maxScore: number; gradeStr: string; isActivity: boolean; passed?: boolean }> = {};
 
@@ -3686,17 +3951,73 @@ function changeFontSize(dir) {
         const subMax = mMax + fMax;
         const credits = Number(sub.credit_hours) || 1;
 
+        let term1Score: number | null = null;
+        let term2Score: number | null = null;
+        if (exportType === "yearly") {
+          const matchSub = (g: any) => {
+            const gSub = g.subject?.trim().toLowerCase();
+            return gSub === subKey || (sub.code && gSub === sub.code.trim().toLowerCase());
+          };
+          const gT1 = allGrades.find(g => g.student_id === st.student_id && g.term === term1Key && matchSub(g));
+          const gT2 = allGrades.find(g => g.student_id === st.student_id && g.term === term2Key && matchSub(g));
+          term1Score = (gT1 && (gT1.midterm_score !== null || gT1.final_score !== null))
+            ? (Number(gT1.midterm_score) || 0) + (Number(gT1.final_score) || 0)
+            : null;
+          term2Score = (gT2 && (gT2.midterm_score !== null || gT2.final_score !== null))
+            ? (Number(gT2.midterm_score) || 0) + (Number(gT2.final_score) || 0)
+            : null;
+        }
+
+        const sameSubs = allYearSubjectsList.filter(s => {
+          const sName = s.name?.trim().toLowerCase();
+          const sCode = s.code?.trim().toLowerCase();
+          return sName === subKey || (sub.code && sCode === sub.code.trim().toLowerCase());
+        });
+        const t1SubObj = sameSubs.find(s => term1Setting && s.setting_id === term1Setting.id) || sameSubs[0];
+        const t2SubObj = sameSubs.find(s => term2Setting && s.setting_id === term2Setting.id) || sameSubs[1] || sameSubs[0];
+
+        const t1SubMaxVal = t1SubObj
+          ? (Number(t1SubObj.midterm_max_score) || Number(term1Setting?.midterm_max_score) || 50) + (Number(t1SubObj.final_max_score) || Number(term1Setting?.final_max_score) || 50)
+          : (Number(sub.midterm_max_score) || 50) + (Number(sub.final_max_score) || 50);
+        const t2SubMaxVal = t2SubObj
+          ? (Number(t2SubObj.midterm_max_score) || Number(term2Setting?.midterm_max_score) || 50) + (Number(t2SubObj.final_max_score) || Number(term2Setting?.final_max_score) || 50)
+          : (Number(sub.midterm_max_score) || 50) + (Number(sub.final_max_score) || 50);
+
+        if (sub.subject_type !== "activity" || exportSumActivityScores) {
+          if (term1Score !== null) {
+            term1Sum += term1Score;
+            term1MaxSum += t1SubMaxVal;
+            hasT1 = true;
+          }
+          if (term2Score !== null) {
+            term2Sum += term2Score;
+            term2MaxSum += t2SubMaxVal;
+            hasT2 = true;
+          }
+        }
+
         if (scoreData && (scoreData.midterm !== null || scoreData.final !== null)) {
           const mid = scoreData.midterm ?? 0;
           const fin = scoreData.final ?? 0;
           const total = mid + fin;
 
           if (sub.subject_type === "activity") {
-            const passed = subMax > 0 ? (total / subMax) >= 0.5 : true;
+            const actEval = evaluateActivitySubject(
+              sub,
+              st.student_id,
+              term1Score,
+              term2Score,
+              scoreData && (scoreData.midterm !== null || scoreData.final !== null)
+                ? (scoreData.midterm ?? 0) + (scoreData.final ?? 0)
+                : null
+            );
+            const passed = actEval.passed;
             subjectScores[sub.id] = {
               total,
               midterm: scoreData.midterm,
               final: scoreData.final,
+              term1Score,
+              term2Score,
               maxScore: subMax,
               gradeStr: passed ? t("ผ.") : t("มผ."),
               isActivity: true,
@@ -3727,25 +4048,50 @@ function changeFontSize(dir) {
               total,
               midterm: scoreData.midterm,
               final: scoreData.final,
+              term1Score,
+              term2Score,
               maxScore: subMax,
               gradeStr: gStr,
               isActivity: false
             };
           }
         } else {
+          let actPassed = true;
+          if (sub.subject_type === "activity") {
+            const actEval = evaluateActivitySubject(sub, st.student_id, term1Score, term2Score, null);
+            actPassed = actEval.passed;
+          }
           subjectScores[sub.id] = {
             total: null,
             midterm: null,
             final: null,
+            term1Score,
+            term2Score,
             maxScore: subMax,
-            gradeStr: "—",
-            isActivity: sub.subject_type === "activity"
+            gradeStr: sub.subject_type === "activity" ? (actPassed ? t("ผ.") : t("มผ.")) : "—",
+            isActivity: sub.subject_type === "activity",
+            passed: actPassed
           };
         }
       });
 
       const pct = maxPossibleMain > 0 ? (totalMainScore / maxPossibleMain) * 100 : 0;
       const gpa = totalCredits > 0 ? totalGpaPoints / totalCredits : 0;
+
+      const term1Percentage = hasT1 && term1MaxSum > 0 ? Math.round((term1Sum / term1MaxSum) * 10000) / 100 : null;
+      const term2Percentage = hasT2 && term2MaxSum > 0 ? Math.round((term2Sum / term2MaxSum) * 10000) / 100 : null;
+
+      const getTaqdirForPct = (p: number | null): string => {
+        if (p === null || p === undefined) return "";
+        if (p >= 80) return exportLanguage === "ms-jawi" ? "ممتاز" : exportLanguage === "ms-rumi" ? "Mumtaz" : "ดีเยี่ยม (ممتاز)";
+        if (p >= 70) return exportLanguage === "ms-jawi" ? "جيد جدا" : exportLanguage === "ms-rumi" ? "Jayyid Jiddan" : "ดีมาก (جيد جدا)";
+        if (p >= 60) return exportLanguage === "ms-jawi" ? "جيد" : exportLanguage === "ms-rumi" ? "Jayyid" : "ดี (جيد)";
+        if (p >= 50) return exportLanguage === "ms-jawi" ? "مقبول" : exportLanguage === "ms-rumi" ? "Maqbul" : "ผ่าน (مقبول)";
+        return exportLanguage === "ms-jawi" ? "ݢاݢل" : exportLanguage === "ms-rumi" ? "Gagal" : "ตก (ݢاݢل)";
+      };
+
+      const term1Taqdir = getTaqdirForPct(term1Percentage);
+      const term2Taqdir = getTaqdirForPct(term2Percentage);
 
       return {
         student_id: st.student_id,
@@ -3759,6 +4105,14 @@ function changeFontSize(dir) {
         gpa: Math.round(gpa * 100) / 100,
         rank: 0,
         schoolRank: 0,
+        term1Sum: hasT1 ? term1Sum : null,
+        term1Percentage,
+        term1Taqdir,
+        term1Rank: 0,
+        term2Sum: hasT2 ? term2Sum : null,
+        term2Percentage,
+        term2Taqdir,
+        term2Rank: 0,
       };
     });
 
@@ -3791,6 +4145,42 @@ function changeFontSize(dir) {
       }
       r.rank = classroomRank;
       previousClassroomPercentage = r.percentage;
+    });
+
+    // Calculate Term 1 Classroom Rank
+    const sortedForT1Rank = [...studentRows]
+      .filter(r => r.term1Percentage !== null)
+      .sort((a, b) => (b.term1Percentage ?? 0) - (a.term1Percentage ?? 0) || (b.term1Sum ?? 0) - (a.term1Sum ?? 0));
+    let t1RankVal = 0;
+    let prevT1PctVal: number | null = null;
+    let sameT1CountVal = 0;
+    sortedForT1Rank.forEach((r) => {
+      if (r.term1Percentage !== prevT1PctVal) {
+        t1RankVal += 1 + sameT1CountVal;
+        sameT1CountVal = 0;
+      } else {
+        sameT1CountVal++;
+      }
+      r.term1Rank = t1RankVal;
+      prevT1PctVal = r.term1Percentage;
+    });
+
+    // Calculate Term 2 Classroom Rank
+    const sortedForT2Rank = [...studentRows]
+      .filter(r => r.term2Percentage !== null)
+      .sort((a, b) => (b.term2Percentage ?? 0) - (a.term2Percentage ?? 0) || (b.term2Sum ?? 0) - (a.term2Sum ?? 0));
+    let t2RankVal = 0;
+    let prevT2PctVal: number | null = null;
+    let sameT2CountVal = 0;
+    sortedForT2Rank.forEach((r) => {
+      if (r.term2Percentage !== prevT2PctVal) {
+        t2RankVal += 1 + sameT2CountVal;
+        sameT2CountVal = 0;
+      } else {
+        sameT2CountVal++;
+      }
+      r.term2Rank = t2RankVal;
+      prevT2PctVal = r.term2Percentage;
     });
 
     const win = window.open("", "_blank");
@@ -4006,6 +4396,970 @@ function changeFontSize(dir) {
       const schoolLogo = schoolLogoUrl
         ? `<img class="logo" src="${schoolLogoUrl.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;")}" alt="" />`
         : "";
+
+      if (exportType === "yearly") {
+        // Form Por. 6 (ปอ.6) 2-Page Malay Jawi Yearly Individual Report
+        const coreSubjects = selectedSubjects.filter(s => s.subject_type !== "activity");
+        const activitySubjects = selectedSubjects.filter(s => s.subject_type === "activity");
+
+        // ดึงรายวิชากิจกรรมทั้งหมดของชั้นเรียนนี้เสมอสำหรับตารางประเมินกิจกรรมหน้า 2 แม้จะปิดการแสดงคะแนนหน้า 1 ก็ตาม
+        const matchingClassroomIds = new Set<string>();
+        matchingClassroomIds.add(exportClassroomId);
+        if (classroom?.name) {
+          exportClassrooms.forEach(c => {
+            if (c.name === classroom.name) matchingClassroomIds.add(c.id);
+          });
+        }
+
+        const classActivitySubjects: DBSubject[] = [];
+        const seenActNames = new Set<string>();
+
+        allYearSubjectsList.forEach((sub: DBSubject) => {
+          if (sub.subject_type !== "activity") return;
+          const isAssigned = (sub.classroom_ids || []).some(cid => matchingClassroomIds.has(cid));
+          const subNameKey = sub.name?.trim().toLowerCase();
+          if (isAssigned && subNameKey && !seenActNames.has(subNameKey)) {
+            seenActNames.add(subNameKey);
+            classActivitySubjects.push(sub);
+          }
+        });
+
+        exportSubjects.forEach((sub: DBSubject) => {
+          if (sub.subject_type !== "activity") return;
+          const isAssigned = (sub.classroom_ids || []).some(cid => matchingClassroomIds.has(cid));
+          const subNameKey = sub.name?.trim().toLowerCase();
+          if (isAssigned && subNameKey && !seenActNames.has(subNameKey)) {
+            seenActNames.add(subNameKey);
+            classActivitySubjects.push(sub);
+          }
+        });
+
+        if (classActivitySubjects.length === 0) {
+          allYearSubjectsList.forEach((sub: DBSubject) => {
+            if (sub.subject_type !== "activity") return;
+            const subNameKey = sub.name?.trim().toLowerCase();
+            if (subNameKey && !seenActNames.has(subNameKey)) {
+              seenActNames.add(subNameKey);
+              classActivitySubjects.push(sub);
+            }
+          });
+        }
+
+                const isRTL = exportLanguage === "ms-jawi";
+        const pageLang = isRTL ? "ms-Arab" : exportLanguage;
+        const pageDir = isRTL ? "rtl" : "ltr";
+        const pageTextAlign = isRTL ? "right" : "left";
+        const pageFont = isRTL ? "'Amiri', 'Noto Naskh Arabic', 'Cairo', serif, sans-serif" : "'Sarabun', 'TH Sarabun New', sans-serif";
+
+        const por6Dict: Record<string, { th: string; rumi: string; jawi: string }> = {
+          docTitle: {
+            th: "ปอ.6",
+            rumi: "Bor. 6",
+            jawi: "ปอ.6",
+          },
+          reportTitle: {
+            th: "รายงานพัฒนาการคุณภาพผู้เรียนรายบุคคล",
+            rumi: "Laporan Perkembangan Kualiti Pelajar Perseorangan",
+            jawi: "لافوران حاصيل ڤركمباغن كواليتي ڤلاجر ڤرسأورغن",
+          },
+          academicYear: {
+            th: "ปีการศึกษา",
+            rumi: "Tahun Pengajian",
+            jawi: "تاهون ڤڠاجين",
+          },
+          village: {
+            th: "หมู่บ้าน/ตำบล",
+            rumi: "Kampung",
+            jawi: "كمڤوڠ",
+          },
+          school: {
+            th: "โรงเรียน",
+            rumi: "Sekolah",
+            jawi: "سكوله",
+          },
+          studentName: {
+            th: "ชื่อ - นามสกุล",
+            rumi: "Nama Pelajar",
+            jawi: "نام ڤلاجر",
+          },
+          classroom: {
+            th: "ชั้น",
+            rumi: "Kelas",
+            jawi: "كلس",
+          },
+          deskNumber: {
+            th: "เลขที่",
+            rumi: "Nombor Meja",
+            jawi: "نمبورميجا",
+          },
+          studyTime: {
+            th: "เวลาเรียน",
+            rumi: "Masa Belajar",
+            jawi: "ماس بلاجر",
+          },
+          term: {
+            th: "ภาคเรียน",
+            rumi: "Penggal",
+            jawi: "ڤڠݢل",
+          },
+          totalTime: {
+            th: "เวลาเรียนทั้งหมด",
+            rumi: "Masa Keseluruhan",
+            jawi: "ماس كسلوروهن",
+          },
+          timeDays: {
+            th: "เวลาเรียน (วัน)",
+            rumi: "Masa (Hari)",
+            jawi: "ماس (هاري)",
+          },
+          present: {
+            th: "มาเรียน",
+            rumi: "Hadir",
+            jawi: "حاضير",
+          },
+          absent: {
+            th: "ขาด",
+            rumi: "Ghaib",
+            jawi: "غائب",
+          },
+          sick: {
+            th: "ลา",
+            rumi: "Uzur",
+            jawi: "عذور",
+          },
+          holiday: {
+            th: "หยุด",
+            rumi: "Cuti",
+            jawi: "چوتي",
+          },
+          percent: {
+            th: "ร้อยละ",
+            rumi: "Peratus",
+            jawi: "فراتوس",
+          },
+          semester1: {
+            th: "ภาคเรียนที่ 1",
+            rumi: "Penggal 1",
+            jawi: "ڤڠݢل 1",
+          },
+          semester2: {
+            th: "ภาคเรียนที่ 2",
+            rumi: "Penggal 2",
+            jawi: "ڤڠݢل 2",
+          },
+          generalSum: {
+            th: "รวม",
+            rumi: "Umum",
+            jawi: "عموم",
+          },
+          academicEvaluation: {
+            th: "การประเมินผลการเรียนรู้",
+            rumi: "Penilaian Hasil Pengajian",
+            jawi: "ڤنيلاين حاصيل ڤڠاجين",
+          },
+          no: {
+            th: "ที่",
+            rumi: "Bil.",
+            jawi: "بل",
+          },
+          subject: {
+            th: "รายวิชา",
+            rumi: "Pelajaran",
+            jawi: "ڤلاجران",
+          },
+          resultDecision: {
+            th: "ผลการตัดสิน",
+            rumi: "Keputusan",
+            jawi: "نتيجـه فموتوسن",
+          },
+          gradeNormal: {
+            th: "เกรด",
+            rumi: "Gred",
+            jawi: "بياس",
+          },
+          reExam: {
+            th: "แก้ตัว",
+            rumi: "Ulang",
+            jawi: "اولغ",
+          },
+          remark: {
+            th: "หมายเหตุ",
+            rumi: "Catatan",
+            jawi: "ملاحظة",
+          },
+          coreSubjects: {
+            th: "วิชาพื้นฐาน",
+            rumi: "Pelajaran Asasi",
+            jawi: "ڤلاجران اساسي",
+          },
+          additionalSubjects: {
+            th: "วิชากิจกรรม / เพิ่มเติม",
+            rumi: "Pelajaran Tambahan",
+            jawi: "ڤلاجران تمبهن",
+          },
+          taqdirLabel: {
+            th: "ระดับผลการเรียน",
+            rumi: "Taqdir",
+            jawi: "تقدير",
+          },
+          rankingLabel: {
+            th: "ลำดับที่",
+            rumi: "Kedudukan",
+            jawi: "ترتيب",
+          },
+          homeroomTeacherRole: {
+            th: "ครูประจำชั้น",
+            rumi: "Guru Kelas",
+            jawi: "ݢورو كلس",
+          },
+          academicHeadRole: {
+            th: "หัวหน้าฝ่ายวิชาการ",
+            rumi: "Guru Pelajaran",
+            jawi: "ݢورو ڤلاجران",
+          },
+          imamRole: {
+            th: "อิหม่ามประจำมัสยิด",
+            rumi: "Imam Masjid",
+            jawi: "امام مسجد",
+          },
+          activitySectionTitle: {
+            th: "การประเมินกิจกรรมพัฒนาผู้เรียน",
+            rumi: "Penilaian Kegiatan Pelajar",
+            jawi: "ڤنيلاين ككياتن ڤلاجر",
+          },
+          activityHeader: {
+            th: "กิจกรรม",
+            rumi: "Kegiatan",
+            jawi: "ككياتن",
+          },
+          passText: {
+            th: "ผ่าน",
+            rumi: "Lulus",
+            jawi: "لولوس",
+          },
+          failText: {
+            th: "ไม่ผ่าน",
+            rumi: "Tidak Lulus",
+            jawi: "تيدق لولوس",
+          },
+          akhlaqSectionTitle: {
+            th: "การประเมินคุณลักษณะอันพึงประสงค์",
+            rumi: "Penilaian Akhlak Yang Diperolehi",
+            jawi: "ڤنيلاين اخلاق يڠدفراوليهي",
+          },
+          akhlaqHeader: {
+            th: "คุณลักษณะที่พึงประสงค์",
+            rumi: "Sifat-Sifat Yang Dikehendaki",
+            jawi: "صفة ۲ يڠدكهندقي",
+          },
+          moderate: {
+            th: "พอใช้",
+            rumi: "Sederhana",
+            jawi: "سدرهان",
+          },
+          good: {
+            th: "ดี",
+            rumi: "Baik",
+            jawi: "بأيك",
+          },
+          veryGood: {
+            th: "ดีมาก",
+            rumi: "Bagus",
+            jawi: "باݢوس",
+          },
+          teacherOpinion: {
+            th: "ความคิดเห็นของครู",
+            rumi: "Pendapat Guru",
+            jawi: "ڤنداڤتن ݢورو",
+          },
+          passingCriteriaTitle: {
+            th: "เกณฑ์การผ่าน",
+            rumi: "Garis Panduan Lulus",
+            jawi: "گاريسن لولوس",
+          },
+          criteria1: {
+            th: "1- ผ่านเกณฑ์การประเมินผลการเรียนรู้ ระดับ 1-4 / ร้อยละ 50",
+            rumi: "1- Lulus garis panduan penilaian hasil pembelajaran tahap 1-4 / 50 peratus",
+            jawi: "1- لولوس گاريسن ڤنيلاين حاصيل ڤمبلاجران تاهف 1-4 / 50 فراتوس",
+          },
+          criteria2: {
+            th: "2- ผ่านเกณฑ์การประเมินคุณลักษณะอันพึงประสงค์ ระดับ ดีมาก / ดี / พอใช้",
+            rumi: "2- Lulus garis panduan penilaian akhlak yang diperolehi tahap Bagus / Baik / Sederhana",
+            jawi: "2- لولوس گاريسن ڤنيلاين اخلاق يڠدفراوليهي تاهف باݢوس / بأيك / سدرهان",
+          },
+          criteria3: {
+            th: "3- ผ่านเกณฑ์การประเมินกิจกรรมพัฒนาผู้เรียน ระดับ ผ่าน",
+            rumi: "3- Lulus garis panduan penilaian kegiatan pelajar tahap Lulus",
+            jawi: "3- لولوس گاريسن ڤنيلاين ككياتن ڤلاجر تاهف لولوس",
+          },
+          criteriaSidebarTitle: {
+            th: "เกณฑ์การประเมิน<br/>ผลการเรียนรู้",
+            rumi: "Garis Panduan<br/>Penilaian Hasil Pembelajaran",
+            jawi: "گاريسن ڤنيلاين<br/>حاصيل ڤمبلاجران",
+          },
+          criteriaScale4: {
+            th: "<b>(4) 80 - 100%</b><br/><span style=\"font-size:9.5px;\">ดีเยี่ยม (Mumtaz)</span>",
+            rumi: "<b>(4) 80 - 100%</b><br/><span style=\"font-size:9.5px;\">Bermaksud Mumtaz</span>",
+            jawi: "<b>(4) 80 - 100%</b><br/><span style=\"font-size:9.5px;\">برمقصود ممتاز</span>",
+          },
+          criteriaScale3: {
+            th: "<b>(3.5) 75 - 79%</b><br/><b>(3) 70 - 74%</b><br/><span style=\"font-size:9.5px;\">ดีมาก (Jayyid Jiddan)</span>",
+            rumi: "<b>(3.5) 75 - 79%</b><br/><b>(3) 70 - 74%</b><br/><span style=\"font-size:9.5px;\">Bermaksud Jayyid Jiddan</span>",
+            jawi: "<b>(3.5) 75 - 79%</b><br/><b>(3) 70 - 74%</b><br/><span style=\"font-size:9.5px;\">برمقصود جيد جدا</span>",
+          },
+          criteriaScale2: {
+            th: "<b>(2.5) 65 - 69%</b><br/><b>(2) 60 - 64%</b><br/><span style=\"font-size:9.5px;\">ดี (Jayyid)</span>",
+            rumi: "<b>(2.5) 65 - 69%</b><br/><b>(2) 60 - 64%</b><br/><span style=\"font-size:9.5px;\">Bermaksud Jayyid</span>",
+            jawi: "<b>(2.5) 65 - 69%</b><br/><b>(2) 60 - 64%</b><br/><span style=\"font-size:9.5px;\">برمقصود جيد</span>",
+          },
+          criteriaScale1: {
+            th: "<b>(1.5) 55 - 59%</b><br/><b>(1) 50 - 54%</b><br/><span style=\"font-size:9.5px;\">ผ่าน (Maqbul)</span>",
+            rumi: "<b>(1.5) 55 - 59%</b><br/><b>(1) 50 - 54%</b><br/><span style=\"font-size:9.5px;\">Bermaksud Maqbul</span>",
+            jawi: "<b>(1.5) 55 - 59%</b><br/><b>(1) 50 - 54%</b><br/><span style=\"font-size:9.5px;\">برمقصود مقبول</span>",
+          },
+          criteriaScale0: {
+            th: "<b>(0) 0 - 49%</b><br/><span style=\"font-size:9.5px;\">ตก (Gagal)</span>",
+            rumi: "<b>(0) 0 - 49%</b><br/><span style=\"font-size:9.5px;\">Bermaksud Gagal</span>",
+            jawi: "<b>(0) 0 - 49%</b><br/><span style=\"font-size:9.5px;\">برمقصود ݢاݢل</span>",
+          },
+        };
+        const p6 = (key: string): string => {
+          const item = por6Dict[key];
+          if (!item) return key;
+          if (exportLanguage === "ms-rumi") return item.rumi;
+          if (exportLanguage === "ms-jawi") return item.jawi;
+          return item.th;
+        };
+
+        const displaySchoolLogoUrl = schoolLogoUrl || "/logo.png";
+        const displaySchoolName = exportLanguage === "ms-jawi"
+          ? (schoolData?.name_jawi || schoolData?.name || schoolName || "")
+          : exportLanguage === "ms-rumi"
+            ? (schoolData?.name_en || schoolData?.name || schoolName || "")
+            : (schoolData?.name || schoolName || "");
+
+        const reportCardsHTML = targetStudents.map((st, sIdx) => {
+          // --- PAGE 1: Subjects & Grades Table ---
+          let term1CoreSum = 0;
+          let term2CoreSum = 0;
+          let hasT1Core = false;
+          let hasT2Core = false;
+
+          const coreSubjectRows = coreSubjects.map((sub, idx) => {
+            const sc = (st.subjectScores as any)[sub.id];
+            const t1 = sc?.term1Score;
+            const t2 = sc?.term2Score;
+            const tot = sc?.total;
+
+            if (t1 !== null && t1 !== undefined) {
+              term1CoreSum += t1;
+              hasT1Core = true;
+            }
+            if (t2 !== null && t2 !== undefined) {
+              term2CoreSum += t2;
+              hasT2Core = true;
+            }
+
+            const maxSubObj = combinedSubjectMap.get(sub.id) || sub;
+            const subMax = (Number(maxSubObj.midterm_max_score) || 50) + (Number(maxSubObj.final_max_score) || 50);
+            const pct = (tot !== null && tot !== undefined && subMax > 0) ? Math.round((tot / subMax) * 100) : null;
+
+            return `
+              <tr>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;font-weight:bold;">${idx + 1}</td>
+                <td style="padding:4px 8px;text-align:${pageTextAlign};border:1px solid #000;font-size:13px;font-weight:bold;">${getSubjectDisplayName(sub, exportLanguage)}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">${t1 !== null && t1 !== undefined ? t1 : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">${t2 !== null && t2 !== undefined ? t2 : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12.5px;font-weight:bold;">${tot !== null && tot !== undefined ? tot : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">${pct !== null ? `${pct}%` : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;font-weight:bold;">${sc?.gradeStr && sc.gradeStr !== "—" ? sc.gradeStr : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">&nbsp;</td>
+              </tr>
+            `;
+          }).join("");
+
+          const activitySubjectRows = activitySubjects.map((sub, idx) => {
+            const sc = (st.subjectScores as any)[sub.id];
+            const tot = sc?.total;
+            return `
+              <tr>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;font-weight:bold;">${coreSubjects.length + idx + 1}</td>
+                <td style="padding:4px 8px;text-align:${pageTextAlign};border:1px solid #000;font-size:13px;font-weight:bold;">${getSubjectDisplayName(sub, exportLanguage)}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">${sc?.term1Score !== null && sc?.term1Score !== undefined ? sc.term1Score : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">${sc?.term2Score !== null && sc?.term2Score !== undefined ? sc.term2Score : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12.5px;font-weight:bold;">${tot !== null && tot !== undefined ? tot : ""}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">—</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;font-weight:bold;">${sc?.passed ? p6("passText") : p6("failText")}</td>
+                <td style="padding:4px;text-align:center;border:1px solid #000;font-size:12px;">&nbsp;</td>
+              </tr>
+            `;
+          }).join("");
+
+          let taqdirText = "";
+          if (st.percentage >= 80) {
+            taqdirText = exportLanguage === "ms-jawi" ? "ممتاز" : exportLanguage === "ms-rumi" ? "Mumtaz" : "ดีเยี่ยม (ممتاز)";
+          } else if (st.percentage >= 70) {
+            taqdirText = exportLanguage === "ms-jawi" ? "جيد جدا" : exportLanguage === "ms-rumi" ? "Jayyid Jiddan" : "ดีมาก (جيد جدا)";
+          } else if (st.percentage >= 60) {
+            taqdirText = exportLanguage === "ms-jawi" ? "جيد" : exportLanguage === "ms-rumi" ? "Jayyid" : "ดี (جيد)";
+          } else if (st.percentage >= 50) {
+            taqdirText = exportLanguage === "ms-jawi" ? "مقبول" : exportLanguage === "ms-rumi" ? "Maqbul" : "ผ่าน (مقبول)";
+          } else {
+            taqdirText = exportLanguage === "ms-jawi" ? "ݢاݢل" : exportLanguage === "ms-rumi" ? "Gagal" : "ตก (ݢاݢل)";
+          }
+
+          const totalBodyRows = 1 + coreSubjects.length + (activitySubjects.length > 0 ? 1 + activitySubjects.length : 0) + 4;
+
+          const studentIdStr = (st.student_id || "").padEnd(4, " ");
+          const idBoxesHTML = studentIdStr.slice(0, 4).split("").map(ch =>
+            `<div style="width:24px;height:24px;border:1.5px solid #000;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;font-family:monospace;">${ch.trim()}</div>`
+          ).join("");
+
+          let activitiesListHTML = "";
+          if (classActivitySubjects.length > 0) {
+            activitiesListHTML = classActivitySubjects.map(sub => {
+              const subKey = sub.name?.trim().toLowerCase();
+              const subCode = sub.code?.trim().toLowerCase();
+              const matchSub = (g: any) => {
+                const gSub = g.subject?.trim().toLowerCase();
+                return gSub === subKey || (subCode && gSub === subCode);
+              };
+              const gT1 = allGrades.find(g => g.student_id === st.student_id && g.term === term1Key && matchSub(g));
+              const gT2 = allGrades.find(g => g.student_id === st.student_id && g.term === term2Key && matchSub(g));
+              const t1Score = (gT1 && (gT1.midterm_score !== null || gT1.final_score !== null))
+                ? (Number(gT1.midterm_score) || 0) + (Number(gT1.final_score) || 0)
+                : null;
+              const t2Score = (gT2 && (gT2.midterm_score !== null || gT2.final_score !== null))
+                ? (Number(gT2.midterm_score) || 0) + (Number(gT2.final_score) || 0)
+                : null;
+              const gSingle = allGrades.find(g => g.student_id === st.student_id && matchSub(g));
+              const fallbackScore = (gSingle && (gSingle.midterm_score !== null || gSingle.final_score !== null))
+                ? (Number(gSingle.midterm_score) || 0) + (Number(gSingle.final_score) || 0)
+                : null;
+
+              const actEval = evaluateActivitySubject(sub, st.student_id, t1Score, t2Score, fallbackScore);
+              const isPassed = actEval.passed;
+
+              return `
+                <tr>
+                  <td style="padding:6px 10px;text-align:${pageTextAlign};border:1px solid #000;font-weight:bold;font-size:13px;">${getSubjectDisplayName(sub, exportLanguage)}</td>
+                  <td style="text-align:center;border:1px solid #000;font-size:16px;font-weight:bold;color:#16a34a;">${isPassed ? "✓" : ""}</td>
+                  <td style="text-align:center;border:1px solid #000;font-size:16px;font-weight:bold;color:#dc2626;">${!isPassed ? "✓" : ""}</td>
+                </tr>
+              `;
+            }).join("");
+          } else {
+            activitiesListHTML = `
+              <tr><td style="padding:8px 10px;text-align:${pageTextAlign};border:1px solid #000;font-size:13px;">—</td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td></tr>
+              <tr><td style="padding:8px 10px;text-align:${pageTextAlign};border:1px solid #000;font-size:13px;">—</td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td></tr>
+            `;
+          }
+
+          let akhlaqRowsHTML = "";
+          if (activeEvalTopics.length > 0) {
+            akhlaqRowsHTML = activeEvalTopics.map(tp => {
+              const rating = evalMap.get(st.student_id)?.get(`character:${tp.id}`) ?? evalMap.get(st.student_id)?.get(`character:${String(tp.id)}`);
+              const displayName = getTopicNameLabel(tp, exportLanguage);
+              return `
+                <tr>
+                  <td style="padding:4.5px 10px;text-align:${pageTextAlign};border:1px solid #000;font-size:12.5px;">— ${displayName}</td>
+                  <td style="text-align:center;border:1px solid #000;font-size:15px;font-weight:bold;color:#d97706;">${rating === 1 ? "✓" : ""}</td>
+                  <td style="text-align:center;border:1px solid #000;font-size:15px;font-weight:bold;color:#2563eb;">${rating === 2 ? "✓" : ""}</td>
+                  <td style="text-align:center;border:1px solid #000;font-size:15px;font-weight:bold;color:#16a34a;">${rating === 3 ? "✓" : ""}</td>
+                </tr>
+              `;
+            }).join("");
+          } else {
+            // กรณีแอดมินยังไม่ได้กำหนดหัวข้อ — แสดงแถวว่าง ไม่ใส่หัวข้อจำลอง
+            akhlaqRowsHTML = `
+              <tr><td style="padding:8px 10px;border:1px solid #000;">&nbsp;</td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td></tr>
+              <tr><td style="padding:8px 10px;border:1px solid #000;">&nbsp;</td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td></tr>
+              <tr><td style="padding:8px 10px;border:1px solid #000;">&nbsp;</td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td><td style="border:1px solid #000;"></td></tr>
+            `;
+          }
+
+          return `
+            <!-- ===== PAGE 1 ===== -->
+            <div class="po6-page po6-page-1">
+              <div class="po6-header">
+                ${isRTL ? `
+                  <div class="po6-badge-box">ปอ.6</div>
+                  <div class="po6-title-box">
+                    <h1 class="po6-title">${p6("reportTitle")}</h1>
+                    <div class="po6-subtitle">${p6("academicYear")} <span class="po6-dotted-val" style="min-width:100px;font-weight:bold;">${setting.academic_year}</span></div>
+                  </div>
+                  <div class="po6-logo-box">
+                    <img src="${displaySchoolLogoUrl}" alt="Logo" class="po6-logo" onerror="this.style.visibility='hidden'" />
+                  </div>
+                ` : `
+                  <div class="po6-logo-box">
+                    <img src="${displaySchoolLogoUrl}" alt="Logo" class="po6-logo" onerror="this.style.visibility='hidden'" />
+                  </div>
+                  <div class="po6-title-box">
+                    <h1 class="po6-title">${p6("reportTitle")}</h1>
+                    <div class="po6-subtitle">${p6("academicYear")} <span class="po6-dotted-val" style="min-width:100px;font-weight:bold;">${setting.academic_year}</span></div>
+                  </div>
+                  <div class="po6-badge-box">ปอ.6</div>
+                `}
+              </div>
+
+              <div class="po6-student-info">
+                <div class="po6-info-line">
+                  <div class="po6-id-boxes">${idBoxesHTML}</div>
+                  <div class="po6-info-field">
+                    <span>${p6("village")}</span>
+                    <span class="po6-dotted-val" style="min-width:140px;"></span>
+                  </div>
+                  <div class="po6-info-field" style="flex:1;">
+                    <span>${p6("school")}</span>
+                    <span class="po6-dotted-val" style="width:100%;font-weight:bold;">${displaySchoolName}</span>
+                  </div>
+                </div>
+
+                <div class="po6-info-line" style="margin-top:6px;">
+                  <div class="po6-info-field" style="flex:1;">
+                    <span>${p6("studentName")}</span>
+                    <span class="po6-dotted-val" style="width:100%;font-weight:bold;">${st.name}</span>
+                  </div>
+                </div>
+
+                <div class="po6-info-line" style="margin-top:6px;">
+                  <div class="po6-info-field" style="flex:1;">
+                    <span>${p6("classroom")}</span>
+                    <span class="po6-dotted-val" style="width:100%;font-weight:bold;">${getClassroomDisplayName(classroom, exportLanguage)}</span>
+                  </div>
+                  <div class="po6-info-field">
+                    <span>${p6("deskNumber")}</span>
+                    <span class="po6-dotted-val" style="min-width:100px;text-align:center;font-weight:bold;">${st.student_number || "-"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="po6-section-title">${p6("studyTime")}</div>
+              <table class="po6-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2" style="width:15%;">${p6("term")}</th>
+                    <th rowspan="2" style="width:18%;">${p6("totalTime")}</th>
+                    <th colspan="4">${p6("timeDays")}</th>
+                    <th rowspan="2" style="width:15%;">${p6("percent")}</th>
+                  </tr>
+                  <tr>
+                    <th style="width:13%;">${p6("present")}</th>
+                    <th style="width:13%;">${p6("absent")}</th>
+                    <th style="width:13%;">${p6("sick")}</th>
+                    <th style="width:13%;">${p6("holiday")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="font-weight:bold;">${p6("semester1")}</td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight:bold;">${p6("semester2")}</td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight:bold;">${p6("generalSum")}</td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="po6-section-title" style="margin-top:10px;">${p6("academicEvaluation")}</div>
+              <table class="po6-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2" style="width:26px;">${p6("no")}</th>
+                    <th rowspan="2" style="text-align:${pageTextAlign};">${p6("subject")}</th>
+                    <th rowspan="2" style="width:48px;">${p6("semester1")}</th>
+                    <th rowspan="2" style="width:48px;">${p6("semester2")}</th>
+                    <th rowspan="2" style="width:48px;">${p6("generalSum")}</th>
+                    <th rowspan="2" style="width:48px;">${p6("percent")}</th>
+                    <th colspan="2" style="width:90px;">${p6("resultDecision")}</th>
+                    <th rowspan="2" style="width:130px;">${p6("remark")}</th>
+                  </tr>
+                  <tr>
+                    <th style="width:45px;">${p6("gradeNormal")}</th>
+                    <th style="width:45px;">${p6("reExam")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="2" style="background:#cbd5e1;font-weight:bold;text-align:${pageTextAlign};padding:4px 8px;font-size:12px;">${p6("coreSubjects")}</td>
+                    <td colspan="6" style="background:#94a3b8;"></td>
+                    <td rowspan="${totalBodyRows}" class="po6-mulahezah-cell">
+                      <div class="po6-mulahezah-content">
+                        <div style="font-weight:bold;font-size:11.5px;margin-bottom:6px;">${p6("criteriaSidebarTitle")}</div>
+                        <div style="margin-bottom:6px;">${p6("criteriaScale4")}</div>
+                        <div style="margin-bottom:6px;">${p6("criteriaScale3")}</div>
+                        <div style="margin-bottom:6px;">${p6("criteriaScale2")}</div>
+                        <div style="margin-bottom:6px;">${p6("criteriaScale1")}</div>
+                        <div>${p6("criteriaScale0")}</div>
+                      </div>
+                    </td>
+                  </tr>
+                  ${coreSubjectRows}
+                  ${activitySubjects.length > 0 ? `
+                    <tr>
+                      <td colspan="2" style="background:#cbd5e1;font-weight:bold;text-align:${pageTextAlign};padding:4px 8px;font-size:12px;">${p6("additionalSubjects")}</td>
+                      <td colspan="6" style="background:#94a3b8;"></td>
+                    </tr>
+                    ${activitySubjectRows}
+                  ` : ''}
+                  <tr>
+                    <td colspan="2" style="font-weight:bold;text-align:center;background:#f8fafc;">${p6("generalSum")}</td>
+                    <td style="text-align:center;font-weight:bold;">${hasT1Core ? term1CoreSum : ""}</td>
+                    <td style="text-align:center;font-weight:bold;">${hasT2Core ? term2CoreSum : ""}</td>
+                    <td style="text-align:center;font-weight:bold;">${st.totalMainScore}</td>
+                    <td></td><td></td><td></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="font-weight:bold;text-align:center;background:#f8fafc;">${p6("percent")}</td>
+                    <td style="text-align:center;font-weight:bold;color:#2563eb;">${st.term1Percentage !== null && st.term1Percentage !== undefined ? `${st.term1Percentage.toFixed(1)}%` : ""}</td>
+                    <td style="text-align:center;font-weight:bold;color:#2563eb;">${st.term2Percentage !== null && st.term2Percentage !== undefined ? `${st.term2Percentage.toFixed(1)}%` : ""}</td>
+                    <td style="text-align:center;font-weight:bold;color:#2563eb;">${st.percentage.toFixed(1)}%</td>
+                    <td></td><td></td><td></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="font-weight:bold;text-align:center;background:#f8fafc;">${p6("taqdirLabel")}</td>
+                    <td style="text-align:center;font-weight:bold;color:#047857;font-size:11px;">${st.term1Taqdir || ""}</td>
+                    <td style="text-align:center;font-weight:bold;color:#047857;font-size:11px;">${st.term2Taqdir || ""}</td>
+                    <td style="text-align:center;font-weight:bold;color:#047857;font-size:11px;">${taqdirText}</td>
+                    <td></td><td></td><td></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="font-weight:bold;text-align:center;background:#f8fafc;">${p6("rankingLabel")}</td>
+                    <td style="text-align:center;font-weight:bold;color:#6d28d9;">${st.term1Rank ? st.term1Rank : ""}</td>
+                    <td style="text-align:center;font-weight:bold;color:#6d28d9;">${st.term2Rank ? st.term2Rank : ""}</td>
+                    <td style="text-align:center;font-weight:bold;color:#6d28d9;">${st.rank ? st.rank : ""}</td>
+                    <td></td><td></td><td></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="po6-signatures">
+                <div class="po6-sig-box">
+                  <div class="po6-sig-slot">${homeroomTeacherSigImg}</div>
+                  <div class="po6-sig-line"></div>
+                  <div class="po6-sig-name">( ${homeroomTeacherNames} )</div>
+                  <div class="po6-sig-role">${p6("homeroomTeacherRole")}</div>
+                </div>
+                <div class="po6-sig-box">
+                  <div class="po6-sig-slot">${academicHeadSigImg}</div>
+                  <div class="po6-sig-line"></div>
+                  <div class="po6-sig-name">( ${setting.academic_head || "...................................................."} )</div>
+                  <div class="po6-sig-role">${p6("academicHeadRole")}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== PAGE 2 ===== -->
+            <div class="po6-page po6-page-2 ${sIdx < targetStudents.length - 1 ? 'po6-student-break' : ''}">
+              <div class="po6-section-title" style="margin-top:0;">${p6("activitySectionTitle")}</div>
+              <table class="po6-table" style="margin-bottom:16px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:${pageTextAlign};">${p6("activityHeader")}</th>
+                    <th style="width:130px;text-align:center;">${p6("passText")}</th>
+                    <th style="width:130px;text-align:center;">${p6("failText")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${activitiesListHTML}
+                </tbody>
+              </table>
+
+              <div class="po6-section-title">${p6("akhlaqSectionTitle")}</div>
+              <table class="po6-table" style="margin-bottom:16px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:${pageTextAlign};">${p6("akhlaqHeader")}</th>
+                    <th style="width:90px;text-align:center;">${p6("moderate")}</th>
+                    <th style="width:90px;text-align:center;">${p6("good")}</th>
+                    <th style="width:90px;text-align:center;">${p6("veryGood")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${akhlaqRowsHTML}
+                </tbody>
+              </table>
+
+              <div class="po6-teacher-opinion">
+                <div>${p6("teacherOpinion")} .........................................................................................................................................</div>
+                <div>..................................................................................................................................................................</div>
+                <div>..................................................................................................................................................................</div>
+                <div>..................................................................................................................................................................</div>
+              </div>
+
+              <div style="display:flex;justify-content:center;margin-top:16px;">
+                <div class="po6-sig-box">
+                  <div class="po6-sig-slot">${homeroomTeacherSigImg}</div>
+                  <div class="po6-sig-line"></div>
+                  <div class="po6-sig-name">( ${homeroomTeacherNames} )</div>
+                  <div class="po6-sig-role">${p6("homeroomTeacherRole")}</div>
+                </div>
+              </div>
+
+              <div class="po6-passing-criteria">
+                <div style="font-weight:bold;margin-bottom:4px;">${p6("passingCriteriaTitle")}</div>
+                <div>${p6("criteria1")}</div>
+                <div>${p6("criteria2")}</div>
+                <div>${p6("criteria3")}</div>
+              </div>
+
+              <div class="po6-signatures" style="margin-top:20px;">
+                <div class="po6-sig-box">
+                  <div class="po6-sig-slot">${academicHeadSigImg}</div>
+                  <div class="po6-sig-line"></div>
+                  <div class="po6-sig-name">( ${setting.academic_head || "...................................................."} )</div>
+                  <div class="po6-sig-role">${p6("academicHeadRole")}</div>
+                </div>
+                <div class="po6-sig-box">
+                  <div class="po6-sig-slot"></div>
+                  <div class="po6-sig-line"></div>
+                  <div class="po6-sig-name">( .................................................... )</div>
+                  <div class="po6-sig-role">${p6("imamRole")}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        win.document.write(`
+          <!DOCTYPE html>
+          <html dir="${pageDir}" lang="${pageLang}">
+          <head>
+            <title>${p6("docTitle")} - ${setting.academic_year} - ${getClassroomDisplayName(classroom, exportLanguage)}</title>
+            <meta charset="utf-8" />
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Cairo:wght@400;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap');
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: ${pageFont};
+                margin: 0;
+                background: #f1f5f9;
+                color: #000;
+                direction: ${pageDir};
+                text-align: ${pageTextAlign};
+              }
+              :root { --fs: 1; }
+              .toolbar {
+                position: fixed;
+                top: 12px;
+                ${isRTL ? "left: 12px;" : "right: 12px;"}
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                z-index: 100;
+              }
+              .toolbar button.print-btn {
+                padding: 9px 18px;
+                background: #1d4ed8;
+                color: white;
+                border: 0;
+                border-radius: 8px;
+                font-weight: 700;
+                font-size: 13px;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+              }
+              .toolbar button.print-btn:hover {
+                background: #1e40af;
+              }
+              .po6-page {
+                width: 210mm;
+                min-height: 297mm;
+                padding: 10mm 12mm;
+                margin: 16px auto;
+                background: #fff;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                position: relative;
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+              }
+              .po6-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 2px solid #000;
+                padding-bottom: 6px;
+                margin-bottom: 6px;
+              }
+              .po6-badge-box {
+                font-size: 14px;
+                font-weight: 900;
+                border: 2px solid #000;
+                padding: 2px 8px;
+                display: inline-block;
+              }
+              .po6-title-box {
+                text-align: center;
+                flex: 1;
+              }
+              .po6-title {
+                font-size: 16.5px;
+                font-weight: 900;
+                letter-spacing: 0.3px;
+              }
+              .po6-subtitle {
+                font-size: 13px;
+                margin-top: 2px;
+              }
+              .po6-logo-box {
+                width: 70px;
+                height: 70px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+              .po6-logo {
+                max-width: 65px;
+                max-height: 65px;
+                object-fit: contain;
+              }
+              .po6-student-info {
+                margin: 6px 0 10px;
+                font-size: 12.5px;
+              }
+              .po6-info-line {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+              }
+              .po6-info-field {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              }
+              .po6-id-boxes {
+                display: flex;
+                gap: 0;
+                direction: ltr;
+              }
+              .po6-dotted-val {
+                display: inline-block;
+                border-bottom: 1px dotted #000;
+                padding: 0 6px;
+                text-align: center;
+              }
+              .po6-section-title {
+                font-size: 13.5px;
+                font-weight: 800;
+                text-align: center;
+                margin: 8px 0 4px;
+              }
+              .po6-table {
+                width: 100%;
+                border-collapse: collapse;
+                text-align: center;
+                font-size: 11.5px;
+              }
+              .po6-table th, .po6-table td {
+                border: 1px solid #000;
+                padding: 3.5px 4px;
+              }
+              .po6-table th {
+                background: #f8fafc;
+                font-weight: bold;
+              }
+              .po6-mulahezah-cell {
+                vertical-align: middle;
+                padding: 6px 4px !important;
+                background: #fff;
+              }
+              .po6-mulahezah-content {
+                font-size: 10px;
+                line-height: 1.4;
+                text-align: center;
+              }
+              .po6-teacher-opinion {
+                margin-top: 18px;
+                font-size: 12.5px;
+                line-height: 2;
+                text-align: ${pageTextAlign};
+              }
+              .po6-passing-criteria {
+                margin-top: 18px;
+                border: 1px solid #000;
+                border-radius: 4px;
+                padding: 8px 12px;
+                font-size: 11.5px;
+                line-height: 1.7;
+                text-align: ${pageTextAlign};
+              }
+              .po6-signatures {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 24px;
+                padding: 0 40px;
+              }
+              .po6-sig-box {
+                text-align: center;
+                width: 220px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+              }
+              .po6-sig-slot {
+                height: 38px;
+                width: 100%;
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+              }
+              .po6-sig-line {
+                width: 180px;
+                border-bottom: 1px dotted #000;
+                margin: 3px auto 4px;
+              }
+              .po6-sig-name {
+                font-weight: bold;
+                font-size: 12px;
+              }
+              .po6-sig-role {
+                font-weight: bold;
+                font-size: 12px;
+                margin-top: 2px;
+              }
+              @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 8mm 10mm;
+                }
+                .toolbar { display: none !important; }
+                body { margin: 0 !important; background: #fff !important; }
+                .po6-page {
+                  box-shadow: none !important;
+                  margin: 0 !important;
+                  padding: 8mm 10mm !important;
+                  min-height: 275mm;
+                  page-break-after: always;
+                  break-after: page;
+                }
+                .po6-page:last-child {
+                  page-break-after: auto;
+                  break-after: auto;
+                }
+                .po6-student-break {
+                  page-break-after: always;
+                  break-after: page;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="toolbar">
+              <button type="button" class="print-btn" onclick="window.print()">${exportLanguage === "th" ? "🖨️ พิมพ์ / บันทึก PDF (Print)" : exportLanguage === "ms-rumi" ? "🖨️ Cetak / Simpan PDF (Print)" : "🖨️ چيتق / سيمڤن PDF (Print)"}</button>
+            </div>
+            ${reportCardsHTML}
+          </body>
+          </html>
+        `);
+        win.document.close(); return;
+      }
 
       const reportCardsHTML = targetStudents.map((st, sIdx) => {
         const subjectRowsHTML = selectedSubjects.map((sub, idx) => {

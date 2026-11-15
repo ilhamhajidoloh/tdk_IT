@@ -1,5 +1,31 @@
-import { type ChangeEvent, useRef, useState } from "react";
+import { type ChangeEvent, useRef, useState, useMemo } from "react";
 import * as XLSX from "xlsx";
+import {
+  Award,
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  Filter,
+  Layers,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  Upload,
+  Users,
+  X,
+  ArrowUp,
+  ArrowDown,
+  School,
+  SlidersHorizontal,
+  Info,
+  Check,
+  FileSpreadsheet,
+  AlertCircle,
+  Clock,
+} from "lucide-react";
 import { type SystemSetting, type DBStudent, type EvaluationTopic, type EvaluationSummaryRow } from "../types";
 import { RWT_TOPICS, RATING_LEVELS, RATING_BADGE_CLASSES, isEvaluationTermOpen } from "../../../lib/evaluation";
 import SectionHeader from "../SectionHeader";
@@ -31,15 +57,36 @@ interface EvaluationsTabProps {
   onImportTopics: (topics: { name_th: string; name_rumi?: string; name_jawi?: string }[]) => void;
 }
 
-function RatingBadge({ rating }: { rating: number | undefined }) {
+function RatingBadge({ rating, size = "md" }: { rating: number | undefined; size?: "sm" | "md" }) {
   if (rating === undefined) {
-    return <span className="text-xs text-subtle-foreground">—</span>;
+    return (
+      <span className={`inline-flex items-center justify-center font-medium text-subtle-foreground/50 ${
+        size === "sm" ? "text-[11px] px-1 py-0.5" : "text-xs px-2 py-0.5"
+      }`}>
+        —
+      </span>
+    );
   }
   const level = RATING_LEVELS.find(r => r.value === rating);
   if (!level) return <span className="text-xs text-subtle-foreground">—</span>;
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold border ${RATING_BADGE_CLASSES[rating]}`}>
-      {level.th}
+    <span
+      className={`inline-flex items-center gap-1 font-bold rounded-lg border whitespace-nowrap shadow-xs transition-transform ${
+        RATING_BADGE_CLASSES[rating]
+      } ${size === "sm" ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-xs"}`}
+    >
+      <span
+        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+          rating === 3
+            ? "bg-emerald-500"
+            : rating === 2
+            ? "bg-sky-500"
+            : rating === 1
+            ? "bg-amber-500"
+            : "bg-rose-500"
+        }`}
+      />
+      <span>{level.th}</span>
     </span>
   );
 }
@@ -64,23 +111,81 @@ export default function EvaluationsTab({
   onDeleteTopic,
   onImportTopics,
 }: EvaluationsTabProps) {
+  const [viewMode, setViewMode] = useState<"results" | "topics">("results");
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name_th: "", name_rumi: "", name_jawi: "" });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "completed" | "pending">("all");
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const sortedTopics = [...evalTopics].sort((a, b) => a.sort_order - b.sort_order);
-  const activeTopics = sortedTopics.filter(t => t.is_active);
+  const sortedTopics = useMemo(
+    () => [...evalTopics].sort((a, b) => a.sort_order - b.sort_order),
+    [evalTopics]
+  );
+  const activeTopics = useMemo(
+    () => sortedTopics.filter(t => t.is_active),
+    [sortedTopics]
+  );
+  const totalTopicsCount = activeTopics.length + RWT_TOPICS.length;
 
   const selectedSetting = settingsList.find(s => s.id === evalSettingId);
   const evaluationSettings = settingsList.filter(setting => String(setting.term) === "2");
   const termOpen = isEvaluationTermOpen(selectedSetting?.term);
 
-  const classroomStudents = evalStudents
-    .filter(s => s.classroom_id === evalClassroomId)
-    .sort((a, b) => (a.student_number ?? 9999) - (b.student_number ?? 9999) || a.name.localeCompare(b.name, "th"));
+  const classroomStudents = useMemo(() => {
+    return evalStudents
+      .filter(s => s.classroom_id === evalClassroomId)
+      .sort((a, b) => (a.student_number ?? 9999) - (b.student_number ?? 9999) || a.name.localeCompare(b.name, "th"));
+  }, [evalStudents, evalClassroomId]);
 
   const findRating = (studentId: string, category: "character" | "rwt", topicKey: string) =>
     evalSummary.find(r => r.student_id === studentId && r.category === category && r.topic_key === topicKey)?.rating;
+
+  const getStudentProgress = (studentId: string) => {
+    let done = 0;
+    for (const t of activeTopics) {
+      if (findRating(studentId, "character", t.id) !== undefined) done++;
+    }
+    for (const rt of RWT_TOPICS) {
+      if (findRating(studentId, "rwt", rt.key) !== undefined) done++;
+    }
+    return {
+      done,
+      total: totalTopicsCount,
+      isComplete: totalTopicsCount > 0 && done === totalTopicsCount,
+    };
+  };
+
+  const classStats = useMemo(() => {
+    if (classroomStudents.length === 0) return { total: 0, completed: 0, pending: 0, percent: 0 };
+    let completed = 0;
+    for (const s of classroomStudents) {
+      const { isComplete } = getStudentProgress(s.student_id);
+      if (isComplete) completed++;
+    }
+    const total = classroomStudents.length;
+    const pending = total - completed;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pending, percent };
+  }, [classroomStudents, activeTopics, evalSummary]);
+
+  const filteredStudents = useMemo(() => {
+    return classroomStudents.filter(student => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = student.name.toLowerCase().includes(q);
+        const matchId = student.student_id.toLowerCase().includes(q);
+        const matchNum = student.student_number !== null && String(student.student_number).includes(q);
+        if (!matchName && !matchId && !matchNum) return false;
+      }
+      if (filterStatus !== "all") {
+        const { isComplete } = getStudentProgress(student.student_id);
+        if (filterStatus === "completed" && !isComplete) return false;
+        if (filterStatus === "pending" && isComplete) return false;
+      }
+      return true;
+    });
+  }, [classroomStudents, searchQuery, filterStatus, activeTopics, evalSummary]);
 
   const startEdit = (t: EvaluationTopic) => {
     setEditingTopicId(t.id);
@@ -132,311 +237,841 @@ export default function EvaluationsTab({
   };
 
   return (
-    <div className="p-8 animate-fade-in-up">
+    <div className="p-3 sm:p-5 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto animate-fade-in-up">
+      {/* Main Section Header */}
       <SectionHeader
         icon="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
         color="purple"
         title="ประเมินคุณลักษณะอันพึงประสงค์"
-        subtitle="จัดการหัวข้อคุณลักษณะฯ และดูผลรวมการประเมิน (เปิดใช้งานเฉพาะภาคเรียนที่ 2)"
-      />
+        subtitle="จัดการหัวข้อคุณลักษณะฯ และตรวจสอบผลสรุปการประเมินประจำปีการศึกษา (เทอม 2)"
+      >
+        {/* Navigation Switcher Pills */}
+        <div className="inline-flex p-1 bg-muted/80 backdrop-blur-sm rounded-2xl border border-border/80 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setViewMode("results")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              viewMode === "results"
+                ? "bg-card text-foreground shadow-sm border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Award className="w-4 h-4 text-indigo-500" />
+            <span>ผลการประเมินรายห้อง</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("topics")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              viewMode === "topics"
+                ? "bg-card text-foreground shadow-sm border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4 text-violet-500" />
+            <span>จัดการหัวข้อคุณลักษณะ</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-extrabold">
+              {evalTopics.length}
+            </span>
+          </button>
+        </div>
+      </SectionHeader>
 
-      {/* Topic Manager Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Left: Admin-Defined Topics */}
-        <div className="lg:col-span-2 card-modern overflow-hidden flex flex-col justify-between">
-          <div>
-            <div className="px-5 py-4 border-b border-border/60 bg-indigo-500/[0.01]">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-                  หัวข้อคุณลักษณะอันพึงประสงค์ (กำหนดโดยแอดมิน)
-                </h3>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button type="button" onClick={() => downloadTemplate("xlsx")} className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-border bg-card hover:bg-muted cursor-pointer">แม่แบบ .xlsx</button>
-                  <button type="button" onClick={() => downloadTemplate("csv")} className="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-border bg-card hover:bg-muted cursor-pointer">แม่แบบ .csv</button>
-                  <button type="button" onClick={() => importInputRef.current?.click()} className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">นำเข้าไฟล์</button>
-                  <input ref={importInputRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={handleImportFile} />
+      {/* VIEW 1: RESULTS (ผลการประเมินรายห้อง) */}
+      {viewMode === "results" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Term Warning Alert */}
+          {selectedSetting && !termOpen && (
+            <div className="flex items-start gap-3 bg-rose-50/80 dark:bg-rose-500/10 backdrop-blur-sm border border-rose-200/60 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 p-4 rounded-2xl text-sm font-semibold shadow-xs">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+              <div>
+                <p className="font-bold">ระบบเปิดให้ดูผลการประเมินเฉพาะภาคเรียนที่ 2</p>
+                <p className="text-xs text-rose-700/80 dark:text-rose-300/80 mt-0.5">
+                  ปีการศึกษาปัจจุบันที่เลือกไม่ได้กำหนดเป็นเทอม 2 จึงยังไม่เปิดประมวลผลคุณลักษณะอันพึงประสงค์
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Academic Year & Classroom Selection Control Card */}
+          <div className="card-modern p-4 sm:p-5 lg:p-6 border border-border/80 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <School className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">ข้อมูลห้องเรียนและปีการศึกษา</h3>
+                  <p className="text-xs text-muted-foreground">ผลการประเมินประมวลผลอัตโนมัติสำหรับเทอม 2</p>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">หัวข้อที่คุณสามารถเพิ่ม แก้ไข ปรับลำดับ ปิดใช้งาน หรือลบได้ตามต้องการ</p>
-              <p className="text-[11px] text-subtle-foreground mt-1">ไฟล์นำเข้ารองรับคอลัมน์: ชื่อหัวข้อ (ไทย) *, Rumi, Jawi</p>
-            </div>
-            <div className="divide-y divide-border max-h-[350px] overflow-y-auto">
-              {sortedTopics.length === 0 ? (
-                <div className="p-6 text-center text-subtle-foreground text-sm">ยังไม่มีหัวข้อ กรุณาเพิ่มด้านล่าง</div>
-              ) : (
-                sortedTopics.map((t, idx) => (
-                  <div key={t.id} className={`p-4 flex items-start gap-3 transition-opacity ${!t.is_active ? "opacity-40" : ""}`}>
-                    {editingTopicId === t.id ? (
-                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <input
-                          value={editForm.name_th}
-                          onChange={e => setEditForm({ ...editForm, name_th: e.target.value })}
-                          placeholder="ชื่อไทย"
-                          className="input-modern px-3 py-2 text-sm"
-                        />
-                        <input
-                          value={editForm.name_rumi}
-                          onChange={e => setEditForm({ ...editForm, name_rumi: e.target.value })}
-                          placeholder="Rumi (ไม่บังคับ)"
-                          className="input-modern px-3 py-2 text-sm"
-                        />
-                        <input
-                          value={editForm.name_jawi}
-                          onChange={e => setEditForm({ ...editForm, name_jawi: e.target.value })}
-                          placeholder="Jawi (ไม่บังคับ)"
-                          className="input-modern px-3 py-2 text-sm"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-foreground text-sm flex items-center gap-1.5">
-                          {t.name_th}
-                          {!t.is_active && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground rounded-md">ปิดใช้งาน</span>
-                          )}
-                        </div>
-                        {(t.name_rumi || t.name_jawi) && (
-                          <div className="text-xs text-subtle-foreground mt-0.5">{[t.name_rumi, t.name_jawi].filter(Boolean).join(" · ")}</div>
-                        )}
-                      </div>
-                    )}
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {editingTopicId === t.id ? (
-                        <>
-                          <button onClick={saveEdit} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer border-0 shadow-sm transition-colors">บันทึก</button>
-                          <button onClick={() => setEditingTopicId(null)} className="px-3 py-1.5 text-xs font-bold rounded-lg bg-muted hover:bg-muted/85 text-foreground cursor-pointer border-0 transition-colors">ยกเลิก</button>
-                        </>
-                      ) : (
-                        <>
-                          <button disabled={idx === 0} onClick={() => onReorderTopic(idx, "up")} className="px-2 py-1 text-xs font-bold rounded-lg bg-card border border-border hover:bg-muted disabled:opacity-30 cursor-pointer">⬆️</button>
-                          <button disabled={idx === sortedTopics.length - 1} onClick={() => onReorderTopic(idx, "down")} className="px-2 py-1 text-xs font-bold rounded-lg bg-card border border-border hover:bg-muted disabled:opacity-30 cursor-pointer">⬇️</button>
-                          <button onClick={() => startEdit(t)} className="px-2.5 py-1 text-xs font-bold rounded-lg bg-card border border-border hover:bg-muted cursor-pointer">แก้ไข</button>
-                          <button onClick={() => onUpdateTopic(t.id, { is_active: !t.is_active })} className="px-2.5 py-1 text-xs font-bold rounded-lg bg-card border border-border hover:bg-muted cursor-pointer">
-                            {t.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
-                          </button>
-                          <button onClick={() => onDeleteTopic(t.id)} className="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 hover:bg-rose-100 cursor-pointer">ลบ</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))
+              {/* Year Selector */}
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-xs font-bold text-muted-foreground shrink-0">ปีการศึกษา:</span>
+                <select
+                  id="evaluation-year"
+                  value={evalSettingId || ""}
+                  onChange={(event) => handleSelectEvalSetting(Number(event.target.value))}
+                  className="input-modern !py-1.5 !px-3 text-xs sm:text-sm font-semibold min-w-[170px]"
+                >
+                  <option value="" disabled>-- เลือกปีการศึกษา --</option>
+                  {evaluationSettings.map(setting => (
+                    <option key={setting.id} value={setting.id}>
+                      ปีการศึกษา {setting.academic_year} (เทอม 2)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Classrooms List */}
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2.5">
+                <span className="text-xs font-bold text-subtle-foreground uppercase tracking-wider">
+                  เลือกห้องเรียน ({evalClassrooms.length} ห้อง):
+                </span>
+                {evalClassroomId && (
+                  <button
+                    type="button"
+                    onClick={() => setEvalClassroomId("")}
+                    className="text-[11px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    ล้างการเลือก
+                  </button>
+                )}
+              </div>
+
+              {evalClassrooms.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-border bg-muted/30 text-center text-xs text-subtle-foreground">
+                  ไม่พบห้องเรียนในระบบสำหรับปีการศึกษานี้
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
+                  {evalClassrooms.map(c => {
+                    const isSelected = evalClassroomId === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setEvalClassroomId(c.id)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20 scale-[1.02]"
+                            : "bg-card text-foreground border-border/80 hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10"
+                        }`}
+                      >
+                        <span>{c.name}</span>
+                        {c.name_thai && c.name_thai !== c.name && (
+                          <span className={`text-[10px] font-normal ${isSelected ? "text-indigo-100" : "text-muted-foreground"}`}>
+                            ({c.name_thai})
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
-          <div className="p-4 bg-muted/40 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input
-              value={evalTopicForm.name_th}
-              onChange={e => setEvalTopicForm({ ...evalTopicForm, name_th: e.target.value })}
-              placeholder="ชื่อหัวข้อ (ไทย) *"
-              className="input-modern px-3 py-2 text-sm sm:col-span-1"
-            />
-            <input
-              value={evalTopicForm.name_rumi}
-              onChange={e => setEvalTopicForm({ ...evalTopicForm, name_rumi: e.target.value })}
-              placeholder="Rumi (ไม่บังคับ)"
-              className="input-modern px-3 py-2 text-sm"
-            />
-            <div className="flex gap-2">
-              <input
-                value={evalTopicForm.name_jawi}
-                onChange={e => setEvalTopicForm({ ...evalTopicForm, name_jawi: e.target.value })}
-                placeholder="Jawi (ไม่บังคับ)"
-                className="input-modern px-3 py-2 text-sm flex-1"
-              />
-              <button
-                onClick={onAddTopic}
-                disabled={!evalTopicForm.name_th.trim() || evalSavingTopic}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-violet-600 text-white disabled:opacity-50 cursor-pointer border-0 shrink-0 shadow-md hover:opacity-90 active:scale-95 transition-all"
-              >
-                เพิ่มหัวข้อ
-              </button>
+
+          {/* Conditional Result State */}
+          {!evalSettingId ? (
+            <div className="text-center py-16 px-4 bg-card rounded-2xl border border-dashed border-border shadow-xs">
+              <Award className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+              <h4 className="font-bold text-foreground text-base">กรุณาเลือกปีการศึกษาด้านบน</h4>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                เลือกปีการศึกษาเพื่อโหลดรายชื่อห้องเรียนและผลการประเมินคุณลักษณะอันพึงประสงค์
+              </p>
             </div>
-          </div>
-        </div>
-
-        {/* Right: System Fixed Topics (Read-Only) */}
-        <div className="card-modern overflow-hidden flex flex-col justify-between">
-          <div>
-            <div className="px-5 py-4 border-b border-border/60 bg-emerald-500/[0.02]">
-              <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                หัวข้อค่าเริ่มต้น (ระบบกำหนด / Fixed)
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">หัวข้อพื้นฐานที่เป็นมาตรฐานของระบบ ไม่สามารถแก้ไขหรือลบได้</p>
+          ) : !termOpen ? (
+            <div className="text-center py-16 px-4 bg-card rounded-2xl border border-dashed border-border shadow-xs">
+              <Clock className="w-12 h-12 text-amber-500/40 mx-auto mb-3" />
+              <h4 className="font-bold text-foreground text-base">ระบบยังไม่เปิดให้ดูผลการประเมิน</h4>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                ระบบจะเปิดให้ดูผลการประเมินคุณลักษณะอันพึงประสงค์เฉพาะภาคเรียนที่ 2
+              </p>
             </div>
-            <div className="divide-y divide-border">
-              {RWT_TOPICS.map((rt) => (
-                <div key={rt.key} className="p-4 flex items-center justify-between gap-3 bg-emerald-500/[0.005]">
-                  <div className="min-w-0">
-                    <div className="font-semibold text-foreground text-sm">{rt.th}</div>
-                    <div className="text-xs text-subtle-foreground mt-0.5">
-                      {[rt.rumi, rt.jawi].filter(Boolean).join(" · ")}
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
-                    Fixed
-                  </span>
-                </div>
-              ))}
+          ) : evalLoading ? (
+            <div className="text-center py-20 bg-card rounded-2xl border border-border shadow-xs">
+              <div className="inline-block w-9 h-9 border-4 border-indigo-200 dark:border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
+              <p className="text-muted-foreground font-semibold text-sm">กำลังโหลดข้อมูลผลการประเมิน...</p>
             </div>
-          </div>
-          <div className="p-4 bg-muted/20 border-t border-border text-center text-xs text-muted-foreground">
-            การประเมินส่วนนี้คือ &ldquo;การอ่าน คิดวิเคราะห์ และเขียน&rdquo;
-          </div>
-        </div>
-      </div>
-
-      {/* Term / classroom results */}
-      <div className="card-modern p-4 flex flex-wrap items-center gap-3">
-        <label htmlFor="evaluation-year" className="text-sm font-bold text-foreground">เลือกปีการศึกษา</label>
-        <select
-          id="evaluation-year"
-          value={evalSettingId || ""}
-          onChange={(event) => handleSelectEvalSetting(Number(event.target.value))}
-          className="input-modern px-3 py-2 text-sm font-semibold min-w-48"
-        >
-          {evaluationSettings.map(setting => (
-            <option key={setting.id} value={setting.id}>ปีการศึกษา {setting.academic_year}</option>
-          ))}
-        </select>
-        <span className="text-xs text-muted-foreground">ใช้ข้อมูลการประเมินของเทอม 2 โดยอัตโนมัติ</span>
-      </div>
-
-      {!evalSettingId ? (
-        <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-          กรุณาเลือกปีการศึกษา / เทอม ด้านบนก่อน
-        </div>
-      ) : !termOpen ? (
-        <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-          ระบบเปิดให้ดูผลการประเมินเฉพาะภาคเรียนที่ 2 ของปีการศึกษานั้นๆ
-        </div>
-      ) : evalLoading ? (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-indigo-200 dark:border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
-          <p className="text-muted-foreground font-semibold text-sm">กำลังโหลดข้อมูล...</p>
-        </div>
-      ) : (
-        <div>
-          <div className="mb-6 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-subtle-foreground uppercase tracking-wider">ห้องเรียน:</span>
-            {evalClassrooms.length === 0 ? (
-              <span className="text-xs text-subtle-foreground">ไม่มีห้องเรียนในเทอมนี้</span>
-            ) : (
-              evalClassrooms.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setEvalClassroomId(c.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                    evalClassroomId === c.id
-                      ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md"
-                      : "bg-card text-muted-foreground border-border hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
-                  }`}
-                >
-                  {c.name}{c.name_thai && c.name_thai !== c.name ? ` (${c.name_thai})` : ""}
-                </button>
-              ))
-            )}
-          </div>
-
-          {!evalClassroomId ? (
-            <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-              กรุณาเลือกห้องเรียนก่อน
+          ) : !evalClassroomId ? (
+            <div className="text-center py-16 px-4 bg-card rounded-2xl border border-dashed border-border shadow-xs">
+              <School className="w-12 h-12 text-indigo-400/40 mx-auto mb-3" />
+              <h4 className="font-bold text-foreground text-base">กรุณาเลือกห้องเรียนที่ต้องการดูผล</h4>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                คลิกเลือกห้องเรียนในกล่องด้านบนเพื่อเปิดดูตารางสรุปผลการประเมินของนักเรียน
+              </p>
             </div>
           ) : classroomStudents.length === 0 ? (
-            <div className="text-center py-12 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-              ไม่มีนักเรียนในห้องนี้
+            <div className="text-center py-16 px-4 bg-card rounded-2xl border border-dashed border-border shadow-xs">
+              <Users className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+              <h4 className="font-bold text-foreground text-base">ไม่มีนักเรียนในห้องเรียนนี้</h4>
+              <p className="text-xs text-muted-foreground mt-1">ยังไม่มีข้อมูลนักเรียนที่ถูกจัดเข้าชั้นเรียนนี้ในเทอมปัจจุบัน</p>
             </div>
           ) : (
-            <>
-            <div className="hidden card-modern overflow-hidden md:block">
-              <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10 border-b border-border/80">
-                    <tr>
-                      <th rowSpan={2} className="px-3 py-3 text-center font-bold w-10 border-r border-border/60">#</th>
-                      <th rowSpan={2} className="px-3 py-3 font-bold min-w-[160px] border-r border-border/60 text-left">ชื่อ-สกุล</th>
-                      {activeTopics.length > 0 && (
-                        <th colSpan={activeTopics.length} className="px-3 py-1.5 text-center font-bold bg-indigo-500/5 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-r-2 border-border">
-                          คุณลักษณะอันพึงประสงค์ (แอดมินกำหนด)
-                        </th>
-                      )}
-                      <th colSpan={RWT_TOPICS.length} className="px-3 py-1.5 text-center font-bold bg-emerald-500/5 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-                        การอ่าน คิดวิเคราะห์ และเขียน (ค่าเริ่มต้น)
-                      </th>
-                    </tr>
-                    <tr className="bg-muted/50 border-t border-border/40">
-                      {activeTopics.map((t, idx) => (
-                        <th 
-                          key={t.id} 
-                          className={`px-3 py-2 text-center font-semibold min-w-[110px] text-[11px] ${
-                            idx === activeTopics.length - 1 ? "border-r-2 border-border" : "border-r border-border/40"
-                          }`}
+            <div className="space-y-4">
+              {/* Classroom Overview & Stat Strip */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="card-modern p-3.5 sm:p-4 border border-border/80 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-muted-foreground uppercase truncate">นักเรียนทั้งหมด</div>
+                    <div className="text-lg sm:text-xl font-extrabold text-foreground">{classStats.total} <span className="text-xs font-normal text-muted-foreground">คน</span></div>
+                  </div>
+                </div>
+
+                <div className="card-modern p-3.5 sm:p-4 border border-border/80 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-muted-foreground uppercase truncate">ประเมินครบถ้วน</div>
+                    <div className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{classStats.completed} <span className="text-xs font-normal text-muted-foreground">คน ({classStats.percent}%)</span></div>
+                  </div>
+                </div>
+
+                <div className="card-modern p-3.5 sm:p-4 border border-border/80 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-muted-foreground uppercase truncate">รอประเมิน / ไม่ครบ</div>
+                    <div className="text-lg sm:text-xl font-extrabold text-amber-600 dark:text-amber-400">{classStats.pending} <span className="text-xs font-normal text-muted-foreground">คน</span></div>
+                  </div>
+                </div>
+
+                <div className="card-modern p-3.5 sm:p-4 border border-border/80 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-bold text-muted-foreground uppercase truncate">เกณฑ์ที่ใช้</div>
+                      <div className="text-sm font-extrabold text-foreground truncate">{totalTopicsCount} หัวข้อ</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("topics")}
+                    className="p-1.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 cursor-pointer shrink-0"
+                    title="ไปที่การตั้งค่าหัวข้อ"
+                  >
+                    ปรับหัวข้อ
+                  </button>
+                </div>
+              </div>
+
+              {/* Search & Filter Toolbar */}
+              <div className="card-modern p-3 sm:p-4 border border-border/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="ค้นหาชื่อ หรือรหัสนักเรียน..."
+                    className="input-modern !py-1.5 !pl-9 !pr-8 text-xs sm:text-sm"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="inline-flex p-0.5 bg-muted rounded-xl border border-border text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatus("all")}
+                      className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                        filterStatus === "all" ? "bg-card text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      ทั้งหมด ({classroomStudents.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatus("completed")}
+                      className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                        filterStatus === "completed" ? "bg-card text-emerald-600 dark:text-emerald-400 shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      ครบถ้วน ({classStats.completed})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatus("pending")}
+                      className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                        filterStatus === "pending" ? "bg-card text-amber-600 dark:text-amber-400 shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      ยังไม่ครบ ({classStats.pending})
+                    </button>
+                  </div>
+                  <span className="text-xs text-muted-foreground hidden sm:inline-block">
+                    แสดง {filteredStudents.length} คน
+                  </span>
+                </div>
+              </div>
+
+              {/* TABLE VIEW (Tablet & Desktop: md:block) */}
+              <div className="hidden md:block card-modern overflow-hidden border border-border/80 shadow-sm">
+                <div className="overflow-x-auto max-h-[660px] overflow-y-auto scrollbar-thin">
+                  <table className="w-full text-sm border-separate border-spacing-0">
+                    <thead>
+                      {/* Top Tier Headers */}
+                      <tr>
+                        <th
+                          rowSpan={2}
+                          className="sticky top-0 left-0 z-30 bg-muted/95 backdrop-blur-md border-b-2 border-r border-border text-center font-bold text-xs text-muted-foreground w-12 py-3 px-2 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]"
                         >
-                          {t.name_th}
+                          #
                         </th>
-                      ))}
-                      {RWT_TOPICS.map((rt, idx) => (
-                        <th 
-                          key={rt.key} 
-                          className={`px-3 py-2 text-center font-semibold min-w-[110px] text-[11px] ${
-                            idx < RWT_TOPICS.length - 1 ? "border-r border-border/40" : ""
-                          }`}
+                        <th
+                          rowSpan={2}
+                          className="sticky top-0 left-12 z-30 bg-muted/95 backdrop-blur-md border-b-2 border-r-2 border-border font-bold text-xs text-muted-foreground min-w-[200px] max-w-[240px] py-3 px-4 text-left shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]"
                         >
-                          {rt.th}
+                          ชื่อ-สกุล / รหัสนักเรียน
                         </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {classroomStudents.map((s, idx) => (
-                      <tr key={s.id} className="hover:bg-muted transition-colors">
-                        <td className="px-3 py-2.5 text-center text-muted-foreground text-xs border-r border-border/40">{idx + 1}</td>
-                        <td className="px-3 py-2.5 border-r border-border/60">
-                          <div className="font-semibold text-foreground text-xs">{s.name}</div>
-                          <div className="text-[10px] text-subtle-foreground">{s.student_id}</div>
-                        </td>
-                        {activeTopics.map((t, tIdx) => (
-                          <td 
-                            key={t.id} 
-                            className={`px-3 py-2.5 text-center ${
-                              tIdx === activeTopics.length - 1 ? "border-r-2 border-border bg-indigo-500/[0.01] dark:bg-indigo-500/[0.02]" : "border-r border-border/40"
-                            }`}
+
+                        {activeTopics.length > 0 && (
+                          <th
+                            colSpan={activeTopics.length}
+                            className="sticky top-0 z-20 bg-gradient-to-r from-indigo-50/90 to-violet-50/90 dark:from-indigo-950/40 dark:to-violet-950/40 text-indigo-700 dark:text-indigo-300 font-extrabold border-b border-r-2 border-border py-2 px-3 text-center text-xs tracking-wide"
                           >
-                            <RatingBadge rating={findRating(s.student_id, "character", t.id)} />
-                          </td>
+                            คุณลักษณะอันพึงประสงค์ (แอดมินกำหนด)
+                          </th>
+                        )}
+
+                        <th
+                          colSpan={RWT_TOPICS.length}
+                          className="sticky top-0 z-20 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-700 dark:text-emerald-300 font-extrabold border-b border-r border-border py-2 px-3 text-center text-xs tracking-wide"
+                        >
+                          การอ่าน คิดวิเคราะห์ และเขียน (ระบบกำหนด)
+                        </th>
+
+                        <th
+                          rowSpan={2}
+                          className="sticky top-0 right-0 z-30 bg-muted/95 backdrop-blur-md border-b-2 border-l-2 border-border text-center font-bold text-xs text-muted-foreground w-28 py-3 px-3 shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)]"
+                        >
+                          สถานะ
+                        </th>
+                      </tr>
+
+                      {/* Second Tier Topic Headers */}
+                      <tr className="bg-muted/70 text-muted-foreground text-xs">
+                        {activeTopics.map((t, idx) => (
+                          <th
+                            key={t.id}
+                            className={`sticky top-[37px] z-20 bg-muted/90 backdrop-blur-md px-2.5 py-2 text-center font-bold text-[11px] min-w-[110px] max-w-[130px] border-b-2 border-border truncate ${
+                              idx === activeTopics.length - 1 ? "border-r-2 border-border" : "border-r border-border/50"
+                            }`}
+                            title={t.name_th}
+                          >
+                            <span className="block truncate">{t.name_th}</span>
+                          </th>
                         ))}
-                        {RWT_TOPICS.map((rt, rtIdx) => (
-                          <td 
-                            key={rt.key} 
-                            className={`px-3 py-2.5 text-center bg-emerald-500/[0.01] dark:bg-emerald-500/[0.02] ${
-                              rtIdx < RWT_TOPICS.length - 1 ? "border-r border-border/40" : ""
+                        {RWT_TOPICS.map((rt, idx) => (
+                          <th
+                            key={rt.key}
+                            className={`sticky top-[37px] z-20 bg-muted/90 backdrop-blur-md px-2 py-2 text-center font-bold text-[11px] min-w-[140px] max-w-[170px] border-b-2 border-border ${
+                              idx < RWT_TOPICS.length - 1 ? "border-r border-border/50" : "border-r border-border"
                             }`}
+                            title={`${rt.th} / ${rt.rumi} / ${rt.jawi}`}
                           >
-                            <RatingBadge rating={findRating(s.student_id, "rwt", rt.key)} />
-                          </td>
+                            <div className="flex flex-col items-center justify-center leading-tight">
+                              <span className="font-extrabold text-foreground">{rt.th} / {rt.rumi}</span>
+                              <span className="text-[10px] text-muted-foreground font-arabic" dir="rtl">{rt.jawi}</span>
+                            </div>
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+
+                    <tbody className="divide-y divide-border/70">
+                      {filteredStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={2 + activeTopics.length + RWT_TOPICS.length + 1} className="py-12 text-center text-muted-foreground text-sm">
+                            ไม่พบนักเรียนตามเงื่อนไขการค้นหา
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredStudents.map((s, idx) => {
+                          const { done, total, isComplete } = getStudentProgress(s.student_id);
+                          return (
+                            <tr key={s.id} className="group hover:bg-muted/40 transition-colors">
+                              {/* Sticky Column 1: Index */}
+                              <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/70 border-b border-r border-border/60 text-center text-xs font-semibold py-2.5 px-2 text-muted-foreground shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]">
+                                {idx + 1}
+                              </td>
+
+                              {/* Sticky Column 2: Name & ID */}
+                              <td className="sticky left-12 z-10 bg-card group-hover:bg-muted/70 border-b border-r-2 border-border py-2.5 px-4 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]">
+                                <div className="font-bold text-foreground text-xs sm:text-sm truncate max-w-[190px]">
+                                  {s.name}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                  <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{s.student_id}</span>
+                                  {s.student_number !== null && (
+                                    <span className="text-subtle-foreground">· เลขที่ {s.student_number}</span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Character Topics */}
+                              {activeTopics.map((t, tIdx) => (
+                                <td
+                                  key={t.id}
+                                  className={`px-2 py-2.5 text-center border-b ${
+                                    tIdx === activeTopics.length - 1
+                                      ? "border-r-2 border-border bg-indigo-500/[0.015] dark:bg-indigo-500/[0.03]"
+                                      : "border-r border-border/50"
+                                  }`}
+                                >
+                                  <RatingBadge rating={findRating(s.student_id, "character", t.id)} />
+                                </td>
+                              ))}
+
+                              {/* RWT Topics */}
+                              {RWT_TOPICS.map((rt, rtIdx) => (
+                                <td
+                                  key={rt.key}
+                                  className={`px-2 py-2.5 text-center border-b bg-emerald-500/[0.015] dark:bg-emerald-500/[0.03] ${
+                                    rtIdx < RWT_TOPICS.length - 1 ? "border-r border-border/50" : "border-r border-border"
+                                  }`}
+                                >
+                                  <RatingBadge rating={findRating(s.student_id, "rwt", rt.key)} />
+                                </td>
+                              ))}
+
+                              {/* Sticky Right Column: Status */}
+                              <td className="sticky right-0 z-10 bg-card group-hover:bg-muted/70 border-b border-l-2 border-border text-center py-2.5 px-3 shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)]">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    isComplete
+                                      ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+                                      : "bg-muted text-muted-foreground border-border"
+                                  }`}
+                                >
+                                  {isComplete ? <Check className="w-3 h-3" /> : null}
+                                  {done}/{total}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* MOBILE CARDS VIEW (md:hidden) */}
+              <div className="space-y-3.5 md:hidden">
+                {filteredStudents.length === 0 ? (
+                  <div className="card-modern p-8 text-center text-sm text-muted-foreground">
+                    ไม่พบนักเรียนตามเงื่อนไขการค้นหา
+                  </div>
+                ) : (
+                  filteredStudents.map((student, index) => {
+                    const { done, total, isComplete } = getStudentProgress(student.student_id);
+                    return (
+                      <article key={student.id} className="card-modern p-4 space-y-3.5 border border-border/80 shadow-xs">
+                        {/* Student Card Header */}
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-6 h-6 rounded-lg bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center shrink-0">
+                              {index + 1}
+                            </span>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-foreground text-sm truncate">{student.name}</h4>
+                              <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{student.student_id}</span>
+                                {student.student_number !== null && (
+                                  <span>· เลขที่ {student.student_number}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${
+                              isComplete
+                                ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+                                : "bg-muted text-muted-foreground border-border"
+                            }`}
+                          >
+                            {isComplete && <Check className="w-3 h-3" />}
+                            {done}/{total} หัวข้อ
+                          </span>
+                        </div>
+
+                        {/* Character Topics */}
+                        {activeTopics.length > 0 && (
+                          <div className="space-y-2 pt-2 border-t border-border/70">
+                            <div className="text-[11px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                              คุณลักษณะอันพึงประสงค์
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {activeTopics.map((topic) => (
+                                <div
+                                  key={topic.id}
+                                  className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-muted/40 border border-border/50 text-xs"
+                                >
+                                  <span className="text-muted-foreground truncate">{topic.name_th}</span>
+                                  <RatingBadge rating={findRating(student.student_id, "character", topic.id)} size="sm" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* RWT Topics */}
+                        <div className="space-y-2 pt-2 border-t border-border/70">
+                          <div className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            การอ่าน คิดวิเคราะห์ และเขียน
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                            {RWT_TOPICS.map((topic) => (
+                              <div
+                                key={topic.key}
+                                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-muted/40 border border-border/50 text-xs"
+                              >
+                                <span className="text-muted-foreground truncate">{topic.th} / {topic.rumi} / {topic.jawi}</span>
+                                <RatingBadge rating={findRating(student.student_id, "rwt", topic.key)} size="sm" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
               </div>
             </div>
-            <div className="space-y-3 md:hidden">
-              {classroomStudents.map((student, index) => (
-                <article key={student.id} className="card-modern space-y-3 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0"><div className="truncate font-bold text-foreground">{student.name}</div><div className="text-xs text-muted-foreground">{student.student_id}</div></div>
-                    <span className="shrink-0 text-xs font-semibold text-muted-foreground">{index + 1}</span>
-                  </div>
-                  {activeTopics.length > 0 && <div className="space-y-2 border-t border-border pt-3"><div className="text-xs font-bold text-indigo-700 dark:text-indigo-400">คุณลักษณะอันพึงประสงค์</div>{activeTopics.map((topic) => <div key={topic.id} className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">{topic.name_th}</span><RatingBadge rating={findRating(student.student_id, "character", topic.id)} /></div>)}</div>}
-                  <div className="space-y-2 border-t border-border pt-3"><div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">การอ่าน คิดวิเคราะห์ และเขียน</div>{RWT_TOPICS.map((topic) => <div key={topic.key} className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">{topic.th}</span><RatingBadge rating={findRating(student.student_id, "rwt", topic.key)} /></div>)}</div>
-                </article>
-              ))}
-            </div>
-            </>
           )}
+        </div>
+      )}
+
+      {/* VIEW 2: TOPIC MANAGEMENT (จัดการหัวข้อคุณลักษณะ) */}
+      {viewMode === "topics" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header Action Toolbar Banner */}
+          <div className="card-modern p-4 sm:p-5 border border-border/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+                  <SlidersHorizontal className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-foreground text-sm sm:text-base">
+                  จัดการหัวข้อเกณฑ์การประเมิน
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                กำหนดหัวข้อคุณลักษณะ ปรับลำดับ เปิด/ปิดใช้งาน หรือนำเข้าจากไฟล์ Excel/CSV
+              </p>
+            </div>
+
+            {/* Template & Import Buttons */}
+            <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
+              <button
+                type="button"
+                onClick={() => downloadTemplate("xlsx")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-500" />
+                <span>แม่แบบ .xlsx</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadTemplate("csv")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-500" />
+                <span>แม่แบบ .csv</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => importInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer shadow-sm"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>นำเข้าไฟล์</span>
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".xlsx,.csv"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+            </div>
+          </div>
+
+          {/* Add New Topic Form Card */}
+          <div className="card-modern p-4 sm:p-5 lg:p-6 border border-border/80 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-border/60">
+              <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <Plus className="w-4 h-4" />
+              </div>
+              <h4 className="font-bold text-foreground text-sm">เพิ่มหัวข้อคุณลักษณะใหม่</h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+              <div className="lg:col-span-4 space-y-1">
+                <label className="text-xs font-bold text-foreground">
+                  ชื่อหัวข้อ (ภาษาไทย) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  value={evalTopicForm.name_th}
+                  onChange={(e) => setEvalTopicForm({ ...evalTopicForm, name_th: e.target.value })}
+                  placeholder="เช่น ซื่อสัตย์สุจริต, มีวินัย..."
+                  className="input-modern px-3 py-2 text-xs sm:text-sm"
+                />
+              </div>
+
+              <div className="lg:col-span-3 space-y-1">
+                <label className="text-xs font-bold text-muted-foreground">
+                  ชื่อภาษารูมี (Rumi - ไม่บังคับ)
+                </label>
+                <input
+                  value={evalTopicForm.name_rumi}
+                  onChange={(e) => setEvalTopicForm({ ...evalTopicForm, name_rumi: e.target.value })}
+                  placeholder="เช่น Jujur, Berdisiplin..."
+                  className="input-modern px-3 py-2 text-xs sm:text-sm"
+                />
+              </div>
+
+              <div className="lg:col-span-3 space-y-1">
+                <label className="text-xs font-bold text-muted-foreground">
+                  ชื่อภาษายาวี (Jawi - ไม่บังคับ)
+                </label>
+                <input
+                  value={evalTopicForm.name_jawi}
+                  onChange={(e) => setEvalTopicForm({ ...evalTopicForm, name_jawi: e.target.value })}
+                  placeholder="เช่น جوجور, برديسيڤلين..."
+                  className="input-modern px-3 py-2 text-xs sm:text-sm"
+                />
+              </div>
+
+              <div className="lg:col-span-2">
+                <button
+                  type="button"
+                  onClick={onAddTopic}
+                  disabled={!evalTopicForm.name_th.trim() || evalSavingTopic}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-violet-600 text-white disabled:opacity-50 cursor-pointer shadow-md hover:opacity-95 active:scale-98 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{evalSavingTopic ? "กำลังเพิ่ม..." : "เพิ่มหัวข้อ"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Topics Split Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left/Main Column: Admin Defined Topics */}
+            <div className="lg:col-span-7 xl:col-span-8 card-modern overflow-hidden border border-border/80 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="px-5 py-4 border-b border-border/60 bg-indigo-500/[0.02] flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse" />
+                    <h4 className="font-bold text-foreground text-sm">
+                      หัวข้อกำหนดโดยแอดมิน ({sortedTopics.length} หัวข้อ)
+                    </h4>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    เปิดใช้งาน {activeTopics.length} หัวข้อ
+                  </span>
+                </div>
+
+                <div className="divide-y divide-border/70 max-h-[500px] overflow-y-auto">
+                  {sortedTopics.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                      ยังไม่มีหัวข้อคุณลักษณะที่กำหนดโดยแอดมิน กรุณาเพิ่มข้อมูลด้านบนหรือนำเข้าไฟล์
+                    </div>
+                  ) : (
+                    sortedTopics.map((t, idx) => (
+                      <div
+                        key={t.id}
+                        className={`p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors hover:bg-muted/30 ${
+                          !t.is_active ? "opacity-50 bg-muted/20" : ""
+                        }`}
+                      >
+                        {editingTopicId === t.id ? (
+                          <div className="flex-1 space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <input
+                                value={editForm.name_th}
+                                onChange={(e) => setEditForm({ ...editForm, name_th: e.target.value })}
+                                placeholder="ชื่อไทย *"
+                                className="input-modern px-3 py-1.5 text-xs sm:text-sm"
+                              />
+                              <input
+                                value={editForm.name_rumi}
+                                onChange={(e) => setEditForm({ ...editForm, name_rumi: e.target.value })}
+                                placeholder="Rumi"
+                                className="input-modern px-3 py-1.5 text-xs sm:text-sm"
+                              />
+                              <input
+                                value={editForm.name_jawi}
+                                onChange={(e) => setEditForm({ ...editForm, name_jawi: e.target.value })}
+                                placeholder="Jawi"
+                                className="input-modern px-3 py-1.5 text-xs sm:text-sm"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={saveEdit}
+                                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs"
+                              >
+                                บันทึก
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingTopicId(null)}
+                                className="px-3 py-1.5 text-xs font-bold rounded-lg bg-muted hover:bg-muted/80 text-foreground cursor-pointer"
+                              >
+                                ยกเลิก
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-start gap-3 min-w-0">
+                              <span className="w-6 h-6 rounded-md bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                {idx + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-foreground text-sm flex items-center gap-2 flex-wrap">
+                                  <span>{t.name_th}</span>
+                                  {!t.is_active && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-muted text-muted-foreground rounded-md border border-border">
+                                      ปิดใช้งาน
+                                    </span>
+                                  )}
+                                </div>
+                                {(t.name_rumi || t.name_jawi) && (
+                                  <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                                    {t.name_rumi && <span>{t.name_rumi}</span>}
+                                    {t.name_rumi && t.name_jawi && <span>·</span>}
+                                    {t.name_jawi && <span>{t.name_jawi}</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Actions Group */}
+                            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                              <div className="flex items-center gap-1 mr-1">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => onReorderTopic(idx, "up")}
+                                  className="p-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-20 cursor-pointer"
+                                  title="เลื่อนขึ้น"
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === sortedTopics.length - 1}
+                                  onClick={() => onReorderTopic(idx, "down")}
+                                  className="p-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-20 cursor-pointer"
+                                  title="เลื่อนลง"
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => startEdit(t)}
+                                className="px-2.5 py-1 text-xs font-bold rounded-lg border border-border bg-card hover:bg-muted cursor-pointer"
+                              >
+                                แก้ไข
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onUpdateTopic(t.id, { is_active: !t.is_active })}
+                                className="px-2.5 py-1 text-xs font-bold rounded-lg border border-border bg-card hover:bg-muted cursor-pointer"
+                              >
+                                {t.is_active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onDeleteTopic(t.id)}
+                                className="p-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg border border-rose-200 dark:border-rose-500/30 cursor-pointer"
+                                title="ลบหัวข้อ"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3 bg-muted/20 border-t border-border text-center text-xs text-muted-foreground">
+                การแก้ไขลำดับหรือเปิด/ปิดใช้งานจะมีผลทันทีในตารางประเมินของคุณครู
+              </div>
+            </div>
+
+            {/* Right/Side Column: System Fixed Topics (RWT) */}
+            <div className="lg:col-span-5 xl:col-span-4 card-modern overflow-hidden border border-border/80 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="px-5 py-4 border-b border-border/60 bg-emerald-500/[0.03]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <h4 className="font-bold text-foreground text-sm">
+                      หัวข้อค่าเริ่มต้น (ระบบกำหนด / Fixed)
+                    </h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    มาตรฐานการอ่าน คิดวิเคราะห์ และเขียนตามหลักสูตรแกนกลาง
+                  </p>
+                </div>
+
+                <div className="divide-y divide-border/70">
+                  {RWT_TOPICS.map((rt) => (
+                    <div key={rt.key} className="p-4 flex items-center justify-between gap-3 bg-emerald-500/[0.005]">
+                      <div className="min-w-0">
+                        <div className="font-bold text-foreground text-sm">{rt.th} / {rt.rumi} / {rt.jawi}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {[rt.rumi, rt.jawi].filter(Boolean).join(" · ")}
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 shrink-0">
+                        Fixed
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 bg-muted/20 border-t border-border flex items-start gap-2.5 text-xs text-muted-foreground">
+                <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <p>
+                  หัวข้อในส่วนนี้คือเกณฑ์ประเมิน &ldquo;การอ่าน คิดวิเคราะห์ และเขียน&rdquo; ซึ่งเป็นหัวข้อมาตรฐานตายตัว ไม่สามารถลบหรือแก้ไขได้
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

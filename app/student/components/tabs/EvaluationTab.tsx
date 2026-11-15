@@ -122,7 +122,7 @@ export default function EvaluationTab({
             <div className="divide-y divide-border">
               {RWT_TOPICS.map(rt => (
                 <div key={rt.key} className="p-4 flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-foreground">{rt.th}</span>
+                  <span className="text-sm font-semibold text-foreground">{rt.th} / {rt.rumi} / {rt.jawi}</span>
                   <RatingBadge rating={findRating("rwt", rt.key)} />
                 </div>
               ))}

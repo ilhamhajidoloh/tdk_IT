@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
       FROM subjects s
       LEFT JOIN users u ON s.teacher_id = u.id
       LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
-      LEFT JOIN classrooms c ON c.id = sc.classroom_id
+      LEFT JOIN classrooms c ON c.id = sc.classroom_id AND c.setting_id = s.setting_id
       ${translationJoin}
       ${whereClause}
       GROUP BY s.id, s.name, s.teacher_id, s.setting_id, s.subject_type, s.credit_hours, s.score_display_mode, s.sort_order, u.username

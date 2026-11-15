@@ -1,8 +1,8 @@
-// หัวข้อ "การอ่าน คิดวิเคราะห์ และเขียน" เป็นหัวข้อตายตัว ไม่ต้องให้แอดมินจัดการ
+// หัวข้อ "การอ่าน คิดวิเคราะห์ และเขียน" เป็นหัวข้อตายตัว ไม่ต้องให้แอดมินจัดการ (RTW: Reading, Thinking, Writing)
 export const RWT_TOPICS = [
-  { key: "reading", th: "การอ่าน", rumi: "Membaca", jawi: "ممباچا" },
-  { key: "writing", th: "การเขียนสื่อความ", rumi: "Menulis untuk Menyampaikan Maksud", jawi: "منوليس اونتوق مڽمڤايكن مقصود" },
-  { key: "thinking", th: "การคิดวิเคราะห์", rumi: "Pemikiran Analitikal", jawi: "ڤميکيرن اناليتيکل" },
+  { key: "reading", th: "การอ่าน", rumi: "Membaca", jawi: "ممباچ" },
+  { key: "thinking", th: "คิดวิเคราะห์", rumi: "Analisis", jawi: "اناليسيس" },
+  { key: "writing", th: "เขียนสื่อความ", rumi: "Menulis", jawi: "منوليس" },
 ] as const;
 
 export type RwtTopicKey = (typeof RWT_TOPICS)[number]["key"];
@@ -31,12 +31,19 @@ export function getRatingLabel(value: number | null | undefined, lang: Evaluatio
   return level.th;
 }
 
-export function getRwtTopicLabel(key: string, lang: EvaluationLang): string {
+export function getRwtTopicCombinedLabel(key: string): string {
+  const topic = RWT_TOPICS.find((t) => t.key === key);
+  if (!topic) return key;
+  return `${topic.th} / ${topic.rumi} / ${topic.jawi}`;
+}
+
+export function getRwtTopicLabel(key: string, lang?: EvaluationLang): string {
   const topic = RWT_TOPICS.find((t) => t.key === key);
   if (!topic) return key;
   if (lang === "ms-rumi") return topic.rumi;
   if (lang === "ms-jawi") return topic.jawi;
-  return topic.th;
+  if (lang === "th") return topic.th;
+  return getRwtTopicCombinedLabel(key);
 }
 
 export function getTopicNameLabel(

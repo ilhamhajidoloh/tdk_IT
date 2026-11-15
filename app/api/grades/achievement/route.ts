@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         `SELECT st.id, st.name, st.student_id, cs.classroom_id, c.name AS classroom_name
          FROM students st
          JOIN classroom_students cs ON cs.student_id = st.id
-         JOIN classrooms c ON c.id = cs.classroom_id
+         JOIN classrooms c ON c.id = cs.classroom_id AND c.setting_id = cs.setting_id
          WHERE cs.setting_id = $1`,
         [settingId]
       ),
