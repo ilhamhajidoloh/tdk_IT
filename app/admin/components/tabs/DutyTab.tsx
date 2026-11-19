@@ -1249,7 +1249,7 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
 
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 mb-4 text-xs text-amber-800 dark:text-amber-300 font-semibold space-y-1">
                   <p>📌 ครู (รายสัปดาห์): ถ้ายังมีวันเปิดเรียนอื่นในสัปดาห์ → หมุนกลุ่มตามปกติ | ถ้าทั้งสัปดาห์ปิดหมด → ยกกลุ่มเดิมไปสัปดาห์ถัดไป</p>
-                  <p>📌 แม่ครัว (รายวัน): ข้ามวันนั้นทันที กลุ่มถัดไปขึ้นวันเปิดเรียนวันถัดไป</p>
+                  <p>📌 แม่ครัว (รายวัน): ถ้าปิดบางวัน → ข้ามกลุ่มของวันปิดและใช้กลุ่มถัดไปในวันเปิด | ถ้าปิดครบทุกวันเรียนทั้งสัปดาห์ → ยกทุกกลุ่มไปสัปดาห์ถัดไป</p>
                 </div>
 
                 {holidays.length === 0 ? (

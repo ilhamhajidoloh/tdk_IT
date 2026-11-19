@@ -299,7 +299,8 @@ export async function GET(req: NextRequest) {
       }
     : null;
 
-  // Cook duty: 1 group per effective school day (skip holidays)
+  // Cook duty: partial closures skip that day's group; a fully closed week
+  // carries all groups forward to the next week.
   const weekStart = cookHasPassedLastSchoolDay && cookWeekHasEffectiveSchoolDay
     ? addDays(baseWeekStart, 7)
     : baseWeekStart;
@@ -357,7 +358,25 @@ export async function GET(req: NextRequest) {
   }
 
   const cookToday = cookEntries.find((e) => e.date === today) ?? null;
-  const cookForecast = cookEntries.filter((e) => e.date > weekEnd).slice(0, COOK_FORECAST_DAYS);
+
+  // Keep configured school days in the forecast even when they are holidays.
+  // Holiday cards intentionally have no group details, while buildCookSchedule
+  // continues to determine the correct group for the remaining open days.
+  const cookForecast: CookDisplayEntry[] = [];
+  let forecastDate = addDays(weekEnd, 1);
+  while (cookForecast.length < COOK_FORECAST_DAYS) {
+    const dayOfWeek = new Date(`${forecastDate}T00:00:00Z`).getUTCDay();
+    if (scheduleDays.includes(dayOfWeek)) {
+      const isHoliday = cookHolidayDates.includes(forecastDate);
+      const entry = cookEntries.find((candidate) => candidate.date === forecastDate);
+      if (isHoliday) {
+        cookForecast.push({ date: forecastDate, id: "", name: "", members: [] });
+      } else if (entry) {
+        cookForecast.push(serializeCookEntry(entry));
+      }
+    }
+    forecastDate = addDays(forecastDate, 1);
+  }
 
   return NextResponse.json({
     news: newsRes.rows,
@@ -380,7 +399,7 @@ export async function GET(req: NextRequest) {
       currentWeekClosed: !cookDisplayWeekHasEffectiveSchoolDay,
       thisWeek: cookThisWeek,
       today: cookToday ? serializeCookEntry(cookToday) : null,
-      forecast: cookForecast.map(serializeCookEntry),
+      forecast: cookForecast,
     },
   });
 }
