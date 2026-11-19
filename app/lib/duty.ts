@@ -5,11 +5,10 @@
 // least one school day that is NOT a holiday. Weeks where ALL school days are
 // holidays do NOT advance the rotation — the same group carries over.
 //
-// Cook duty: 1 group per school day. Groups rotate on every date matching
-// scheduleDays that is NOT a holiday. Weekends / non-school days / holidays
-// are all skipped — rotation does not advance on those days. This naturally
-// means that a week where every school day is a holiday doesn't advance the
-// cook rotation either.
+// Cook duty: 1 group slot per configured school day. In a partially closed
+// week, a holiday still consumes its slot (the assigned group is skipped), so
+// the next open day uses the next group. If every configured school day in a
+// week is closed, no slots are consumed and the whole set carries forward.
 
 function toUTCDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -225,10 +224,10 @@ export interface DailyRotationEntry<T> {
 }
 
 /**
- * Returns up to `count` effective-school-day duty assignments on/after `fromDate`
- * (inclusive). Rotation advances only on days that are both in scheduleDays AND
- * NOT in holidayDates. This naturally means a week where every school day is a
- * holiday doesn't advance the rotation.
+ * Returns up to `count` open-school-day duty assignments on/after `fromDate`
+ * (inclusive). In a week with at least one open school day, every configured
+ * school day consumes a group slot, including holidays. A fully closed week
+ * consumes no slots, carrying all of its groups into the following week.
  */
 export function buildCookSchedule<T>(
   anchorDate: string,
@@ -246,22 +245,30 @@ export function buildCookSchedule<T>(
   const firstDate = fromDate > anchorDate ? fromDate : anchorDate;
   const MAX_ITERATIONS = 20 * 366;
 
-  // A cook group is consumed only by an effective school day.  Do not derive
-  // offsets from 7-day anchor windows: a window boundary can split a weekend,
-  // causing a holiday to be counted when the other weekend day is open.
+  const weekConsumesSlots = (date: string): boolean => {
+    const weekStart = mondayOf(date);
+    const weekEnd = addDays(weekStart, 6);
+    const rangeStart = weekStart < anchorDate ? anchorDate : weekStart;
+    return hasEffectiveSchoolDay(rangeStart, weekEnd, scheduleDays, holidayDates);
+  };
+
+  // Count slots from the anchor so historical partial/full closures affect
+  // today's group consistently with forecasts and printed schedules.
   let rotationSlot = startingOffset;
   let cur = anchorDate;
   while (cur < firstDate) {
-    if (isScheduleDay(cur, scheduleDays) && !holidayDateSet.has(cur)) {
+    if (isScheduleDay(cur, scheduleDays) && weekConsumesSlots(cur)) {
       rotationSlot++;
     }
     cur = addDays(cur, 1);
   }
 
   for (let i = 0; i < MAX_ITERATIONS && results.length < count; i++) {
-    if (isScheduleDay(cur, scheduleDays) && !holidayDateSet.has(cur)) {
-      const index = ((rotationSlot % orderedItems.length) + orderedItems.length) % orderedItems.length;
-      results.push({ date: cur, index, item: orderedItems[index] });
+    if (isScheduleDay(cur, scheduleDays) && weekConsumesSlots(cur)) {
+      if (!holidayDateSet.has(cur)) {
+        const index = ((rotationSlot % orderedItems.length) + orderedItems.length) % orderedItems.length;
+        results.push({ date: cur, index, item: orderedItems[index] });
+      }
       rotationSlot++;
     }
     cur = addDays(cur, 1);
