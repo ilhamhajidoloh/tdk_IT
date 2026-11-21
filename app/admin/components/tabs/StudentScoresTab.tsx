@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { type SystemSetting, type DBStudent, type DBSubject, type DBGrade } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
+import PaginationBar, { usePagination } from "../PaginationBar";
 import Swal from "sweetalert2";
 
 interface StudentScoresTabProps {
@@ -188,6 +189,8 @@ export default function StudentScoresTab({
     .filter(s => s.classroom_id === scoresClassroomId)
     .sort((a, b) => (a.student_number ?? 9999) - (b.student_number ?? 9999) || a.name.localeCompare(b.name, "th"));
 
+  const scoresPagination = usePagination(classroomStudents, 5);
+
   const gradedScoresSubjects = scoresSubjects.filter(
     su => (Number(su.midterm_max_score) || 0) + (Number(su.final_max_score) || 0) > 0
   );
@@ -337,9 +340,9 @@ export default function StudentScoresTab({
             ) : (
               <>
               <div className="hidden card-modern overflow-hidden md:block">
-                <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
+                <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
+                    <thead className="bg-muted text-muted-foreground text-xs">
                       <tr>
                         <th className="px-3 py-2.5 text-center font-bold w-10">#</th>
                         <th className="px-3 py-2.5 font-bold min-w-[160px]">ชื่อ-สกุล</th>
@@ -353,7 +356,11 @@ export default function StudentScoresTab({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {classroomStudents.map((s, idx) => {
+                      {scoresPagination.paginatedItems.map((s, idx) => {
+                        const rowNum =
+                          scoresPagination.perPage === 0
+                            ? idx + 1
+                            : (scoresPagination.currentPage - 1) * scoresPagination.perPage + idx + 1;
                         let totalScore = 0, totalMax = 0;
                         classroomSubjects.forEach(su => {
                           if (su.subject_type === "activity" && !includeActivityInSum) return;
@@ -365,7 +372,7 @@ export default function StudentScoresTab({
                         const info = gradeInfo(pct);
                         return (
                           <tr key={s.id} className="hover:bg-muted transition-colors">
-                            <td className="px-3 py-2.5 text-center text-muted-foreground text-xs">{idx + 1}</td>
+                            <td className="px-3 py-2.5 text-center text-muted-foreground text-xs">{rowNum}</td>
                             <td className="px-3 py-2.5">
                               <div className="font-semibold text-foreground text-xs">{s.name}</div>
                               <div className="text-[10px] text-subtle-foreground">{s.student_id}</div>
@@ -406,7 +413,11 @@ export default function StudentScoresTab({
                 </div>
               </div>
               <div className="space-y-3 md:hidden">
-                {classroomStudents.map((student, index) => {
+                {scoresPagination.paginatedItems.map((student, index) => {
+                  const rowNum =
+                    scoresPagination.perPage === 0
+                      ? index + 1
+                      : (scoresPagination.currentPage - 1) * scoresPagination.perPage + index + 1;
                   let totalScore = 0;
                   let totalMax = 0;
                   const subjectScores = classroomSubjects.map((subject) => {
@@ -420,8 +431,19 @@ export default function StudentScoresTab({
                     return { subject, score, max };
                   });
                   const percent = totalMax > 0 ? (totalScore / totalMax) * 100 : 0;
-                  return <article key={student.id} className="card-modern space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{student.name}</div><div className="text-xs text-muted-foreground">{student.student_id}</div></div><span className="shrink-0 text-xs font-semibold text-muted-foreground">{index + 1}</span></div><div className="grid grid-cols-2 gap-2 border-y border-border py-3 text-center"><div><div className="text-xs text-muted-foreground">รวม</div><div className="font-bold text-foreground">{totalScore}/{totalMax}</div></div><div><div className="text-xs text-muted-foreground">เฉลี่ย</div><span className={`inline-block rounded-lg border px-2 py-0.5 text-xs font-bold ${gradeInfo(percent).badge}`}>{percent.toFixed(1)}%</span></div></div><div className="space-y-2">{subjectScores.map(({ subject, score, max }) => <div key={subject.id} className="flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate text-muted-foreground">{subject.name}</span><span className={score !== null && score / max < 0.5 ? "shrink-0 font-bold text-rose-600 dark:text-rose-400" : "shrink-0 font-bold text-foreground"}>{score === null ? "—" : `${score}/${max}`}</span></div>)}</div></article>;
+                  return <article key={student.id} className="card-modern space-y-3 p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="truncate font-bold text-foreground">{student.name}</div><div className="text-xs text-muted-foreground">{student.student_id}</div></div><span className="shrink-0 text-xs font-semibold text-muted-foreground">{rowNum}</span></div><div className="grid grid-cols-2 gap-2 border-y border-border py-3 text-center"><div><div className="text-xs text-muted-foreground">รวม</div><div className="font-bold text-foreground">{totalScore}/{totalMax}</div></div><div><div className="text-xs text-muted-foreground">เฉลี่ย</div><span className={`inline-block rounded-lg border px-2 py-0.5 text-xs font-bold ${gradeInfo(percent).badge}`}>{percent.toFixed(1)}%</span></div></div><div className="space-y-2">{subjectScores.map(({ subject, score, max }) => <div key={subject.id} className="flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate text-muted-foreground">{subject.name}</span><span className={score !== null && score / max < 0.5 ? "shrink-0 font-bold text-rose-600 dark:text-rose-400" : "shrink-0 font-bold text-foreground"}>{score === null ? "—" : `${score}/${max}`}</span></div>)}</div></article>;
                 })}
+              </div>
+              <div className="mt-4">
+                <PaginationBar
+                  totalItems={scoresPagination.totalItems}
+                  currentPage={scoresPagination.currentPage}
+                  totalPages={scoresPagination.totalPages}
+                  perPage={scoresPagination.perPage}
+                  onPageChange={scoresPagination.setCurrentPage}
+                  onPerPageChange={scoresPagination.setPerPage}
+                  unitLabel="คน"
+                />
               </div>
               </>
             )

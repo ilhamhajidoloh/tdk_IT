@@ -1,4 +1,7 @@
+"use client";
+
 import { type RankingRow } from "./types";
+import PaginationBar, { usePagination } from "./PaginationBar";
 
 export default function RankingGrid({
   classroomSorted,
@@ -13,6 +16,8 @@ export default function RankingGrid({
   schoolCount: number;
   subtitleSuffix?: string;
 }) {
+  const classroomPagination = usePagination(classroomSorted, 5);
+  const schoolPagination = usePagination(schoolSorted, 5);
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       {/* Classroom Ranking */}
@@ -29,9 +34,9 @@ export default function RankingGrid({
           </p>
         </div>
         {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto max-h-[600px] overflow-y-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
+            <thead className="bg-muted text-muted-foreground text-xs">
               <tr>
                 <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
                 <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
@@ -41,7 +46,7 @@ export default function RankingGrid({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {classroomSorted.map((s) => (
+              {classroomPagination.paginatedItems.map((s) => (
                 <tr
                   key={`cr-${s.student_id}`}
                   className={`transition-colors ${
@@ -108,8 +113,8 @@ export default function RankingGrid({
           </table>
         </div>
         {/* Mobile Cards */}
-        <div className="md:hidden max-h-[600px] overflow-y-auto p-3 space-y-2.5">
-          {classroomSorted.map((s) => (
+        <div className="md:hidden p-3 space-y-2.5">
+          {classroomPagination.paginatedItems.map((s) => (
             <div
               key={`cr-mob-${s.student_id}`}
               className={`p-3 rounded-xl border border-border flex items-center justify-between gap-3 ${
@@ -176,6 +181,17 @@ export default function RankingGrid({
             </div>
           ))}
         </div>
+        <div className="px-4 pb-3">
+          <PaginationBar
+            totalItems={classroomPagination.totalItems}
+            currentPage={classroomPagination.currentPage}
+            totalPages={classroomPagination.totalPages}
+            perPage={classroomPagination.perPage}
+            onPageChange={classroomPagination.setCurrentPage}
+            onPerPageChange={classroomPagination.setPerPage}
+            unitLabel="คน"
+          />
+        </div>
       </div>
 
       {/* School Ranking */}
@@ -192,9 +208,9 @@ export default function RankingGrid({
           </p>
         </div>
         {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto max-h-[600px] overflow-y-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
+            <thead className="bg-muted text-muted-foreground text-xs">
               <tr>
                 <th className="px-3 py-2.5 text-center font-bold w-14">อันดับ</th>
                 <th className="px-3 py-2.5 font-bold">ชื่อ-นามสกุล</th>
@@ -204,7 +220,7 @@ export default function RankingGrid({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {schoolSorted.map((s) => (
+              {schoolPagination.paginatedItems.map((s) => (
                 <tr
                   key={`sr-${s.student_id}`}
                   className={`transition-colors ${
@@ -271,8 +287,8 @@ export default function RankingGrid({
           </table>
         </div>
         {/* Mobile Cards */}
-        <div className="md:hidden max-h-[600px] overflow-y-auto p-3 space-y-2.5">
-          {schoolSorted.map((s) => (
+        <div className="md:hidden p-3 space-y-2.5">
+          {schoolPagination.paginatedItems.map((s) => (
             <div
               key={`sr-mob-${s.student_id}`}
               className={`p-3 rounded-xl border border-border flex items-center justify-between gap-3 ${
@@ -338,6 +354,17 @@ export default function RankingGrid({
               </div>
             </div>
           ))}
+        </div>
+        <div className="px-4 pb-3">
+          <PaginationBar
+            totalItems={schoolPagination.totalItems}
+            currentPage={schoolPagination.currentPage}
+            totalPages={schoolPagination.totalPages}
+            perPage={schoolPagination.perPage}
+            onPageChange={schoolPagination.setCurrentPage}
+            onPerPageChange={schoolPagination.setPerPage}
+            unitLabel="คน"
+          />
         </div>
       </div>
     </div>

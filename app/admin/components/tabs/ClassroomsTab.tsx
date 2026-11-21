@@ -24,6 +24,7 @@ import {
 import { type SystemSetting } from "../types";
 import SectionHeader from "../SectionHeader";
 import TermSelector from "../TermSelector";
+import PaginationBar, { usePagination } from "../PaginationBar";
 import PermissionGate from "@/app/components/PermissionGate";
 
 interface ClassroomItem {
@@ -159,6 +160,16 @@ export default function ClassroomsTab<T extends ClassroomItem = ClassroomItem>({
       return inName || inAlt || inTeachers;
     });
   }, [classrooms, searchQuery, filterMode]);
+
+  const {
+    paginatedItems: paginatedClassrooms,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    totalPages,
+    totalItems,
+  } = usePagination(filteredClassrooms, 5);
 
   const allFilteredSelected =
     filteredClassrooms.length > 0 &&
@@ -555,14 +566,14 @@ export default function ClassroomsTab<T extends ClassroomItem = ClassroomItem>({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {filteredClassrooms.map((c, idx) => {
+                      {paginatedClassrooms.map((c, idx) => {
                         const hasStudents = (c.student_count ?? 0) > 0;
                         const isSelected = selectedClassroomIds.includes(c.id);
                         const altNames = getAltNames(c);
                         const teachers = c.homeroom_teacher_names ?? [];
                         const openUpward =
-                          filteredClassrooms.length > 2 &&
-                          idx >= filteredClassrooms.length - 2;
+                          paginatedClassrooms.length > 2 &&
+                          idx >= paginatedClassrooms.length - 2;
 
                         return (
                           <tr
@@ -664,7 +675,7 @@ export default function ClassroomsTab<T extends ClassroomItem = ClassroomItem>({
                   viewMode === "grid" ? "grid" : "grid md:hidden"
                 } grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4`}
               >
-                {filteredClassrooms.map((c) => {
+                {paginatedClassrooms.map((c) => {
                   const hasStudents = (c.student_count ?? 0) > 0;
                   const isSelected = selectedClassroomIds.includes(c.id);
                   const altNames = getAltNames(c);
@@ -767,6 +778,16 @@ export default function ClassroomsTab<T extends ClassroomItem = ClassroomItem>({
                   );
                 })}
               </div>
+
+              <PaginationBar
+                totalItems={totalItems}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                perPage={perPage}
+                onPageChange={setCurrentPage}
+                onPerPageChange={setPerPage}
+                unitLabel="ห้อง"
+              />
             </>
           )}
         </div>
