@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DEFAULT_SCHOOL_LOGO, getCurrentSchoolKey, getSchoolLogoUrl, useSchoolBrand } from "./SchoolBrand";
+import { getCurrentSchoolKey, useSchoolBrand } from "./SchoolBrand";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -16,19 +16,12 @@ export default function InstallPrompt() {
   const [visible, setVisible] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [schoolKey, setSchoolKey] = useState<string | null>(null);
-  const [logoSrc, setLogoSrc] = useState(DEFAULT_SCHOOL_LOGO);
 
   useEffect(() => {
     setSchoolKey(getCurrentSchoolKey());
   }, []);
 
   const { school } = useSchoolBrand(schoolKey);
-
-  useEffect(() => {
-    const url = getSchoolLogoUrl(school?.logo_drive_file_id, school?.logo_url);
-    setLogoSrc(url || DEFAULT_SCHOOL_LOGO);
-  }, [school]);
-
   const appTitle = school?.name?.trim() || "TDK IT";
 
   useEffect(() => {
@@ -96,13 +89,14 @@ export default function InstallPrompt() {
     <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-sm z-50 animate-fade-in-up">
       <div className="flex items-start gap-3 rounded-2xl bg-card/95 backdrop-blur-md border border-border shadow-2xl p-4 text-foreground">
         <div className="relative shrink-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl opacity-20 blur-sm" />
-          <div className="w-11 h-11 rounded-xl overflow-hidden bg-background shadow-sm relative border border-border/80 flex items-center justify-center p-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-500/30 to-emerald-500/30 rounded-2xl blur-sm" />
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden shadow-md relative border border-border/60 bg-[#073b3a] flex items-center justify-center">
             <img
-              src={logoSrc}
+              src="/tdk-it-logo.svg"
               alt={appTitle}
-              className="w-full h-full object-contain"
-              onError={() => setLogoSrc(DEFAULT_SCHOOL_LOGO)}
+              width={64}
+              height={64}
+              className="w-full h-full object-cover"
             />
           </div>
         </div>
