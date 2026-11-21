@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 const PUBLIC_CACHE_HEADERS = { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=900" };
 
@@ -7,6 +8,10 @@ const DEFAULT_MAIN_SCHOOL = {
   id: "00000000-0000-0000-0000-000000000001",
   name: "โรงเรียนหลัก",
   name_en: "Main School",
+  name_jawi: null,
+  village_thai: null,
+  village_rumi: null,
+  village_jawi: null,
   subdomain: "main",
   logo_url: "/logo.jpg",
   address: null,
@@ -32,14 +37,15 @@ export async function GET(
   const isMain = param.toLowerCase() === "main" || param === "00000000-0000-0000-0000-000000000001";
 
   try {
+    await ensureStatusSchema();
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
     let query = "";
-    let queryParams = [param];
+    const queryParams = [param];
 
     if (isUuid) {
-      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules FROM public.schools WHERE id = $1 AND is_active = true";
+      query = "SELECT id, name, name_en, name_jawi, village_thai, village_rumi, village_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules FROM public.schools WHERE id = $1 AND is_active = true";
     } else {
-      query = "SELECT id, name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true";
+      query = "SELECT id, name, name_en, name_jawi, village_thai, village_rumi, village_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true";
     }
 
     let result = await pool.query(query, queryParams);
@@ -67,12 +73,13 @@ export async function GET(
     }
 
     return NextResponse.json(result.rows[0], { headers: PUBLIC_CACHE_HEADERS });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET /api/public/schools/[subdomain] error:", error);
     // หากเป็น main ให้ fallback ส่ง default config เพื่อไม่ให้หน้าเว็บล่ม
     if (isMain) {
       return NextResponse.json(DEFAULT_MAIN_SCHOOL);
     }
-    return NextResponse.json({ error: error.message || "Failed to fetch school info" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to fetch school info";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -9,6 +9,10 @@ export interface SchoolInfo {
   id?: string;
   name?: string | null;
   name_en?: string | null;
+  name_jawi?: string | null;
+  village_thai?: string | null;
+  village_rumi?: string | null;
+  village_jawi?: string | null;
   subdomain?: string | null;
   logo_url?: string | null;
   logo_drive_file_id?: string | null;

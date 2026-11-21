@@ -4381,7 +4381,16 @@ function changeFontSize(dir) {
       }
 
       // ดึงข้อมูลโรงเรียน
-      let schoolData: { name?: string; name_en?: string; name_jawi?: string; logo_url?: string; logo_drive_file_id?: string } | null = null;
+      let schoolData: {
+        name?: string;
+        name_en?: string;
+        name_jawi?: string;
+        village_thai?: string | null;
+        village_rumi?: string | null;
+        village_jawi?: string | null;
+        logo_url?: string;
+        logo_drive_file_id?: string;
+      } | null = null;
       const schoolId = (adminUser as { school_id?: string } | null)?.school_id || "main";
       try {
         const schoolRes = await fetch(`/api/public/schools/${encodeURIComponent(schoolId)}`);
@@ -4744,6 +4753,11 @@ function changeFontSize(dir) {
           : exportLanguage === "ms-rumi"
             ? (schoolData?.name_en || schoolData?.name || schoolName || "")
             : (schoolData?.name || schoolName || "");
+        const displaySchoolVillage = exportLanguage === "ms-jawi"
+          ? (schoolData?.village_jawi || schoolData?.village_thai || "")
+          : exportLanguage === "ms-rumi"
+            ? (schoolData?.village_rumi || schoolData?.village_thai || "")
+            : (schoolData?.village_thai || "");
 
         const reportCardsHTML = targetStudents.map((st, sIdx) => {
           // --- PAGE 1: Subjects & Grades Table ---
@@ -4817,9 +4831,12 @@ function changeFontSize(dir) {
 
           const totalBodyRows = 1 + coreSubjects.length + (activitySubjects.length > 0 ? 1 + activitySubjects.length : 0) + 4;
 
-          const studentIdStr = (st.student_id || "").padEnd(4, " ");
-          const idBoxesHTML = studentIdStr.slice(0, 4).split("").map(ch =>
-            `<div style="width:24px;height:24px;border:1.5px solid #000;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;font-family:monospace;">${ch.trim()}</div>`
+          const rawStudentId = String(st.student_id || "").trim();
+          const studentIdStr = rawStudentId.padEnd(4, " ");
+          const idBoxWidth = studentIdStr.length > 8 ? 20 : 24;
+          const idBoxFontSize = studentIdStr.length > 8 ? 11.5 : 13;
+          const idBoxesHTML = studentIdStr.split("").map((ch, idx) =>
+            `<div style="width:${idBoxWidth}px;height:24px;border:1.5px solid #000;${idx > 0 ? "border-left:0;" : ""}display:flex;align-items:center;justify-content:center;font-size:${idBoxFontSize}px;font-weight:bold;font-family:monospace;box-sizing:border-box;">${ch.trim()}</div>`
           ).join("");
 
           let activitiesListHTML = "";
@@ -4914,7 +4931,7 @@ function changeFontSize(dir) {
                   <div class="po6-id-boxes">${idBoxesHTML}</div>
                   <div class="po6-info-field">
                     <span>${p6("village")}</span>
-                    <span class="po6-dotted-val" style="min-width:140px;"></span>
+                    <span class="po6-dotted-val" style="min-width:140px;font-weight:bold;">${displaySchoolVillage}</span>
                   </div>
                   <div class="po6-info-field" style="flex:1;">
                     <span>${p6("school")}</span>
@@ -4945,7 +4962,7 @@ function changeFontSize(dir) {
               <table class="po6-table">
                 <thead>
                   <tr>
-                    <th rowspan="2" style="width:15%;">${p6("term")}</th>
+                    <th rowspan="2" style="width:15%;">${p6("academicYear")}</th>
                     <th rowspan="2" style="width:18%;">${p6("totalTime")}</th>
                     <th colspan="4">${p6("timeDays")}</th>
                     <th rowspan="2" style="width:15%;">${p6("percent")}</th>
@@ -4959,15 +4976,7 @@ function changeFontSize(dir) {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="font-weight:bold;">${p6("semester1")}</td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td>
-                  </tr>
-                  <tr>
-                    <td style="font-weight:bold;">${p6("semester2")}</td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td>
-                  </tr>
-                  <tr>
-                    <td style="font-weight:bold;">${p6("generalSum")}</td>
+                    <td style="font-weight:bold;">${setting.academic_year}</td>
                     <td></td><td></td><td></td><td></td><td></td><td></td>
                   </tr>
                 </tbody>
@@ -5244,6 +5253,7 @@ function changeFontSize(dir) {
                 display: flex;
                 gap: 0;
                 direction: ltr;
+                flex-shrink: 0;
               }
               .po6-dotted-val {
                 display: inline-block;
@@ -5895,9 +5905,9 @@ function changeFontSize(dir) {
         handleLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-8">
         <PermissionBanner />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           {/* Sidebar Tabs */}
           <div className="lg:col-span-3">
             <AdminSidebar

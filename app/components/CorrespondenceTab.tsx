@@ -1,7 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Swal from "sweetalert2";
+import {
+  BookMarked,
+  Inbox,
+  Send,
+  Archive,
+  Printer,
+  Plus,
+  Search,
+  X,
+  Pencil,
+  Trash2,
+  Paperclip,
+  Download,
+  Upload,
+  FileText,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Calendar,
+} from "lucide-react";
+import ModalPortal from "./ModalPortal";
 
 interface Attachment {
   id: string;
@@ -319,67 +340,78 @@ export default function CorrespondenceTab() {
 
   const renderSortIcon = (column: keyof Book | "date_registered") => {
     if (sortColumn !== column) {
-      return (
-        <svg className="w-3 h-3 text-muted-foreground/30 ml-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-        </svg>
-      );
+      return <ArrowUpDown className="w-3 h-3 text-muted-foreground/40 ml-1 inline-block" />;
     }
     if (sortDirection === "asc") {
-      return (
-        <svg className="w-3 h-3 text-indigo-600 dark:text-indigo-400 ml-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" />
-        </svg>
-      );
+      return <ArrowUp className="w-3 h-3 text-indigo-600 dark:text-indigo-400 ml-1 inline-block" />;
     }
-    return (
-      <svg className="w-3 h-3 text-indigo-600 dark:text-indigo-400 ml-1 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-      </svg>
-    );
+    return <ArrowDown className="w-3 h-3 text-indigo-600 dark:text-indigo-400 ml-1 inline-block" />;
   };
 
   const sortedBooks = [...books].sort((a, b) => {
-    let aVal: any = a[sortColumn] ?? "";
-    let bVal: any = b[sortColumn] ?? "";
+    const aRaw = a[sortColumn];
+    const bRaw = b[sortColumn];
+    const aVal = typeof aRaw === "string" ? aRaw : "";
+    const bVal = typeof bRaw === "string" ? bRaw : "";
 
-    if (typeof aVal === "string") {
-      return sortDirection === "asc"
-        ? aVal.localeCompare(bVal, "th", { numeric: true, sensitivity: "base" })
-        : bVal.localeCompare(aVal, "th", { numeric: true, sensitivity: "base" });
-    }
-
-    if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
-    if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
-    return 0;
+    return sortDirection === "asc"
+      ? aVal.localeCompare(bVal, "th", { numeric: true, sensitivity: "base" })
+      : bVal.localeCompare(aVal, "th", { numeric: true, sensitivity: "base" });
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchBooks();
-  }, [activeSubTab, searchTerm]);
+  const loadBooksData = useCallback(
+    async (type: "inward" | "outward" | "archive", search: string) => {
+      try {
+        let url = `/api/correspondence?type=${type}&`;
+        if (search.trim() !== "") {
+          url += `search=${encodeURIComponent(search)}&`;
+        }
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = (await res.json()) as Book[];
+          setBooks(data);
+        } else {
+          console.error("Failed to fetch correspondence books");
+        }
+      } catch (error) {
+        console.error("Error fetching correspondence books:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   const fetchBooks = async () => {
     setLoading(true);
-    try {
-      let url = `/api/correspondence?type=${activeSubTab}&`;
-      if (searchTerm.trim() !== "") {
-        url += `search=${encodeURIComponent(searchTerm)}&`;
-      }
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setBooks(data);
-      } else {
-        console.error("Failed to fetch correspondence books");
-      }
-    } catch (error) {
-      console.error("Error fetching correspondence books:", error);
-    } finally {
-      setLoading(false);
-    }
+    await loadBooksData(activeSubTab, searchTerm);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    let url = `/api/correspondence?type=${activeSubTab}&`;
+    if (searchTerm.trim() !== "") {
+      url += `search=${encodeURIComponent(searchTerm)}&`;
+    }
+    fetch(url)
+      .then((res) => (res.ok ? (res.json() as Promise<Book[]>) : null))
+      .then((data) => {
+        if (!cancelled && data) {
+          setBooks(data);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) console.error("Error fetching correspondence books:", error);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSubTab, searchTerm]);
 
   const handleOpenAddModal = () => {
     setModalMode("add");
@@ -530,7 +562,7 @@ export default function CorrespondenceTab() {
         }
         Swal.fire("ข้อผิดพลาด", message, "error");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       Swal.fire(
         "ไม่สามารถส่งข้อมูลได้",
@@ -596,190 +628,254 @@ export default function CorrespondenceTab() {
     }
   };
 
+  const SUB_TAB_OPTIONS: {
+    key: "inward" | "outward" | "archive";
+    label: string;
+    shortLabel: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    { key: "inward", label: "หนังสือรับ", shortLabel: "รับ", icon: Inbox },
+    { key: "outward", label: "หนังสือส่ง", shortLabel: "ส่ง", icon: Send },
+    { key: "archive", label: "หนังสือเก็บ", shortLabel: "เก็บ", icon: Archive },
+  ];
+
+  const isArchiveTab = activeSubTab === "archive";
+
   return (
-    <div className="p-4 sm:p-8">
-      {/* Title & Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">ระบบงานสารบรรณ (หนังสือรับ-ส่ง)</h1>
-          <p className="text-sm text-muted-foreground mt-1">จัดการ ลงทะเบียน ค้นหาเอกสารรับและส่งภายในหน่วยงาน</p>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-5 animate-fade-in-up">
+      {/* Header & Primary Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-500/12 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <BookMarked className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                ระบบงานสารบรรณ
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20">
+                {sortedBooks.length} รายการ
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              ลงทะเบียน ค้นหา และจัดเก็บหนังสือรับ-ส่งภายในหน่วยงาน
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto">
+
+        <div className="flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={handleOpenPrintModal}
-            className="w-full sm:w-auto bg-card hover:bg-muted text-foreground border border-border font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer text-sm"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-card hover:bg-muted text-foreground border border-border text-xs sm:text-sm font-bold shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
           >
-            <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            พิมพ์ทะเบียนคุม
+            <Printer className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>พิมพ์ทะเบียนคุม</span>
           </button>
           <button
+            type="button"
             onClick={handleOpenAddModal}
-            className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-0 text-sm whitespace-nowrap"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs sm:text-sm font-bold shadow-sm transition-all border-0 cursor-pointer whitespace-nowrap"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
-            </svg>
-            ลงทะเบียนหนังสือใหม่
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>ลงทะเบียนใหม่</span>
           </button>
         </div>
       </div>
 
-      {/* Tabs & Search */}
-      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-6 pb-4 border-b border-border">
-        {/* Sub-tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none w-full md:w-auto shrink-0">
-          {(["inward", "outward", "archive"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveSubTab(tab)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border cursor-pointer whitespace-nowrap ${
-                activeSubTab === tab
-                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-600 shadow-md"
-                  : "bg-card text-muted-foreground border-border hover:bg-muted"
-              }`}
-            >
-              {tab === "inward" ? "หนังสือรับ (Inward)" : tab === "outward" ? "หนังสือส่ง (Outward)" : "หนังสือเก็บ (Archive)"}
-            </button>
-          ))}
+      {/* Sub-tabs & Search Toolbar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-surface-2 border border-border overflow-x-auto scrollbar-none shrink-0">
+          {SUB_TAB_OPTIONS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeSubTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  if (tab.key !== activeSubTab) {
+                    setLoading(true);
+                    setActiveSubTab(tab.key);
+                  }
+                }}
+                className={`flex-1 md:flex-initial inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? "bg-card text-indigo-600 dark:text-indigo-300 border-border shadow-xs"
+                    : "bg-transparent text-muted-foreground border-transparent hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <Icon
+                  className={`w-4 h-4 shrink-0 ${
+                    isActive ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground"
+                  }`}
+                />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </span>
+        {/* Search Box */}
+        <div className="relative flex-1 md:max-w-xs lg:max-w-sm">
+          <Search className="pointer-events-none w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="ค้นหาเลขที่หนังสือ, ผู้ส่ง, เรื่อง..."
+            placeholder="ค้นหาเลขที่, ผู้ส่ง, เรื่อง..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
+            className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-subtle-foreground text-xs sm:text-sm font-medium transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              aria-label="ล้างคำค้นหา"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border-0 bg-transparent cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Main List */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+        <div className="py-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+          <span className="w-8 h-8 rounded-full border-3 border-indigo-500/20 border-t-indigo-600 animate-spin" />
+          <span className="text-xs font-semibold">กำลังโหลดรายการหนังสือ...</span>
         </div>
       ) : (
         <>
-          {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card">
-            <table className="w-full text-left">
-              <thead className="bg-muted text-muted-foreground">
+          {/* Desktop Table View (>= md) — Compact, zero horizontal clutter */}
+          <div className="hidden md:block overflow-x-auto rounded-2xl border border-border bg-card">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-surface-2 text-muted-foreground border-b border-border text-xs">
                 <tr>
-                  <th className="px-6 py-4 font-semibold text-sm select-none">ประเภท</th>
-                  <th 
-                    onClick={() => handleSort("book_number")}
-                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
-                  >
-                    เลขที่หนังสือ {renderSortIcon("book_number")}
-                  </th>
-                  <th 
-                    onClick={() => handleSort("register_number")}
-                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
-                  >
-                    เลขทะเบียนรับ-ส่ง {renderSortIcon("register_number")}
-                  </th>
-                  <th 
+                  {!isArchiveTab && (
+                    <th
+                      onClick={() => handleSort("register_number")}
+                      className="px-4 py-3.5 font-bold cursor-pointer hover:text-foreground select-none whitespace-nowrap"
+                    >
+                      ทะเบียน / เลขที่ {renderSortIcon("register_number")}
+                    </th>
+                  )}
+                  <th
                     onClick={() => handleSort("date_issued")}
-                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
+                    className="px-4 py-3.5 font-bold cursor-pointer hover:text-foreground select-none whitespace-nowrap"
                   >
                     ลงวันที่ {renderSortIcon("date_issued")}
                   </th>
-                  <th 
+                  <th
                     onClick={() => handleSort("title")}
-                    className="px-6 py-4 font-semibold text-sm cursor-pointer hover:bg-muted/80 select-none transition-colors"
+                    className="px-4 py-3.5 font-bold cursor-pointer hover:text-foreground select-none"
                   >
                     เรื่อง {renderSortIcon("title")}
                   </th>
-                  <th className="px-6 py-4 font-semibold text-sm select-none">จาก → ถึง</th>
-                  <th className="px-6 py-4 font-semibold text-sm select-none">ไฟล์แนบ</th>
-                  <th className="px-6 py-4 font-semibold text-sm text-center select-none">จัดการ</th>
+                  {!isArchiveTab && (
+                    <th className="px-4 py-3.5 font-bold select-none whitespace-nowrap">
+                      จาก → ถึง
+                    </th>
+                  )}
+                  <th className="px-4 py-3.5 font-bold select-none whitespace-nowrap">
+                    ไฟล์แนบ
+                  </th>
+                  <th className="px-4 py-3.5 font-bold text-right select-none whitespace-nowrap">
+                    จัดการ
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border text-sm">
                 {sortedBooks.map((book) => (
-                  <tr key={book.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                          book.book_type === "inward"
-                            ? "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-900/50"
-                            : book.book_type === "outward"
-                            ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/50"
-                            : "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50"
-                        }`}
-                      >
-                        {book.book_type === "inward" ? "หนังสือรับ" : book.book_type === "outward" ? "หนังสือส่ง" : "หนังสือเก็บ"}
-                      </span>
+                  <tr
+                    key={book.id}
+                    className="hover:bg-surface-2/60 transition-colors align-top"
+                  >
+                    {!isArchiveTab && (
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="font-extrabold text-foreground text-xs">
+                          {book.register_number || "-"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {book.book_number || "-"}
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-4 py-3.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                      {formatThaiDateString(book.date_issued)}
                     </td>
-                    <td className="px-6 py-4 font-semibold text-foreground">{book.book_number || "-"}</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{book.register_number || "-"}</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{formatThaiDateString(book.date_issued)}</td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-foreground">{book.title}</div>
-                      {book.description && <div className="text-xs text-muted-foreground mt-0.5 max-w-xs truncate">{book.description}</div>}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-foreground">
-                      {book.book_type === "archive" ? (
-                        <span className="text-xs text-muted-foreground italic">ไม่มีผู้ส่ง-ผู้รับ</span>
-                      ) : (
-                        <>
-                          <div className="font-medium">{book.sender}</div>
-                          <div className="text-xs text-muted-foreground">ถึง: {book.receiver}</div>
-                        </>
+                    <td className="px-4 py-3.5 min-w-[200px]">
+                      <div className="font-bold text-foreground text-sm leading-snug">
+                        {book.title}
+                      </div>
+                      {book.description && (
+                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                          {book.description}
+                        </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        {book.attachments.map((file) => (
-                          <a
-                            key={file.id}
-                            href={`/api/correspondence/download/${file.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="max-w-[150px] truncate" title={file.file_name}>
-                              {file.file_name}
-                            </span>
-                          </a>
-                        ))}
-                        {book.attachments.length === 0 && <span className="text-xs text-muted-foreground">ไม่มีไฟล์แนบ</span>}
-                      </div>
+                    {!isArchiveTab && (
+                      <td className="px-4 py-3.5 text-xs min-w-[150px]">
+                        <div className="font-semibold text-foreground truncate max-w-[180px]" title={book.sender || ""}>
+                          {book.sender || "-"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate max-w-[180px] mt-0.5" title={book.receiver || ""}>
+                          ถึง: {book.receiver || "-"}
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-4 py-3.5">
+                      {book.attachments.length === 0 ? (
+                        <span className="text-xs text-subtle-foreground">-</span>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          {book.attachments.map((file) => (
+                            <a
+                              key={file.id}
+                              href={`/api/correspondence/download/${file.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline w-fit"
+                            >
+                              <Paperclip className="w-3 h-3 shrink-0" />
+                              <span className="max-w-[135px] truncate" title={file.file_name}>
+                                {file.file_name}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1">
                         <button
+                          type="button"
                           onClick={() => handleOpenEditModal(book)}
-                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:text-indigo-300 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                          title="แก้ไข"
+                          className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/15 border-0 bg-transparent cursor-pointer transition-colors"
                         >
-                          แก้ไข
+                          <Pencil className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDeleteBook(book.id)}
-                          className="text-red-500 dark:text-red-400 hover:text-red-700 dark:text-red-300 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-lg transition-colors font-semibold text-xs border-0 cursor-pointer"
+                          title="ลบ"
+                          className="p-1.5 rounded-lg text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/15 border-0 bg-transparent cursor-pointer transition-colors"
                         >
-                          ลบ
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {books.length === 0 && (
+                {sortedBooks.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center py-10 text-muted-foreground">
-                      ไม่พบข้อมูลหนังสือในระบบ
+                    <td
+                      colSpan={isArchiveTab ? 4 : 6}
+                      className="text-center py-12 text-sm font-semibold text-muted-foreground"
+                    >
+                      ไม่พบข้อมูลหนังสือในหมวดนี้
                     </td>
                   </tr>
                 )}
@@ -787,27 +883,38 @@ export default function CorrespondenceTab() {
             </table>
           </div>
 
-          {/* Mobile Cards View */}
-          <div className="md:hidden space-y-4">
-            {/* Mobile Sort Controls */}
-            {books.length > 0 && (
-              <div className="flex gap-2 items-center justify-between p-3 rounded-2xl bg-card border border-border text-xs">
-                <span className="font-bold text-muted-foreground">จัดเรียงตาม:</span>
-                <div className="flex flex-wrap gap-1 justify-end">
-                  {(["date_issued", "register_number", "book_number", "title"] as const).map((col) => {
-                    const label = col === "date_issued" ? "วันที่" : col === "register_number" ? "ทะเบียน" : col === "book_number" ? "เลขที่" : "เรื่อง";
+          {/* Mobile Cards View (< md) */}
+          <div className="md:hidden space-y-3">
+            {sortedBooks.length > 0 && (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-surface-2 border border-border text-xs">
+                <span className="font-bold text-muted-foreground shrink-0">เรียงตาม:</span>
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                  {(
+                    isArchiveTab
+                      ? (["date_issued", "title"] as const)
+                      : (["date_issued", "register_number", "book_number", "title"] as const)
+                  ).map((col) => {
+                    const label =
+                      col === "date_issued"
+                        ? "วันที่"
+                        : col === "register_number"
+                        ? "ทะเบียน"
+                        : col === "book_number"
+                        ? "เลขที่"
+                        : "เรื่อง";
                     const isSelected = sortColumn === col;
                     return (
                       <button
                         key={col}
+                        type="button"
                         onClick={() => handleSort(col)}
-                        className={`px-2.5 py-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg border font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                           isSelected
-                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200"
-                            : "bg-muted text-muted-foreground border-transparent"
+                            ? "bg-card text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/35"
+                            : "bg-transparent text-muted-foreground border-transparent"
                         }`}
                       >
-                        {label} {isSelected && (sortDirection === "asc" ? "▲" : "▼")}
+                        {label} {isSelected && (sortDirection === "asc" ? "↑" : "↓")}
                       </button>
                     );
                   })}
@@ -816,580 +923,610 @@ export default function CorrespondenceTab() {
             )}
 
             {sortedBooks.map((book) => (
-              <div key={book.id} className="p-5 rounded-2xl border border-border bg-card shadow-sm space-y-4">
-                {/* Header: Book Type badge & Date */}
-                <div className="flex justify-between items-center">
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                      book.book_type === "inward"
-                        ? "bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-900/50"
-                        : book.book_type === "outward"
-                        ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900/50"
-                        : "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/50"
-                    }`}
-                  >
-                    {book.book_type === "inward" ? "หนังสือรับ" : book.book_type === "outward" ? "หนังสือส่ง" : "หนังสือเก็บ"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatThaiDateString(book.date_issued)}</span>
+              <article
+                key={book.id}
+                className="p-4 rounded-2xl border border-border bg-card space-y-3"
+              >
+                {/* Card Top Meta */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {!isArchiveTab && book.register_number && (
+                      <span className="px-2 py-0.5 rounded-lg text-[11px] font-extrabold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 shrink-0">
+                        ทะเบียน {book.register_number}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground truncate">
+                      <Calendar className="w-3 h-3 shrink-0" />
+                      {formatThaiDateString(book.date_issued)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(book)}
+                      aria-label="แก้ไขหนังสือ"
+                      className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-0 cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBook(book.id)}
+                      aria-label="ลบหนังสือ"
+                      className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border-0 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Title & Description */}
                 <div>
-                  <h4 className="font-extrabold text-foreground text-base leading-snug">{book.title}</h4>
+                  <h4 className="font-extrabold text-foreground text-sm leading-snug">
+                    {book.title}
+                  </h4>
                   {book.description && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{book.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {book.description}
+                    </p>
                   )}
                 </div>
 
-                {/* Details grid */}
-                <div className="grid grid-cols-2 gap-3 py-3 border-t border-b border-border text-xs">
-                  <div>
-                    <div className="text-muted-foreground font-semibold">เลขที่หนังสือ</div>
-                    <div className="text-foreground font-bold mt-0.5">{book.book_number || "-"}</div>
+                {/* Metadata Grid (Only for Inward / Outward) */}
+                {!isArchiveTab && (
+                  <div className="grid grid-cols-2 gap-2.5 pt-2.5 border-t border-border/70 text-xs">
+                    <div className="col-span-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>เลขที่หนังสือ</span>
+                      <span className="font-bold text-foreground">
+                        {book.book_number || "-"}
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-surface-2 px-2.5 py-2">
+                      <div className="text-[10px] font-semibold text-subtle-foreground">จาก</div>
+                      <div className="font-bold text-foreground truncate mt-0.5">
+                        {book.sender || "-"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-surface-2 px-2.5 py-2">
+                      <div className="text-[10px] font-semibold text-subtle-foreground">ถึง</div>
+                      <div className="font-bold text-foreground truncate mt-0.5">
+                        {book.receiver || "-"}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-muted-foreground font-semibold">เลขทะเบียน</div>
-                    <div className="text-foreground font-bold mt-0.5">{book.register_number || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground font-semibold">จาก</div>
-                    <div className="text-foreground font-bold mt-0.5 truncate">{book.sender || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground font-semibold">ถึง</div>
-                    <div className="text-foreground font-bold mt-0.5 truncate">{book.receiver || "-"}</div>
-                  </div>
-                </div>
+                )}
 
                 {/* Attachments */}
-                <div>
-                  <div className="text-xs text-muted-foreground font-semibold mb-2">ไฟล์แนบ ({book.attachments.length})</div>
-                  <div className="flex flex-wrap gap-2">
+                {book.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/70">
                     {book.attachments.map((file) => (
                       <a
                         key={file.id}
                         href={`/api/correspondence/download/${file.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 hover:bg-indigo-100 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200/70 dark:border-indigo-500/20"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span className="max-w-[120px] truncate" title={file.file_name}>
+                        <Download className="w-3 h-3 shrink-0" />
+                        <span className="max-w-[160px] truncate" title={file.file_name}>
                           {file.file_name}
                         </span>
                       </a>
                     ))}
-                    {book.attachments.length === 0 && (
-                      <span className="text-xs text-muted-foreground italic">ไม่มีไฟล์แนบ</span>
-                    )}
                   </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-2 justify-end">
-                  <button
-                    onClick={() => handleOpenEditModal(book)}
-                    className="flex-1 sm:flex-initial text-center justify-center inline-flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:bg-indigo-500/15 rounded-xl transition-colors font-bold text-xs border-0 cursor-pointer"
-                  >
-                    แก้ไข
-                  </button>
-                  <button
-                    onClick={() => handleDeleteBook(book.id)}
-                    className="flex-1 sm:flex-initial text-center justify-center inline-flex items-center text-red-500 dark:text-red-400 hover:text-red-700 px-4 py-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:bg-red-500/15 rounded-xl transition-colors font-bold text-xs border-0 cursor-pointer"
-                  >
-                    ลบ
-                  </button>
-                </div>
-              </div>
+                )}
+              </article>
             ))}
+
             {sortedBooks.length === 0 && (
-              <div className="text-center py-10 text-muted-foreground bg-card border border-border rounded-2xl">
-                ไม่พบข้อมูลหนังสือในระบบ
+              <div className="text-center py-12 text-sm font-semibold text-muted-foreground bg-surface-2/60 border border-dashed border-border rounded-2xl">
+                ไม่พบข้อมูลหนังสือในหมวดนี้
               </div>
             )}
           </div>
         </>
       )}
 
-      {/* Register / Edit Modal */}
+      {/* Register / Edit Modal (via ModalPortal) */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md overflow-y-auto"
-          onClick={() => setIsOpen(false)}
-        >
+        <ModalPortal>
           <div
-            className="bg-card rounded-3xl border border-border shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col transform transition-all overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/55 backdrop-blur-xs overflow-y-auto"
+            onClick={() => setIsOpen(false)}
           >
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card">
-              <div>
-                <h3 className="text-lg font-bold text-foreground">
-                  {modalMode === "add" ? "ลงทะเบียนหนังสือใหม่" : "แก้ไขข้อมูลหนังสือ"}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  กรุณากรอกข้อมูลหนังสือเพื่อเก็บบันทึกเข้าระบบสารบรรณ
-                </p>
-              </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 rounded-full border-0 bg-transparent cursor-pointer"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Body */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-              {/* Book Type */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  ประเภทหนังสือ <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {(["inward", "outward", "archive"] as const).map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setBookType(type)}
-                      className={`py-2 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
-                        bookType === type
-                          ? type === "inward"
-                            ? "border-teal-500 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 ring-2 ring-teal-400/20"
-                            : type === "outward"
-                            ? "border-purple-500 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-2 ring-purple-400/20"
-                            : "border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-2 ring-blue-400/20"
-                          : "border-border bg-muted text-muted-foreground hover:border-border"
-                      }`}
-                    >
-                      {type === "inward" ? "หนังสือรับ" : type === "outward" ? "หนังสือส่ง" : "หนังสือเก็บ"}
-                    </button>
-                  ))}
+            <div
+              className="bg-card rounded-t-3xl sm:rounded-3xl border border-border shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-5 sm:px-6 py-4 border-b border-border flex items-center justify-between bg-card shrink-0">
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-foreground">
+                    {modalMode === "add" ? "ลงทะเบียนหนังสือใหม่" : "แก้ไขข้อมูลหนังสือ"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    กรอกรายละเอียดเอกสารเพื่อบันทึกเข้าสู่ระบบสารบรรณ
+                  </p>
                 </div>
-              </div>
-
-              {/* Number and Register ID */}
-              {bookType !== "archive" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      เลขที่หนังสือ <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={bookNumber}
-                      onChange={(e) => setBookNumber(e.target.value)}
-                      placeholder="เช่น ศธ 04001/..."
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      เลขทะเบียน รับ-ส่ง <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={registerNumber}
-                      onChange={(e) => setRegisterNumber(e.target.value)}
-                      placeholder="เช่น 125/2568"
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Date Issued */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  ลงวันที่ในหนังสือ <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={dateIssued}
-                  onChange={(e) => setDateIssued(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                />
-              </div>
-
-              {/* Sender & Receiver */}
-              {bookType !== "archive" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      ผู้ส่ง (จาก) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={sender}
-                      onChange={(e) => setSender(e.target.value)}
-                      placeholder="หน่วยงานผู้ส่ง"
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      ผู้รับ (ถึง) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={receiver}
-                      onChange={(e) => setReceiver(e.target.value)}
-                      placeholder="หน่วยงานผู้รับ"
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Title */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  เรื่อง (ชื่อเรื่อง) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="รายละเอียดเรื่องที่รับหรือส่ง"
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none"
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  รายละเอียด / หมายเหตุ
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-muted/40 focus:bg-card text-foreground text-sm font-semibold transition-all focus:ring-2 focus:ring-indigo-400 outline-none resize-none"
-                />
-              </div>
-
-              {/* File List for Edit Mode */}
-              {modalMode === "edit" && selectedBook && selectedBook.attachments.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    ไฟล์แนบในระบบ
-                  </label>
-                  <div className="bg-muted/30 border border-border rounded-xl p-3 divide-y divide-border text-xs">
-                    {selectedBook.attachments.map((attach) => {
-                      const isDeleted = attachmentsToDelete.includes(attach.id);
-                      return (
-                        <div key={attach.id} className="py-2 flex items-center justify-between">
-                          <div className={`truncate max-w-[250px] ${isDeleted ? "line-through text-red-400" : "text-foreground font-medium"}`}>
-                            {attach.file_name} ({formatBytes(attach.file_size)})
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleDeleteAttachment(attach.id)}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border cursor-pointer transition-all ${
-                              isDeleted
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
-                            }`}
-                          >
-                            {isDeleted ? "ยกเลิกการลบ" : "ลบไฟล์"}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Upload Files */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  {modalMode === "add" ? "อัปโหลดไฟล์แนบ" : "เพิ่มไฟล์แนบใหม่"}
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                {/* Drag & Drop Zone */}
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`w-full border-2 border-dashed rounded-2xl px-4 py-6 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
-                    isDragging
-                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/15 scale-[1.01]"
-                      : "border-indigo-200 hover:border-indigo-400 dark:border-indigo-500/30 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10"
-                  } text-indigo-600 dark:text-indigo-400`}
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="ปิดหน้าต่าง"
+                  className="w-8 h-8 rounded-xl bg-muted hover:bg-muted/80 text-foreground flex items-center justify-center border border-border cursor-pointer shrink-0"
                 >
-                  <svg className="w-8 h-8 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  <div className="pointer-events-none text-center">
-                    <p className="text-xs font-bold">
-                      {isDragging ? "ปล่อยไฟล์ที่นี่" : "ลากไฟล์มาวางหรือคลิกเพื่อเลือก"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">เลือกได้หลายไฟล์พร้อมกัน · PDF, Word, Excel, รูปภาพ ฯลฯ</p>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                {/* Book Type */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-muted-foreground">
+                    ประเภทหนังสือ <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["inward", "outward", "archive"] as const).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setBookType(type)}
+                        className={`py-2.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
+                          bookType === type
+                            ? type === "inward"
+                              ? "border-teal-500 bg-teal-50 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300"
+                              : type === "outward"
+                              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300"
+                              : "border-blue-500 bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300"
+                            : "border-border bg-surface-2 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {type === "inward" ? "หนังสือรับ" : type === "outward" ? "หนังสือส่ง" : "หนังสือเก็บ"}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Selected Files Queue */}
-                {selectedFiles.length > 0 && (
-                  <div className="border border-indigo-100 dark:border-indigo-500/20 rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2 bg-indigo-50/60 dark:bg-indigo-500/10 border-b border-indigo-100 dark:border-indigo-500/20">
-                      <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                        รายการไฟล์ที่จะอัปโหลด ({selectedFiles.length} ไฟล์)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setSelectedFiles([]); }}
-                        className="text-[10px] text-red-500 hover:text-red-700 font-bold border-0 bg-transparent cursor-pointer px-1.5 py-0.5 rounded hover:bg-red-50 transition-colors"
-                      >
-                        ล้างทั้งหมด
-                      </button>
+                {/* Number and Register ID */}
+                {bookType !== "archive" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-muted-foreground">
+                        เลขที่หนังสือ <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={bookNumber}
+                        onChange={(e) => setBookNumber(e.target.value)}
+                        placeholder="เช่น ศธ 04001/..."
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                      />
                     </div>
-                    <div className="divide-y divide-border max-h-40 overflow-y-auto">
-                      {selectedFiles.map((file, i) => (
-                        <div key={i} className="flex items-center gap-2 px-3 py-2 bg-card hover:bg-muted/30 transition-colors group">
-                          {/* File icon */}
-                          <svg className="w-4 h-4 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold text-foreground truncate" title={file.name}>{file.name}</div>
-                            <div className="text-[10px] text-muted-foreground">{formatBytes(file.size)}</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleRemoveFile(i); }}
-                            className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 border-0 bg-transparent cursor-pointer transition-colors opacity-0 group-hover:opacity-100"
-                            title="ลบไฟล์นี้ออก"
-                          >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="px-3 py-2 bg-muted/20 border-t border-border">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                        className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline border-0 bg-transparent cursor-pointer"
-                      >
-                        + เพิ่มไฟล์อีก
-                      </button>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-muted-foreground">
+                        เลขทะเบียน รับ-ส่ง <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={registerNumber}
+                        onChange={(e) => setRegisterNumber(e.target.value)}
+                        placeholder="เช่น 125/2568"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                      />
                     </div>
                   </div>
                 )}
-              </div>
-            </form>
 
-            {/* Footer */}
-            <div className="px-6 py-4 bg-card border-t border-border flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="px-5 py-2.5 rounded-xl font-bold text-sm text-foreground hover:bg-muted bg-transparent border-0 cursor-pointer transition-all"
-                disabled={isSubmitting}
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-md text-sm border-0 cursor-pointer flex items-center gap-2"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    กำลังบันทึก...
-                  </>
-                ) : modalMode === "add" ? (
-                  "บันทึกหนังสือ"
-                ) : (
-                  "บันทึกการแก้ไข"
+                {/* Date Issued */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-muted-foreground">
+                    ลงวันที่ในหนังสือ <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={dateIssued}
+                    onChange={(e) => setDateIssued(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                  />
+                </div>
+
+                {/* Sender & Receiver */}
+                {bookType !== "archive" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-muted-foreground">
+                        ผู้ส่ง (จาก) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={sender}
+                        onChange={(e) => setSender(e.target.value)}
+                        placeholder="หน่วยงานผู้ส่ง"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-muted-foreground">
+                        ผู้รับ (ถึง) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={receiver}
+                        onChange={(e) => setReceiver(e.target.value)}
+                        placeholder="หน่วยงานผู้รับ"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                      />
+                    </div>
+                  </div>
                 )}
-              </button>
+
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-muted-foreground">
+                    เรื่อง <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="รายละเอียดเรื่องที่รับหรือส่ง"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-muted-foreground">
+                    รายละเอียด / หมายเหตุ
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
+                    rows={2}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none"
+                  />
+                </div>
+
+                {/* Existing Attachments (Edit Mode) */}
+                {modalMode === "edit" && selectedBook && selectedBook.attachments.length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-muted-foreground">
+                      ไฟล์แนบในระบบ
+                    </label>
+                    <div className="bg-surface-2 border border-border rounded-xl px-3 divide-y divide-border text-xs">
+                      {selectedBook.attachments.map((attach) => {
+                        const isDeleted = attachmentsToDelete.includes(attach.id);
+                        return (
+                          <div key={attach.id} className="py-2.5 flex items-center justify-between gap-2">
+                            <div
+                              className={`truncate ${
+                                isDeleted ? "line-through text-rose-400" : "text-foreground font-medium"
+                              }`}
+                            >
+                              {attach.file_name} ({formatBytes(attach.file_size)})
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleDeleteAttachment(attach.id)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border cursor-pointer shrink-0 ${
+                                isDeleted
+                                  ? "border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                  : "border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-300"
+                              }`}
+                            >
+                              {isDeleted ? "ยกเลิกลบ" : "ลบไฟล์"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Files */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-muted-foreground">
+                    {modalMode === "add" ? "อัปโหลดไฟล์แนบ" : "เพิ่มไฟล์แนบใหม่"}
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`w-full border-2 border-dashed rounded-2xl px-4 py-5 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      isDragging
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/15"
+                        : "border-border hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/10"
+                    } text-indigo-600 dark:text-indigo-400`}
+                  >
+                    <Upload className="w-6 h-6 pointer-events-none" />
+                    <div className="pointer-events-none text-center">
+                      <p className="text-xs font-bold">
+                        {isDragging ? "ปล่อยไฟล์ที่นี่" : "ลากไฟล์มาวางหรือคลิกเพื่อเลือก"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        รองรับ PDF, Word, Excel, รูปภาพ (เลือกได้หลายไฟล์)
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedFiles.length > 0 && (
+                    <div className="border border-border rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 bg-surface-2 border-b border-border">
+                        <span className="text-xs font-bold text-foreground">
+                          ไฟล์ที่จะอัปโหลด ({selectedFiles.length} ไฟล์)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFiles([]);
+                          }}
+                          className="text-[11px] text-rose-500 hover:underline font-bold border-0 bg-transparent cursor-pointer"
+                        >
+                          ล้างทั้งหมด
+                        </button>
+                      </div>
+                      <div className="divide-y divide-border max-h-36 overflow-y-auto">
+                        {selectedFiles.map((file, i) => (
+                          <div key={i} className="flex items-center gap-2 px-3 py-2 bg-card">
+                            <FileText className="w-4 h-4 shrink-0 text-indigo-500" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold text-foreground truncate" title={file.name}>
+                                {file.name}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                {formatBytes(file.size)}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveFile(i);
+                              }}
+                              aria-label="ลบไฟล์นี้ออก"
+                              className="p-1 rounded-md text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/15 border-0 bg-transparent cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </form>
+
+              {/* Footer */}
+              <div className="px-5 sm:px-6 py-4 bg-card border-t border-border flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted bg-transparent border-0 cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-sm text-xs sm:text-sm border-0 cursor-pointer inline-flex items-center gap-2 disabled:opacity-60"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>กำลังบันทึก...</span>
+                    </>
+                  ) : modalMode === "add" ? (
+                    "บันทึกหนังสือ"
+                  ) : (
+                    "บันทึกการแก้ไข"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
-      {/* Print Register Modal */}
+      {/* Print Register Modal (via ModalPortal) */}
       {isPrintModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in overflow-y-auto">
-          <div className="bg-card border border-border rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden my-8 transform transition-all">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto"
+            onClick={() => setIsPrintModalOpen(false)}
+          >
+            <div
+              className="bg-card border border-border rounded-t-3xl sm:rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-5 sm:px-6 py-4 border-b border-border flex justify-between items-center bg-surface-2/60 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/12 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <Printer className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-foreground">
+                      พิมพ์ทะเบียนคุมหนังสือ
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      กำหนดเงื่อนไขรายงานและผู้ลงนามก่อนพิมพ์
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-lg text-foreground">พิมพ์ทะเบียนคุมหนังสือ</h3>
-                  <p className="text-xs text-muted-foreground">กำหนดเงื่อนไขรายงานและแบบฟอร์มลงนามก่อนพิมพ์</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsPrintModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground text-xl font-bold border-0 bg-transparent cursor-pointer p-1 rounded-lg transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-4 text-sm text-foreground">
-              {/* Option 1: Select Type */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  ประเภทหนังสือ
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    { id: "current", label: `แท็บปัจจุบัน (${activeSubTab === "inward" ? "รับ" : activeSubTab === "outward" ? "ส่ง" : "เก็บ"})` },
-                    { id: "inward", label: "หนังสือรับ" },
-                    { id: "outward", label: "หนังสือส่ง" },
-                    { id: "archive", label: "หนังสือเก็บ" },
-                    { id: "all", label: "ทั้งหมด (รับ-ส่ง)" },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setPrintType(item.id as any)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all ${
-                        printType === item.id
-                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                          : "bg-background border-border text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPrintModalOpen(false)}
+                  aria-label="ปิดหน้าต่าง"
+                  className="w-8 h-8 rounded-xl bg-card hover:bg-muted text-foreground flex items-center justify-center border border-border cursor-pointer shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Option 2: Date Range */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Body */}
+              <div className="p-5 sm:p-6 space-y-4 text-sm text-foreground overflow-y-auto flex-1">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                    ตั้งแต่วันที่ (ลงวันที่)
+                  <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                    ประเภทหนังสือ
                   </label>
-                  <input
-                    type="date"
-                    value={printStartDate}
-                    onChange={(e) => setPrintStartDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(
+                      [
+                        {
+                          id: "current",
+                          label: `แท็บปัจจุบัน (${
+                            activeSubTab === "inward"
+                              ? "รับ"
+                              : activeSubTab === "outward"
+                              ? "ส่ง"
+                              : "เก็บ"
+                          })`,
+                        },
+                        { id: "inward", label: "หนังสือรับ" },
+                        { id: "outward", label: "หนังสือส่ง" },
+                        { id: "archive", label: "หนังสือเก็บ" },
+                        { id: "all", label: "ทั้งหมด (รับ-ส่ง)" },
+                      ] as const
+                    ).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setPrintType(item.id)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-all ${
+                          printType === item.id
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            : "bg-background border-border text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                    ถึงวันที่ (ลงวันที่)
-                  </label>
-                  <input
-                    type="date"
-                    value={printEndDate}
-                    onChange={(e) => setPrintEndDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                  />
-                </div>
-              </div>
 
-              {/* Option 3: Search text */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                  กรองคำค้นหา (ถ้ามี)
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น เลขที่หนังสือ, ผู้ส่ง, เรื่อง..."
-                  value={printSearch}
-                  onChange={(e) => setPrintSearch(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-
-              {/* Option 4: Signature fields */}
-              <div className="pt-2 border-t border-border">
-                <label className="block text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2">
-                  ข้อมูลผู้ลงนามท้ายรายงาน
-                </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">ชื่อ-นามสกุล ผู้จัดทำ</label>
+                    <label className="block text-xs font-bold text-muted-foreground mb-1">
+                      ตั้งแต่วันที่
+                    </label>
                     <input
-                      type="text"
-                      placeholder="เช่น นายสมชาย ใจดี"
-                      value={officerName}
-                      onChange={(e) => setOfficerName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                      type="date"
+                      value={printStartDate}
+                      onChange={(e) => setPrintStartDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">ตำแหน่ง</label>
+                    <label className="block text-xs font-bold text-muted-foreground mb-1">
+                      ถึงวันที่
+                    </label>
                     <input
-                      type="text"
-                      placeholder="เจ้าหน้าที่สารบรรณ"
-                      value={officerPosition}
-                      onChange={(e) => setOfficerPosition(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                      type="date"
+                      value={printEndDate}
+                      onChange={(e) => setPrintEndDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground mb-1">
+                    กรองคำค้นหา (ถ้ามี)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="เช่น เลขที่หนังสือ, ผู้ส่ง, เรื่อง..."
+                    value={printSearch}
+                    onChange={(e) => setPrintSearch(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-border space-y-2.5">
+                  <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                    ข้อมูลผู้ลงนามท้ายรายงาน
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">
+                        ชื่อ-นามสกุล ผู้จัดทำ
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="เช่น นายสมชาย ใจดี"
+                        value={officerName}
+                        onChange={(e) => setOfficerName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">ตำแหน่ง</label>
+                      <input
+                        type="text"
+                        placeholder="เจ้าหน้าที่สารบรรณ"
+                        value={officerPosition}
+                        onChange={(e) => setOfficerPosition(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 sm:px-6 py-4 bg-card border-t border-border flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsPrintModalOpen(false)}
+                  className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm text-muted-foreground hover:text-foreground hover:bg-muted bg-transparent border-0 cursor-pointer"
+                  disabled={isGeneratingPrint}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintRegister}
+                  disabled={isGeneratingPrint}
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold px-5 py-2.5 rounded-xl shadow-sm text-xs sm:text-sm border-0 cursor-pointer inline-flex items-center gap-2 disabled:opacity-60"
+                >
+                  {isGeneratingPrint ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>กำลังจัดเตรียม...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="w-4 h-4" />
+                      <span>ออกรายงาน / พิมพ์</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 bg-card border-t border-border flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setIsPrintModalOpen(false)}
-                className="px-4 py-2 rounded-xl font-bold text-sm text-foreground hover:bg-muted bg-transparent border-0 cursor-pointer"
-                disabled={isGeneratingPrint}
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                onClick={handlePrintRegister}
-                disabled={isGeneratingPrint}
-                className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-5 py-2 rounded-xl transition-all shadow-md text-sm border-0 cursor-pointer flex items-center gap-2"
-              >
-                {isGeneratingPrint ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    กำลังจัดเตรียม...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    ออกรายงาน / พิมพ์
-                  </>
-                )}
-              </button>
-            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );
