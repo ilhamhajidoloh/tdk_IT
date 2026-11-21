@@ -38,12 +38,12 @@ export async function GET(req: NextRequest) {
   const multiTeacherReady = await hasSubjectTeachersTable();
 
   let queryText = "";
-  const params: any[] = [];
-  let whereClause = "";
+  const params: string[] = [];
+  let whereClause = `WHERE u.role != 'super_admin'`;
 
   if (schoolId) {
     params.push(schoolId);
-    whereClause = `WHERE u.school_id = $1 OR u.school_id IS NULL`;
+    whereClause = `WHERE u.school_id = $1 AND u.role != 'super_admin'`;
   }
 
   if (multiTeacherReady) {

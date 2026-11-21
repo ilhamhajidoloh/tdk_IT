@@ -15,6 +15,7 @@ import Swal from "sweetalert2";
 import { CoAdminUser } from "@/app/lib/permissions/types";
 import { PERMISSION_CATEGORIES } from "@/app/lib/permissions/definitions";
 import SectionHeader from "../SectionHeader";
+import PaginationBar, { usePagination } from "../PaginationBar";
 import CoAdminPermissionModal from "../modals/CoAdminPermissionModal";
 
 interface CoAdminsTabProps {
@@ -114,6 +115,8 @@ export default function CoAdminsTab({ token, selectedSchoolId }: CoAdminsTabProp
     );
   }, [coAdmins, searchTerm]);
 
+  const coAdminPagination = usePagination(filteredCoAdmins, 5);
+
   return (
     <div className="p-8 space-y-6">
       {/* Standard Section Header */}
@@ -194,7 +197,7 @@ export default function CoAdminsTab({ token, selectedSchoolId }: CoAdminsTabProp
               </tr>
             </thead>
             <tbody className="divide-y divide-border text-sm">
-              {filteredCoAdmins.map((coAdmin) => {
+              {coAdminPagination.paginatedItems.map((coAdmin) => {
                 const perms = coAdmin.admin_permissions || {};
                 const activeCategories = Object.keys(perms).filter((cat) => {
                   const catObj = perms[cat as keyof typeof perms];
@@ -285,7 +288,7 @@ export default function CoAdminsTab({ token, selectedSchoolId }: CoAdminsTabProp
           </table>
         </div>
         <div className="space-y-3 md:hidden">
-          {filteredCoAdmins.map((coAdmin) => {
+          {coAdminPagination.paginatedItems.map((coAdmin) => {
             const perms = coAdmin.admin_permissions || {};
             const activeCategories = Object.keys(perms).filter((cat) => {
               const catObj = perms[cat as keyof typeof perms];
@@ -325,6 +328,15 @@ export default function CoAdminsTab({ token, selectedSchoolId }: CoAdminsTabProp
             );
           })}
         </div>
+        <PaginationBar
+          totalItems={coAdminPagination.totalItems}
+          currentPage={coAdminPagination.currentPage}
+          totalPages={coAdminPagination.totalPages}
+          perPage={coAdminPagination.perPage}
+          onPageChange={coAdminPagination.setCurrentPage}
+          onPerPageChange={coAdminPagination.setPerPage}
+          unitLabel="คน"
+        />
         </>
       )}
 

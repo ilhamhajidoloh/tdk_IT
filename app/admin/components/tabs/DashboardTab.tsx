@@ -80,9 +80,7 @@ export default function DashboardTab({
     useMemo(() => {
       const studentUsers = users.filter((u) => u.role === "student").length;
       const teachers = users.filter((u) => u.role === "teacher").length;
-      const admins = users.filter(
-        (u) => u.role === "admin" || u.role === "super_admin"
-      ).length;
+      const admins = users.filter((u) => u.role === "admin").length;
       const activeStudents = students.filter(
         (s) => !s.status || s.status === "active"
       ).length;
