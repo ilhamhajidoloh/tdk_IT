@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/app/lib/db";
 import { getSchoolContext } from "@/app/lib/schoolContext";
 import { deleteFileFromDrive } from "@/app/lib/googleDrive";
+import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
 export async function PUT(
   req: NextRequest,
@@ -15,8 +16,24 @@ export async function PUT(
   const { id } = await params;
 
   try {
+    await ensureStatusSchema();
     const body = await req.json();
-    const { name, name_en, name_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, is_active, enabled_modules } = body;
+    const {
+      name,
+      name_en,
+      name_jawi,
+      village_thai,
+      village_rumi,
+      village_jawi,
+      subdomain,
+      logo_url,
+      logo_drive_file_id,
+      address,
+      phone,
+      email,
+      is_active,
+      enabled_modules,
+    } = body;
 
     const modulesJson = enabled_modules !== undefined ? JSON.stringify(enabled_modules) : null;
 
@@ -49,21 +66,27 @@ export async function PUT(
        SET name = COALESCE($1, name),
            name_en = $2,
            name_jawi = $3,
-           subdomain = COALESCE($4, subdomain),
-           logo_url = $5,
-           logo_drive_file_id = $6,
-           address = $7,
-           phone = $8,
-           email = $9,
-           is_active = COALESCE($10, is_active),
-           enabled_modules = COALESCE($11::jsonb, enabled_modules),
+           village_thai = $4,
+           village_rumi = $5,
+           village_jawi = $6,
+           subdomain = COALESCE($7, subdomain),
+           logo_url = $8,
+           logo_drive_file_id = $9,
+           address = $10,
+           phone = $11,
+           email = $12,
+           is_active = COALESCE($13, is_active),
+           enabled_modules = COALESCE($14::jsonb, enabled_modules),
            updated_at = NOW()
-       WHERE id = $12
+       WHERE id = $15
        RETURNING *`,
       [
         name,
         name_en || null,
         name_jawi || null,
+        village_thai || null,
+        village_rumi || null,
+        village_jawi || null,
         subdomain ? subdomain.trim().toLowerCase() : null,
         finalLogoUrl,
         logo_drive_file_id || null,

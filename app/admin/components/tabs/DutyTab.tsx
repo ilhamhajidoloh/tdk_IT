@@ -1,7 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
+import {
+  Megaphone,
+  Users,
+  UtensilsCrossed,
+  SlidersHorizontal,
+  Plus,
+  Pencil,
+  Trash2,
+  Download,
+  Upload,
+  Printer,
+  Calendar,
+  Clock,
+  CheckSquare,
+  X,
+} from "lucide-react";
 import SectionHeader from "../SectionHeader";
 import { formatThaiDate } from "../../../lib/format";
 import { buildCookSchedule } from "../../../lib/duty";
@@ -65,11 +81,15 @@ interface HolidayItem {
 
 type DutySubTab = "news" | "teachers" | "cooks" | "settings";
 
-const SUB_TABS: { key: DutySubTab; label: string }[] = [
-  { key: "news", label: "ข่าวสาร" },
-  { key: "teachers", label: "เวรครู" },
-  { key: "cooks", label: "เวรแม่ครัว" },
-  { key: "settings", label: "ตั้งค่าการหมุนเวร" },
+const SUB_TABS: {
+  key: DutySubTab;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { key: "news", label: "ข่าวสาร", icon: Megaphone },
+  { key: "teachers", label: "เวรครู", icon: Users },
+  { key: "cooks", label: "เวรแม่ครัว", icon: UtensilsCrossed },
+  { key: "settings", label: "ตั้งค่าหมุนเวร", icon: SlidersHorizontal },
 ];
 
 const inputClass =
@@ -119,13 +139,11 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
     return "news";
   });
 
-  useEffect(() => {
-    if (subTab === "news" && !enabledNews && enabledDuty) {
-      setSubTab("teachers");
-    } else if ((subTab === "teachers" || subTab === "cooks" || subTab === "settings") && !enabledDuty && enabledNews) {
-      setSubTab("news");
-    }
-  }, [enabledNews, enabledDuty, subTab]);
+  const activeSubTab: DutySubTab = visibleSubTabs.some((t) => t.key === subTab)
+    ? subTab
+    : visibleSubTabs[0]?.key ?? "news";
+
+  const [newsFilter, setNewsFilter] = useState<"all" | "published" | "draft" | "expired">("all");
 
   const [news, setNews] = useState<NewsItem[]>([]);
   const [holidays, setHolidays] = useState<HolidayItem[]>([]);
@@ -146,9 +164,8 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
     Authorization: `Bearer ${token}`,
   });
 
-  const loadAll = async () => {
+  const fetchAllData = async () => {
     if (!token) return;
-    setLoading(true);
     try {
       const [newsRes, teachersRes, teacherGroupsRes, cooksRes, cookGroupsRes, dutySettingsRes, holidaysRes, settingsRes] = await Promise.all([
         fetch("/api/news", { headers: authHeaders() }),
@@ -168,8 +185,11 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
       if (dutySettingsRes.ok) setDutySettings(await dutySettingsRes.json());
       if (holidaysRes.ok) setHolidays(await holidaysRes.json());
       if (settingsRes.ok) {
-        const settingsList = await settingsRes.json();
-        const activeSetting = settingsList.find((s: any) => s.is_active);
+        const settingsList = (await settingsRes.json()) as {
+          is_active?: boolean;
+          schedule_days?: number[];
+        }[];
+        const activeSetting = settingsList.find((s) => s.is_active);
         if (activeSetting && Array.isArray(activeSetting.schedule_days)) {
           setScheduleDays(activeSetting.schedule_days);
         }
@@ -177,6 +197,12 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAll = async () => {
+    if (!token) return;
+    setLoading(true);
+    await fetchAllData();
   };
 
   // ---------- Cook Schedule Print ----------
@@ -313,7 +339,7 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
   };
 
   useEffect(() => {
-    loadAll();
+    void fetchAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -405,93 +431,6 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
     });
     if (!confirm.isConfirmed) return;
     const res = await fetch(`/api/news/${item.id}`, { method: "DELETE", headers: authHeaders() });
-    if (res.ok) loadAll();
-  };
-
-  // ---------- School Holidays ----------
-  const openHolidayForm = async (existing?: HolidayItem) => {
-    const { value } = await Swal.fire({
-      title: existing ? "แก้ไขวันหยุดพิเศษ" : "เพิ่มวันหยุดพิเศษ",
-      html: `
-        <div class="space-y-4 text-left mt-4">
-          <div>
-            <label class="${labelClass}">วันที่หยุด <span class="text-red-500">*</span></label>
-            <input id="swal-holiday-date" type="date" class="${inputClass}" value="${existing?.date ?? ""}">
-          </div>
-          <div>
-            <label class="${labelClass}">สาเหตุ / รายละเอียด <span class="text-red-500">*</span></label>
-            <input id="swal-holiday-reason" class="${inputClass}" value="${existing?.reason ?? ""}" placeholder="เช่น วันหยุดชดเชยวันสงกรานต์">
-          </div>
-          <div>
-            <label class="${labelClass}">ขอบเขตวันหยุด <span class="text-red-500">*</span></label>
-            <select id="swal-holiday-applies" class="${inputClass}">
-              <option value="all" ${existing?.applies_to === "all" || !existing?.applies_to ? "selected" : ""}>ทั้งหมด (ครูและแม่ครัว)</option>
-              <option value="teachers" ${existing?.applies_to === "teachers" ? "selected" : ""}>เฉพาะครูเวร</option>
-              <option value="cooks" ${existing?.applies_to === "cooks" ? "selected" : ""}>เฉพาะแม่ครัว</option>
-            </select>
-          </div>
-          <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
-            <p class="text-xs text-amber-700 dark:text-amber-400 font-semibold">
-              ⚠️ ระบบจะข้ามการนับเวรตามขอบเขตที่เลือกโดยอัตโนมัติ
-            </p>
-          </div>
-          <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-            <input type="checkbox" id="swal-holiday-published" class="w-4 h-4" ${existing?.is_published !== false ? "checked" : ""}>
-            เผยแพร่บนหน้าแรก
-          </label>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: "บันทึก",
-      cancelButtonText: "ยกเลิก",
-      buttonsStyling: false,
-      customClass: swalPopupClasses,
-      preConfirm: () => {
-        const date = (document.getElementById("swal-holiday-date") as HTMLInputElement).value;
-        const reason = (document.getElementById("swal-holiday-reason") as HTMLInputElement).value.trim();
-        const appliesTo = (document.getElementById("swal-holiday-applies") as HTMLSelectElement).value;
-        const isPublished = (document.getElementById("swal-holiday-published") as HTMLInputElement).checked;
-        if (!date) { Swal.showValidationMessage("กรุณาเลือกวันที่"); return null; }
-        if (!reason) { Swal.showValidationMessage("กรุณากรอกสาเหตุ"); return null; }
-        return { date, reason, appliesTo, isPublished };
-      },
-    });
-
-    if (!value) return;
-    const url = existing ? `/api/holidays/${existing.id}` : "/api/holidays";
-    const res = await fetch(url, {
-      method: existing ? "PUT" : "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({ 
-        date: value.date, 
-        reason: value.reason, 
-        is_published: value.isPublished,
-        applies_to: value.appliesTo
-      }),
-    });
-
-    if (res.ok) {
-      Swal.fire({ icon: "success", title: "บันทึกสำเร็จ", timer: 1200, showConfirmButton: false });
-      loadAll();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      Swal.fire("ข้อผิดพลาด", err.error ?? "บันทึกไม่สำเร็จ กรุณาลองใหม่", "error");
-    }
-  };
-
-  const handleDeleteHoliday = async (item: HolidayItem) => {
-    const confirm = await Swal.fire({
-      title: `ลบวันหยุด "${item.reason}"?`,
-      text: `วันที่ ${item.date} จะกลับมานับเวรตามปกติ`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "ลบ",
-      cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#ef4444",
-    });
-    if (!confirm.isConfirmed) return;
-    const res = await fetch(`/api/holidays/${item.id}`, { method: "DELETE", headers: authHeaders() });
     if (res.ok) loadAll();
   };
 
@@ -699,7 +638,7 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
 
   const handleImportCooks = async (file: File) => {
     const text = await file.text();
-    let rows: ImportRow[] = [];
+    const rows: ImportRow[] = [];
 
     const parseLine = (line: string, isCsv: boolean): ImportRow | null => {
       const parts = isCsv
@@ -1093,8 +1032,31 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
     }
   };
 
+  const filteredNews = useMemo(() => {
+    if (newsFilter === "all") return news;
+    if (newsFilter === "expired") return news.filter((n) => isNewsExpired(n.expires_at));
+    if (newsFilter === "draft") return news.filter((n) => !n.is_published);
+    return news.filter((n) => n.is_published && !isNewsExpired(n.expires_at));
+  }, [news, newsFilter]);
+
+  const sortedTeacherGroups = useMemo(
+    () => [...teacherGroups].sort((a, b) => a.order_no - b.order_no),
+    [teacherGroups]
+  );
+
+  const sortedCookGroups = useMemo(
+    () => [...cookGroups].sort((a, b) => a.order_no - b.order_no),
+    [cookGroups]
+  );
+
+  const subTabCounts: Partial<Record<DutySubTab, number>> = {
+    news: news.length,
+    teachers: teacherGroups.length,
+    cooks: cookGroups.length,
+  };
+
   return (
-    <div className="p-8 animate-fade-in-up">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 animate-fade-in-up">
       <SectionHeader
         icon="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"
         color="indigo"
@@ -1107,70 +1069,145 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
         }
         subtitle={
           enabledNews && !enabledDuty
-            ? "จัดการข่าวประชาสัมพันธ์และประกาศข่าวสารที่แสดงบนหน้าแรกก่อนเข้าสู่ระบบ"
+            ? "จัดการข่าวประชาสัมพันธ์และประกาศข่าวสารที่แสดงบนหน้าแรก"
             : !enabledNews && enabledDuty
-            ? "จัดการเวรครูและเวรแม่ครัวที่แสดงบนหน้าแรกก่อนเข้าสู่ระบบ"
-            : "จัดการข่าวประชาสัมพันธ์ เวรครู และเวรแม่ครัวที่แสดงบนหน้าแรกก่อนเข้าสู่ระบบ"
+            ? "จัดการกลุ่มเวรครูและเวรแม่ครัวประจำวัน"
+            : "จัดการข่าวประชาสัมพันธ์ เวรครู และเวรแม่ครัวอย่างเป็นระบบ"
         }
       />
 
-      <div className="ui-segment mb-6 max-w-2xl">
-        {visibleSubTabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setSubTab(t.key)}
-            data-active={subTab === t.key}
-            className="ui-segment-item"
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Clean Sub-tab Navigation Bar */}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-surface-2 border border-border overflow-x-auto scrollbar-none">
+        {visibleSubTabs.map((t) => {
+          const Icon = t.icon;
+          const isActive = activeSubTab === t.key;
+          const count = subTabCounts[t.key];
+
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setSubTab(t.key)}
+              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all border cursor-pointer shrink-0 ${
+                isActive
+                  ? "bg-card text-indigo-600 dark:text-indigo-300 border-border shadow-xs"
+                  : "bg-transparent text-muted-foreground border-transparent hover:text-foreground hover:bg-card/50"
+              }`}
+            >
+              <Icon
+                className={`w-4 h-4 shrink-0 ${
+                  isActive ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground"
+                }`}
+              />
+              <span>{t.label}</span>
+              {count !== undefined && (
+                <span
+                  className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                    isActive
+                      ? "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground font-semibold">กำลังโหลดข้อมูล...</div>
+        <div className="py-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+          <span className="w-8 h-8 rounded-full border-3 border-indigo-500/20 border-t-indigo-600 animate-spin" />
+          <span className="text-xs font-semibold">กำลังโหลดข้อมูล...</span>
+        </div>
       ) : (
         <>
-          {subTab === "news" && (
-            <div className="space-y-8">
-
-              {/* Section 1: Regular news */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="font-bold text-foreground">ข่าวประชาสัมพันธ์</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">ประกาศและข่าวสารทั่วไป — ไม่มีผลต่อการหมุนเวร</p>
-                  </div>
-                  <PermissionGate permission="news.create">
+          {/* =================================================================
+              1. NEWS SUB-TAB
+              ================================================================= */}
+          {activeSubTab === "news" && (
+            <div className="space-y-4">
+              {/* Toolbar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                  {(
+                    [
+                      { key: "all", label: `ทั้งหมด (${news.length})` },
+                      {
+                        key: "published",
+                        label: `เผยแพร่ (${news.filter((n) => n.is_published && !isNewsExpired(n.expires_at)).length})`,
+                      },
+                      {
+                        key: "draft",
+                        label: `ฉบับร่าง (${news.filter((n) => !n.is_published).length})`,
+                      },
+                      {
+                        key: "expired",
+                        label: `หมดอายุ (${news.filter((n) => isNewsExpired(n.expires_at)).length})`,
+                      },
+                    ] as const
+                  ).map((f) => (
                     <button
-                      onClick={() => openNewsForm()}
-                      className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
+                      key={f.key}
+                      type="button"
+                      onClick={() => setNewsFilter(f.key)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors border cursor-pointer shrink-0 ${
+                        newsFilter === f.key
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                      }`}
                     >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      เพิ่มข่าว
+                      {f.label}
                     </button>
-                  </PermissionGate>
+                  ))}
                 </div>
-                {news.length === 0 ? (
-                  <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                    ยังไม่มีข่าวประชาสัมพันธ์
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {news.map((n) => (
-                      <div key={n.id} className="card-modern p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
+
+                <PermissionGate permission="news.create">
+                  <button
+                    type="button"
+                    onClick={() => openNewsForm()}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs sm:text-sm font-bold shadow-sm transition-all border-0 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>เพิ่มข่าว</span>
+                  </button>
+                </PermissionGate>
+              </div>
+
+              {/* News List */}
+              {filteredNews.length === 0 ? (
+                <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-border bg-surface-2/60 space-y-1">
+                  <p className="text-sm font-bold text-muted-foreground">
+                    {news.length === 0
+                      ? "ยังไม่มีข่าวประชาสัมพันธ์"
+                      : "ไม่มีข่าวในหมวดที่เลือก"}
+                  </p>
+                  <p className="text-xs text-subtle-foreground">
+                    ประกาศและข่าวสารทั่วไปที่สร้างจะแสดงบนหน้าแรกตามกลุ่มเป้าหมาย
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredNews.map((n) => {
+                    const expired = isNewsExpired(n.expires_at);
+                    return (
+                      <article
+                        key={n.id}
+                        className="rounded-2xl border border-border bg-card p-4 sm:p-5 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            {/* Title + Badges */}
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-bold text-foreground">{n.title}</h3>
-                              {n.target_audience === 'all' ? (
+                              <h3 className="text-sm sm:text-base font-extrabold text-foreground leading-snug">
+                                {n.title}
+                              </h3>
+                              {n.target_audience === "all" ? (
                                 <span className="ui-chip ui-chip-info">ทุกคน</span>
-                              ) : n.target_audience === 'admin' ? (
+                              ) : n.target_audience === "admin" ? (
                                 <span className="ui-chip ui-chip-danger">ผู้ดูแลระบบ</span>
-                              ) : n.target_audience === 'teacher' ? (
+                              ) : n.target_audience === "teacher" ? (
                                 <span className="ui-chip ui-chip-primary">ครู</span>
                               ) : (
                                 <span className="ui-chip ui-chip-success">นักเรียน</span>
@@ -1180,194 +1217,154 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
                               ) : (
                                 <span className="ui-chip ui-chip-warning">ฉบับร่าง</span>
                               )}
-                              {isNewsExpired(n.expires_at) && (
+                              {expired && (
                                 <span className="ui-chip ui-chip-warning">หมดอายุแล้ว</span>
                               )}
                             </div>
-                            <p className="text-xs text-subtle-foreground mt-0.5">{formatThaiDate(n.created_at)}</p>
-                            {n.expires_at && (
-                              <p className="text-xs text-subtle-foreground mt-0.5">
-                                หมดอายุ: {new Date(n.expires_at).toLocaleString("th-TH")}
-                              </p>
-                            )}
-                            <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">{n.content}</p>
+
+                            {/* Metadata row */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-subtle-foreground">
+                              <span className="inline-flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {formatThaiDate(n.created_at)}
+                              </span>
+                              {n.expires_at && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  หมดอายุ: {new Date(n.expires_at).toLocaleString("th-TH")}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Content */}
+                            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed whitespace-pre-line pt-1">
+                              {n.content}
+                            </p>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/60">
                             <PermissionGate permission="news.edit">
                               <button
+                                type="button"
                                 onClick={() => openNewsForm(n)}
-                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border-0 cursor-pointer transition-colors"
                               >
-                                แก้ไข
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>แก้ไข</span>
                               </button>
                             </PermissionGate>
                             <PermissionGate permission="news.delete">
                               <button
+                                type="button"
                                 onClick={() => handleDeleteNews(n)}
-                                className="text-red-500 dark:text-red-400 hover:text-red-700 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border-0 cursor-pointer transition-colors"
                               >
-                                ลบ
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>ลบ</span>
                               </button>
                             </PermissionGate>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Divider */}
-              <div className="border-t border-border" />
-
-              {/* School holidays are managed from the annual calendar. */}
-              <div className="hidden">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="font-bold text-foreground flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 text-xs font-black">ห</span>
-                      วันหยุดพิเศษ
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      วันหยุดในวันเรียนปกติ —{" "}
-                      <strong className="text-amber-600 dark:text-amber-400">ข้ามการนับเวร</strong>{" "}
-                      ทั้งครูและแม่ครัวในวันนั้นอัตโนมัติ
-                    </p>
-                  </div>
-                  <PermissionGate permission="duties.edit">
-                    <button
-                      onClick={() => openHolidayForm()}
-                      className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      เพิ่มวันหยุด
-                    </button>
-                  </PermissionGate>
+                      </article>
+                    );
+                  })}
                 </div>
-
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 mb-4 text-xs text-amber-800 dark:text-amber-300 font-semibold space-y-1">
-                  <p>📌 ครู (รายสัปดาห์): ถ้ายังมีวันเปิดเรียนอื่นในสัปดาห์ → หมุนกลุ่มตามปกติ | ถ้าทั้งสัปดาห์ปิดหมด → ยกกลุ่มเดิมไปสัปดาห์ถัดไป</p>
-                  <p>📌 แม่ครัว (รายวัน): ถ้าปิดบางวัน → ข้ามกลุ่มของวันปิดและใช้กลุ่มถัดไปในวันเปิด | ถ้าปิดครบทุกวันเรียนทั้งสัปดาห์ → ยกทุกกลุ่มไปสัปดาห์ถัดไป</p>
-                </div>
-
-                {holidays.length === 0 ? (
-                  <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                    ยังไม่มีวันหยุดพิเศษ
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {holidays.map((h) => (
-                      <div
-                        key={h.id}
-                        className="flex items-center gap-3 p-3.5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-mono font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-200 dark:border-red-500/30">
-                              {h.date}
-                            </span>
-                            <span className="font-semibold text-sm text-foreground">{h.reason}</span>
-                            {h.is_published ? (
-                              <span className="ui-chip ui-chip-success" style={{ fontSize: "10px" }}>เผยแพร่</span>
-                            ) : (
-                              <span className="ui-chip ui-chip-warning" style={{ fontSize: "10px" }}>ซ่อน</span>
-                            )}
-                            {h.applies_to === "teachers" ? (
-                              <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-500/30">เฉพาะครู</span>
-                            ) : h.applies_to === "cooks" ? (
-                              <span className="text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-500/30">เฉพาะแม่ครัว</span>
-                            ) : (
-                              <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-lg border border-gray-200 dark:border-gray-700">ครู & แม่ครัว</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <PermissionGate permission="duties.edit">
-                            <button
-                              onClick={() => openHolidayForm(h)}
-                              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                            >
-                              แก้ไข
-                            </button>
-                            <button
-                              onClick={() => handleDeleteHoliday(h)}
-                              className="text-red-500 dark:text-red-400 hover:text-red-700 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                            >
-                              ลบ
-                            </button>
-                          </PermissionGate>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-
-          {subTab === "teachers" && (
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <PermissionGate permission="duties.create">
-                  <button
-                    onClick={() => openTeacherGroupForm()}
-                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    เพิ่มกลุ่มเวรครู
-                  </button>
-                </PermissionGate>
-              </div>
-              {teacherGroups.length === 0 ? (
-                <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
-                  ยังไม่มีกลุ่มเวรครู
-                </div>
-              ) : (
-                teacherGroups.map((g) => (
-                  <div key={g.id} className="card-modern p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-foreground">{g.name}</h3>
-                          <span className="text-[10px] font-bold text-subtle-foreground">ลำดับที่ {g.order_no}</span>
-                        </div>
-                        <div className="mt-2">
-                          <Chips items={g.members.map((m) => m.username)} />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <PermissionGate permission="duties.edit">
-                          <button
-                            onClick={() => openTeacherGroupForm(g)}
-                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                          >
-                            แก้ไข
-                          </button>
-                        </PermissionGate>
-                        <PermissionGate permission="duties.delete">
-                          <button
-                            onClick={() => handleDeleteTeacherGroup(g)}
-                            className="text-red-500 dark:text-red-400 hover:text-red-700 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
-                          >
-                            ลบ
-                          </button>
-                        </PermissionGate>
-                      </div>
-                    </div>
-                  </div>
-                ))
               )}
             </div>
           )}
 
-          {subTab === "cooks" && (
-            <div className="space-y-8">
-              {/* hidden file input for import */}
+          {/* =================================================================
+              2. TEACHER DUTY GROUPS SUB-TAB
+              ================================================================= */}
+          {activeSubTab === "teachers" && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-foreground">
+                    กลุ่มเวรครูประจำสัปดาห์
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    ทั้งหมด {sortedTeacherGroups.length} กลุ่ม • หมุนเวรทีละ 1 สัปดาห์การเรียนตามลำดับ
+                  </p>
+                </div>
+
+                <PermissionGate permission="duties.create">
+                  <button
+                    type="button"
+                    onClick={() => openTeacherGroupForm()}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs sm:text-sm font-bold shadow-sm transition-all border-0 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>เพิ่มกลุ่มเวรครู</span>
+                  </button>
+                </PermissionGate>
+              </div>
+
+              {sortedTeacherGroups.length === 0 ? (
+                <div className="text-center py-12 rounded-2xl border border-dashed border-border bg-surface-2/60">
+                  <p className="text-sm font-bold text-muted-foreground">ยังไม่มีกลุ่มเวรครู</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {sortedTeacherGroups.map((g) => (
+                    <div
+                      key={g.id}
+                      className="rounded-2xl border border-border bg-card p-4 flex flex-col justify-between gap-3 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-flex items-center justify-center h-7 min-w-7 px-2 rounded-lg bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 text-xs font-extrabold shrink-0">
+                              #{g.order_no}
+                            </span>
+                            <h4 className="font-extrabold text-sm text-foreground truncate">
+                              {g.name}
+                            </h4>
+                            <span className="text-[11px] font-semibold text-subtle-foreground shrink-0">
+                              ({g.members.length} คน)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <PermissionGate permission="duties.edit">
+                              <button
+                                type="button"
+                                onClick={() => openTeacherGroupForm(g)}
+                                title="แก้ไขกลุ่ม"
+                                className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/15 border-0 bg-transparent cursor-pointer transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            </PermissionGate>
+                            <PermissionGate permission="duties.delete">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTeacherGroup(g)}
+                                title="ลบกลุ่ม"
+                                className="p-1.5 rounded-lg text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/15 border-0 bg-transparent cursor-pointer transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </PermissionGate>
+                          </div>
+                        </div>
+
+                        <Chips items={g.members.map((m) => m.username)} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* =================================================================
+              3. COOK DUTY SUB-TAB
+              ================================================================= */}
+          {activeSubTab === "cooks" && (
+            <div className="space-y-6">
+              {/* Hidden file input for import */}
               <input
                 ref={importFileRef}
                 type="file"
@@ -1376,108 +1373,119 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleImportCooks(file);
-                  // reset value so same file can be selected again
                   e.target.value = "";
                 }}
               />
-              <div>
-                <div className="flex flex-col gap-4 mb-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="font-bold text-foreground">รายชื่อแม่ครัว</h3>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Templates Downloader Button calling openTemplateModal */}
-                      <button
-                        onClick={openTemplateModal}
-                        className="bg-card border border-border text-muted-foreground hover:bg-muted px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-1.5 cursor-pointer text-sm"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        ดาวน์โหลดเทมเพลต
-                      </button>
 
-                      <PermissionGate permission="duties.create">
-                        <button
-                          onClick={() => importFileRef.current?.click()}
-                          className="bg-card border border-border hover:bg-muted text-foreground px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                          </svg>
-                          นำเข้าจากไฟล์
-                        </button>
-                      </PermissionGate>
-
-                      {cooks.length > 0 && (
-                        <PermissionGate permission="duties.delete">
-                          <button
-                            onClick={() => {
-                              setIsMultiDeleteMode(!isMultiDeleteMode);
-                              setSelectedCookIds(new Set());
-                            }}
-                            className={`px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm border ${
-                              isMultiDeleteMode 
-                                ? "bg-amber-50 dark:bg-amber-500/10 border-amber-300 text-amber-700 dark:text-amber-300 hover:bg-amber-100"
-                                : "bg-card border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/15"
-                            }`}
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            {isMultiDeleteMode ? "ยกเลิกการเลือก" : "ลบทีละหลายคน"}
-                          </button>
-                        </PermissionGate>
-                      )}
-
-                      <PermissionGate permission="duties.create">
-                        <button
-                          onClick={() => openCookForm()}
-                          className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-4 py-2 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          เพิ่มแม่ครัว
-                        </button>
-                      </PermissionGate>
-                    </div>
+              {/* Section A: Cook Master List */}
+              <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm sm:text-base font-extrabold text-foreground">
+                      รายชื่อแม่ครัว ({cooks.length} คน)
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      เพิ่มทีละคน หรือนำเข้าจากไฟล์ <code className="bg-muted px-1 rounded">.txt</code> / <code className="bg-muted px-1 rounded">.csv</code>
+                    </p>
                   </div>
 
-                  {isMultiDeleteMode && (
-                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 animate-fade-in-up">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={toggleSelectAllCooks}
-                          className="bg-card hover:bg-muted text-foreground border border-border text-xs px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer"
-                        >
-                          {selectedCookIds.size === cooks.length ? "ยกเลิกเลือกทั้งหมด" : "เลือกทั้งหมด"}
-                        </button>
-                        <span className="text-xs text-amber-800 dark:text-amber-300 font-bold">
-                          เลือกแล้ว {selectedCookIds.size} จาก {cooks.length} คน
-                        </span>
-                      </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={openTemplateModal}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-surface-2 hover:bg-muted text-muted-foreground hover:text-foreground border border-border cursor-pointer transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>เทมเพลต</span>
+                    </button>
+
+                    <PermissionGate permission="duties.create">
+                      <button
+                        type="button"
+                        onClick={() => importFileRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-surface-2 hover:bg-muted text-foreground border border-border cursor-pointer transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>นำเข้าไฟล์</span>
+                      </button>
+                    </PermissionGate>
+
+                    {cooks.length > 0 && (
                       <PermissionGate permission="duties.delete">
                         <button
-                          onClick={handleBulkDeleteCooks}
-                          disabled={selectedCookIds.size === 0}
-                          className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer border-0 shadow-sm"
+                          type="button"
+                          onClick={() => {
+                            setIsMultiDeleteMode((prev) => !prev);
+                            setSelectedCookIds(new Set());
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-colors ${
+                            isMultiDeleteMode
+                              ? "bg-amber-50 dark:bg-amber-500/15 border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300"
+                              : "bg-surface-2 border-border text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                          }`}
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          ลบที่เลือก ({selectedCookIds.size})
+                          {isMultiDeleteMode ? (
+                            <>
+                              <X className="w-3.5 h-3.5" />
+                              <span>ยกเลิก</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckSquare className="w-3.5 h-3.5" />
+                              <span>เลือกหลายรายการ</span>
+                            </>
+                          )}
                         </button>
                       </PermissionGate>
-                    </div>
-                  )}
+                    )}
+
+                    <PermissionGate permission="duties.create">
+                      <button
+                        type="button"
+                        onClick={() => openCookForm()}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white border-0 cursor-pointer shadow-xs transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>เพิ่มแม่ครัว</span>
+                      </button>
+                    </PermissionGate>
+                  </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground mb-3">
-                  รองรับ <code className="bg-muted px-1.5 py-0.5 rounded font-mono">.txt</code> หรือ <code className="bg-muted px-1.5 py-0.5 rounded font-mono">.csv</code> (ดูรูปแบบได้ที่ปุ่มดาวน์โหลดเทมเพลต)
-                </p>
+                {/* Multi-delete bar */}
+                {isMultiDeleteMode && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={toggleSelectAllCooks}
+                        className="px-3 py-1.5 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-bold cursor-pointer"
+                      >
+                        {selectedCookIds.size === cooks.length
+                          ? "ยกเลิกทั้งหมด"
+                          : "เลือกทั้งหมด"}
+                      </button>
+                      <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                        เลือกแล้ว {selectedCookIds.size} / {cooks.length} คน
+                      </span>
+                    </div>
+
+                    <PermissionGate permission="duties.delete">
+                      <button
+                        type="button"
+                        onClick={handleBulkDeleteCooks}
+                        disabled={selectedCookIds.size === 0}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold border-0 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>ลบที่เลือก ({selectedCookIds.size})</span>
+                      </button>
+                    </PermissionGate>
+                  </div>
+                )}
 
                 {cooks.length === 0 ? (
-                  <div className="text-center py-6 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold text-sm">
+                  <div className="text-center py-8 rounded-xl border border-dashed border-border bg-surface-2/60 text-xs font-semibold text-muted-foreground">
                     ยังไม่มีรายชื่อแม่ครัว
                   </div>
                 ) : (
@@ -1485,15 +1493,15 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
                     {cooks.map((c) => {
                       const isSelected = selectedCookIds.has(c.id);
                       return (
-                        <div 
-                          key={c.id} 
+                        <div
+                          key={c.id}
                           onClick={() => isMultiDeleteMode && toggleSelectCook(c.id)}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-semibold transition-all ${
-                            isMultiDeleteMode 
-                              ? isSelected 
-                                ? "bg-red-50 border-red-300 text-red-700 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30 cursor-pointer shadow-sm"
-                                : "bg-card border-border hover:border-red-200 cursor-pointer"
-                              : "bg-card border-border"
+                          className={`inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all ${
+                            isMultiDeleteMode
+                              ? isSelected
+                                ? "bg-rose-50 dark:bg-rose-500/15 border-rose-300 dark:border-rose-500/40 text-rose-700 dark:text-rose-300 cursor-pointer"
+                                : "bg-surface-2 border-border hover:border-rose-300 cursor-pointer"
+                              : "bg-surface-2/70 border-border/80 text-foreground"
                           }`}
                         >
                           {isMultiDeleteMode && (
@@ -1501,153 +1509,244 @@ export default function DutyTab({ token, enabledNews = true, enabledDuty = true 
                               type="checkbox"
                               checked={isSelected}
                               readOnly
-                              className="w-3.5 h-3.5 text-red-600 rounded border-border"
+                              className="w-3.5 h-3.5 accent-rose-600 rounded"
                             />
                           )}
                           <span>{c.name}</span>
                           {!isMultiDeleteMode && (
-                            <>
+                            <span className="inline-flex items-center gap-0.5 pl-1 border-l border-border/70">
                               <PermissionGate permission="duties.edit">
-                                <button onClick={(e) => { e.stopPropagation(); openCookForm(c); }} className="text-indigo-500 hover:text-indigo-700 cursor-pointer border-0 bg-transparent text-xs font-bold pl-1.5">แก้ไข</button>
+                                <button
+                                  type="button"
+                                  title="แก้ไขชื่อ"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openCookForm(c);
+                                  }}
+                                  className="p-1 rounded-md text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-card border-0 bg-transparent cursor-pointer transition-colors"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
                               </PermissionGate>
                               <PermissionGate permission="duties.delete">
-                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCook(c); }} className="text-red-500 hover:text-red-700 cursor-pointer border-0 bg-transparent text-xs font-bold pl-1">ลบ</button>
+                                <button
+                                  type="button"
+                                  title="ลบรายชื่อ"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteCook(c);
+                                  }}
+                                  className="p-1 rounded-md text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-card border-0 bg-transparent cursor-pointer transition-colors"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
                               </PermissionGate>
-                            </>
+                            </span>
                           )}
                         </div>
                       );
                     })}
                   </div>
                 )}
-              </div>
+              </section>
 
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-foreground">กลุ่มเวรแม่ครัว</h3>
-                  <PermissionGate permission="duties.create">
-                    <button
-                      onClick={() => openCookGroupForm()}
-                      className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 border-0 cursor-pointer"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      เพิ่มกลุ่มเวรแม่ครัว
-                    </button>
-                  </PermissionGate>
+              {/* Section B: Cook Duty Groups + Integrated Print Actions */}
+              <section className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm sm:text-base font-extrabold text-foreground">
+                      กลุ่มเวรแม่ครัว ({sortedCookGroups.length} กลุ่ม)
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      หมุนเวรรายวันตามวันเปิดเรียนจริง
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {sortedCookGroups.length > 0 && dutySettings && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => printCookSchedule("weekly")}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-card hover:bg-muted text-foreground border border-border cursor-pointer transition-colors"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>พิมพ์รายสัปดาห์</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printCookSchedule("monthly")}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-card hover:bg-muted text-foreground border border-border cursor-pointer transition-colors"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>พิมพ์รายเดือน</span>
+                        </button>
+                      </>
+                    )}
+
+                    <PermissionGate permission="duties.create">
+                      <button
+                        type="button"
+                        onClick={() => openCookGroupForm()}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs sm:text-sm font-bold shadow-sm border-0 cursor-pointer transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>เพิ่มกลุ่มเวร</span>
+                      </button>
+                    </PermissionGate>
+                  </div>
                 </div>
-                {cookGroups.length === 0 ? (
-                  <div className="text-center py-8 text-subtle-foreground bg-muted rounded-2xl border border-dashed border-border font-semibold">
+
+                {sortedCookGroups.length === 0 ? (
+                  <div className="text-center py-10 rounded-2xl border border-dashed border-border bg-surface-2/60 text-sm font-bold text-muted-foreground">
                     ยังไม่มีกลุ่มเวรแม่ครัว
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {cookGroups.map((g) => (
-                      <div key={g.id} className="card-modern p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-bold text-foreground">{g.name}</h4>
-                              <span className="text-[10px] font-bold text-subtle-foreground">ลำดับที่ {g.order_no}</span>
-                            </div>
-                            <div className="mt-2">
-                              <Chips items={g.members.map((m) => m.name)} />
-                            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {sortedCookGroups.map((g) => (
+                      <div
+                        key={g.id}
+                        className="rounded-2xl border border-border bg-card p-4 space-y-2.5 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="inline-flex items-center justify-center h-7 min-w-7 px-2 rounded-lg bg-teal-500/12 text-teal-700 dark:text-teal-300 text-xs font-extrabold shrink-0">
+                              #{g.order_no}
+                            </span>
+                            <h4 className="font-extrabold text-sm text-foreground truncate">
+                              {g.name}
+                            </h4>
+                            <span className="text-[11px] font-semibold text-subtle-foreground shrink-0">
+                              ({g.members.length} คน)
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
+
+                          <div className="flex items-center gap-1 shrink-0">
                             <PermissionGate permission="duties.edit">
                               <button
+                                type="button"
                                 onClick={() => openCookGroupForm(g)}
-                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                title="แก้ไขกลุ่ม"
+                                className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/15 border-0 bg-transparent cursor-pointer transition-colors"
                               >
-                                แก้ไข
+                                <Pencil className="w-3.5 h-3.5" />
                               </button>
                             </PermissionGate>
                             <PermissionGate permission="duties.delete">
                               <button
+                                type="button"
                                 onClick={() => handleDeleteCookGroup(g)}
-                                className="text-red-500 dark:text-red-400 hover:text-red-700 px-2.5 py-1.5 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 rounded-lg transition-colors font-bold text-xs border-0 cursor-pointer"
+                                title="ลบกลุ่ม"
+                                className="p-1.5 rounded-lg text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/15 border-0 bg-transparent cursor-pointer transition-colors"
                               >
-                                ลบ
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </PermissionGate>
                           </div>
                         </div>
+
+                        <Chips items={g.members.map((m) => m.name)} />
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-
-              {cookGroups.length > 0 && dutySettings && (
-                <div className="card-modern p-5">
-                  <h3 className="font-bold text-foreground mb-3">พิมพ์ตารางเวรแม่ครัว</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    พิมพ์หรือบันทึก PDF ตารางเวรแม่ครัวประจำสัปดาห์หรือประจำเดือน
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => printCookSchedule("weekly")}
-                      className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 cursor-pointer text-sm border-0"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                      </svg>
-                      พิมพ์รายสัปดาห์
-                    </button>
-                    <button
-                      onClick={() => printCookSchedule("monthly")}
-                      className="bg-card border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all flex items-center gap-2 cursor-pointer text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                      </svg>
-                      พิมพ์รายเดือน
-                    </button>
-                  </div>
-                </div>
-              )}
+              </section>
             </div>
           )}
 
-          {subTab === "settings" && (
-            <div className="space-y-4 max-w-xl">
-              <div className="card-modern p-5">
-                <p className="text-sm text-muted-foreground mb-4">
-                  กำหนดวันเริ่มต้นการหมุนเวร และกำหนดกลุ่มเวรตั้งต้นสำหรับการขึ้นระบบ (Anchor Date / Anchor Offset)
-                </p>
-                <div className="space-y-3 text-sm">
-                  <div className="p-3.5 rounded-xl border border-border bg-muted/30">
-                    <p className="font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
-                      เวรครูประจำสัปดาห์
-                    </p>
-                    <div className="space-y-1 pl-3 text-xs text-muted-foreground font-semibold">
-                      <div>วันตั้งต้น: <span className="text-foreground">{dutySettings ? formatThaiDate(dutySettings.teacher_anchor_date) : "-"}</span></div>
-                      <div>กลุ่มเริ่มต้น ณ วันตั้งต้น: <span className="text-foreground">ลำดับที่ {dutySettings?.teacher_anchor_offset ?? 0}</span></div>
+          {/* =================================================================
+              4. DUTY ROTATION SETTINGS SUB-TAB
+              ================================================================= */}
+          {activeSubTab === "settings" && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-foreground">
+                    จุดเริ่มต้นการหมุนเวร (Anchor Settings)
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    กำหนดวันที่ตั้งต้นและลำดับกลุ่มเริ่มต้นสำหรับคำนวณตารางเวรอัตโนมัติ
+                  </p>
+                </div>
+
+                <PermissionGate permission="duties.manage">
+                  <button
+                    type="button"
+                    onClick={openDutySettingsForm}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs sm:text-sm font-bold shadow-sm border-0 cursor-pointer shrink-0 transition-all"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>แก้ไขการตั้งค่าเริ่มต้น</span>
+                  </button>
+                </PermissionGate>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/12 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <Users className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-extrabold text-foreground">
+                        เวรครูประจำสัปดาห์
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        เปลี่ยนกลุ่มทุกสัปดาห์การเรียน
+                      </p>
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-border bg-muted/30">
-                    <p className="font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
-                      เวรแม่ครัวประจำวัน
-                    </p>
-                    <div className="space-y-1 pl-3 text-xs text-muted-foreground font-semibold">
-                      <div>วันตั้งต้น: <span className="text-foreground">{dutySettings ? formatThaiDate(dutySettings.cook_anchor_date) : "-"}</span></div>
-                      <div>กลุ่มเริ่มต้น ณ วันตั้งต้น: <span className="text-foreground">ลำดับที่ {dutySettings?.cook_anchor_offset ?? 0}</span></div>
+                  <div className="space-y-2 pt-2 border-t border-border/60 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium">วันตั้งต้น</span>
+                      <span className="font-bold text-foreground">
+                        {dutySettings ? formatThaiDate(dutySettings.teacher_anchor_date) : "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium">
+                        กลุ่มเริ่มต้น ณ วันตั้งต้น
+                      </span>
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-bold">
+                        ลำดับที่ {dutySettings?.teacher_anchor_offset ?? 0}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <PermissionGate permission="duties.manage">
-                  <button
-                    onClick={openDutySettingsForm}
-                    className="mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all cursor-pointer"
-                  >
-                    แก้ไขการตั้งค่าเริ่มต้น
-                  </button>
-                </PermissionGate>
+
+                <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-teal-500/12 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                      <UtensilsCrossed className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-extrabold text-foreground">
+                        เวรแม่ครัวประจำวัน
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        เปลี่ยนกลุ่มทุกวันเปิดเรียนจริง
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-border/60 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium">วันตั้งต้น</span>
+                      <span className="font-bold text-foreground">
+                        {dutySettings ? formatThaiDate(dutySettings.cook_anchor_date) : "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground font-medium">
+                        กลุ่มเริ่มต้น ณ วันตั้งต้น
+                      </span>
+                      <span className="px-2 py-0.5 rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-300 font-bold">
+                        ลำดับที่ {dutySettings?.cook_anchor_offset ?? 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

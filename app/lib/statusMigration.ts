@@ -62,6 +62,9 @@ export async function ensureStatusSchema() {
     // Subject ordering was added after the initial schema. Keep older schools compatible.
     await pool.query("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS sort_order INTEGER");
     await pool.query("ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS name_jawi TEXT");
+    await pool.query("ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS village_thai TEXT");
+    await pool.query("ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS village_rumi TEXT");
+    await pool.query("ALTER TABLE public.schools ADD COLUMN IF NOT EXISTS village_jawi TEXT");
 
     // A classroom belongs to one academic term, so its homeroom teacher must
     // be stored on the classroom rather than on the teacher's global profile.
