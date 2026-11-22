@@ -61,10 +61,23 @@ function LandingPageContent() {
       router.push(`/home?school=${savedSchool}`);
       return;
     }
+    try {
+      const raw = sessionStorage.getItem("schools-list");
+      if (raw) {
+        const { at, value } = JSON.parse(raw);
+        if (Array.isArray(value) && Date.now() - at < 10 * 60 * 1000) {
+          setSchools(value);
+          setLoading(false);
+        }
+      }
+    } catch {}
     fetch("/api/public/schools")
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) setSchools(data);
+        if (Array.isArray(data)) {
+          setSchools(data);
+          try { sessionStorage.setItem("schools-list", JSON.stringify({ at: Date.now(), value: data })); } catch {}
+        }
       })
       .catch((err) => console.error("Error fetching schools:", err))
       .finally(() => setLoading(false));

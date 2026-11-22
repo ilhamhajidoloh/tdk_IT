@@ -45,7 +45,47 @@ interface CookDisplayEntry {
   members: { id: string; name: string }[];
 }
 
+// Consistent response times: identical requests share one in-memory result for
+// a short period (and in-flight requests are de-duplicated), so a visitor does
+// not randomly hit either a warm cache or a full multi-query database round trip.
+const RESPONSE_TTL_MS = 60_000;
+const responseCache = new Map<string, { at: number; body: string }>();
+const inflight = new Map<string, Promise<string>>();
+const CACHE_HEADERS = { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" };
+
 export async function GET(req: NextRequest) {
+  const key = `${getSchoolFromUrl(req)}|${req.nextUrl.searchParams.get("tab") || "news"}|${todayStr()}`;
+  const hit = responseCache.get(key);
+  if (hit && Date.now() - hit.at < RESPONSE_TTL_MS) {
+    return new NextResponse(hit.body, { headers: { ...CACHE_HEADERS, "Content-Type": "application/json" } });
+  }
+
+  let pending = inflight.get(key);
+  if (!pending) {
+    pending = computeHome(req)
+      .then(async (res) => {
+        const body = await res.text();
+        if (res.ok) {
+          responseCache.set(key, { at: Date.now(), body });
+          if (responseCache.size > 200) responseCache.delete(responseCache.keys().next().value as string);
+        }
+        return body;
+      })
+      .finally(() => inflight.delete(key));
+    inflight.set(key, pending);
+  }
+  try {
+    const body = await pending;
+    return new NextResponse(body, { headers: { ...CACHE_HEADERS, "Content-Type": "application/json" } });
+  } catch (error) {
+    // Serve slightly stale data rather than a slow failure.
+    if (hit) return new NextResponse(hit.body, { headers: { "Content-Type": "application/json" } });
+    console.error("GET /api/public/home error:", error);
+    return NextResponse.json({ error: "Failed to load home data" }, { status: 500 });
+  }
+}
+
+async function computeHome(req: NextRequest): Promise<NextResponse> {
   const today = todayStr();
   const schoolSubdomain = getSchoolFromUrl(req);
   const activeTab = req.nextUrl.searchParams.get("tab") || "news";
@@ -118,7 +158,7 @@ export async function GET(req: NextRequest) {
   // Look-ahead window for holiday fetching (cover all forecast + some buffer)
   const holidayWindowEnd = addDays(today, TEACHER_FORECAST_WEEKS * 7 + COOK_FORECAST_DAYS + 14);
 
-  const [newsRes, teacherGroupsRes, cookGroupsRes, dutySettingsRes, scheduleDaysRes, holidaysRes] =
+  const [newsRes, teacherGroupsRes, cookGroupsRes, dutySettingsRes, scheduleDaysRes, holidaysRes, calendarHolidayRes] =
     await Promise.all([
       pool.query(
         "SELECT id, title, content, created_at, target_audience FROM public.news WHERE is_published = true AND COALESCE(target_audience, 'all') = 'all' AND (expires_at IS NULL OR expires_at > NOW()) AND (school_id = $1 OR school_id IS NULL) ORDER BY created_at DESC LIMIT 10",
@@ -168,6 +208,14 @@ export async function GET(req: NextRequest) {
         "SELECT id, date, reason, applies_to FROM public.school_holidays WHERE is_published = true AND (school_id = $1 OR school_id IS NULL) AND date <= $2 ORDER BY date ASC",
         [schoolId, holidayWindowEnd]
       ),
+      pool.query(
+        `SELECT id, event_date AS date, title AS reason
+         FROM public.calendar_events
+         WHERE event_type = 'holiday'
+           AND (school_id = $1 OR school_id IS NULL)
+           AND event_date <= $2`,
+        [schoolId, holidayWindowEnd]
+      ),
     ]);
 
   const dutySettings = dutySettingsRes.rows[0] ?? { 
@@ -191,15 +239,6 @@ export async function GET(req: NextRequest) {
   // Calendar holidays are the canonical school-calendar input. Merge them
   // into the duty view so older entries created before the holiday link was
   // added still pause teacher/cook rotations.
-  const calendarHolidayRes = await pool.query(
-    `SELECT id, event_date AS date, title AS reason
-     FROM public.calendar_events
-     WHERE event_type = 'holiday'
-       AND (school_id = $1 OR school_id IS NULL)
-       AND event_date <= $2`,
-    [schoolId, holidayWindowEnd]
-  );
-
   // Determine if we have passed the last school day of the current week for cooks (Monday to Sunday)
   const baseWeekStart = mondayOf(today);
   let cookLastSchoolDay = baseWeekStart;

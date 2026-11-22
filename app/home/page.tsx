@@ -129,6 +129,23 @@ interface SchoolInfo {
 
 type HomeSubTab = "news" | "duty" | "info";
 
+const CACHE_MAX_AGE_MS = 10 * 60 * 1000;
+function readCache<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const { at, value } = JSON.parse(raw);
+    return Date.now() - at < CACHE_MAX_AGE_MS ? (value as T) : null;
+  } catch {
+    return null;
+  }
+}
+function writeCache(key: string, value: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), value }));
+  } catch {}
+}
+
 // ==========================================
 // THAI DATE & DAY THEMING (Sophisticated Palette)
 // ==========================================
@@ -444,36 +461,67 @@ function SchoolHomeContent() {
   const [newsSearch, setNewsSearch] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // 1. Fetch school info (Exact API Logic preserved)
+  // 1 & 2. Fetch school info and tab data IN PARALLEL (the home API resolves the
+  // school by itself), and show the last cached result instantly while the
+  // fresh one loads, so load time feels the same on every visit.
   useEffect(() => {
-    setLoading(true);
-    setSchoolReady(false);
-    setData(null);
+    let cancelled = false;
+    const cacheKey = `school-info:${schoolParam}`;
+    const cached = readCache<SchoolInfo>(cacheKey);
+    if (cached) {
+      setSchoolInfo(cached);
+      updateSchoolDocumentMeta(cached);
+    } else {
+      setSchoolInfo(null);
+    }
+    setSchoolReady(true);
     fetch(`/api/public/schools/${schoolParam}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((school) => {
+        if (cancelled || !school) return;
         setSchoolInfo(school);
+        writeCache(cacheKey, school);
         updateSchoolDocumentMeta(school);
       })
-      .catch((err) => console.error("Error fetching school information:", err))
-      .finally(() => {
-        setSchoolReady(true);
-        setLoading(false);
-      });
+      .catch((err) => console.error("Error fetching school information:", err));
+    return () => { cancelled = true; };
   }, [schoolParam]);
 
-  // 2. Fetch Tab data (News, Duty, etc.) (Exact API Logic preserved)
   useEffect(() => {
-    if (!schoolReady || activeTab === "info") return;
+    if (activeTab === "info") { setLoading(false); return; }
     let cancelled = false;
-    setLoading(true);
+    const cacheKey = `home-data:${schoolParam}:${activeTab}`;
+    const cached = readCache<HomeData>(cacheKey);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+    } else {
+      setData(null);
+      setLoading(true);
+    }
     fetch(`/api/public/home?school=${schoolParam}&tab=${activeTab}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((homeData) => { if (!cancelled) setData(homeData); })
+      .then((homeData) => {
+        if (cancelled || !homeData) return;
+        setData(homeData);
+        writeCache(cacheKey, homeData);
+      })
       .catch((err) => console.error("Error fetching school home data:", err))
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [activeTab, schoolParam, schoolReady]);
+  }, [activeTab, schoolParam]);
+
+  // Warm the other tab in the background so switching tabs is instant.
+  useEffect(() => {
+    if (activeTab !== "news") return;
+    const t = setTimeout(() => {
+      fetch(`/api/public/home?school=${schoolParam}&tab=duty`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d) writeCache(`home-data:${schoolParam}:duty`, d); })
+        .catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [activeTab, schoolParam]);
 
   const changeSchool = () => {
     localStorage.removeItem("selectedSchool");

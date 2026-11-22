@@ -37,7 +37,6 @@ export async function GET(
   const isMain = param.toLowerCase() === "main" || param === "00000000-0000-0000-0000-000000000001";
 
   try {
-    await ensureStatusSchema();
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
     let query = "";
     const queryParams = [param];
@@ -48,7 +47,16 @@ export async function GET(
       query = "SELECT id, name, name_en, name_jawi, village_thai, village_rumi, village_jawi, subdomain, logo_url, logo_drive_file_id, address, phone, email, enabled_modules FROM public.schools WHERE LOWER(subdomain) = LOWER($1) AND is_active = true";
     }
 
-    let result = await pool.query(query, queryParams);
+    // Run the (slow, many-statement) schema migration only if the query fails
+    // because of a missing column, instead of on every cold start.
+    let result;
+    try {
+      result = await pool.query(query, queryParams);
+    } catch (err) {
+      if ((err as { code?: string })?.code !== "42703") throw err;
+      await ensureStatusSchema();
+      result = await pool.query(query, queryParams);
+    }
 
     // Fallback: ถ้าค้นหาโรงเรียนหลัก (main) แล้วยังไม่มีในฐานข้อมูล ให้สร้าง/ดึง Default School
     if (result.rows.length === 0 && isMain) {
