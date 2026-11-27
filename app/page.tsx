@@ -53,18 +53,31 @@ function LandingPageContent() {
   // ==========================================
   useEffect(() => {
     if (directSchoolParam) {
-      router.push(`/home?school=${directSchoolParam}`);
+      router.replace(`/home?school=${encodeURIComponent(directSchoolParam)}`);
       return;
     }
-    const savedSchool = localStorage.getItem("selectedSchool");
-    if (savedSchool && savedSchool.trim() !== "") {
-      router.push(`/home?school=${savedSchool}`);
+    const savedSchool = localStorage.getItem("selectedSchool")?.trim();
+    if (savedSchool) {
+      router.replace(`/home?school=${encodeURIComponent(savedSchool)}`);
       return;
     }
+    try {
+      const raw = sessionStorage.getItem("schools-list");
+      if (raw) {
+        const { at, value } = JSON.parse(raw);
+        if (Array.isArray(value) && Date.now() - at < 10 * 60 * 1000) {
+          setSchools(value);
+          setLoading(false);
+        }
+      }
+    } catch {}
     fetch("/api/public/schools")
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) setSchools(data);
+        if (Array.isArray(data)) {
+          setSchools(data);
+          try { sessionStorage.setItem("schools-list", JSON.stringify({ at: Date.now(), value: data })); } catch {}
+        }
       })
       .catch((err) => console.error("Error fetching schools:", err))
       .finally(() => setLoading(false));
@@ -72,7 +85,7 @@ function LandingPageContent() {
 
   const selectSchool = (subdomain: string) => {
     localStorage.setItem("selectedSchool", subdomain);
-    router.push(`/home?school=${subdomain}`);
+    router.push(`/home?school=${encodeURIComponent(subdomain)}`);
   };
 
   // Instant client-side search filter for schools

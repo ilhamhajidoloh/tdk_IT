@@ -15,8 +15,12 @@ const pool = new Pool({
   // Keep each instance deliberately small so the database is not exhausted by
   // idle pools. Override only when the database capacity is known.
   max: Number(process.env.DB_POOL_MAX || 3),
-  idleTimeoutMillis: 10_000,
-  connectionTimeoutMillis: 5_000,
+  // Keep warm connections longer: re-opening a TLS connection to a cloud DB is
+  // the main reason an otherwise identical request is sometimes much slower.
+  idleTimeoutMillis: 60_000,
+  connectionTimeoutMillis: 10_000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
 });
 
 export default pool;
