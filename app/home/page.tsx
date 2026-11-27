@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, Suspense } from "react";
+import { useEffect, useState, useMemo, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -449,7 +449,22 @@ function NewsDetailModal({ item, onClose }: { item: NewsItem | null; onClose: ()
 function SchoolHomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const schoolParam = searchParams.get("school") || "main";
+  const schoolParam = searchParams.get("school")?.trim();
+
+  useEffect(() => {
+    if (!schoolParam) {
+      const savedSchool = localStorage.getItem("selectedSchool")?.trim();
+      router.replace(savedSchool ? `/home?school=${encodeURIComponent(savedSchool)}` : "/");
+    }
+  }, [router, schoolParam]);
+
+  if (!schoolParam) return null;
+  return <SchoolHomeForSchool schoolParam={schoolParam} />;
+}
+
+function SchoolHomeForSchool({ schoolParam }: { schoolParam: string }) {
+  const router = useRouter();
+  const changingSchool = useRef(false);
 
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [data, setData] = useState<HomeData | null>(null);
@@ -470,6 +485,7 @@ function SchoolHomeContent() {
     const cached = readCache<SchoolInfo>(cacheKey);
     if (cached) {
       setSchoolInfo(cached);
+      localStorage.setItem("selectedSchool", cached.subdomain);
       updateSchoolDocumentMeta(cached);
     } else {
       setSchoolInfo(null);
@@ -478,9 +494,10 @@ function SchoolHomeContent() {
     fetch(`/api/public/schools/${schoolParam}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((school) => {
-        if (cancelled || !school) return;
+        if (cancelled || changingSchool.current || !school) return;
         setSchoolInfo(school);
         writeCache(cacheKey, school);
+        localStorage.setItem("selectedSchool", school.subdomain);
         updateSchoolDocumentMeta(school);
       })
       .catch((err) => console.error("Error fetching school information:", err));
@@ -511,19 +528,8 @@ function SchoolHomeContent() {
     return () => { cancelled = true; };
   }, [activeTab, schoolParam]);
 
-  // Warm the other tab in the background so switching tabs is instant.
-  useEffect(() => {
-    if (activeTab !== "news") return;
-    const t = setTimeout(() => {
-      fetch(`/api/public/home?school=${schoolParam}&tab=duty`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => { if (d) writeCache(`home-data:${schoolParam}:duty`, d); })
-        .catch(() => {});
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [activeTab, schoolParam]);
-
   const changeSchool = () => {
+    changingSchool.current = true;
     localStorage.removeItem("selectedSchool");
     router.push("/");
   };

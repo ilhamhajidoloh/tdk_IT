@@ -10,7 +10,7 @@ export default function SchoolDocumentMeta() {
   const isSuperAdminPath = pathname.startsWith("/super-admin");
   const schoolKey = isSuperAdminPath
     ? null
-    : pathname === "/"
+    : pathname === "/" || (pathname === "/home" && !searchParams.get("school")?.trim())
     ? null
     : searchParams.get("school") ||
       searchParams.get("schoolId") ||

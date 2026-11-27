@@ -53,12 +53,12 @@ function LandingPageContent() {
   // ==========================================
   useEffect(() => {
     if (directSchoolParam) {
-      router.push(`/home?school=${directSchoolParam}`);
+      router.replace(`/home?school=${encodeURIComponent(directSchoolParam)}`);
       return;
     }
-    const savedSchool = localStorage.getItem("selectedSchool");
-    if (savedSchool && savedSchool.trim() !== "") {
-      router.push(`/home?school=${savedSchool}`);
+    const savedSchool = localStorage.getItem("selectedSchool")?.trim();
+    if (savedSchool) {
+      router.replace(`/home?school=${encodeURIComponent(savedSchool)}`);
       return;
     }
     try {
@@ -85,7 +85,7 @@ function LandingPageContent() {
 
   const selectSchool = (subdomain: string) => {
     localStorage.setItem("selectedSchool", subdomain);
-    router.push(`/home?school=${subdomain}`);
+    router.push(`/home?school=${encodeURIComponent(subdomain)}`);
   };
 
   // Instant client-side search filter for schools
