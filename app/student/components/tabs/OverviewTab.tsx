@@ -9,8 +9,11 @@ import {
   AlertTriangle,
   CalendarDays,
   Clock3,
+  Lock,
+  ArrowRight,
+  GraduationCap,
 } from "lucide-react";
-import { type DBGrade, type DBSubject, type ScheduleEntry, type Tab, getGradeInfo } from "../types";
+import { type DBGrade, type DBSubject, type ScheduleEntry, type Tab } from "../types";
 
 interface OverviewTabProps {
   studentName: string;
@@ -49,13 +52,11 @@ export default function OverviewTab({
   myScheduleToday,
   setActiveTab,
 }: OverviewTabProps) {
-  // Check release status for active setting
   const activeSetting = settingsList.find((s: any) => s.id === activeSettingId);
   const isManualReleased = activeSetting?.is_grade_released !== false;
   const releaseDateStr = activeSetting?.grade_release_date || null;
 
   let isGradeReleased = true;
-
   if (releaseDateStr && releaseDateStr.trim() !== "") {
     const targetTime = new Date(releaseDateStr).getTime();
     const now = new Date().getTime();
@@ -64,180 +65,251 @@ export default function OverviewTab({
     isGradeReleased = isManualReleased;
   }
 
+  const getSubjectPercent = (g: DBGrade) => {
+    const sub = subjectsList.find(
+      (s) => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId
+    );
+    const mMax = Number(sub?.midterm_max_score) || midtermMax;
+    const fMax = Number(sub?.final_max_score) || finalMax;
+    const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
+    return mMax + fMax > 0 ? (total / (mMax + fMax)) * 100 : 0;
+  };
+
+  const gradeACount = filteredGrades.filter((g) => getSubjectPercent(g) >= 80).length;
+  const passedCount = filteredGrades.filter((g) => getSubjectPercent(g) >= 50).length;
+  const needsImprovementCount = filteredGrades.filter((g) => getSubjectPercent(g) < 50).length;
+  const sortedTodaySchedule = [...myScheduleToday].sort((a, b) => Number(a.period_no) - Number(b.period_no));
+
   return (
     <div className="space-y-6 animate-fade-in-up">
+      {/* ── Student Hero Card ── */}
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+        <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-primary/8 blur-2xl" />
+        <div className="pointer-events-none absolute -left-12 -bottom-12 h-40 w-40 rounded-full bg-emerald-500/8 blur-2xl" />
 
-      {/* Profile Hero Card */}
-      <div className="aurora-panel relative rounded-2xl p-7 text-white overflow-hidden shadow-lg">
-        <div className="relative z-10 flex items-center gap-5">
-          <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/15 border border-white/40 flex items-center justify-center shrink-0 backdrop-blur-sm">
-            <span className="text-3xl sm:text-4xl font-extrabold drop-shadow-sm">{studentName.charAt(0)}</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-xl sm:text-2xl font-extrabold leading-tight truncate drop-shadow-sm">{studentName}</h2>
-            <div className="flex flex-wrap items-center gap-2 mt-2.5">
-              <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/20">
-                <Hash className="w-3 h-3" />
-                {studentCode}
-              </span>
-              <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-semibold border border-white/20">
-                <Building2 className="w-3 h-3" />
-                ห้อง {classroomName || "—"}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-primary/12 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+              <span className="text-2xl sm:text-3xl font-extrabold">
+                {studentName.charAt(0).toUpperCase()}
               </span>
             </div>
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full mb-1.5">
+                <GraduationCap className="w-3.5 h-3.5" />
+                พอร์ทัลนักเรียน
+              </div>
+              <h2 className="text-lg sm:text-2xl font-bold text-foreground leading-tight truncate">
+                {studentName}
+              </h2>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="inline-flex items-center gap-1.5 bg-muted px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground border border-border">
+                  <Hash className="w-3.5 h-3.5 text-primary" />
+                  {studentCode}
+                </span>
+                <span className="inline-flex items-center gap-1.5 bg-muted px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground border border-border">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                  ห้อง {classroomName || "—"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Jump Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab("grades")}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:opacity-95 transition-opacity shadow-xs"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              ดูผลการเรียน
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("schedule")}
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-muted text-foreground hover:bg-muted/80 border border-border transition-colors"
+            >
+              <CalendarDays className="w-3.5 h-3.5 text-primary" />
+              ตารางเรียน
+            </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {isGradeReleased && (
-        <>
-      {/* Term Selector */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h3 className="font-bold text-foreground text-sm">สรุปผลการเรียน</h3>
-        <select
-          className="ui-input !w-auto py-2 text-sm font-semibold text-primary"
-          value={activeSettingId || ""}
-          onChange={(e) => {
-            const val = e.target.value;
-            const s = settingsList.find((x: any) => String(x.id) === val);
-            if (s) onChangeSetting(s);
-          }}
-        >
-          {settingsList.map(s => (
-            <option key={s.id} value={s.id}>
-              ปี {s.academic_year} เทอม {s.term}{s.is_active ? " · ปัจจุบัน" : ""}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* ── Grade Summary Section ── */}
+      {isGradeReleased ? (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="font-bold text-foreground text-base">สรุปผลการเรียน</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">ภาพรวมคะแนนและเกรดเฉลี่ยประจำภาคเรียน</p>
+            </div>
+            <select
+              aria-label="เลือกภาคเรียน"
+              className="ui-input !w-auto !py-2 !text-sm font-semibold text-foreground"
+              value={activeSettingId || ""}
+              onChange={(e) => {
+                const s = settingsList.find((x: any) => String(x.id) === e.target.value);
+                if (s) onChangeSetting(s);
+              }}
+            >
+              {settingsList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  ปี {s.academic_year} เทอม {s.term}{s.is_active ? " · ปัจจุบัน" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4 stagger-children">
-        {/* GPA */}
-        <div className="col-span-3 sm:col-span-1 ui-card-interactive p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
-          <div className={`w-22 h-22 rounded-full border-4 ${gpaRingColor} flex items-center justify-center mb-3 relative bg-muted`}>
-            <span className={`relative text-2xl font-extrabold ${isGradeReleased ? gpaColor : "text-amber-600 dark:text-amber-400"}`}>
-              {isGradeReleased ? gpaValue : "🔒"}
-            </span>
-          </div>
-          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">เกรดเฉลี่ย (GPA)</div>
-          <div className="text-[11px] text-subtle-foreground mt-0.5">
-            {isGradeReleased ? `${gpaCredits} หน่วยกิต` : "รอเปิดประกาศผล"}
-          </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 stagger-children">
+            {/* GPA Card */}
+            <div className="ui-card p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-primary/70" />
+              <div className={`w-22 h-22 rounded-full border-4 ${gpaRingColor} flex items-center justify-center mb-3 bg-muted/50`}>
+                <span className={`text-2xl font-extrabold ${gpaColor}`}>
+                  {gpaValue}
+                </span>
+              </div>
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                เกรดเฉลี่ย (GPA)
+              </div>
+              <div className="text-xs text-subtle-foreground mt-1">
+                {gpaCredits} หน่วยกิต
+              </div>
+            </div>
 
-        {/* Right stats */}
-        <div className="col-span-3 sm:col-span-2 grid grid-cols-2 gap-4">
-          <div className="ui-card-interactive p-5 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-400 to-indigo-500" />
-            <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center mb-2">
-              <BookOpen className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
+            {/* 4 Stat Cards */}
+            <div className="md:col-span-2 grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="ui-card-interactive p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                    <BookOpen className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-[11px] font-medium text-subtle-foreground">เทอมนี้</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-foreground">
+                  {filteredGrades.length}
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground mt-1">วิชาที่มีคะแนน</div>
+              </div>
+
+              <div className="ui-card-interactive p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <Star className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-[11px] font-medium text-subtle-foreground">≥ 80%</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-foreground">
+                  {gradeACount}
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground mt-1">วิชาที่ได้เกรด A</div>
+              </div>
+
+              <div className="ui-card-interactive p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <CircleCheck className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-[11px] font-medium text-subtle-foreground">≥ 50%</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {passedCount}
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground mt-1">ผ่านเกณฑ์ทั้งหมด</div>
+              </div>
+
+              <div className="ui-card-interactive p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                    <AlertTriangle className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-[11px] font-medium text-subtle-foreground">&lt; 50%</span>
+                </div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400">
+                  {needsImprovementCount}
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground mt-1">ต้องปรับปรุง</div>
+              </div>
             </div>
-            <div className="text-3xl font-extrabold text-violet-600 dark:text-violet-400 mb-1">
-              {isGradeReleased ? filteredGrades.length : "🔒"}
-            </div>
-            <div className="text-xs font-semibold text-muted-foreground">วิชาที่มีคะแนน</div>
-            <div className="text-[11px] text-subtle-foreground">เทอมนี้</div>
           </div>
-          <div className="ui-card-interactive p-5 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-pink-400 to-rose-500" />
-            <div className="w-9 h-9 rounded-xl bg-pink-100 dark:bg-pink-500/15 flex items-center justify-center mb-2">
-              <Star className="w-4.5 h-4.5 text-pink-600 dark:text-pink-400" />
-            </div>
-            <div className="text-3xl font-extrabold text-pink-500 dark:text-pink-400 mb-1">
-              {isGradeReleased ? filteredGrades.filter(g => {
-                const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                const mMax = Number(sub?.midterm_max_score) || midtermMax;
-                const fMax = Number(sub?.final_max_score) || finalMax;
-                const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
-                return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 80;
-              }).length : "🔒"}
-            </div>
-            <div className="text-xs font-semibold text-muted-foreground">เกรด A</div>
-            <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 80%</div>
+        </section>
+      ) : (
+        <section className="ui-card p-6 sm:p-8 text-center border-amber-500/25 bg-amber-500/5">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
+            <Lock className="w-6 h-6" />
           </div>
-          <div className="ui-card-interactive p-5 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500" />
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-2">
-              <CircleCheck className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mb-1">
-              {isGradeReleased ? filteredGrades.filter(g => {
-                const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                const mMax = Number(sub?.midterm_max_score) || midtermMax;
-                const fMax = Number(sub?.final_max_score) || finalMax;
-                const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
-                return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 >= 50;
-              }).length : "🔒"}
-            </div>
-            <div className="text-xs font-semibold text-muted-foreground">ผ่านทั้งหมด</div>
-            <div className="text-[11px] text-subtle-foreground">คะแนน ≥ 50%</div>
-          </div>
-          <div className="ui-card-interactive p-5 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-red-500" />
-            <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center mb-2">
-              <AlertTriangle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
-            </div>
-            <div className="text-3xl font-extrabold text-rose-500 dark:text-rose-400 mb-1">
-              {isGradeReleased ? filteredGrades.filter(g => {
-                const sub = subjectsList.find(s => s.name?.trim().toLowerCase() === g.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                const mMax = Number(sub?.midterm_max_score) || midtermMax;
-                const fMax = Number(sub?.final_max_score) || finalMax;
-                const total = (g.midterm_score ?? 0) + (g.final_score ?? 0);
-                return mMax + fMax > 0 && (total / (mMax + fMax)) * 100 < 50;
-              }).length : "🔒"}
-            </div>
-            <div className="text-xs font-semibold text-muted-foreground">ต้องปรับปรุง</div>
-            <div className="text-[11px] text-subtle-foreground">คะแนน &lt; 50%</div>
-          </div>
-        </div>
-      </div>
-        </>
+          <h3 className="text-base font-bold text-foreground">ผลการเรียนเทอมนี้ยังไม่เปิดเผย</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+            สามารถตรวจสอบกำหนดการเปิดประกาศผลได้ที่แท็บผลการเรียน
+          </p>
+          <button
+            type="button"
+            onClick={() => setActiveTab("grades")}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-card border border-border text-foreground hover:bg-muted transition-colors"
+          >
+            ไปที่ผลการเรียน
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </section>
       )}
 
-      {/* Today's schedule timeline */}
-      <div className="ui-card overflow-hidden animate-fade-in-up">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+      {/* ── Today's Schedule Timeline ── */}
+      <section className="ui-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <CalendarDays className="w-4.5 h-4.5" />
             </span>
             <div>
-              <span className="block font-bold text-foreground text-sm">ตารางเรียนวันนี้</span>
-              <span className="block text-[11px] text-muted-foreground">เรียงตามเวลาเรียน</span>
+              <h3 className="font-bold text-foreground text-sm">ตารางเรียนวันนี้</h3>
+              <p className="text-[11px] text-muted-foreground">เรียงตามเวลาเรียน</p>
             </div>
           </div>
-          <button onClick={() => setActiveTab("schedule")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูตารางทั้งหมด →</button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("schedule")}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:opacity-80 transition-opacity shrink-0"
+          >
+            <span>ดูตารางทั้งหมด</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
-        {myScheduleToday.length === 0 ? (
+
+        {sortedTodaySchedule.length === 0 ? (
           <div className="px-5 py-10 text-center">
-            <CalendarDays className="w-8 h-8 text-subtle-foreground mx-auto mb-2" />
+            <div className="w-12 h-12 rounded-2xl bg-muted text-muted-foreground flex items-center justify-center mx-auto mb-3">
+              <CalendarDays className="w-6 h-6" />
+            </div>
             <p className="text-sm font-semibold text-foreground">วันนี้ไม่มีคาบเรียน</p>
-            <p className="text-xs text-muted-foreground mt-1">ตรวจสอบตารางเรียนประจำสัปดาห์ได้ที่เมนูตารางเรียน</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              ตรวจสอบตารางเรียนประจำสัปดาห์ได้ที่เมนูตารางเรียน
+            </p>
           </div>
         ) : (
-          <div className="px-5 py-5">
+          <div className="px-4 sm:px-6 py-5">
             <div className="relative space-y-1">
-              <div className="absolute left-[2.35rem] top-5 bottom-5 w-px bg-border" />
-              {myScheduleToday.sort((a, b) => Number(a.period_no) - Number(b.period_no)).map((entry) => {
+              <div className="absolute left-[3.55rem] top-5 bottom-5 w-px bg-border" />
+              {sortedTodaySchedule.map((entry) => {
                 const teacher = entry.teacher_name || (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
                 return (
-                  <div key={entry.id} className="relative grid grid-cols-[3.5rem_1fr] gap-4 py-2.5 group">
+                  <div key={entry.id} className="relative grid grid-cols-[3.25rem_1fr] gap-3 sm:gap-4 py-2 group">
                     <div className="pt-2 text-right">
-                      <div className="text-xs font-extrabold text-foreground">{entry.start_time}</div>
+                      <div className="text-xs font-bold text-foreground">{entry.start_time}</div>
                       <div className="text-[10px] text-subtle-foreground">{entry.end_time}</div>
                     </div>
                     <div className="relative pl-4">
-                      <span className="absolute -left-[0.31rem] top-4 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-card group-hover:scale-125 transition-transform" />
+                      <span className="absolute -left-[0.3rem] top-4 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-card group-hover:scale-125 transition-transform" />
                       <div className="rounded-xl border border-border bg-muted/35 px-4 py-3 hover:border-primary/30 hover:bg-primary/5 transition-colors">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-bold text-sm text-foreground truncate">{entry.subject_name}</p>
                             {teacher && <p className="text-xs text-muted-foreground mt-1">อ.{teacher}</p>}
                           </div>
-                          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
-                            <Clock3 className="w-3 h-3" /> คาบ {entry.period_no}
+                          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                            <Clock3 className="w-3 h-3" />
+                            คาบ {entry.period_no}
                           </span>
                         </div>
                       </div>
@@ -248,85 +320,7 @@ export default function OverviewTab({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Legacy schedule preview retained temporarily, hidden from the dashboard. */}
-      {false && myScheduleToday.length > 0 && (
-        <div className="ui-card overflow-hidden animate-fade-in-up">
-          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-              <span className="font-bold text-foreground text-sm">คาบเรียนวันนี้</span>
-            </div>
-            <button onClick={() => setActiveTab("schedule")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
-          </div>
-          <div className="divide-y divide-border stagger-children">
-            {myScheduleToday.sort((a, b) => Number(a.period_no) - Number(b.period_no)).map(e => {
-              return (
-                <div key={e.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
-                  <div className="text-center shrink-0 w-10">
-                    <div className="text-[11px] font-bold text-muted-foreground">คาบ {e.period_no}</div>
-                    <div className="text-[10px] text-subtle-foreground">{e.start_time}</div>
-                  </div>
-                  <div className="w-px h-8 bg-border" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-foreground truncate">{e.subject_name}</div>
-                    {(() => { const t = e.teacher_name || (e.teacher_names?.length ? e.teacher_names.join(", ") : null); return t ? <div className="text-xs text-muted-foreground">อ.{t}</div> : null; })()}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Quick Grades Preview */}
-      <div className="ui-card overflow-hidden animate-fade-in-up hidden">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <span className="font-bold text-foreground text-sm">คะแนนล่าสุด</span>
-          <button onClick={() => setActiveTab("grades")} className="text-xs font-semibold text-primary hover:opacity-80 transition-opacity">ดูทั้งหมด →</button>
-        </div>
-        {!isGradeReleased ? (
-          <div className="p-6 text-center space-y-2 bg-amber-500/5">
-            <div className="text-2xl">🔒</div>
-            <div className="text-sm font-bold text-foreground">ผลการเรียนเทอมนี้ยังไม่เปิดเผยสำหรับนักเรียน</div>
-            <div className="text-xs text-muted-foreground font-medium">กดแท็บ "ผลการเรียน" เพื่อดูเวลานับถอยหลังเปิดระบบ</div>
-          </div>
-        ) : (
-          filteredGrades.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground font-medium">ยังไม่มีผลการเรียนในเทอมนี้</div>
-          ) : (
-            <div className="divide-y divide-border stagger-children">
-              {filteredGrades.slice(0, 4).map(grade => {
-                const subject = subjectsList.find(s => s.name?.trim().toLowerCase() === grade.subject?.trim().toLowerCase() && s.setting_id === activeSettingId);
-                const mMax = Number(subject?.midterm_max_score) || midtermMax;
-                const fMax = Number(subject?.final_max_score) || finalMax;
-                const totalScore = (grade.midterm_score ?? 0) + (grade.final_score ?? 0);
-                const percent = mMax + fMax > 0 ? (totalScore / (mMax + fMax)) * 100 : 0;
-                const isActivity = subject?.subject_type === "activity";
-                const info = isActivity
-                  ? (percent >= 50 ? { letter: "ผ่าน", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30", bar: "bg-emerald-500" } : { letter: "ไม่ผ่าน", color: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30", bar: "bg-rose-500" })
-                  : getGradeInfo(percent);
-                return (
-                  <div key={grade.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted transition-colors">
-                    <span className={`w-10 text-center py-1.5 rounded-xl border text-xs font-extrabold shrink-0 ${info.color}`}>{info.letter}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-foreground truncate">{grade.subject}</div>
-                      <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-500 ${info.bar}`} style={{ width: `${Math.min(100, percent)}%` }} />
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold text-sm text-foreground">{totalScore}</div>
-                      <div className="text-[11px] text-subtle-foreground">/{mMax + fMax}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
-        )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -649,7 +649,7 @@ export default function StudentPortal() {
   @media print{.print-btn{display:none;} @page{margin:1cm;size:A4 landscape;}}
 </style>
 </head><body>
-<button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+<button class="print-btn" onclick="window.print()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>พิมพ์ / บันทึก PDF</button>
 <h1>ตารางเรียน · ${studentName} · ห้อง ${classroomName}</h1>
 <div class="meta">เทอม ${activeTermStr} · ออกรายงาน ณ ${dateStr}</div>
 <table style="width:100%;border-collapse:collapse;font-family:inherit;">
@@ -679,11 +679,11 @@ export default function StudentPortal() {
       <TabNav activeTab={activeTab} setActiveTab={setActiveTab} gradesCount={gradesCount} />
 
       {/* ── MAIN ── */}
-      <main className="flex-1 max-w-screen-lg mx-auto w-full px-3.5 sm:px-6 py-6 sm:py-8 pb-24 sm:pb-8">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-5 sm:py-8 pb-24 sm:pb-10">
         {tabLoading ? (
           <div className="min-h-80 flex flex-col items-center justify-center gap-3 text-center">
-            <span className="h-9 w-9 rounded-full border-4 border-violet-200 border-t-violet-600 animate-spin" />
-            <p className="text-sm font-semibold text-muted-foreground">กำลังโหลดข้อมูลแท็บนี้...</p>
+            <span className="h-9 w-9 rounded-full border-[3px] border-primary/20 border-t-primary animate-spin" />
+            <p className="text-sm font-medium text-muted-foreground">กำลังโหลดข้อมูล...</p>
           </div>
         ) : <>
         {activeTab === "overview" && (
@@ -719,6 +719,7 @@ export default function StudentPortal() {
             studentName={currentStudent.name}
             studentCode={currentStudent.student_id}
             studentNumber={currentStudent.student_number}
+            classroom={classroom}
             classroomName={formatClassroomOption(classroom)}
             homeroomTeacherNames={classroom?.homeroom_teacher_names || []}
             homeroomTeacherIds={classroom?.homeroom_teacher_ids || []}

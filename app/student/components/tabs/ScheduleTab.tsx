@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Printer, CalendarDays, BookOpen, User, Bell, ChevronRight, Sparkles } from "lucide-react";
+import {
+  Clock,
+  Printer,
+  CalendarDays,
+  BookOpen,
+  User,
+  Bell,
+  Sparkles,
+  Coffee,
+} from "lucide-react";
 import { type SchedulePeriod, type ScheduleEntry, type DaySetting } from "../types";
 
 interface ScheduleTabProps {
@@ -20,8 +29,6 @@ export default function ScheduleTab({
   onExport,
 }: ScheduleTabProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [currentSubject, setCurrentSubject] = useState<ScheduleEntry | null>(null);
-  const [currentPeriod, setCurrentPeriod] = useState<SchedulePeriod | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -30,222 +37,233 @@ export default function ScheduleTab({
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const now = new Date();
-    const currentDay = now.getDay();
-    const currentTimeStr = now.toTimeString().slice(0, 5);
-
-    const todayEntries = scheduleEntries.filter(
-      e => e.classroom_id === classroomId && Number(e.day_of_week) === currentDay
-    );
-
-    let foundSubject: ScheduleEntry | null = null;
-    let foundPeriod: SchedulePeriod | null = null;
-
-    for (const entry of todayEntries) {
-      const period = schedulePeriods.find(p => p.id === entry.period_id);
-      if (period && !period.is_break) {
-        if (currentTimeStr >= entry.start_time && currentTimeStr <= entry.end_time) {
-          foundSubject = entry;
-          foundPeriod = period;
-          break;
-        }
-      }
-    }
-
-    setCurrentSubject(foundSubject);
-    setCurrentPeriod(foundPeriod);
-  }, [currentTime, scheduleEntries, schedulePeriods, classroomId]);
-
   const currentDayValue = currentTime.getDay();
   const currentTimeStr = currentTime.toTimeString().slice(0, 5);
 
+  const todayEntries = scheduleEntries.filter(
+    (e) => e.classroom_id === classroomId && Number(e.day_of_week) === currentDayValue
+  );
+  let currentSubject: ScheduleEntry | null = null;
+  let currentPeriod: SchedulePeriod | null = null;
+  for (const entry of todayEntries) {
+    const period = schedulePeriods.find((p) => p.id === entry.period_id);
+    if (period && !period.is_break && currentTimeStr >= entry.start_time && currentTimeStr <= entry.end_time) {
+      currentSubject = entry;
+      currentPeriod = period;
+      break;
+    }
+  }
+
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return date.toLocaleTimeString("th-TH", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in-up">
       {schedulePeriods.length === 0 ? (
-        <div className="flex items-center justify-center min-h-[400px]">
+        <div className="ui-card flex items-center justify-center min-h-[360px] p-8">
           <div className="text-center max-w-md">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 flex items-center justify-center">
-              <CalendarDays className="w-10 h-10 text-violet-600 dark:text-violet-400" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+              <CalendarDays className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">ยังไม่มีตารางเรียน</h3>
-            <p className="text-muted-foreground">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
+            <h3 className="text-lg font-bold text-foreground mb-1">ยังไม่มีตารางเรียน</h3>
+            <p className="text-sm text-muted-foreground">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
           </div>
         </div>
       ) : (
         <>
-          {/* Current Subject Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 p-6 text-white shadow-2xl">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+          {/* ── Current Subject Banner ── */}
+          <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+            <div className="pointer-events-none absolute -right-10 -top-10 w-52 h-52 bg-primary/8 rounded-full blur-2xl" />
 
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <div className="relative z-10 space-y-5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white/80">เวลาปัจจุบัน</p>
-                    <p className="text-2xl font-bold">{formatTime(currentTime)}</p>
+                    <p className="text-xs font-medium text-muted-foreground">เวลาปัจจุบัน</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-foreground font-mono tracking-tight">
+                      {formatTime(currentTime)}
+                    </p>
                   </div>
                 </div>
+
                 <button
+                  type="button"
                   onClick={onExport}
-                  className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl font-medium transition-all flex items-center gap-2 border border-white/30"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span className="hidden sm:inline">พิมพ์ตาราง</span>
+                  <Printer className="w-4 h-4 text-primary" />
+                  <span>พิมพ์ตาราง</span>
                 </button>
               </div>
 
               {currentSubject && currentPeriod ? (
-                <div className="mt-6 p-5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
-                  <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                      <BookOpen className="w-7 h-7" />
+                <div className="p-4 sm:p-5 rounded-xl bg-primary/8 border border-primary/20">
+                  <div className="flex items-start gap-3.5 sm:gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                      <BookOpen className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2.5 py-1 bg-white/20 rounded-lg text-xs font-bold">คาบ {currentPeriod.period_no}</span>
-                        <span className="px-2.5 py-1 bg-green-500/30 rounded-lg text-xs font-bold flex items-center gap-1">
+                      <div className="flex items-center flex-wrap gap-2 mb-1.5">
+                        <span className="px-2.5 py-0.5 bg-card border border-border rounded-md text-xs font-bold text-foreground">
+                          คาบ {currentPeriod.period_no}
+                        </span>
+                        <span className="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 rounded-md text-xs font-bold inline-flex items-center gap-1">
                           <Sparkles className="w-3 h-3" />
                           กำลังเรียน
                         </span>
                       </div>
-                      <h3 className="text-2xl font-bold mb-2">{currentSubject.subject_name}</h3>
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-white/90">
+                      <h3 className="text-lg sm:text-xl font-bold text-foreground mb-1.5 truncate">
+                        {currentSubject.subject_name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground">
                         {(() => {
-                          const teacherName = currentSubject.teacher_name ||
-                            (currentSubject.teacher_names?.length ? currentSubject.teacher_names.join(", ") : null);
+                          const teacherName =
+                            currentSubject.teacher_name ||
+                            (currentSubject.teacher_names?.length
+                              ? currentSubject.teacher_names.join(", ")
+                              : null);
                           return teacherName ? (
                             <div className="flex items-center gap-1.5">
-                              <User className="w-4 h-4" />
+                              <User className="w-3.5 h-3.5 text-primary" />
                               <span>อ.{teacherName}</span>
                             </div>
                           ) : null;
                         })()}
                         <div className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4" />
-                          <span>{currentSubject.start_time} - {currentSubject.end_time}</span>
+                          <Clock className="w-3.5 h-3.5 text-primary" />
+                          <span>
+                            {currentSubject.start_time} – {currentSubject.end_time}
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="mt-6 p-5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-center">
-                  <Bell className="w-8 h-8 mx-auto mb-2 text-white/70" />
-                  <p className="font-semibold text-lg">ไม่มีคาบเรียนในขณะนี้</p>
-                  <p className="text-sm text-white/70 mt-1">พักผ่อนหรือเตรียมตัวสำหรับคาบถัดไป</p>
+                <div className="p-4 sm:p-5 rounded-xl bg-muted/50 border border-border flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-card border border-border text-muted-foreground flex items-center justify-center shrink-0">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-foreground">ไม่มีคาบเรียนในขณะนี้</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      พักผ่อนหรือเตรียมตัวสำหรับคาบถัดไป
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* Day Cards - Mobile Vertical, Desktop/Tablet Horizontal Scroll */}
-          <div className="xl:hidden">
-            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <CalendarDays className="w-6 h-6 text-primary" />
-              ตารางเรียนรายวัน
-            </h2>
+          {/* ── Mobile & Tablet View (1 col on Mobile, 2 cols on Tablet) ── */}
+          <section className="xl:hidden space-y-4">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              <h2 className="text-base sm:text-lg font-bold text-foreground">ตารางเรียนรายวัน</h2>
+            </div>
 
-            {/* Mobile - Vertical Stack */}
-            <div className="md:hidden space-y-4">
-              {activeDays.map(day => {
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {activeDays.map((day) => {
                 const dayEntries = scheduleEntries.filter(
-                  e => e.classroom_id === classroomId && Number(e.day_of_week) === day.value
+                  (e) => e.classroom_id === classroomId && Number(e.day_of_week) === day.value
                 );
                 if (dayEntries.length === 0) return null;
 
                 const isToday = currentDayValue === day.value;
-                const sortedEntries = dayEntries.sort((a, b) => Number(a.period_no) - Number(b.period_no));
+                const sortedEntries = [...dayEntries].sort(
+                  (a, b) => Number(a.period_no) - Number(b.period_no)
+                );
 
                 return (
                   <div
                     key={day.value}
-                    className={`
-                      rounded-2xl border-2 overflow-hidden transition-all
-                      ${isToday
-                        ? 'border-primary shadow-lg shadow-primary/20 ring-2 ring-primary/20'
-                        : 'border-border hover:border-primary/50'
-                      }
-                    `}
+                    className={`rounded-2xl border overflow-hidden bg-card transition-all ${
+                      isToday ? "border-primary/50 ring-2 ring-primary/15 shadow-sm" : "border-border"
+                    }`}
                   >
-                    <div className={`px-4 py-3 bg-gradient-to-r ${day.gradient} flex items-center justify-between`}>
+                    <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold">วัน{day.label}</span>
+                        <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${day.color}`}>
+                          วัน{day.label}
+                        </span>
                         {isToday && (
-                          <span className="px-2 py-0.5 bg-white/30 backdrop-blur-sm rounded-full text-xs font-bold text-white border border-white/30">
+                          <span className="px-2 py-0.5 bg-primary text-primary-foreground rounded-md text-[11px] font-bold">
                             วันนี้
                           </span>
                         )}
                       </div>
-                      <span className="text-white/90 text-sm font-medium">{sortedEntries.length} คาบ</span>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {sortedEntries.length} คาบ
+                      </span>
                     </div>
 
-                    <div className="divide-y divide-border bg-card">
-                      {sortedEntries.map(entry => {
-                        const period = schedulePeriods.find(p => p.id === entry.period_id);
-                        const isCurrentClass = isToday &&
+                    <div className="divide-y divide-border">
+                      {sortedEntries.map((entry) => {
+                        const period = schedulePeriods.find((p) => p.id === entry.period_id);
+                        const isCurrentClass =
+                          isToday &&
                           currentTimeStr >= entry.start_time &&
                           currentTimeStr <= entry.end_time;
+
+                        const teacherName =
+                          entry.teacher_name ||
+                          (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
 
                         return (
                           <div
                             key={entry.id}
-                            className={`
-                              p-4 transition-all
-                              ${isCurrentClass
-                                ? 'bg-primary/5 border-l-4 border-primary'
-                                : 'hover:bg-muted/50'
-                              }
-                            `}
+                            className={`p-3.5 sm:p-4 transition-colors ${
+                              isCurrentClass
+                                ? "bg-primary/8 border-l-4 border-l-primary"
+                                : "hover:bg-muted/40"
+                            }`}
                           >
                             <div className="flex items-start gap-3">
-                              <div className="shrink-0 w-12 text-center">
-                                <div className={`
-                                  text-sm font-bold mb-1
-                                  ${isCurrentClass ? 'text-primary' : 'text-muted-foreground'}
-                                `}>
+                              <div className="shrink-0 w-13 text-center">
+                                <div
+                                  className={`text-xs font-bold ${
+                                    isCurrentClass ? "text-primary" : "text-foreground"
+                                  }`}
+                                >
                                   คาบ {entry.period_no}
                                 </div>
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-[11px] text-muted-foreground mt-0.5">
                                   {entry.start_time}
                                 </div>
                               </div>
 
-                              <div className="w-px h-12 bg-border" />
+                              <div className="w-px self-stretch bg-border" />
 
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2 mb-1">
-                                  <h4 className={`
-                                    font-bold text-sm leading-tight
-                                    ${isCurrentClass ? 'text-primary' : 'text-foreground'}
-                                  `}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4
+                                    className={`font-bold text-sm leading-snug ${
+                                      isCurrentClass ? "text-primary" : "text-foreground"
+                                    }`}
+                                  >
                                     {entry.subject_name}
                                   </h4>
                                   {isCurrentClass && (
-                                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded shrink-0">
+                                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-md shrink-0">
                                       กำลังเรียน
                                     </span>
                                   )}
                                 </div>
 
-                                {(() => {
-                                  const teacherName = entry.teacher_name ||
-                                    (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
-                                  return teacherName ? (
-                                    <p className="text-xs text-muted-foreground">อ.{teacherName}</p>
-                                  ) : null;
-                                })()}
+                                {teacherName && (
+                                  <p className="text-xs text-muted-foreground mt-1">อ.{teacherName}</p>
+                                )}
 
                                 {period?.label && (
-                                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-medium rounded">
+                                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-amber-500/12 text-amber-700 dark:text-amber-300 text-[11px] font-medium rounded">
                                     {period.label}
                                   </span>
                                 )}
@@ -259,223 +277,129 @@ export default function ScheduleTab({
                 );
               })}
             </div>
+          </section>
 
-            {/* Tablet & Desktop - Horizontal Scroll */}
-            <div className="hidden md:block xl:hidden">
-              <div className="overflow-x-auto pb-4">
-                <div className="flex gap-4 min-w-max">
-                  {activeDays.map(day => {
-                    const dayEntries = scheduleEntries.filter(
-                      e => e.classroom_id === classroomId && Number(e.day_of_week) === day.value
-                    );
-                    if (dayEntries.length === 0) return null;
-
-                    const isToday = currentDayValue === day.value;
-                    const sortedEntries = dayEntries.sort((a, b) => Number(a.period_no) - Number(b.period_no));
-
-                    return (
-                      <div
-                        key={day.value}
-                        className={`
-                          w-80 rounded-2xl border-2 overflow-hidden transition-all flex-shrink-0
-                          ${isToday
-                            ? 'border-primary shadow-lg shadow-primary/20 ring-2 ring-primary/20'
-                            : 'border-border hover:border-primary/50'
-                          }
-                        `}
-                      >
-                        <div className={`px-4 py-3 bg-gradient-to-r ${day.gradient} flex items-center justify-between`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-bold">วัน{day.label}</span>
-                            {isToday && (
-                              <span className="px-2 py-0.5 bg-white/30 backdrop-blur-sm rounded-full text-xs font-bold text-white border border-white/30">
-                                วันนี้
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-white/90 text-sm font-medium">{sortedEntries.length} คาบ</span>
-                        </div>
-
-                        <div className="divide-y divide-border bg-card max-h-[600px] overflow-y-auto">
-                          {sortedEntries.map(entry => {
-                            const period = schedulePeriods.find(p => p.id === entry.period_id);
-                            const isCurrentClass = isToday &&
-                              currentTimeStr >= entry.start_time &&
-                              currentTimeStr <= entry.end_time;
-
-                            return (
-                              <div
-                                key={entry.id}
-                                className={`
-                                  p-4 transition-all
-                                  ${isCurrentClass
-                                    ? 'bg-primary/5 border-l-4 border-primary'
-                                    : 'hover:bg-muted/50'
-                                  }
-                                `}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="shrink-0 w-12 text-center">
-                                    <div className={`
-                                      text-sm font-bold mb-1
-                                      ${isCurrentClass ? 'text-primary' : 'text-muted-foreground'}
-                                    `}>
-                                      คาบ {entry.period_no}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {entry.start_time}
-                                    </div>
-                                  </div>
-
-                                  <div className="w-px h-12 bg-border" />
-
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-2 mb-1">
-                                      <h4 className={`
-                                        font-bold text-sm leading-tight
-                                        ${isCurrentClass ? 'text-primary' : 'text-foreground'}
-                                      `}>
-                                        {entry.subject_name}
-                                      </h4>
-                                      {isCurrentClass && (
-                                        <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded shrink-0">
-                                          กำลังเรียน
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {(() => {
-                                      const teacherName = entry.teacher_name ||
-                                        (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
-                                      return teacherName ? (
-                                        <p className="text-xs text-muted-foreground">อ.{teacherName}</p>
-                                      ) : null;
-                                    })()}
-
-                                    {period?.label && (
-                                      <span className="inline-block mt-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-medium rounded">
-                                        {period.label}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+          {/* ── Desktop Full Week Table (xl+) ── */}
+          <section className="hidden xl:block space-y-4">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-bold text-foreground">ตารางเรียนรายสัปดาห์</h2>
             </div>
-          </div>
 
-          {/* Full Week Table - Desktop Only */}
-          <div className="hidden xl:block">
-            <h2 className="text-xl font-bold text-foreground mb-4">ตารางเรียนรายสัปดาห์</h2>
-            <div className="rounded-2xl border-2 border-border overflow-hidden bg-card shadow-lg">
+            <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-muted/50">
-                      <th className="sticky left-0 z-20 bg-muted/50 backdrop-blur-sm px-4 py-3 text-left">
-                        <span className="font-bold text-sm text-muted-foreground">คาบ / เวลา</span>
+                    <tr className="bg-muted/60 border-b border-border">
+                      <th className="sticky left-0 z-20 bg-muted/95 backdrop-blur-sm px-4 py-3 text-left border-r border-border min-w-[130px]">
+                        <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                          คาบ / เวลา
+                        </span>
                       </th>
-                      {activeDays.map(day => {
+                      {activeDays.map((day) => {
                         const isToday = currentDayValue === day.value;
                         return (
                           <th key={day.value} className="px-3 py-3 text-center min-w-[140px]">
-                            <div className={`
-                              inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-sm
-                              ${isToday
-                                ? 'bg-primary text-primary-foreground shadow-sm'
-                                : 'bg-muted text-muted-foreground'
-                              }
-                            `}>
-                              {isToday && <Bell className="w-3.5 h-3.5" />}
-                              <span>{day.label}</span>
+                            <div
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold text-xs border ${
+                                isToday
+                                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                                  : day.color
+                              }`}
+                            >
+                              {isToday && <Bell className="w-3 h-3" />}
+                              <span>วัน{day.label}</span>
                             </div>
                           </th>
                         );
                       })}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-border">
                     {schedulePeriods.map((period, index) => {
                       const isBreak = period.is_break;
 
                       return (
-                        <tr key={period.id} className={`
-                          border-t-2 border-border
-                          ${index % 2 === 0 ? 'bg-card' : 'bg-muted/20'}
-                          ${isBreak ? 'bg-muted/40' : ''}
-                        `}>
-                          <td className="sticky left-0 z-10 bg-inherit backdrop-blur-sm px-4 py-3 border-r-2 border-border">
-                            <div className="font-bold text-foreground">คาบ {period.period_no}</div>
+                        <tr
+                          key={period.id}
+                          className={
+                            isBreak
+                              ? "bg-muted/40"
+                              : index % 2 === 0
+                              ? "bg-card"
+                              : "bg-muted/20"
+                          }
+                        >
+                          <td className="sticky left-0 z-10 bg-card/95 backdrop-blur-sm px-4 py-3 border-r border-border">
+                            <div className="font-bold text-sm text-foreground">คาบ {period.period_no}</div>
                             <div className="text-xs text-muted-foreground mt-0.5">
-                              {period.start_time} - {period.end_time}
+                              {period.start_time} – {period.end_time}
                             </div>
                             {period.label && (
-                              <div className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                              <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-1">
                                 {period.label}
                               </div>
                             )}
                           </td>
 
                           {isBreak ? (
-                            <td colSpan={activeDays.length} className="px-4 py-6 text-center">
-                              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                                <Bell className="w-5 h-5" />
-                                <span className="font-bold text-lg tracking-wide">
+                            <td colSpan={activeDays.length} className="px-4 py-4 text-center">
+                              <div className="inline-flex items-center gap-2 text-muted-foreground">
+                                <Coffee className="w-4 h-4" />
+                                <span className="font-semibold text-sm">
                                   {period.label || "พักเบรก"}
                                 </span>
                               </div>
                             </td>
                           ) : (
-                            activeDays.map(day => {
+                            activeDays.map((day) => {
                               const entry = scheduleEntries.find(
-                                e => e.classroom_id === classroomId &&
-                                     Number(e.day_of_week) === day.value &&
-                                     e.period_id === period.id
+                                (e) =>
+                                  e.classroom_id === classroomId &&
+                                  Number(e.day_of_week) === day.value &&
+                                  e.period_id === period.id
                               );
 
                               const isToday = currentDayValue === day.value;
-                              const isCurrentClass = isToday &&
+                              const isCurrentClass =
+                                isToday &&
                                 currentTimeStr >= period.start_time &&
                                 currentTimeStr <= period.end_time;
 
                               return (
-                                <td key={day.value} className="px-3 py-3 text-center">
+                                <td key={day.value} className="px-2.5 py-2.5 text-center align-middle">
                                   {entry ? (
-                                    <div className={`
-                                      rounded-xl px-3 py-3 text-sm transition-all
-                                      ${isCurrentClass
-                                        ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 ring-2 ring-primary/50'
-                                        : 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-2 border-violet-200 dark:border-violet-500/30 hover:bg-violet-500/20'
-                                      }
-                                    `}>
-                                      <div className="font-bold leading-tight mb-1">
+                                    <div
+                                      className={`rounded-xl px-3 py-2.5 text-xs transition-all ${
+                                        isCurrentClass
+                                          ? "bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30"
+                                          : "bg-primary/8 text-foreground border border-primary/15 hover:bg-primary/12"
+                                      }`}
+                                    >
+                                      <div className="font-bold leading-snug mb-1">
                                         {entry.subject_name}
                                       </div>
                                       {(() => {
-                                        const teacherName = entry.teacher_name ||
-                                          (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
+                                        const teacherName =
+                                          entry.teacher_name ||
+                                          (entry.teacher_names?.length
+                                            ? entry.teacher_names.join(", ")
+                                            : null);
                                         return teacherName ? (
-                                          <div className={`
-                                            text-xs
-                                            ${isCurrentClass
-                                              ? 'text-primary-foreground/80'
-                                              : 'text-violet-600/70 dark:text-violet-400/70'
-                                            }
-                                          `}>
+                                          <div
+                                            className={`text-[11px] ${
+                                              isCurrentClass
+                                                ? "text-primary-foreground/85"
+                                                : "text-muted-foreground"
+                                            }`}
+                                          >
                                             อ.{teacherName}
                                           </div>
                                         ) : null;
                                       })()}
                                       {isCurrentClass && (
-                                        <div className="mt-1.5 pt-1.5 border-t border-white/30">
-                                          <span className="text-xs font-bold flex items-center justify-center gap-1">
+                                        <div className="mt-1.5 pt-1 border-t border-primary-foreground/20">
+                                          <span className="text-[10px] font-bold inline-flex items-center justify-center gap-1">
                                             <Sparkles className="w-3 h-3" />
                                             กำลังเรียน
                                           </span>
@@ -483,7 +407,7 @@ export default function ScheduleTab({
                                       )}
                                     </div>
                                   ) : (
-                                    <span className="text-muted-foreground/30 text-lg">–</span>
+                                    <span className="text-muted-foreground/40 text-sm">—</span>
                                   )}
                                 </td>
                               );
@@ -496,7 +420,7 @@ export default function ScheduleTab({
                 </table>
               </div>
             </div>
-          </div>
+          </section>
         </>
       )}
     </div>
