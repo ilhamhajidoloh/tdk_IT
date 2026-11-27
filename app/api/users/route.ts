@@ -5,9 +5,13 @@ import { getSchoolContext } from "@/app/lib/schoolContext";
 import { requirePermission } from "@/app/lib/permissions/middleware";
 import { ensureStatusSchema } from "@/app/lib/statusMigration";
 
+let subjectTeachersTableReady = false;
+
 async function hasSubjectTeachersTable(): Promise<boolean> {
+  if (subjectTeachersTableReady) return true;
   try {
     await pool.query("SELECT 1 FROM subject_teachers LIMIT 0");
+    subjectTeachersTableReady = true;
     return true;
   } catch {
     return false;
@@ -17,7 +21,6 @@ async function hasSubjectTeachersTable(): Promise<boolean> {
 import { verifyCoAdminOrAdmin } from "@/app/lib/verifyAdmin";
 
 export async function GET(req: NextRequest) {
-  await ensureStatusSchema();
   if (!(await verifyCoAdminOrAdmin(req))) {
     const permError = await requirePermission(req, "users.view");
     if (permError) return permError;
@@ -37,7 +40,6 @@ export async function GET(req: NextRequest) {
 
   const multiTeacherReady = await hasSubjectTeachersTable();
 
-  let queryText = "";
   const params: string[] = [];
   let whereClause = `WHERE u.role != 'super_admin'`;
 
@@ -46,65 +48,52 @@ export async function GET(req: NextRequest) {
     whereClause = `WHERE u.school_id = $1 AND u.role != 'super_admin'`;
   }
 
-  if (multiTeacherReady) {
-    queryText = `
-      SELECT 
-        u.id, 
-        u.username, 
-        u.email, 
-        u.role, 
-        u.school_id,
-        u.student_id, 
-        u.homeroom_classroom_id,
-        u.is_clerical,
-        u.color,
-        COALESCE(u.status, 'active') AS status,
-        u.resigned_at,
-        u.resignation_reason,
-        COALESCE(
-          (
-            SELECT array_agg(DISTINCT s.name)
-            FROM subjects s
-            LEFT JOIN subject_teachers st ON st.subject_id = s.id
-            WHERE s.teacher_id = u.id OR st.user_id = u.id
-          ),
-          '{}'::text[]
-        ) as subjects
-      FROM users u
-      ${whereClause}
-      ORDER BY u.role, u.username
-    `;
-  } else {
-    queryText = `
-      SELECT 
-        u.id, 
-        u.username, 
-        u.email, 
-        u.role, 
-        u.school_id,
-        u.student_id, 
-        u.homeroom_classroom_id,
-        u.is_clerical,
-        u.color,
-        COALESCE(u.status, 'active') AS status,
-        u.resigned_at,
-        u.resignation_reason,
-        COALESCE(
-          (
-            SELECT array_agg(DISTINCT s.name)
-            FROM subjects s
-            WHERE s.teacher_id = u.id
-          ),
-          '{}'::text[]
-        ) as subjects
-      FROM users u
-      ${whereClause}
-      ORDER BY u.role, u.username
-    `;
-  }
+  // Build the subject list once for the school's users. The previous correlated
+  // subquery scanned subjects (and subject_teachers) again for every user,
+  // including students who have no teaching assignments.
+  const assignmentQuery = multiTeacherReady
+    ? `SELECT s.teacher_id AS user_id, s.name
+         FROM subjects s
+         JOIN scoped_users su ON su.id = s.teacher_id
+       UNION ALL
+       SELECT st.user_id, s.name
+         FROM subject_teachers st
+         JOIN scoped_users su ON su.id = st.user_id
+         JOIN subjects s ON s.id = st.subject_id`
+    : `SELECT s.teacher_id AS user_id, s.name
+         FROM subjects s
+         JOIN scoped_users su ON su.id = s.teacher_id`;
 
-  const result = await pool.query(queryText, params);
-  return NextResponse.json(result.rows);
+  const queryText = `
+    WITH scoped_users AS (
+      SELECT u.id, u.username, u.email, u.role, u.school_id,
+             u.student_id, u.homeroom_classroom_id, u.is_clerical,
+             u.color, COALESCE(u.status, 'active') AS status,
+             u.resigned_at, u.resignation_reason
+        FROM users u
+        ${whereClause}
+    ), teacher_subjects AS (
+      SELECT assignments.user_id, array_agg(DISTINCT assignments.name) AS subjects
+        FROM (${assignmentQuery}) assignments
+       GROUP BY assignments.user_id
+    )
+    SELECT u.*, COALESCE(ts.subjects, '{}'::text[]) AS subjects
+      FROM scoped_users u
+      LEFT JOIN teacher_subjects ts ON ts.user_id = u.id
+     ORDER BY u.role, u.username
+  `;
+
+  try {
+    const result = await pool.query(queryText, params);
+    return NextResponse.json(result.rows);
+  } catch (error) {
+    // Old databases may still lack status columns. Migrate only when the query
+    // actually needs them, so a new server instance does not run DDL on GET.
+    if ((error as { code?: string }).code !== "42703") throw error;
+    await ensureStatusSchema();
+    const result = await pool.query(queryText, params);
+    return NextResponse.json(result.rows);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -112,11 +101,11 @@ export async function POST(req: NextRequest) {
   if (permError) return permError;
 
   const context = await getSchoolContext(req);
-  let schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
+  const schoolId = context?.schoolId || "00000000-0000-0000-0000-000000000001";
 
-  const { name, username, password, role, student_id, homeroom_classroom_id, subjects, email, is_clerical, color } = await req.json();
+  const { name, username, password, role, student_id, homeroom_classroom_id, email, is_clerical, color } = await req.json();
 
-  let finalName = name?.trim();
+  const finalName = name?.trim();
   let finalUsername = username?.trim();
   let finalPassword = password?.trim();
   let finalStudentId = student_id?.trim();
@@ -156,10 +145,10 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
-  } catch (error: any) {
-    if (error.code === "23505") {
+  } catch (error) {
+    if ((error as { code?: string }).code === "23505") {
       return NextResponse.json({ error: "ชื่อผู้ใช้ หรือ รหัสนักเรียน หรือ อีเมล นี้ถูกใช้งานแล้ว" }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Failed to create user" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create user" }, { status: 500 });
   }
 }
