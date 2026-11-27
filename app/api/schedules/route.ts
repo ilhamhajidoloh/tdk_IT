@@ -60,8 +60,9 @@ export async function GET(req: NextRequest) {
 
   const teacherOverrideCols = hasTeacherCol
     ? `CASE WHEN ${validTeacherOverrideCondition} THEN cs.teacher_id ELSE NULL END as teacher_id,
-       CASE WHEN ${validTeacherOverrideCondition} THEN u_cs.username ELSE NULL END as teacher_name,`
-    : `NULL as teacher_id, NULL as teacher_name,`;
+       CASE WHEN ${validTeacherOverrideCondition} THEN u_cs.username ELSE NULL END as teacher_name,
+       CASE WHEN ${validTeacherOverrideCondition} THEN u_cs.color ELSE NULL END as override_teacher_color,`
+    : `NULL as teacher_id, NULL as teacher_name, NULL as override_teacher_color,`;
 
   const teacherNamesCols = hasSTTable
     ? `COALESCE(
@@ -70,8 +71,19 @@ export async function GET(req: NextRequest) {
           JOIN users st_u ON st_u.id = st.user_id
           WHERE st.subject_id = cs.subject_id),
          CASE WHEN u_sub.username IS NOT NULL THEN ARRAY[u_sub.username] ELSE '{}' END
-       ) as teacher_names,`
-    : `CASE WHEN u_sub.username IS NOT NULL THEN ARRAY[u_sub.username] ELSE '{}' END as teacher_names,`;
+       ) as teacher_names,
+       COALESCE(
+         ${hasTeacherCol ? `CASE WHEN ${validTeacherOverrideCondition} THEN u_cs.color ELSE NULL END,` : ""}
+         (SELECT st_u.color
+          FROM subject_teachers st
+          JOIN users st_u ON st_u.id = st.user_id
+          WHERE st.subject_id = cs.subject_id AND st_u.color IS NOT NULL
+          ORDER BY st_u.username
+          LIMIT 1),
+         u_sub.color
+       ) as teacher_color,`
+    : `CASE WHEN u_sub.username IS NOT NULL THEN ARRAY[u_sub.username] ELSE '{}' END as teacher_names,
+       ${hasTeacherCol ? `COALESCE(CASE WHEN ${validTeacherOverrideCondition} THEN u_cs.color ELSE NULL END, u_sub.color)` : "u_sub.color"} as teacher_color,`;
 
   const overrideJoin = hasTeacherCol
     ? `LEFT JOIN users u_cs ON u_cs.id = cs.teacher_id`

@@ -20,6 +20,7 @@ import {
 } from "./components/types";
 import { isEvaluationTermOpen } from "../lib/evaluation";
 import { getClassroomName, formatClassroomOption } from "../lib/classroom";
+import { resolveTeacherColor } from "../lib/teacherColor";
 import LoadingScreen from "./components/LoadingScreen";
 import Header from "./components/Header";
 import TabNav from "./components/TabNav";
@@ -195,7 +196,7 @@ export default function StudentPortal() {
     const loadActiveTab = async () => {
       setTabLoading(true);
       try {
-        if (["overview", "grades", "yearly-average"].includes(activeTab)) {
+        if (["overview", "grades", "yearly-average", "schedule"].includes(activeTab)) {
           await Promise.all([
             fetch(`/api/grades?studentId=${user.student_id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(setStudentGrades),
             fetch("/api/subjects", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setSubjectsList(data); }),
@@ -607,53 +608,108 @@ export default function StudentPortal() {
 
   const gradesCount = isGradeReleased ? filteredGrades.length : 0;
 
-  const handleExportStudentSchedule = () => {
+  const handleExportStudentSchedule = (lang: "th" | "ms-rumi" | "ms-jawi" = "th") => {
     if (!schedulePeriods.length || !currentStudent) return;
     const myEntries = scheduleEntries.filter(e => e.classroom_id === currentStudent.classroom_id);
     if (!myEntries.length) return;
+
+    const isJawi = lang === "ms-jawi";
+    const dir = isJawi ? "rtl" : "ltr";
+    const t = (th: string, rumi: string, jawi: string) =>
+      isJawi ? jawi : lang === "ms-rumi" ? rumi : th;
+
+    const dayNameMap: Record<number, { th: string; rumi: string; jawi: string }> = {
+      1: { th: "วันจันทร์", rumi: "Isnin", jawi: "اثنين" },
+      2: { th: "วันอังคาร", rumi: "Selasa", jawi: "ثلاث" },
+      3: { th: "วันพุธ", rumi: "Rabu", jawi: "رابو" },
+      4: { th: "วันพฤหัสบดี", rumi: "Khamis", jawi: "خميس" },
+      5: { th: "วันศุกร์", rumi: "Jumaat", jawi: "جمعة" },
+      6: { th: "วันเสาร์", rumi: "Sabtu", jawi: "سبتو" },
+      0: { th: "วันอาทิตย์", rumi: "Ahad", jawi: "احد" },
+    };
+
     const studentName = currentStudent.name;
-    const classroomName = classroom?.name || "";
-    const dateStr = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
-    const thBase = "padding:5px 8px;background:#1e293b;color:#f8fafc;font-size:10px;font-weight:700;text-align:center;border:1px solid #334155;";
-    const periodHeader = `<th style="${thBase}text-align:left;min-width:80px;">คาบ</th>`;
-    const dayHeaders = scheduleActiveDays.map(d => `<th style="${thBase}min-width:100px;">วัน${d.label}</th>`).join("");
-    const rows = schedulePeriods.map(p => {
-      const pCell = `<td style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:11px;font-weight:700;white-space:nowrap;vertical-align:middle;">
-        ${p.label ? `<div style="font-size:9px;color:#d97706;font-weight:700;">${p.label}</div>` : ""}
-        <div style="color:#374151;">คาบ ${p.period_no}</div>
-        <div style="font-size:9px;color:#94a3b8;font-weight:400;">${p.start_time}–${p.end_time}</div>
-      </td>`;
+    const classroomDisplay = classroom ? getClassroomName(classroom, lang) : "";
+    const dateStr = new Date().toLocaleDateString(lang === "th" ? "th-TH" : "ms-MY", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const thBase = "padding:6px 6px;background:#1e293b;color:#f8fafc;font-size:10px;font-weight:700;text-align:center;border:1px solid #334155;";
+    const dayColHeader = `<th style="${thBase}text-align:${isJawi ? "right" : "left"};min-width:85px;">${t("วัน / คาบ", "Hari / Masa", "هاري / ماس")}</th>`;
+    const periodHeaders = schedulePeriods.map(p => {
       if (p.is_break) {
-        return `<tr>${pCell}<td colspan="${scheduleActiveDays.length}" style="padding:5px;text-align:center;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:10px;">${p.label || "พักเบรก"}</td></tr>`;
+        return `<th style="${thBase}background:#334155;min-width:50px;">
+          <div>${p.label || t("พัก", "Rehat", "ريحت")}</div>
+          <div style="font-size:8px;font-weight:400;opacity:0.85;">${p.start_time}–${p.end_time}</div>
+        </th>`;
       }
-      const cells = scheduleActiveDays.map(d => {
+      return `<th style="${thBase}min-width:85px;">
+        ${p.label ? `<div style="font-size:8px;color:#fbbf24;font-weight:700;">${p.label}</div>` : ""}
+        <div>${t("คาบ", "Masa", "ماس")} ${p.period_no}</div>
+        <div style="font-size:8px;font-weight:400;opacity:0.85;">${p.start_time}–${p.end_time}</div>
+      </th>`;
+    }).join("");
+
+    const rows = scheduleActiveDays.map(d => {
+      const dayLabelObj = dayNameMap[d.value];
+      const dayLabel = dayLabelObj ? t(dayLabelObj.th, dayLabelObj.rumi, dayLabelObj.jawi) : `${t("วัน", "", "")}${d.label}`;
+      const dayCell = `<td style="padding:8px 10px;background:#f8fafc;border:1px solid #cbd5e1;font-size:11px;font-weight:700;white-space:nowrap;vertical-align:middle;color:#1e293b;text-align:${isJawi ? "right" : "left"};">${dayLabel}</td>`;
+      const cells = schedulePeriods.map(p => {
+        if (p.is_break) {
+          return `<td style="padding:4px;text-align:center;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:9px;vertical-align:middle;">${p.label || t("พัก", "Rehat", "ريحت")}</td>`;
+        }
         const entry = myEntries.find(e => Number(e.day_of_week) === d.value && e.period_id === p.id);
-        if (!entry) return `<td style="border:1px solid #f1f5f9;min-width:100px;"></td>`;
+        if (!entry) return `<td style="border:1px solid #e2e8f0;text-align:center;color:#cbd5e1;vertical-align:middle;">—</td>`;
+
+        const matchedSub = subjectsList.find(
+          s => s.id === entry.subject_id || s.name?.trim().toLowerCase() === entry.subject_name?.trim().toLowerCase()
+        );
+        const subjectDisplay =
+          lang === "ms-jawi"
+            ? (matchedSub?.name_jawi || entry.subject_name)
+            : lang === "ms-rumi"
+            ? (matchedSub?.name_rumi || entry.subject_name)
+            : entry.subject_name;
+
         const tDisplay = entry.teacher_name || (entry.teacher_names?.join(", ") || "");
-        return `<td style="padding:5px 6px;border:1px solid #ddd6fe;background:#f5f3ff;text-align:center;vertical-align:middle;">
-          <div style="font-size:11px;font-weight:700;color:#5b21b6;">${entry.subject_name}</div>
-          ${tDisplay ? `<div style="font-size:9px;color:#7c3aed;">อ.${tDisplay}</div>` : ""}
+        const key = tDisplay || entry.subject_name || "";
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+        const resolved = resolveTeacherColor(entry.teacher_color, hash % 16);
+        const teacherLabel = tDisplay ? (lang === "th" ? `อ.${tDisplay}` : tDisplay) : "";
+        return `<td style="padding:6px 5px;border:1px solid ${resolved.border};background:${resolved.bg};color:${resolved.text};text-align:center;vertical-align:middle;">
+          <div style="font-size:11px;font-weight:700;line-height:1.25;">${subjectDisplay}</div>
+          ${teacherLabel ? `<div style="font-size:9px;opacity:0.9;margin-top:2px;">${teacherLabel}</div>` : ""}
         </td>`;
       }).join("");
-      return `<tr>${pCell}${cells}</tr>`;
+      return `<tr>${dayCell}${cells}</tr>`;
     }).join("");
-    const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>ตารางเรียน · ${studentName}</title>
+
+    const titleText = t("ตารางเรียน", "Jadual Waktu", "جدوال وقتو");
+    const classPrefix = t("ห้อง", "Kelas", "كلس");
+    const termPrefix = t("เทอม", "Penggal", "ڤڠݢل");
+    const issuedPrefix = t("ออกรายงาน ณ", "Dikeluarkan pada", "دكلواركن ڤد");
+    const printBtnText = t("พิมพ์ / บันทึก PDF", "Cetak / Simpan PDF", "چيتق / سيمڤن PDF");
+
+    const html = `<!DOCTYPE html><html lang="${isJawi ? "ms-Arab" : lang}" dir="${dir}"><head><meta charset="UTF-8"><title>${titleText} · ${studentName}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700;800&family=Sarabun:wght@300;400;600;700;800&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  body{font-family:'Amiri','Cairo','Noto Naskh Arabic','Inter','Sarabun',ui-sans-serif,system-ui,sans-serif;background:#fff;color:#1e293b;padding:20px;}
+  body{font-family:${isJawi ? "'Noto Naskh Arabic','Amiri',serif" : "'Sarabun','Inter',ui-sans-serif,system-ui,sans-serif"};background:#fff;color:#1e293b;padding:20px;direction:${dir};text-align:${isJawi ? "right" : "left"};}
   h1{font-size:18px;font-weight:800;margin-bottom:4px;}
   .meta{font-size:12px;color:#64748b;margin-bottom:16px;}
-  .print-btn{position:fixed;top:12px;right:12px;padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+  .print-btn{position:fixed;top:12px;${isJawi ? "left:12px;" : "right:12px;"}padding:8px 18px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
   @media print{.print-btn{display:none;} @page{margin:1cm;size:A4 landscape;}}
 </style>
 </head><body>
-<button class="print-btn" onclick="window.print()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>พิมพ์ / บันทึก PDF</button>
-<h1>ตารางเรียน · ${studentName} · ห้อง ${classroomName}</h1>
-<div class="meta">เทอม ${activeTermStr} · ออกรายงาน ณ ${dateStr}</div>
+<button class="print-btn" onclick="window.print()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>${printBtnText}</button>
+<h1>${titleText} · ${studentName} · ${classPrefix} ${classroomDisplay}</h1>
+<div class="meta">${termPrefix} ${activeTermStr} · ${issuedPrefix} ${dateStr}</div>
 <table style="width:100%;border-collapse:collapse;font-family:inherit;">
-  <thead><tr>${periodHeader}${dayHeaders}</tr></thead>
+  <thead><tr>${dayColHeader}${periodHeaders}</tr></thead>
   <tbody>${rows}</tbody>
 </table>
 </body></html>`;

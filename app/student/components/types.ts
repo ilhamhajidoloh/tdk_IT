@@ -43,7 +43,7 @@ export interface ScheduleEntry {
   id: string; classroom_id: string; classroom_name: string;
   classroom_name_thai?: string | null; classroom_name_rumi?: string | null; classroom_name_jawi?: string | null;
   subject_id: string; subject_name: string; teacher_id: string | null; teacher_name: string | null;
-  teacher_names?: string[];
+  teacher_names?: string[]; teacher_color?: string | null;
   day_of_week: number | string; period_id: string; period_no: number | string; start_time: string; end_time: string; label?: string | null;
 }
 

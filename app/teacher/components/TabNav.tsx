@@ -5,7 +5,7 @@ import {
   PenLine,
   ClipboardCheck,
   Users,
-  Clock,
+  TrendingUp,
   CalendarDays,
   Award,
   CircleCheck,
@@ -14,12 +14,12 @@ import {
 } from "lucide-react";
 import { NAV_TABS, type Tab } from "./types";
 
-const TAB_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+const TAB_ICON_MAP: Record<Tab, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   enter: PenLine,
   status: ClipboardCheck,
   homeroom: Users,
-  "yearly-average": Clock,
+  "yearly-average": TrendingUp,
   schedule: CalendarDays,
   evaluate: Award,
   attendance: CircleCheck,
@@ -56,51 +56,61 @@ export default function TabNav({
     : NAV_TABS;
 
   return (
-    <div className="sticky top-16 z-10 py-3 bg-background/80 backdrop-blur-xl border-b border-border">
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
-        <nav className="ui-segment flex gap-1 overflow-x-auto scrollbar-none">
+    <nav
+      aria-label="เมนูหลักครูผู้สอน"
+      className="sticky top-16 z-20 border-b border-border bg-card/75 backdrop-blur-xl"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           {visibleTabs.map((tab) => {
             const Icon = TAB_ICON_MAP[tab.key];
+            const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
+                type="button"
                 onClick={() => (onTabChange ?? setActiveTab)(tab.key)}
-                data-active={activeTab === tab.key}
-                className="ui-segment-item !flex-none px-4 whitespace-nowrap"
+                className={`flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all border shrink-0 ${
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-transparent text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
+                }`}
               >
-                {Icon ? (
-                  <Icon className="w-4 h-4 shrink-0" />
-                ) : (
-                  <svg
-                    className="w-4 h-4 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.8}
-                      d={tab.icon}
-                    />
-                  </svg>
+                {Icon && (
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${
+                      isActive ? "text-primary-foreground" : "text-muted-foreground"
+                    }`}
+                  />
                 )}
-                {tab.label}
+                <span>{tab.label}</span>
                 {tab.key === "enter" && enterBadge && (
-                  <span className="ml-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span
+                    className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                      isActive
+                        ? "bg-primary-foreground/20 text-primary-foreground"
+                        : "bg-primary/10 text-primary"
+                    }`}
+                  >
                     {enterBadge}
                   </span>
                 )}
                 {tab.key === "homeroom" && homeroomBadge !== undefined && (
-                  <span className="ml-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span
+                    className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                      isActive
+                        ? "bg-primary-foreground/20 text-primary-foreground"
+                        : "bg-primary/10 text-primary"
+                    }`}
+                  >
                     {homeroomBadge}
                   </span>
                 )}
               </button>
             );
           })}
-        </nav>
+        </div>
       </div>
-    </div>
+    </nav>
   );
 }

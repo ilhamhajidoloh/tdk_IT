@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { AlertTriangle, ArrowLeft, X } from "lucide-react";
 import { formatThaiDateRange } from "../../../lib/format";
 import { RWT_TOPICS } from "../../../lib/evaluation";
 import { type DBStudent, type DBClassroom, type DBSubject, type EvaluationTopic, type EvaluationRecord } from "../types";
@@ -81,19 +82,15 @@ export default function EvaluateTab({
     <div className="space-y-5 animate-fade-in-up">
       {/* Alert Notices */}
       {!isEvalTermActive && (
-        <div className="flex items-start gap-3 bg-rose-50/80 dark:bg-rose-500/10 backdrop-blur-sm border border-rose-200/60 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 px-5 py-4 rounded-2xl text-sm font-semibold shadow-xs">
-          <svg className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>🔴 ระบบเปิดให้ประเมินคุณลักษณะเฉพาะภาคเรียนที่ 2 ของปีการศึกษานั้นๆ</span>
+        <div className="flex items-start gap-3 bg-rose-500/8 border border-rose-500/25 text-rose-700 dark:text-rose-300 px-5 py-4 rounded-2xl text-sm font-semibold">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+          <span>ระบบเปิดให้ประเมินคุณลักษณะเฉพาะภาคเรียนที่ 2 ของปีการศึกษานั้นๆ</span>
         </div>
       )}
       {isEvalTermActive && !isGradingActive && (
-        <div className="flex items-start gap-3 bg-rose-50/80 dark:bg-rose-500/10 backdrop-blur-sm border border-rose-200/60 dark:border-rose-500/30 text-rose-800 dark:text-rose-300 px-5 py-4 rounded-2xl text-sm font-semibold shadow-xs">
-          <svg className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>🔴 ระบบปิดรับการประเมินชั่วคราว — นอกช่วงเวลา {formatThaiDateRange(settingsStartDate, settingsEndDate)}</span>
+        <div className="flex items-start gap-3 bg-rose-500/8 border border-rose-500/25 text-rose-700 dark:text-rose-300 px-5 py-4 rounded-2xl text-sm font-semibold">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+          <span>ระบบปิดรับการประเมินชั่วคราว — นอกช่วงเวลา {formatThaiDateRange(settingsStartDate, settingsEndDate)}</span>
         </div>
       )}
 
@@ -103,9 +100,9 @@ export default function EvaluateTab({
           <button
             type="button"
             onClick={onNavigateBack}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border bg-card text-xs sm:text-sm font-bold text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border bg-card text-xs sm:text-sm font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
-            <span aria-hidden="true">←</span>
+            <ArrowLeft className="w-4 h-4" />
             {evalClassroomId ? "เปลี่ยนห้องเรียน" : "เปลี่ยนรายวิชา"}
           </button>
 
@@ -239,9 +236,10 @@ export default function EvaluateTab({
                 <button
                   type="button"
                   onClick={() => setSearchStudent("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer text-xs"
+                  aria-label="ล้างคำค้นหา"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5"
                 >
-                  ✕
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>

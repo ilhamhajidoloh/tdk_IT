@@ -1165,7 +1165,7 @@ export default function TeacherPortal() {
   @media print{.print-btn{display:none;} @page{margin:1cm;size:A4 landscape;}}
 </style>
 </head><body>
-<button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+<button class="print-btn" onclick="window.print()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>พิมพ์ / บันทึก PDF</button>
 <h1>ตารางสอน · ${teacherName}</h1>
 <div class="meta">เทอม ${enterTerm} · ออกรายงาน ณ ${dateStr}</div>
 <table style="width:100%;border-collapse:collapse;font-family:inherit;">
@@ -1209,7 +1209,7 @@ export default function TeacherPortal() {
   @media print{.print-btn{display:none;} @page{margin:1cm;size:A4 portrait;}}
 </style>
 </head><body>
-<button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
+<button class="print-btn" onclick="window.print()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>พิมพ์ / บันทึก PDF</button>
 <h1>รายชื่อนักเรียน · ${enterSubject}</h1>
 <div class="meta">ห้อง ${classroomName} · เทอม ${enterTerm} · ออกรายงาน ณ ${dateStr}</div>
 <table style="width:100%;border-collapse:collapse;">
@@ -1278,25 +1278,25 @@ export default function TeacherPortal() {
       />
 
       {/* ===== MAIN CONTENT ===== */}
-      <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-6 animate-fade-in-up">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 animate-fade-in-up">
         {Boolean(teacherUser?.is_co_admin) && (
-          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/8 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
                 <Shield className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-xs font-extrabold text-amber-800 dark:text-amber-300">
+                <div className="text-xs font-bold text-amber-800 dark:text-amber-300">
                   คุณได้รับแต่งตั้งเป็นผู้ช่วยผู้ดูแลระบบ (Co-admin)
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground mt-0.5">
                   คุณสามารถเข้าถึงและจัดการข้อมูลระบบแอดมินตามสิทธิ์ที่ได้รับมอบหมายได้
                 </div>
               </div>
             </div>
             <button
               onClick={() => router.push("/admin")}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-md shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 transition-colors cursor-pointer shrink-0"
             >
               <span>ไปหน้าระบบแอดมิน</span>
               <ExternalLink className="w-3.5 h-3.5" />

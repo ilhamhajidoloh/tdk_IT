@@ -10,15 +10,48 @@ import {
   Bell,
   Sparkles,
   Coffee,
+  ArrowRight,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { type SchedulePeriod, type ScheduleEntry, type DaySetting } from "../types";
+import { resolveTeacherColor } from "../../../lib/teacherColor";
 
 interface ScheduleTabProps {
   schedulePeriods: SchedulePeriod[];
   scheduleEntries: ScheduleEntry[];
   classroomId: string | null;
   activeDays: DaySetting[];
-  onExport: () => void;
+  onExport: (lang: "th" | "ms-rumi" | "ms-jawi") => void;
+}
+
+function getTeacherFallbackIndex(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return hash % 16;
+}
+
+function getTeacherCardStyle(entry: ScheduleEntry) {
+  const teacherKey =
+    entry.teacher_name ||
+    (entry.teacher_names?.length ? entry.teacher_names.join(", ") : "") ||
+    entry.subject_name;
+  const resolved = resolveTeacherColor(entry.teacher_color, getTeacherFallbackIndex(teacherKey));
+  return {
+    dotColor: resolved.bg,
+    cardStyle: {
+      backgroundColor: `color-mix(in srgb, ${resolved.bg} 10%, var(--card))`,
+      borderColor: `color-mix(in srgb, ${resolved.bg} 28%, var(--border))`,
+      borderLeftColor: resolved.bg,
+    },
+  };
+}
+
+function toMinutes(timeStr: string) {
+  const [h, m] = timeStr.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
 }
 
 export default function ScheduleTab({
@@ -29,6 +62,14 @@ export default function ScheduleTab({
   onExport,
 }: ScheduleTabProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const todayDayValue = currentTime.getDay();
+  const defaultDay = activeDays.some((d) => d.value === todayDayValue)
+    ? todayDayValue
+    : activeDays[0]?.value ?? 1;
+
+  const [selectedDay, setSelectedDay] = useState<number>(defaultDay);
+  const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily");
+  const [printLang, setPrintLang] = useState<"th" | "ms-rumi" | "ms-jawi">("th");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -37,366 +78,474 @@ export default function ScheduleTab({
     return () => clearInterval(timer);
   }, []);
 
-  const currentDayValue = currentTime.getDay();
   const currentTimeStr = currentTime.toTimeString().slice(0, 5);
+  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
-  const todayEntries = scheduleEntries.filter(
-    (e) => e.classroom_id === classroomId && Number(e.day_of_week) === currentDayValue
-  );
+  const myEntries = scheduleEntries.filter((e) => e.classroom_id === classroomId);
+  const todayEntries = [...myEntries]
+    .filter((e) => Number(e.day_of_week) === todayDayValue)
+    .sort((a, b) => Number(a.period_no) - Number(b.period_no));
+
   let currentSubject: ScheduleEntry | null = null;
   let currentPeriod: SchedulePeriod | null = null;
+  let nextSubject: ScheduleEntry | null = null;
+
   for (const entry of todayEntries) {
     const period = schedulePeriods.find((p) => p.id === entry.period_id);
-    if (period && !period.is_break && currentTimeStr >= entry.start_time && currentTimeStr <= entry.end_time) {
-      currentSubject = entry;
-      currentPeriod = period;
-      break;
+    if (period && !period.is_break) {
+      if (currentTimeStr >= entry.start_time && currentTimeStr <= entry.end_time) {
+        currentSubject = entry;
+        currentPeriod = period;
+      } else if (!nextSubject && entry.start_time > currentTimeStr) {
+        nextSubject = entry;
+      }
     }
   }
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("th-TH", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
+  let periodProgressPct = 0;
+  if (currentSubject) {
+    const startMin = toMinutes(currentSubject.start_time);
+    const endMin = toMinutes(currentSubject.end_time);
+    const duration = Math.max(1, endMin - startMin);
+    periodProgressPct = Math.min(100, Math.max(0, ((currentMinutes - startMin) / duration) * 100));
+  }
+
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  const formatTeacher = (entry: ScheduleEntry) =>
+    entry.teacher_name || (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
+
+  if (schedulePeriods.length === 0) {
+    return (
+      <div className="ui-card flex items-center justify-center min-h-[360px] p-8 animate-fade-in-up">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            <CalendarDays className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-1">ยังไม่มีตารางเรียน</h3>
+          <p className="text-sm text-muted-foreground">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedDayInfo = activeDays.find((d) => d.value === selectedDay);
+  const selectedDayEntries = [...myEntries]
+    .filter((e) => Number(e.day_of_week) === selectedDay)
+    .sort((a, b) => Number(a.period_no) - Number(b.period_no));
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {schedulePeriods.length === 0 ? (
-        <div className="ui-card flex items-center justify-center min-h-[360px] p-8">
-          <div className="text-center max-w-md">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-              <CalendarDays className="w-8 h-8" />
-            </div>
-            <h3 className="text-lg font-bold text-foreground mb-1">ยังไม่มีตารางเรียน</h3>
-            <p className="text-sm text-muted-foreground">แอดมินยังไม่ได้กำหนดตารางเรียนในเทอมนี้</p>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* ── Current Subject Banner ── */}
-          <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
-            <div className="pointer-events-none absolute -right-10 -top-10 w-52 h-52 bg-primary/8 rounded-full blur-2xl" />
+      {/* ── Top Live Status Card ── */}
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+        <div className="pointer-events-none absolute -right-12 -top-12 w-52 h-52 bg-primary/8 rounded-full blur-2xl" />
 
-            <div className="relative z-10 space-y-5">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">เวลาปัจจุบัน</p>
-                    <p className="text-xl sm:text-2xl font-extrabold text-foreground font-mono tracking-tight">
-                      {formatTime(currentTime)}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onExport}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors"
-                >
-                  <Printer className="w-4 h-4 text-primary" />
-                  <span>พิมพ์ตาราง</span>
-                </button>
+        <div className="relative z-10 space-y-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5" />
               </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {currentTime.toLocaleDateString("th-TH", { weekday: "long", day: "numeric", month: "long" })}
+                </div>
+                <div className="text-xl sm:text-2xl font-extrabold text-foreground font-mono tracking-tight">
+                  {formatTime(currentTime)}
+                </div>
+              </div>
+            </div>
 
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="ภาษาสำหรับพิมพ์ตารางเรียน"
+                value={printLang}
+                onChange={(e) => setPrintLang(e.target.value as "th" | "ms-rumi" | "ms-jawi")}
+                className="ui-input !w-auto !py-2 !text-xs sm:!text-sm font-semibold text-foreground"
+              >
+                <option value="th">PDF: ไทย</option>
+                <option value="ms-rumi">PDF: Melayu (Rumi)</option>
+                <option value="ms-jawi">PDF: Melayu (Jawi)</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => onExport(printLang)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors"
+              >
+                <Printer className="w-4 h-4 text-primary" />
+                <span>พิมพ์ตารางเรียน</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+            {/* Current Class */}
+            <div className="lg:col-span-2">
               {currentSubject && currentPeriod ? (
-                <div className="p-4 sm:p-5 rounded-xl bg-primary/8 border border-primary/20">
-                  <div className="flex items-start gap-3.5 sm:gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-                      <BookOpen className="w-6 h-6" />
+                <div className="h-full p-4 sm:p-5 rounded-xl bg-primary/8 border border-primary/25 flex flex-col justify-between gap-3">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                      <BookOpen className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center flex-wrap gap-2 mb-1.5">
-                        <span className="px-2.5 py-0.5 bg-card border border-border rounded-md text-xs font-bold text-foreground">
+                      <div className="flex items-center flex-wrap gap-2 mb-1">
+                        <span className="px-2 py-0.5 bg-card border border-border rounded-md text-[11px] font-bold text-foreground">
                           คาบ {currentPeriod.period_no}
                         </span>
-                        <span className="px-2.5 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 rounded-md text-xs font-bold inline-flex items-center gap-1">
+                        <span className="px-2 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 rounded-md text-[11px] font-bold inline-flex items-center gap-1">
                           <Sparkles className="w-3 h-3" />
                           กำลังเรียน
                         </span>
                       </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-foreground mb-1.5 truncate">
+                      <h3 className="text-base sm:text-lg font-bold text-foreground truncate">
                         {currentSubject.subject_name}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground">
-                        {(() => {
-                          const teacherName =
-                            currentSubject.teacher_name ||
-                            (currentSubject.teacher_names?.length
-                              ? currentSubject.teacher_names.join(", ")
-                              : null);
-                          return teacherName ? (
-                            <div className="flex items-center gap-1.5">
-                              <User className="w-3.5 h-3.5 text-primary" />
-                              <span>อ.{teacherName}</span>
-                            </div>
-                          ) : null;
-                        })()}
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-primary" />
-                          <span>
-                            {currentSubject.start_time} – {currentSubject.end_time}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                        {formatTeacher(currentSubject) && (
+                          <span className="inline-flex items-center gap-1">
+                            <User className="w-3.5 h-3.5 text-primary" />
+                            อ.{formatTeacher(currentSubject)}
                           </span>
-                        </div>
+                        )}
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-primary" />
+                          {currentSubject.start_time} – {currentSubject.end_time} น.
+                        </span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Period Progress */}
+                  <div className="space-y-1">
+                    <div className="h-1.5 rounded-full bg-card border border-border overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${periodProgressPct}%` }}
+                      />
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 sm:p-5 rounded-xl bg-muted/50 border border-border flex items-center gap-3.5">
+                <div className="h-full p-4 sm:p-5 rounded-xl bg-muted/50 border border-border flex items-center gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-card border border-border text-muted-foreground flex items-center justify-center shrink-0">
                     <Bell className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="font-semibold text-sm text-foreground">ไม่มีคาบเรียนในขณะนี้</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      พักผ่อนหรือเตรียมตัวสำหรับคาบถัดไป
+                      {todayEntries.length === 0
+                        ? "วันนี้ไม่มีตารางเรียน"
+                        : nextSubject
+                        ? "พักผ่อนหรือเตรียมตัวสำหรับคาบถัดไป"
+                        : "เสร็จสิ้นคาบเรียนของวันนี้แล้ว"}
                     </p>
                   </div>
                 </div>
               )}
             </div>
-          </section>
 
-          {/* ── Mobile & Tablet View (1 col on Mobile, 2 cols on Tablet) ── */}
-          <section className="xl:hidden space-y-4">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-primary" />
-              <h2 className="text-base sm:text-lg font-bold text-foreground">ตารางเรียนรายวัน</h2>
+            {/* Next Class Preview */}
+            <div className="p-4 sm:p-5 rounded-xl bg-muted/40 border border-border flex flex-col justify-center">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                <ArrowRight className="w-3.5 h-3.5 text-primary" />
+                คาบถัดไปวันนี้
+              </div>
+              {nextSubject ? (
+                <div>
+                  <div className="font-bold text-sm text-foreground truncate">{nextSubject.subject_name}</div>
+                  <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-primary">
+                      คาบ {nextSubject.period_no} ({nextSubject.start_time})
+                    </span>
+                    {formatTeacher(nextSubject) && <span>· อ.{formatTeacher(nextSubject)}</span>}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs font-medium text-subtle-foreground">ไม่มีคาบเรียนถัดไปวันนี้</div>
+              )}
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activeDays.map((day) => {
-                const dayEntries = scheduleEntries.filter(
-                  (e) => e.classroom_id === classroomId && Number(e.day_of_week) === day.value
-                );
-                if (dayEntries.length === 0) return null;
-
-                const isToday = currentDayValue === day.value;
-                const sortedEntries = [...dayEntries].sort(
-                  (a, b) => Number(a.period_no) - Number(b.period_no)
-                );
-
-                return (
-                  <div
-                    key={day.value}
-                    className={`rounded-2xl border overflow-hidden bg-card transition-all ${
-                      isToday ? "border-primary/50 ring-2 ring-primary/15 shadow-sm" : "border-border"
+      {/* ── View Mode & Day Selector ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Day Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1 sm:pb-0">
+          {activeDays.map((day) => {
+            const count = myEntries.filter((e) => Number(e.day_of_week) === day.value).length;
+            const isToday = day.value === todayDayValue;
+            const isSelected = selectedDay === day.value && viewMode === "daily";
+            return (
+              <button
+                key={day.value}
+                type="button"
+                onClick={() => {
+                  setSelectedDay(day.value);
+                  setViewMode("daily");
+                }}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <span>วัน{day.label}</span>
+                {isToday && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                      isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/10 text-primary"
                     }`}
                   >
-                    <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${day.color}`}>
-                          วัน{day.label}
-                        </span>
-                        {isToday && (
-                          <span className="px-2 py-0.5 bg-primary text-primary-foreground rounded-md text-[11px] font-bold">
-                            วันนี้
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {sortedEntries.length} คาบ
-                      </span>
+                    วันนี้
+                  </span>
+                )}
+                {count > 0 && (
+                  <span className={`text-[10px] opacity-75 ${isSelected ? "" : "text-subtle-foreground"}`}>
+                    ({count})
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* View Toggle (Desktop/Tablet) */}
+        <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted border border-border self-start sm:self-auto shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode("daily")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              viewMode === "daily"
+                ? "bg-card text-foreground shadow-2xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <List className="w-3.5 h-3.5" />
+            รายวัน
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("weekly")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              viewMode === "weekly"
+                ? "bg-card text-foreground shadow-2xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            ทั้งสัปดาห์
+          </button>
+        </div>
+      </div>
+
+      {/* ── Daily Timeline View ── */}
+      {viewMode === "daily" ? (
+        <section className="ui-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-muted/35 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${selectedDayInfo?.color || ""}`}>
+                วัน{selectedDayInfo?.label}
+              </span>
+              {selectedDay === todayDayValue && (
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-primary/10 text-primary">
+                  ตารางวันนี้
+                </span>
+              )}
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground">
+              {selectedDayEntries.length} คาบเรียน
+            </span>
+          </div>
+
+          <div className="divide-y divide-border">
+            {schedulePeriods.map((period) => {
+              const entry = selectedDayEntries.find((e) => e.period_id === period.id);
+              const isToday = selectedDay === todayDayValue;
+              const isCurrentClass =
+                !period.is_break &&
+                isToday &&
+                currentTimeStr >= period.start_time &&
+                currentTimeStr <= period.end_time;
+
+              if (period.is_break) {
+                return (
+                  <div
+                    key={period.id}
+                    className="px-4 sm:px-6 py-3 bg-muted/35 flex items-center gap-4 text-muted-foreground"
+                  >
+                    <div className="w-24 sm:w-28 shrink-0 text-xs font-medium">
+                      {period.start_time} – {period.end_time}
                     </div>
-
-                    <div className="divide-y divide-border">
-                      {sortedEntries.map((entry) => {
-                        const period = schedulePeriods.find((p) => p.id === entry.period_id);
-                        const isCurrentClass =
-                          isToday &&
-                          currentTimeStr >= entry.start_time &&
-                          currentTimeStr <= entry.end_time;
-
-                        const teacherName =
-                          entry.teacher_name ||
-                          (entry.teacher_names?.length ? entry.teacher_names.join(", ") : null);
-
-                        return (
-                          <div
-                            key={entry.id}
-                            className={`p-3.5 sm:p-4 transition-colors ${
-                              isCurrentClass
-                                ? "bg-primary/8 border-l-4 border-l-primary"
-                                : "hover:bg-muted/40"
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="shrink-0 w-13 text-center">
-                                <div
-                                  className={`text-xs font-bold ${
-                                    isCurrentClass ? "text-primary" : "text-foreground"
-                                  }`}
-                                >
-                                  คาบ {entry.period_no}
-                                </div>
-                                <div className="text-[11px] text-muted-foreground mt-0.5">
-                                  {entry.start_time}
-                                </div>
-                              </div>
-
-                              <div className="w-px self-stretch bg-border" />
-
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <h4
-                                    className={`font-bold text-sm leading-snug ${
-                                      isCurrentClass ? "text-primary" : "text-foreground"
-                                    }`}
-                                  >
-                                    {entry.subject_name}
-                                  </h4>
-                                  {isCurrentClass && (
-                                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-md shrink-0">
-                                      กำลังเรียน
-                                    </span>
-                                  )}
-                                </div>
-
-                                {teacherName && (
-                                  <p className="text-xs text-muted-foreground mt-1">อ.{teacherName}</p>
-                                )}
-
-                                {period?.label && (
-                                  <span className="inline-block mt-1.5 px-2 py-0.5 bg-amber-500/12 text-amber-700 dark:text-amber-300 text-[11px] font-medium rounded">
-                                    {period.label}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="flex items-center gap-2 text-xs font-semibold">
+                      <Coffee className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span>{period.label || "พักเบรก"}</span>
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          </section>
+              }
 
-          {/* ── Desktop Full Week Table (xl+) ── */}
-          <section className="hidden xl:block space-y-4">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold text-foreground">ตารางเรียนรายสัปดาห์</h2>
-            </div>
+              return (
+                <div
+                  key={period.id}
+                  className={`px-4 sm:px-6 py-4 flex items-center gap-3.5 sm:gap-5 transition-colors ${
+                    isCurrentClass ? "bg-primary/8 border-l-4 border-l-primary" : "hover:bg-muted/25"
+                  }`}
+                >
+                  {/* Time & Period */}
+                  <div className="w-24 sm:w-28 shrink-0">
+                    <div className={`text-xs font-bold ${isCurrentClass ? "text-primary" : "text-foreground"}`}>
+                      คาบ {period.period_no}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+                      {period.start_time} – {period.end_time}
+                    </div>
+                  </div>
 
-            <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-muted/60 border-b border-border">
-                      <th className="sticky left-0 z-20 bg-muted/95 backdrop-blur-sm px-4 py-3 text-left border-r border-border min-w-[130px]">
-                        <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                          คาบ / เวลา
-                        </span>
-                      </th>
-                      {activeDays.map((day) => {
-                        const isToday = currentDayValue === day.value;
-                        return (
-                          <th key={day.value} className="px-3 py-3 text-center min-w-[140px]">
-                            <div
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold text-xs border ${
-                                isToday
-                                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                                  : day.color
-                              }`}
-                            >
-                              {isToday && <Bell className="w-3 h-3" />}
-                              <span>วัน{day.label}</span>
-                            </div>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {schedulePeriods.map((period, index) => {
-                      const isBreak = period.is_break;
-
+                  {/* Subject Card */}
+                  {entry ? (
+                    (() => {
+                      const { dotColor, cardStyle } = getTeacherCardStyle(entry);
                       return (
-                        <tr
-                          key={period.id}
-                          className={
-                            isBreak
-                              ? "bg-muted/40"
-                              : index % 2 === 0
-                              ? "bg-card"
-                              : "bg-muted/20"
-                          }
+                        <div
+                          style={isCurrentClass ? undefined : cardStyle}
+                          className={`flex-1 min-w-0 rounded-xl border border-l-4 px-4 py-3 flex items-center justify-between gap-3 ${
+                            isCurrentClass ? "bg-card border-primary/50 border-l-primary shadow-xs" : ""
+                          }`}
                         >
-                          <td className="sticky left-0 z-10 bg-card/95 backdrop-blur-sm px-4 py-3 border-r border-border">
-                            <div className="font-bold text-sm text-foreground">คาบ {period.period_no}</div>
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              {period.start_time} – {period.end_time}
-                            </div>
-                            {period.label && (
-                              <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-1">
-                                {period.label}
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm text-foreground truncate">{entry.subject_name}</div>
+                            {formatTeacher(entry) && (
+                              <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: dotColor }}
+                                />
+                                <User className="w-3 h-3" />
+                                <span>อ.{formatTeacher(entry)}</span>
                               </div>
                             )}
-                          </td>
+                          </div>
+                          {isCurrentClass && (
+                            <span className="shrink-0 px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold inline-flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              กำลังเรียน
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="flex-1 rounded-xl border border-dashed border-border px-4 py-3 text-xs text-subtle-foreground">
+                      ว่าง (ไม่มีคาบเรียน)
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        /* ── Full Weekly Timetable View ── */
+        <section className="ui-card overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h3 className="font-bold text-foreground text-sm">ตารางเรียนรายสัปดาห์</h3>
+            <span className="text-xs text-muted-foreground">เลื่อนแนวนอนเพื่อดูครบทุกวัน</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-muted/60 border-b border-border">
+                  <th className="sticky left-0 z-20 bg-muted/95 backdrop-blur-sm px-4 py-3 text-left border-r border-border min-w-[125px]">
+                    <span className="font-bold text-xs text-muted-foreground">คาบ / เวลา</span>
+                  </th>
+                  {activeDays.map((day) => {
+                    const isToday = todayDayValue === day.value;
+                    return (
+                      <th key={day.value} className="px-3 py-3 text-center min-w-[140px]">
+                        <div
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold text-xs border ${
+                            isToday
+                              ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                              : day.color
+                          }`}
+                        >
+                          {isToday && <Bell className="w-3 h-3" />}
+                          <span>วัน{day.label}</span>
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {schedulePeriods.map((period, index) => {
+                  const isBreak = period.is_break;
+                  return (
+                    <tr
+                      key={period.id}
+                      className={isBreak ? "bg-muted/40" : index % 2 === 0 ? "bg-card" : "bg-muted/20"}
+                    >
+                      <td className="sticky left-0 z-10 bg-card/95 backdrop-blur-sm px-4 py-3 border-r border-border">
+                        <div className="font-bold text-sm text-foreground">คาบ {period.period_no}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 font-mono">
+                          {period.start_time}–{period.end_time}
+                        </div>
+                        {period.label && (
+                          <div className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                            {period.label}
+                          </div>
+                        )}
+                      </td>
 
-                          {isBreak ? (
-                            <td colSpan={activeDays.length} className="px-4 py-4 text-center">
-                              <div className="inline-flex items-center gap-2 text-muted-foreground">
-                                <Coffee className="w-4 h-4" />
-                                <span className="font-semibold text-sm">
-                                  {period.label || "พักเบรก"}
-                                </span>
-                              </div>
-                            </td>
-                          ) : (
-                            activeDays.map((day) => {
-                              const entry = scheduleEntries.find(
-                                (e) =>
-                                  e.classroom_id === classroomId &&
-                                  Number(e.day_of_week) === day.value &&
-                                  e.period_id === period.id
-                              );
+                      {isBreak ? (
+                        <td colSpan={activeDays.length} className="px-4 py-3.5 text-center">
+                          <div className="inline-flex items-center gap-2 text-muted-foreground text-xs font-semibold">
+                            <Coffee className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <span>{period.label || "พักเบรก"}</span>
+                          </div>
+                        </td>
+                      ) : (
+                        activeDays.map((day) => {
+                          const entry = myEntries.find(
+                            (e) => Number(e.day_of_week) === day.value && e.period_id === period.id
+                          );
+                          const isToday = todayDayValue === day.value;
+                          const isCurrentClass =
+                            isToday && currentTimeStr >= period.start_time && currentTimeStr <= period.end_time;
 
-                              const isToday = currentDayValue === day.value;
-                              const isCurrentClass =
-                                isToday &&
-                                currentTimeStr >= period.start_time &&
-                                currentTimeStr <= period.end_time;
-
-                              return (
-                                <td key={day.value} className="px-2.5 py-2.5 text-center align-middle">
-                                  {entry ? (
+                          return (
+                            <td key={day.value} className="px-2.5 py-2.5 text-center align-middle">
+                              {entry ? (
+                                (() => {
+                                  const { dotColor, cardStyle } = getTeacherCardStyle(entry);
+                                  return (
                                     <div
-                                      className={`rounded-xl px-3 py-2.5 text-xs transition-all ${
+                                      style={isCurrentClass ? undefined : cardStyle}
+                                      className={`rounded-xl px-3 py-2.5 text-xs border border-l-[3px] transition-all ${
                                         isCurrentClass
-                                          ? "bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/30"
-                                          : "bg-primary/8 text-foreground border border-primary/15 hover:bg-primary/12"
+                                          ? "bg-primary text-primary-foreground border-primary shadow-sm ring-2 ring-primary/25"
+                                          : "text-foreground"
                                       }`}
                                     >
-                                      <div className="font-bold leading-snug mb-1">
-                                        {entry.subject_name}
-                                      </div>
-                                      {(() => {
-                                        const teacherName =
-                                          entry.teacher_name ||
-                                          (entry.teacher_names?.length
-                                            ? entry.teacher_names.join(", ")
-                                            : null);
-                                        return teacherName ? (
-                                          <div
-                                            className={`text-[11px] ${
-                                              isCurrentClass
-                                                ? "text-primary-foreground/85"
-                                                : "text-muted-foreground"
-                                            }`}
-                                          >
-                                            อ.{teacherName}
-                                          </div>
-                                        ) : null;
-                                      })()}
+                                      <div className="font-bold leading-snug">{entry.subject_name}</div>
+                                      {formatTeacher(entry) && (
+                                        <div
+                                          className={`text-[11px] mt-1 inline-flex items-center justify-center gap-1.5 ${
+                                            isCurrentClass ? "text-primary-foreground/85" : "text-muted-foreground"
+                                          }`}
+                                        >
+                                          {!isCurrentClass && (
+                                            <span
+                                              className="w-2 h-2 rounded-full shrink-0"
+                                              style={{ backgroundColor: dotColor }}
+                                            />
+                                          )}
+                                          <span>อ.{formatTeacher(entry)}</span>
+                                        </div>
+                                      )}
                                       {isCurrentClass && (
                                         <div className="mt-1.5 pt-1 border-t border-primary-foreground/20">
                                           <span className="text-[10px] font-bold inline-flex items-center justify-center gap-1">
@@ -406,22 +555,22 @@ export default function ScheduleTab({
                                         </div>
                                       )}
                                     </div>
-                                  ) : (
-                                    <span className="text-muted-foreground/40 text-sm">—</span>
-                                  )}
-                                </td>
-                              );
-                            })
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        </>
+                                  );
+                                })()
+                              ) : (
+                                <span className="text-muted-foreground/35 text-sm">—</span>
+                              )}
+                            </td>
+                          );
+                        })
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
   );
