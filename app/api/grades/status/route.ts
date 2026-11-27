@@ -7,8 +7,6 @@ export async function GET(req: NextRequest) {
   const user = await verifyUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  await ensureStatusSchema();
-
   const settingId = req.nextUrl.searchParams.get("settingId");
   if (!settingId) return NextResponse.json({ error: "settingId required" }, { status: 400 });
 
@@ -22,42 +20,63 @@ export async function GET(req: NextRequest) {
   const { academic_year, term: settingTerm } = settingRes.rows[0];
   const termKey = `${settingTerm}/${academic_year}`;
 
-  const result = await pool.query(`
-    SELECT
-      s.id AS subject_id,
-      s.name AS subject_name,
-      s.subject_type,
-      s.score_display_mode,
-      s.midterm_max_score,
-      s.final_max_score,
-      s.credit_hours,
-      s.sort_order,
-      u.id AS teacher_id,
-      u.username AS teacher_name,
-      sc.classroom_id,
-      c.name AS classroom_name,
-      c.name_thai AS classroom_name_thai,
-      c.name_rumi AS classroom_name_rumi,
-      c.name_jawi AS classroom_name_jawi,
-      COUNT(st.id) AS total_students,
-      COUNT(g.id) AS graded_students,
-      COUNT(CASE WHEN g.midterm_score IS NOT NULL THEN 1 END) AS midterm_entered,
-      COUNT(CASE WHEN g.final_score IS NOT NULL THEN 1 END) AS final_entered
-    FROM subjects s
-    LEFT JOIN subject_teachers stch ON stch.subject_id = s.id
-    LEFT JOIN users u ON u.id = stch.user_id
-    LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
-    LEFT JOIN classrooms c ON c.id = sc.classroom_id AND c.setting_id = s.setting_id
-    LEFT JOIN classroom_students cs2 ON cs2.classroom_id = sc.classroom_id AND cs2.setting_id = s.setting_id
-    LEFT JOIN students st ON st.id = cs2.student_id
-    LEFT JOIN grades g ON g.student_id = st.student_id AND g.subject = s.name AND g.term = $2
-    WHERE s.setting_id = $1
-      AND (COALESCE(s.midterm_max_score, 0) + COALESCE(s.final_max_score, 0)) > 0
-      AND COALESCE(sc.score_enabled, TRUE) = TRUE
-    GROUP BY s.id, s.name, s.subject_type, s.score_display_mode, s.midterm_max_score, s.final_max_score, s.credit_hours, s.sort_order,
-             u.id, u.username, sc.classroom_id, c.name, c.name_thai, c.name_rumi, c.name_jawi
-    ORDER BY COALESCE(s.sort_order, 999) ASC, u.username NULLS LAST, s.name, c.name
-  `, [settingId, termKey]);
+  // Count each subject/classroom once, then attach teachers. Joining teachers
+  // before the roster multiplies every student/grade row for shared subjects.
+  const queryText = `
+    WITH roster_totals AS (
+      SELECT
+        s.id AS subject_id,
+        s.name AS subject_name,
+        s.subject_type,
+        s.score_display_mode,
+        s.midterm_max_score,
+        s.final_max_score,
+        s.credit_hours,
+        s.sort_order,
+        sc.classroom_id,
+        c.name AS classroom_name,
+        c.name_thai AS classroom_name_thai,
+        c.name_rumi AS classroom_name_rumi,
+        c.name_jawi AS classroom_name_jawi,
+        COUNT(st.id) AS total_students,
+        COUNT(g.id) AS graded_students,
+        COUNT(CASE WHEN g.midterm_score IS NOT NULL THEN 1 END) AS midterm_entered,
+        COUNT(CASE WHEN g.final_score IS NOT NULL THEN 1 END) AS final_entered
+      FROM subjects s
+      LEFT JOIN subject_classrooms sc ON sc.subject_id = s.id
+      LEFT JOIN classrooms c ON c.id = sc.classroom_id AND c.setting_id = s.setting_id
+      LEFT JOIN classroom_students cs2 ON cs2.classroom_id = sc.classroom_id AND cs2.setting_id = s.setting_id
+      LEFT JOIN students st ON st.id = cs2.student_id
+      LEFT JOIN grades g ON g.student_id = st.student_id AND g.subject = s.name AND g.term = $2
+      WHERE s.setting_id = $1
+        AND (COALESCE(s.midterm_max_score, 0) + COALESCE(s.final_max_score, 0)) > 0
+        AND COALESCE(sc.score_enabled, TRUE) = TRUE
+      GROUP BY s.id, s.name, s.subject_type, s.score_display_mode,
+               s.midterm_max_score, s.final_max_score, s.credit_hours, s.sort_order,
+               sc.classroom_id, c.name, c.name_thai, c.name_rumi, c.name_jawi
+    )
+    SELECT rt.subject_id, rt.subject_name, rt.subject_type, rt.score_display_mode,
+           rt.midterm_max_score, rt.final_max_score, rt.credit_hours, rt.sort_order,
+           u.id AS teacher_id, u.username AS teacher_name,
+           rt.classroom_id, rt.classroom_name, rt.classroom_name_thai,
+           rt.classroom_name_rumi, rt.classroom_name_jawi,
+           rt.total_students, rt.graded_students, rt.midterm_entered, rt.final_entered
+      FROM roster_totals rt
+      LEFT JOIN subject_teachers stch ON stch.subject_id = rt.subject_id
+      LEFT JOIN users u ON u.id = stch.user_id
+     ORDER BY COALESCE(rt.sort_order, 999) ASC, u.username NULLS LAST,
+              rt.subject_name, rt.classroom_name
+  `;
 
-  return NextResponse.json(result.rows);
+  try {
+    const result = await pool.query(queryText, [settingId, termKey]);
+    return NextResponse.json(result.rows);
+  } catch (error) {
+    // Legacy databases may lack sort_order. Only run the schema update when a
+    // required column is actually missing, instead of on every cold request.
+    if ((error as { code?: string }).code !== "42703") throw error;
+    await ensureStatusSchema();
+    const result = await pool.query(queryText, [settingId, termKey]);
+    return NextResponse.json(result.rows);
+  }
 }
